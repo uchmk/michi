@@ -36,16 +36,20 @@ jobs:
       - run: cargo build --locked --workspace --all-features
       - run: cargo test --locked --workspace --all-features
 
+  # Linux, Windows and macOS, all from this Linux runner (as verify.sh does):
+  # clippy only type-checks, nothing links, and no dependency builds C, so the
+  # other targets need nothing but rustup's std. macOS since 2026-10-16.
   clippy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - run: rustup target add x86_64-pc-windows-msvc
+      - run: rustup target add x86_64-pc-windows-msvc aarch64-apple-darwin
       - uses: Swatinem/rust-cache@v2
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - run: cargo clippy --workspace --all-targets --all-features --target x86_64-pc-windows-msvc -- -D warnings
+      - run: cargo clippy --workspace --all-targets --all-features --target aarch64-apple-darwin -- -D warnings
 
   fmt:
     runs-on: ubuntu-latest
