@@ -8,10 +8,20 @@
   title bar, view tabs, empty views, keybar and `?`, settings through ito, icon from `assets/icon.svg`, `rustfmt.toml`, `scripts/verify.sh`,
   CI, issue forms and labels, TESTING.md, CHANGELOG.md, git version check (2.38 or newer). The settings open inside the frame (the
   title bar and the keybar stay, unlike minato); the icon is drawn in code (`icon.rs`), no `.ico`
-- [ ] 1. See (read only): `ito-graph` in ito, the graph with main on the left lane, folding lane PRs (`z`, on by default), the left column,
-  the commit detail and its diff, the worktree table with the Claude column (`tsumugi ls --json`), conflict prediction including
-  uncommitted changes (`git merge-tree --write-tree`), file watching, unseen marks; measure the first screen on a 100k-commit repository
-  (target 0.3 s)
+- [ ] 1. See (read only)
+  - [x] `ito-graph` in ito (ito v0.36.0)
+  - [x] The graph (v0.2.0): main on the left lane, pills, folding lane PRs (`z`, on by default), movement keys, `/` filter, the scrollbar
+    with its marks, batches of 2000 / 5000
+  - [x] Measure the first screen on a 100k-commit repository (v0.2.1, `scripts/make-history.py` and the ignored test `big_history`):
+    0.09–0.11 s with a commit-graph, 0.31 s without (git's `--date-order` walks everything first). Fully read in about 0.6 s
+  - [ ] Write a commit-graph in the background when the repository has none（要確認: #2）
+  - [ ] Folding and the filter cost 56 ms and 42 ms at 100k commits, on the UI thread at every key: lay out on the reading thread, or only
+    the rows that changed
+  - [ ] The left column and the commit detail with its diff
+  - [ ] The WIP rows (uncommitted changes of each worktree)
+  - [ ] The worktree table with the Claude column (`tsumugi ls --json`)
+  - [ ] Conflict prediction including uncommitted changes (`git merge-tree --write-tree`)
+  - [ ] File watching (`notify` → `Ask::Reload`) and unseen marks
 - [ ] Second mock round before stage 2: changes and staging, the diff of a whole branch (seen marks, since last time, notes), rebase;
   ask the owner with a `question` issue
 - [ ] 2. Change: first the diff of a whole branch (`d`; seen marks, since last time, notes), then stage and commit (lines and hunks,
