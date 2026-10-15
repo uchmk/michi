@@ -128,6 +128,17 @@ impl Pane {
         true
     }
 
+    /// The selection is now `id`, the same thing read anew (a worktree's
+    /// uncommitted change that changed): what is shown stays, in its place,
+    /// until the new answer comes.
+    pub fn refresh(&mut self, id: Option<Oid>) -> bool {
+        if id == self.asked {
+            return false;
+        }
+        self.asked = id;
+        true
+    }
+
     pub fn asked(&self) -> Option<Oid> {
         self.asked
     }
@@ -139,6 +150,9 @@ impl Pane {
             return;
         }
         self.rows = result.as_ref().map(|d| d.files.iter().map(Rows::of).collect()).unwrap_or_default();
+        if self.scroll_to.is_some_and(|f| f >= self.rows.len()) {
+            self.scroll_to = None;
+        }
         self.got = Some(result);
     }
 
@@ -277,6 +291,23 @@ mod tests {
         d.all_files = true;
         assert!(d.select(Some(b)));
         assert!(d.got().is_none() && !d.all_files && d.to_top);
+    }
+
+    #[test]
+    fn a_refresh_keeps_what_is_shown_until_the_answer() {
+        let (a, b) = (Oid::parse(&"a".repeat(40)).unwrap(), Oid::parse(&"b".repeat(40)).unwrap());
+        let mut d = Pane::default();
+        d.select(Some(a));
+        d.take(a, Ok(Box::new(fixture::detail(a, Vec::new(), 3))));
+        d.to_top = false;
+        d.scroll_to = Some(2);
+        assert!(d.refresh(Some(b)));
+        assert!(!d.refresh(Some(b)));
+        assert!(d.got().is_some() && d.rows(2).is_some() && !d.to_top);
+        // The new answer has fewer files: the scroll to one gone is dropped.
+        d.take(b, Ok(Box::new(fixture::detail(b, Vec::new(), 1))));
+        assert_eq!(d.got().unwrap().as_ref().unwrap().id, b);
+        assert_eq!(d.scroll_to, None);
     }
 
     #[test]

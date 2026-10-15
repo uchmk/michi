@@ -14,6 +14,8 @@ use ito_graph::Metrics;
 
 use crate::app::{failed_word, App, Repo};
 use crate::graph::{bot, when, Mark, PillKind};
+use michi_core::claude::{Session, State};
+use michi_core::wip::Wip;
 
 /// The band of buttons and the filter over the rows.
 const TOOL_H: f32 = 38.0;
@@ -333,6 +335,18 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
     let now = chrono::Local::now();
     let yesterday = app.tr("time.yesterday");
     for k in first..len.min(last) {
+        if let Some(w) = g.wip(k) {
+            let mid = row_rect(k).center().y;
+            let dim = c.dim;
+            wip_cell(ui, app, &p, w, pos2(subj_x, mid), author_x - PAD - subj_x);
+            if !compact {
+                clipped(ui, &p, pos2(author_x, mid), "—", FontId::proportional(12.0), dim, AUTHOR_W - PAD);
+                let date = w.written.map_or("—".to_owned(), |t| when(t, &now, yesterday));
+                clipped(ui, &p, pos2(date_x, mid), &date, FontId::proportional(12.0), dim, DATE_W - PAD);
+            }
+            clipped(ui, &p, pos2(hash_x, mid), "WIP", FontId::monospace(11.5), dim, HASH_W);
+            continue;
+        }
         let Some(commit) = g.commit(k) else { continue };
         let rr = row_rect(k);
         let mid = rr.center().y;
@@ -552,7 +566,7 @@ fn scrollbar(ui: &mut Ui, app: &App, list: Rect, total: f32, view: f32, scroll: 
         last_px = y;
         let ink = match mark {
             Mark::Hit => c.fg,
-            Mark::Tag => c.wait,
+            Mark::Tag | Mark::Wip => c.wait,
             Mark::Head(i) => ansi[i as usize & 15],
         };
         p.rect_filled(Rect::from_min_size(pos2(bar.left(), y - 1.5), vec2(BAR_W, 3.0)), CornerRadius::same(1), ink);
@@ -650,7 +664,45 @@ fn mark_tip(app: &App, k: u32, mark: Option<Mark>) -> String {
             let names: Vec<String> = g.pills(k).into_iter().filter(|p| p.kind == PillKind::Worktree).map(|p| p.text).collect();
             format!("worktree {} — {subject}", names.join(", "))
         }
+        Some(Mark::Wip) => format!("WIP {}", g.wip(k).map_or(String::new(), wip_name)),
     }
+}
+
+/// The name a worktree's uncommitted change goes by: its branch, else the
+/// commit it is on.
+pub(crate) fn wip_name(w: &Wip) -> String {
+    w.branch.clone().unwrap_or_else(|| w.head.short())
+}
+
+/// How a Claude session's state is shown: its glyph, its word and its colour;
+/// `None` for a word michi does not know.
+pub(crate) fn claude_look(app: &App, s: &Session) -> Option<(&'static str, &'static str, Color32)> {
+    let c = ito_theme::colors();
+    Some(match s.state {
+        State::Running => ("●", app.tr("claude.running"), c.run),
+        State::Waiting => ("◐", app.tr("claude.waiting"), c.wait),
+        State::Done => ("✓", app.tr("claude.done"), c.done),
+        State::Failed => ("✕", app.tr("claude.failed"), c.err),
+        State::Other(_) => return None,
+    })
+}
+
+/// A WIP row's subject cell: how much is uncommitted, in italics, and what
+/// the Claude there is doing.
+fn wip_cell(ui: &Ui, app: &App, p: &egui::Painter, w: &Wip, left_center: Pos2, width: f32) {
+    let c = ito_theme::colors();
+    let (a, d) = w.counts();
+    let text =
+        app.tr("wip.subject").replace("{n}", &w.files.len().to_string()).replace("{a}", &a.to_string()).replace("{d}", &d.to_string());
+    let mut job = LayoutJob::default();
+    job.append(&text, 0.0, egui::TextFormat { font_id: FontId::proportional(13.0), color: c.dim, italics: true, ..Default::default() });
+    if let Some((glyph, word, ink)) = app.claude_in(&w.path).first().and_then(|s| claude_look(app, s)) {
+        let format = egui::TextFormat { font_id: FontId::proportional(11.5), color: ink, ..Default::default() };
+        job.append(&format!("{glyph} Claude {word}"), 10.0, format);
+    }
+    job.wrap = TextWrapping::truncate_at_width(width.max(8.0));
+    let g = ui.fonts_mut(|f| f.layout_job(job));
+    p.galley(pos2(left_center.x, left_center.y - g.size().y / 2.0), g, c.dim);
 }
 
 // ── pieces ────────────────────────────────────────────────────

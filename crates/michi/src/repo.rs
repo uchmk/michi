@@ -10,18 +10,26 @@
 //! The selected commit in full comes from a second thread, so a long diff
 //! never holds up the history: only the newest wish is read, and one read
 //! halfway stops when another comes.
+//!
+//! A third thread keeps an eye on the worktrees: each one's uncommitted
+//! change and the Claude sessions tsumugi runs in them, read again every few
+//! seconds while the window is in front and seldom behind it.
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
+use michi_core::claude::{self, Session};
 use michi_core::git::{self, Version};
 use michi_core::history::Setup;
 use michi_core::log::{self, Commit, Reader};
 use michi_core::oid::Oid;
 use michi_core::show::{self, Detail};
 use michi_core::summary::{self, Summary};
+use michi_core::wip::{self, Wip};
+use michi_core::worktree;
 
 /// What the reading thread sends back.
 #[derive(Debug)]
@@ -40,6 +48,11 @@ pub enum Answer {
     Failed { gen: u32, error: git::Error },
     /// The commit `id` in full, as [`Reading::detail`] asked.
     Detail { id: Oid, result: Result<Box<Detail>, git::Error> },
+    /// The worktrees with uncommitted changes, each read anew.
+    Wips(Vec<Wip>),
+    /// The Claude sessions in each worktree (by its folder; only those with
+    /// some); `None` when tsumugi is not there to ask.
+    Claude(Option<Vec<(PathBuf, Vec<Session>)>>),
 }
 
 /// What the window asks of the reading thread.
@@ -64,6 +77,8 @@ pub struct Reading {
     wants: Sender<Want>,
     /// The newest wish's number: a read for any other is stale.
     latest: Arc<AtomicU32>,
+    /// Whether the window is in front, for the watching thread.
+    front: Sender<bool>,
 }
 
 impl Reading {
@@ -72,6 +87,12 @@ impl Reading {
     pub fn detail(&self, id: Oid, patch: bool) {
         let gen = self.latest.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
         let _ = self.wants.send(Want { gen, id, patch });
+    }
+
+    /// The window came in front (`true`) or went behind: the worktrees are
+    /// read more or less often.
+    pub fn front(&self, front: bool) {
+        let _ = self.front.send(front);
     }
 }
 
@@ -97,6 +118,16 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         };
         details(&detail_dir, &want_rx, &detail_latest, send);
     });
+    let (front, front_rx) = mpsc::channel();
+    let (watch_tx, watch_dir, watch_ctx) = (tx.clone(), dir.clone(), ctx.clone());
+    // No thread for the worktrees: no WIP rows and no Claude.
+    let _ = std::thread::Builder::new().name("watch".into()).spawn(move || {
+        let send = |a: Answer| {
+            let _ = watch_tx.send(a);
+            watch_ctx.request_repaint();
+        };
+        watch(&watch_dir, &front_rx, send);
+    });
     let thread_tx = tx.clone();
     let spawned = std::thread::Builder::new().name("repo".into()).spawn(move || {
         let send = |a: Answer| {
@@ -115,7 +146,77 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         // No thread: say so where the summary would have gone.
         let _ = tx.send(Answer::Summary(Err(git::Error::Io(e.to_string()))));
     }
-    Reading { answers, asks, wants, latest }
+    Reading { answers, asks, wants, latest, front }
+}
+
+/// How often tsumugi is asked while the window is in front.
+const CLAUDE_FRONT: Duration = Duration::from_secs(2);
+/// … and while it is behind.
+const CLAUDE_BEHIND: Duration = Duration::from_secs(10);
+/// How often the uncommitted changes are read while the window is in front;
+/// behind, they are not, and they are read at once when it comes back.
+const WIP_EVERY: Duration = Duration::from_secs(5);
+
+/// Reads the worktrees' uncommitted changes and asks tsumugi for its
+/// sessions, again and again, until the window is gone. An answer is sent
+/// only when it differs from the last.
+fn watch(dir: &Path, front_rx: &Receiver<bool>, send: impl Fn(Answer)) {
+    let mut front = true;
+    let mut wips_read: Option<Instant> = None;
+    let (mut last_wips, mut last_claude) = (None, None);
+    let mut timeouts = 0u32;
+    loop {
+        let tick = Instant::now();
+        let worktrees = worktree::list(dir).ok();
+        if let Some(wts) = worktrees.as_ref().filter(|_| front && wips_read.is_none_or(|t| t.elapsed() >= WIP_EVERY)) {
+            wips_read = Some(Instant::now());
+            // A worktree that cannot be read has no row; the next read tries again.
+            let wips: Vec<Wip> = wip::read_all(wts).into_iter().filter_map(|r| r.ok().flatten()).collect();
+            if last_wips.as_ref() != Some(&wips) {
+                last_wips = Some(wips.clone());
+                send(Answer::Wips(wips));
+            }
+        }
+        let claude = match claude::fetch() {
+            Ok(None) => Some(None),
+            Ok(Some(sessions)) => {
+                let wts = worktrees.as_deref().unwrap_or_default();
+                let per = claude::assign(wts.iter().map(|w| &w.path), &sessions);
+                Some(Some(wts.iter().zip(per).filter(|(_, s)| !s.is_empty()).map(|(w, s)| (w.path.clone(), s)).collect()))
+            }
+            // Worth a line, not every 2 s: the first and every 30th.
+            Err(e) => {
+                if !matches!(e, claude::Error::Timeout) || timeouts.is_multiple_of(30) {
+                    eprintln!("michi: {e}");
+                }
+                timeouts += u32::from(matches!(e, claude::Error::Timeout));
+                None
+            }
+        };
+        if let Some(c) = claude {
+            if last_claude.as_ref() != Some(&c) {
+                last_claude = Some(c.clone());
+                send(Answer::Claude(c));
+            }
+        }
+        // Wait out the tick; coming in front cuts it short.
+        let every = if front { CLAUDE_FRONT } else { CLAUDE_BEHIND };
+        loop {
+            let left = every.saturating_sub(tick.elapsed());
+            match front_rx.recv_timeout(left) {
+                Ok(f) => {
+                    let came = f && !front;
+                    front = f;
+                    if came {
+                        wips_read = None;
+                        break;
+                    }
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => break,
+                Err(mpsc::RecvTimeoutError::Disconnected) => return,
+            }
+        }
+    }
 }
 
 /// Reads each commit the window wants in full, until the window is gone.

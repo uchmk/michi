@@ -104,6 +104,20 @@ const EN: &[(&str, &str)] = &[
     ("detail.eol_only", "Only line endings changed"),
     ("detail.no_diff", "No changes in the text"),
     ("detail.from", "from {}"),
+    ("wip.subject", "Uncommitted: {n} files (+{a} −{d})"),
+    ("wip.title", "Uncommitted changes on {}"),
+    ("wip.written", "last written at {}"),
+    ("wip.hint", "Read only here. Stage and commit in Changes (2)."),
+    ("wip.writing", "Claude is writing."),
+    ("wip.stopped", "Claude has stopped."),
+    ("wip.left_out", "Untracked, too big to count: {}"),
+    ("wip.left_more", " and {n} more"),
+    ("claude.running", "running"),
+    ("claude.waiting", "waiting"),
+    ("claude.done", "done"),
+    ("claude.failed", "stopped"),
+    ("claude.at", " (tab {tab} · {title}, since {since})"),
+    ("claude.more", "+{} more"),
 ];
 
 const JA: &[(&str, &str)] = &[
@@ -208,6 +222,20 @@ const JA: &[(&str, &str)] = &[
     ("detail.eol_only", "改行だけが変わりました"),
     ("detail.no_diff", "中身の変化はありません"),
     ("detail.from", "元: {}"),
+    ("wip.subject", "未コミット {n} ファイル（+{a} −{d}）"),
+    ("wip.title", "{} の未コミットの変更"),
+    ("wip.written", "{} に最後の書き込み"),
+    ("wip.hint", "ここでは読むだけ。ステージとコミットは「変更」（2）で。"),
+    ("wip.writing", "Claude が書いている途中です。"),
+    ("wip.stopped", "Claude は止まっています。"),
+    ("wip.left_out", "大きすぎて数えていない未追跡: {}"),
+    ("wip.left_more", " ほか {n} 個"),
+    ("claude.running", "実行中"),
+    ("claude.waiting", "待ち"),
+    ("claude.done", "済み"),
+    ("claude.failed", "止まった"),
+    ("claude.at", "（タブ {tab} · {title}、{since} から）"),
+    ("claude.more", "ほか {} 個"),
 ];
 
 /// The language codes michi has words for.

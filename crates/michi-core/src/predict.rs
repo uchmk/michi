@@ -100,22 +100,69 @@ pub fn tip(worktree: &Path) -> Result<Oid, git::Error> {
     }
 }
 
-/// A commit holding the working folder of `worktree` as it is now (tracked
-/// changes, deleted files and untracked files that are not ignored), with
-/// `HEAD` as its parent, so `HEAD` against it is the uncommitted change.
-/// `None` when the folder is clean. The index, `HEAD`, the branch and the
-/// files stay as they were: the commit is built from a temporary copy of
-/// the index (so `git add -A` skips what the stat data says is unchanged),
-/// deleted afterwards. The real index is only read, and no call takes its
-/// lock. The commit is no ref's target, so `git gc` takes it in time. It
-/// has fixed names and dates, so the same state gives the same commit.
+/// How much untracked content a WIP commit takes in: what is not ignored but
+/// is big (a build folder missing from `.gitignore`) would otherwise be
+/// copied into the repository's objects whole, on every read.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Limits {
+    /// An untracked file bigger than this is left out, with the folder it
+    /// came in.
+    pub file_bytes: u64,
+    /// Untracked files taken in, at most, over the worktree.
+    pub files: u64,
+    /// Their bytes, at most.
+    pub bytes: u64,
+}
+
+impl Limits {
+    pub const DEFAULT: Limits = Limits { file_bytes: 10 << 20, files: 2000, bytes: 50 << 20 };
+}
+
+/// An untracked file or folder left out of a WIP commit: too big for
+/// [`Limits`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LeftOut {
+    /// As `git status` names it: a whole new folder ends in `/`.
+    pub path: String,
+    /// Its files and bytes as far as they were counted (the count stops
+    /// past the limits): at least this many.
+    pub files: u64,
+    pub bytes: u64,
+}
+
+/// A worktree's uncommitted change held in a commit.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Snapshot {
+    pub commit: Oid,
+    /// The untracked files and folders not in it.
+    pub left_out: Vec<LeftOut>,
+}
+
+/// A commit holding the working folder of `worktree` as it is now; see
+/// [`snapshot`].
 pub fn wip_commit(worktree: &Path) -> Result<Option<Oid>, git::Error> {
+    Ok(snapshot(worktree, Limits::DEFAULT)?.map(|s| s.commit))
+}
+
+/// A commit holding the working folder of `worktree` as it is now (tracked
+/// changes, deleted files, and untracked files that are not ignored up to
+/// `limits`), with `HEAD` as its parent, so `HEAD` against it is the
+/// uncommitted change. `None` when the folder is clean, or all that changed
+/// is left out. The index, `HEAD`, the branch and the files stay as they
+/// were: the commit is built from a temporary copy of the index (so
+/// `git add` skips what the stat data says is unchanged), deleted
+/// afterwards. The real index is only read, and no call takes its lock. The
+/// commit is no ref's target, so `git gc` takes it in time. It has fixed
+/// names and dates, so the same state gives the same commit.
+pub fn snapshot(worktree: &Path, limits: Limits) -> Result<Option<Snapshot>, git::Error> {
     // `core.fsmonitor=false`: a read must not start a file system monitor.
     let quiet = ["--no-optional-locks", "-c", "core.fsmonitor=false"];
-    let status = git::read(worktree, &[quiet[0], quiet[1], quiet[2], "status", "--porcelain=v2", "-z", "--untracked-files=all"])?;
+    // `normal`: a whole new folder is one entry, not every file in it.
+    let status = git::read(worktree, &[quiet[0], quiet[1], quiet[2], "status", "--porcelain=v2", "-z", "--untracked-files=normal"])?;
     if status.is_empty() {
         return Ok(None);
     }
+    let (taken, left_out) = take_in(worktree, untracked(&status), limits);
     let (head, head_tree) = head(worktree)?;
     let head_hex = head.to_string();
     let index = TempIndex::new();
@@ -129,13 +176,94 @@ pub fn wip_commit(worktree: &Path) -> Result<Option<Oid>, git::Error> {
     if !index.seed_from(worktree) {
         with_index(&["read-tree", &head_hex])?;
     }
-    with_index(&["add", "-A"])?;
+    with_index(&["add", "-u"])?;
+    if !taken.is_empty() {
+        // Named in a file: there may be many, and a command line is short.
+        let list = TempIndex(index.0.with_extension("paths"));
+        let specs: String = taken.iter().map(|p| format!(":(literal){p}\0")).collect();
+        std::fs::write(&list.0, specs).map_err(|e| git::Error::Io(format!("{}: {e}", list.0.display())))?;
+        let from = format!("--pathspec-from-file={}", list.0.display());
+        with_index(&["add", &from, "--pathspec-file-nul"])?;
+    }
     let tree = with_index(&["write-tree"])?;
     if tree == head_tree {
         return Ok(None);
     }
     let commit = with_index(&["commit-tree", &tree, "-p", &head_hex, "-m", "wip", "--no-gpg-sign"])?;
-    parse_oid(&commit, "commit-tree").map(Some)
+    Ok(Some(Snapshot { commit: parse_oid(&commit, "commit-tree")?, left_out }))
+}
+
+/// The untracked entries of `git status --porcelain=v2 -z`: files, and
+/// folders (ending in `/`) with nothing tracked in them. A path that is not
+/// UTF-8 is skipped.
+fn untracked(status: &[u8]) -> Vec<String> {
+    let mut paths = Vec::new();
+    let mut records = status.split(|&b| b == 0);
+    while let Some(r) = records.next() {
+        if r.starts_with(b"2 ") {
+            // A rename: its old path follows as a record of its own.
+            records.next();
+        } else if let Some(p) = r.strip_prefix(b"? ") {
+            if let Ok(p) = std::str::from_utf8(p) {
+                paths.push(p.to_owned());
+            }
+        }
+    }
+    paths
+}
+
+/// Which of the untracked `paths` in `worktree` to take in, in their order,
+/// while they stay within `limits`; the rest, left out.
+fn take_in(worktree: &Path, paths: Vec<String>, limits: Limits) -> (Vec<String>, Vec<LeftOut>) {
+    let (mut taken, mut left_out) = (Vec::new(), Vec::new());
+    let (mut files, mut bytes) = (0, 0);
+    for path in paths {
+        let room = Limits { files: limits.files - files, bytes: limits.bytes - bytes, ..limits };
+        let mut count = Count { files: 0, bytes: 0, room };
+        let mut fits = count.walk(&worktree.join(path.trim_end_matches('/')));
+        if !fits && path.ends_with('/') {
+            // The walk counts ignored files too (a `node_modules` in a new
+            // folder): ask git for the files it would take in.
+            let spec = format!(":(literal){path}");
+            if let Ok(listed) = git::read(worktree, &["--no-optional-locks", "ls-files", "-o", "--exclude-standard", "-z", "--", &spec]) {
+                count = Count { files: 0, bytes: 0, room };
+                fits = listed.split(|&b| b == 0).filter(|f| !f.is_empty()).all(|f| match std::str::from_utf8(f) {
+                    Ok(f) => count.walk(&worktree.join(f)),
+                    Err(_) => true,
+                });
+            }
+        }
+        if fits {
+            files += count.files;
+            bytes += count.bytes;
+            taken.push(path);
+        } else {
+            left_out.push(LeftOut { path, files: count.files, bytes: count.bytes });
+        }
+    }
+    (taken, left_out)
+}
+
+/// The files and bytes under a path, counted until they pass `room`.
+struct Count {
+    files: u64,
+    bytes: u64,
+    room: Limits,
+}
+
+impl Count {
+    /// Counts `path` (a link as itself, not what it points to); whether it
+    /// stays within the room.
+    fn walk(&mut self, path: &Path) -> bool {
+        let Ok(meta) = std::fs::symlink_metadata(path) else { return true };
+        if meta.is_dir() {
+            let Ok(entries) = std::fs::read_dir(path) else { return true };
+            return entries.flatten().all(|e| self.walk(&e.path()));
+        }
+        self.files += 1;
+        self.bytes += meta.len();
+        meta.len() <= self.room.file_bytes && self.files <= self.room.files && self.bytes <= self.room.bytes
+    }
 }
 
 /// `HEAD` of `worktree` and its tree.
@@ -438,5 +566,55 @@ mod tests {
         fs::create_dir_all(exclude.join("info")).unwrap();
         fs::write(exclude.join("info/exclude"), "*.log\n").unwrap();
         assert_eq!(wip_commit(&wt), Ok(None));
+    }
+
+    #[test]
+    fn big_untracked_files_and_folders_are_left_out() {
+        let r = base("predict-big");
+        let wt = r.root.join("wt");
+        let limits = Limits { file_bytes: 10, files: 4, bytes: 20 };
+        r.write(&wt, "small.txt", "x\n");
+        r.write(&wt, "big.bin", "more than ten bytes\n");
+        r.write(&wt, "few/a.txt", "a\n");
+        r.write(&wt, "few/sub/b.txt", "b\n");
+        // Ignored files in a new folder do not count against it.
+        r.write(&wt, "few/out/big.log", "more than ten bytes\n");
+        let exclude = PathBuf::from(r.out(&wt, &["rev-parse", "--git-common-dir"]));
+        fs::create_dir_all(exclude.join("info")).unwrap();
+        fs::write(exclude.join("info/exclude"), "out/\n").unwrap();
+        // A folder with one big file in it goes whole.
+        r.write(&wt, "mixed/a.txt", "a\n");
+        r.write(&wt, "mixed/big.bin", "more than ten bytes\n");
+        // Three files, past the two left in the room.
+        for n in 0..3 {
+            r.write(&wt, &format!("many/{n}.txt"), "m\n");
+        }
+        r.write(&wt, "spaced [x].txt", "s\n");
+        let before = state(&r, &wt);
+        let s = snapshot(&wt, limits).unwrap().expect("small files");
+        let tree = r.out(&wt, &["ls-tree", "-r", "--name-only", &s.commit.to_string()]);
+        assert_eq!(tree.lines().collect::<Vec<_>>(), ["f.txt", "few/a.txt", "few/sub/b.txt", "small.txt", "spaced [x].txt"]);
+        let left: Vec<_> = s.left_out.iter().map(|l| l.path.as_str()).collect();
+        assert_eq!(left, ["big.bin", "many/", "mixed/"]);
+        assert_eq!((s.left_out[1].files, s.left_out[1].bytes), (3, 6));
+        assert_eq!(r.out(&wt, &["show", &format!("{}:spaced [x].txt", s.commit)]), "s");
+        assert_eq!(state(&r, &wt), before);
+        // With room, all of it.
+        let s = snapshot(&wt, Limits { file_bytes: 100, files: 100, bytes: 1000 }).unwrap().unwrap();
+        assert!(s.left_out.is_empty());
+        // Only big untracked files: no change to show.
+        for p in ["small.txt", "spaced [x].txt", "big.bin"] {
+            fs::remove_file(wt.join(p)).unwrap();
+        }
+        for p in ["few", "many"] {
+            fs::remove_dir_all(wt.join(p)).unwrap();
+        }
+        assert_eq!(snapshot(&wt, limits), Ok(None));
+    }
+
+    #[test]
+    fn status_records_give_the_untracked_paths() {
+        let status = b"1 .M N... 100644 100644 100644 a a f.txt\x002 R. N... 100644 100644 100644 a a R100 new.txt\x00? old.txt\x00? n.txt\x00? dir/\x00";
+        assert_eq!(untracked(status), ["n.txt", "dir/"]);
     }
 }

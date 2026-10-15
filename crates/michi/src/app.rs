@@ -2,9 +2,10 @@
 //! git, so the keys can be tested without a window or a repository.
 
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+use michi_core::claude::Session;
 use michi_core::git::{self, Version};
 use michi_core::oid::Oid;
 use michi_core::summary::Summary;
@@ -128,11 +129,16 @@ pub struct App {
     pub graph: Graph,
     /// The selected commit in full, on the right.
     pub detail: Pane,
+    /// The Claude sessions in each worktree that has some; `None` when
+    /// tsumugi is not there (or not asked yet).
+    pub claude: Option<Vec<(PathBuf, Vec<Session>)>>,
     /// The side column's groups that are open (`b:feat`, `r:origin`).
     pub side_open: HashSet<String>,
     /// A commit clicked in the side column that is not read yet: read on
     /// until it is, then select it.
     seeking: Option<Oid>,
+    /// The worktree whose uncommitted change the detail shows.
+    detail_wip: Option<PathBuf>,
     /// A new window title, for the frame to send once.
     pub new_title: Option<String>,
     /// One line at the foot, until its instant.
@@ -153,8 +159,10 @@ impl App {
             reading: None,
             graph: Graph::default(),
             detail: Pane::default(),
+            claude: None,
             side_open: HashSet::new(),
             seeking: None,
+            detail_wip: None,
             new_title: None,
             toast: None,
             quit: false,
@@ -203,7 +211,10 @@ impl App {
     /// and counts a trunk merge's commits; whether it had changed.
     pub fn sync_detail(&mut self) -> bool {
         let id = self.graph.selected();
-        let changed = self.detail.select(id);
+        // The same worktree's change read anew: the detail keeps its place.
+        let wip = self.graph.selected_wip().map(|w| w.path.clone());
+        let changed = if wip.is_some() && wip == self.detail_wip { self.detail.refresh(id) } else { self.detail.select(id) };
+        self.detail_wip = wip;
         if changed {
             if let (Some(id), Some(r)) = (id, &self.reading) {
                 // A merge's diff (the whole branch's) comes in stage 2.
@@ -279,7 +290,15 @@ impl App {
                 self.graph.failed(gen, error);
             }
             Answer::Detail { id, result } => self.detail.take(id, result),
+            Answer::Wips(wips) => self.graph.set_wips(wips),
+            Answer::Claude(c) => self.claude = c,
         }
+    }
+
+    /// The Claude sessions in the worktree at `path`, the one to show first
+    /// first.
+    pub fn claude_in(&self, path: &Path) -> &[Session] {
+        self.claude.iter().flatten().find(|(p, _)| p == path).map_or(&[], |(_, s)| s.as_slice())
     }
 
     /// The graph's rows in sight reach row `last`: read on before they run
@@ -432,6 +451,7 @@ pub fn failed_word(e: &git::Error) -> &'static str {
 mod tests {
     use super::*;
     use crate::graph::fixture::{self, FEAT};
+    use michi_core::claude::State;
     use michi_core::summary::Head;
 
     fn app() -> App {
@@ -703,5 +723,51 @@ mod tests {
         assert!(a.seeking.is_none(), "all is read: nothing more to read on to");
         assert!(toast(&a).starts_with("Not in the history: "), "{}", toast(&a));
         assert_eq!(selected(&a), "f2");
+    }
+
+    #[test]
+    fn a_wip_read_anew_keeps_the_detail_where_it_was() {
+        let mut a = read();
+        a.take(Answer::Wips(vec![fixture::wip("C:/r/repo", Some("main"), 6, 11, Some(1))]));
+        a.graph.select(0);
+        assert!(a.sync_detail());
+        assert_eq!(a.detail.asked(), Some(fixture::id(11)));
+        let shown = crate::detail::fixture::detail(fixture::id(11), vec![fixture::id(6)], 2);
+        a.detail.take(fixture::id(11), Ok(Box::new(shown)));
+        a.detail.to_top = false;
+        a.detail.scroll_to = Some(1);
+        // Written again: the new change is asked for, the old one stays shown.
+        a.take(Answer::Wips(vec![fixture::wip("C:/r/repo", Some("main"), 6, 12, Some(2))]));
+        assert!(a.sync_detail());
+        assert_eq!(a.detail.asked(), Some(fixture::id(12)));
+        assert!(a.detail.got().is_some());
+        assert_eq!((a.detail.to_top, a.detail.scroll_to), (false, Some(1)));
+        assert!(!a.sync_detail());
+        // Another row: from the top.
+        a.graph.select(1);
+        assert!(a.sync_detail());
+        assert!(a.detail.got().is_none() && a.detail.to_top);
+    }
+
+    #[test]
+    fn claude_sessions_are_looked_up_by_worktree() {
+        let mut a = app();
+        let s = Session {
+            id: 3,
+            state: State::Waiting,
+            command: "claude".into(),
+            agent: "claude".into(),
+            cwd: "C:/r/wt/src".into(),
+            branch: "wip".into(),
+            title: "fix".into(),
+            note: "Allow?".into(),
+            since_ms: 0,
+            read_only: false,
+        };
+        a.take(Answer::Claude(Some(vec![(PathBuf::from("C:/r/wt"), vec![s.clone()])])));
+        assert_eq!(a.claude_in(Path::new("C:/r/wt")), [s]);
+        assert!(a.claude_in(Path::new("C:/r/repo")).is_empty());
+        a.take(Answer::Claude(None));
+        assert!(a.claude_in(Path::new("C:/r/wt")).is_empty());
     }
 }

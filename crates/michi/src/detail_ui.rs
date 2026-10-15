@@ -5,13 +5,15 @@
 
 use egui::text::{LayoutJob, TextFormat, TextWrapping};
 use egui::{pos2, vec2, Align2, Color32, CornerRadius, CursorIcon, FontId, Id, Painter, Pos2, Rect, Sense, Stroke, Ui};
+use michi_core::claude::State;
 use michi_core::oid::Oid;
 use michi_core::show::{Detail, File, Kind, Line, Status};
+use michi_core::wip::Wip;
 
 use crate::app::App;
 use crate::detail::{listed, At, Paired, Unified, FILES_CUT, FILES_SHOWN, MERGED_CUT, MERGED_SHOWN};
 use crate::graph::{bot, when, FoldState};
-use crate::graph_ui::{clipped, paint_pill, pill_width};
+use crate::graph_ui::{claude_look, clipped, paint_pill, pill_width, wip_name};
 use crate::ui::kbd;
 
 /// The sides' padding.
@@ -307,6 +309,9 @@ struct Run {
 /// parents; the names on the commit; the message's body; the hint. Its
 /// height. Drawn at `top` with the painter, measured without.
 fn header(ui: &Ui, app: &App, d: &Detail, at: Pos2, width: f32, paint: Option<(&Painter, bool)>, act: &mut Option<Act>) -> f32 {
+    if let Some(w) = app.graph.selected_wip() {
+        return wip_header(ui, app, w, at, width, paint.map(|(p, _)| p));
+    }
     let c = ito_theme::colors();
     let (left, top) = (at.x, at.y);
     let inner = (width - 2.0 * X).max(40.0);
@@ -400,6 +405,105 @@ fn header(ui: &Ui, app: &App, d: &Detail, at: Pos2, width: f32, paint: Option<(&
     }
     y += 16.0 + 10.0;
     if let Some((p, _)) = paint {
+        p.line_segment([pos2(left, y - 0.5), pos2(left + width, y - 0.5)], Stroke::new(1.0, c.border));
+    }
+    y - top
+}
+
+/// The header of a worktree's uncommitted change: whose it is, where and
+/// when it was last written, that it is only read here, and what the Claude
+/// in that worktree is doing. Its height, as [`header`]'s.
+fn wip_header(ui: &Ui, app: &App, w: &Wip, at: Pos2, width: f32, paint: Option<&Painter>) -> f32 {
+    let c = ito_theme::colors();
+    let (left, top) = (at.x, at.y);
+    let inner = (width - 2.0 * X).max(40.0);
+    let x0 = left + X;
+    let mut y = top + 12.0;
+    let draw = |g: std::sync::Arc<egui::Galley>, at: Pos2| {
+        if let Some(p) = paint {
+            p.galley(at, g, c.fg);
+        }
+    };
+
+    let text = app.tr("wip.title").replace("{}", &wip_name(w));
+    let title = ui.fonts_mut(|f| f.layout(text, FontId::proportional(14.0), c.fg, inner));
+    draw(title.clone(), pos2(x0, y));
+    draw(title.clone(), pos2(x0 + 0.45, y));
+    y += title.size().y + 6.0;
+
+    // worktree <path> · last written at HH:MM
+    let mut job = LayoutJob::default();
+    job.wrap.max_width = inner;
+    let prop = |color| TextFormat { font_id: FontId::proportional(12.0), color, ..Default::default() };
+    job.append("worktree ", 0.0, prop(c.dim));
+    job.append(&w.path.display().to_string(), 0.0, TextFormat { font_id: FontId::monospace(12.0), color: c.fg, ..Default::default() });
+    if let Some(t) = w.written {
+        let at = when(t, &chrono::Local::now(), app.tr("time.yesterday"));
+        job.append(&app.tr("wip.written").replace("{}", &at), 10.0, prop(c.dim));
+    }
+    let meta = ui.fonts_mut(|f| f.layout_job(job));
+    draw(meta.clone(), pos2(x0, y));
+    y += meta.size().y + 8.0;
+
+    let hint = ui.fonts_mut(|f| f.layout(app.tr("wip.hint").to_owned(), FontId::proportional(11.5), c.dim, inner));
+    draw(hint.clone(), pos2(x0, y));
+    y += hint.size().y + 10.0;
+
+    // Untracked files too big to count, so not in the change.
+    if !w.left_out.is_empty() {
+        let shown = w.left_out.len().min(3);
+        let mut paths = w.left_out[..shown].iter().map(|l| l.path.as_str()).collect::<Vec<_>>().join(", ");
+        if shown < w.left_out.len() {
+            paths.push_str(&app.tr("wip.left_more").replace("{n}", &(w.left_out.len() - shown).to_string()));
+        }
+        let text = app.tr("wip.left_out").replace("{}", &paths);
+        let left = ui.fonts_mut(|f| f.layout(text, FontId::proportional(11.5), c.dim, inner));
+        draw(left.clone(), pos2(x0, y));
+        y += left.size().y + 10.0;
+    }
+
+    // The Claude there: a box with what it does and what it last said.
+    let sessions = app.claude_in(&w.path);
+    if let Some(s) = sessions.first() {
+        let pad = 10.0;
+        let mut job = LayoutJob::default();
+        job.wrap.max_width = inner - 2.0 * pad;
+        let lead = if s.state == State::Running { "wip.writing" } else { "wip.stopped" };
+        job.append(app.tr(lead), 0.0, prop(c.fg));
+        if let Some((glyph, word, ink)) = claude_look(app, s) {
+            job.append(&format!("{glyph} {word}"), 6.0, prop(ink));
+        }
+        let since = chrono::DateTime::from_timestamp_millis(s.since_ms as i64)
+            .filter(|_| s.since_ms > 0)
+            .map(|t| t.with_timezone(&chrono::Local).format("%H:%M").to_string());
+        let at = app
+            .tr("claude.at")
+            .replace("{tab}", &s.id.to_string())
+            .replace("{title}", &s.title)
+            .replace("{since}", since.as_deref().unwrap_or("—"));
+        job.append(&at, 0.0, prop(c.dim));
+        if sessions.len() > 1 {
+            job.append(&app.tr("claude.more").replace("{}", &(sessions.len() - 1).to_string()), 6.0, prop(c.dim));
+        }
+        if !s.note.is_empty() {
+            job.append(
+                "
+",
+                0.0,
+                prop(c.fg),
+            );
+            job.append(s.note.trim(), 0.0, prop(if s.state == State::Waiting { c.wait } else { c.fg }));
+        }
+        let g = ui.fonts_mut(|f| f.layout_job(job));
+        let bx = Rect::from_min_size(pos2(x0, y), vec2(inner, g.size().y + 2.0 * pad));
+        if let Some(p) = paint {
+            p.rect_filled(bx, CornerRadius::same(6), c.panel);
+            p.rect_stroke(bx, CornerRadius::same(6), Stroke::new(1.0, c.border), egui::StrokeKind::Inside);
+        }
+        draw(g, bx.min + vec2(pad, pad));
+        y = bx.bottom() + 10.0;
+    }
+    if let Some(p) = paint {
         p.line_segment([pos2(left, y - 0.5), pos2(left + width, y - 0.5)], Stroke::new(1.0, c.border));
     }
     y - top
@@ -725,5 +829,33 @@ mod tests {
         app.sync_detail();
         app.take(Answer::Detail { id: m2, result: Err(michi_core::git::Error::Git("bad object".into())) });
         frame(&mut app, 440.0);
+        // A worktree's uncommitted change, with and without its Claude.
+        let mut wip = fixture::wip("C:/r/wt", Some("wip"), 7, 11, Some(1_767_225_600));
+        // Untracked folders too big to count, more than are listed.
+        let left = |path: &str| michi_core::predict::LeftOut { path: path.into(), files: 2001, bytes: 1 << 30 };
+        wip.left_out = vec![left("target-v/"), left("dist/"), left("a.iso"), left("b.iso")];
+        app.take(Answer::Wips(vec![wip]));
+        app.graph.select(0);
+        app.sync_detail();
+        frame(&mut app, 440.0);
+        let w = fixture::id(11);
+        app.take(Answer::Detail { id: w, result: Ok(Box::new(detail(w, vec![fixture::id(7)], 2))) });
+        frame(&mut app, 440.0);
+        let session = |id, state| michi_core::claude::Session {
+            id,
+            state,
+            command: "claude".into(),
+            agent: "claude".into(),
+            cwd: "C:/r/wt".into(),
+            branch: "wip".into(),
+            title: "fix the parser".into(),
+            note: "Allow edits to src/lib.rs?".into(),
+            since_ms: 1_767_225_600_000,
+            read_only: false,
+        };
+        let sessions = vec![session(3, State::Waiting), session(5, State::Running)];
+        app.take(Answer::Claude(Some(vec![("C:/r/wt".into(), sessions)])));
+        frame(&mut app, 440.0);
+        frame(&mut app, 200.0);
     }
 }

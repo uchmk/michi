@@ -50,6 +50,8 @@ usage: michi [<path>] [--version | --help]
 
 struct Michi {
     app: App,
+    /// Whether the window was in front at the last frame.
+    front: bool,
 }
 
 impl Michi {
@@ -127,6 +129,14 @@ impl eframe::App for Michi {
         ctx.set_zoom_factor(self.app.prefs.common.scale_or_one());
         if let Some(e) = self.app.prefs.failed.take() {
             self.app.say(e);
+        }
+        // In front, the worktrees are watched closely; behind, now and then.
+        let front = ctx.input(|i| i.viewport().focused).unwrap_or(true);
+        if front != self.front {
+            self.front = front;
+            if let Some(r) = &self.app.reading {
+                r.front(front);
+            }
         }
         self.app.pump();
         self.app.sync_detail();
@@ -269,7 +279,7 @@ fn main() -> eframe::Result {
             cc.egui_ctx.set_zoom_factor(prefs.common.scale_or_one());
             let mut app = App::new(prefs, dir.clone());
             app.reading = Some(repo::start(dir, cc.egui_ctx.clone()));
-            Ok(Box::new(Michi { app }))
+            Ok(Box::new(Michi { app, front: true }))
         }),
     )
 }

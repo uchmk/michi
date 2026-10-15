@@ -20,9 +20,11 @@
   - [x] The left column and the commit detail with its diff (v0.3.0)
   - [ ] The detail's leftovers: tell a file that is not UTF-8 (now read lossily), wrap long diff lines (now cut at the pane's edge),
     the stash section and the `↑N` / `↓N` counts in the left column
-  - [ ] The WIP rows (uncommitted changes of each worktree)
+  - [x] The WIP rows (uncommitted changes of each worktree) and the Claude in that worktree in their detail (v0.4.0); untracked files
+    over 10 MB, or past 2000 files or 50 MB in all, are left out and named
+  - [ ] A worktree whose only change is a big untracked folder has no WIP row: say so somewhere (the worktree table)
   - [ ] The worktree table with the Claude column (`tsumugi ls --json`)
-  - [ ] Conflict prediction including uncommitted changes (`git merge-tree --write-tree`)
+  - [ ] Conflict prediction in the UI (⚠ on heads, a dashed frame on WIP rows); michi-core has it (`predict`)
   - [ ] File watching (`notify` → `Ask::Reload`) and unseen marks
 - [ ] Second mock round before stage 2: changes and staging, the diff of a whole branch (seen marks, since last time, notes), rebase;
   ask the owner with a `question` issue

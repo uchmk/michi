@@ -1,7 +1,7 @@
 //! The uncommitted change of each worktree, for the graph's WIP rows: its
 //! files with their counts, against the worktree's `HEAD`, and when it was
-//! last written. Read from the temporary commit of [`predict::wip_commit`],
-//! so untracked files count and the index stays as it was. The calls block;
+//! last written. Read from the temporary commit of [`predict::snapshot`], so
+//! untracked files count (up to its limits) and the index stays as it was. The calls block;
 //! run them off the UI thread.
 
 use std::path::{Path, PathBuf};
@@ -11,7 +11,7 @@ use std::time::UNIX_EPOCH;
 
 use crate::git;
 use crate::oid::Oid;
-use crate::predict;
+use crate::predict::{self, LeftOut};
 use crate::show::{self, File};
 use crate::worktree::Worktree;
 
@@ -31,6 +31,8 @@ pub struct Wip {
     /// When a changed file that is still there was last written (seconds
     /// since 1970); `None` when the change only deletes.
     pub written: Option<i64>,
+    /// Untracked files and folders too big to count.
+    pub left_out: Vec<LeftOut>,
 }
 
 impl Wip {
@@ -40,26 +42,30 @@ impl Wip {
     }
 }
 
+/// What [`read`] gives for a worktree.
+pub type Read = Result<Option<Wip>, git::Error>;
+
 /// The uncommitted change of the worktree `wt`; `None` when it is clean, bare
 /// or gone.
-pub fn read(wt: &Worktree) -> Result<Option<Wip>, git::Error> {
+pub fn read(wt: &Worktree) -> Read {
     if wt.bare || wt.prunable.is_some() {
         return Ok(None);
     }
-    let Some(commit) = predict::wip_commit(&wt.path)? else { return Ok(None) };
+    let Some(snap) = predict::snapshot(&wt.path, predict::Limits::DEFAULT)? else { return Ok(None) };
+    let commit = snap.commit;
     // The parent, not `wt.head`: `HEAD` may have moved since the list was read.
     let parent = git::read_text(&wt.path, &["rev-parse", &format!("{commit}^")])?;
     let head = Oid::parse(parent.trim()).ok_or_else(|| git::Error::Io(format!("git rev-parse: unexpected output: {parent}")))?;
     let files = show::changes(&wt.path, &head, &commit, false, &|| false)?.files;
     let written = files.iter().filter_map(|f| modified(&wt.path.join(&f.path))).max();
-    Ok(Some(Wip { path: wt.path.clone(), branch: wt.branch.clone(), head, commit, files, written }))
+    Ok(Some(Wip { path: wt.path.clone(), branch: wt.branch.clone(), head, commit, files, written, left_out: snap.left_out }))
 }
 
 /// [`read`] for each of `worktrees`, a few at a time; the results come in
 /// their order.
-pub fn read_all(worktrees: &[Worktree]) -> Vec<Result<Option<Wip>, git::Error>> {
+pub fn read_all(worktrees: &[Worktree]) -> Vec<Read> {
     let next = AtomicUsize::new(0);
-    let done: Mutex<Vec<Option<Result<Option<Wip>, git::Error>>>> = Mutex::new(vec![None; worktrees.len()]);
+    let done: Mutex<Vec<Option<Read>>> = Mutex::new(vec![None; worktrees.len()]);
     let threads = std::thread::available_parallelism().map_or(2, |n| n.get()).clamp(1, 4).min(worktrees.len());
     std::thread::scope(|s| {
         for _ in 0..threads {

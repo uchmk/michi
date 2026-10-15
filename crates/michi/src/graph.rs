@@ -10,6 +10,7 @@ use michi_core::git;
 use michi_core::history::{merged_name, Fold, History, Row, Setup};
 use michi_core::log::Commit;
 use michi_core::oid::Oid;
+use michi_core::wip::Wip;
 
 /// The trunk's colour, cyan, as in the mock.
 pub const TRUNK_COLOR: u8 = 6;
@@ -25,6 +26,8 @@ pub enum Mark {
     Tag,
     /// A worktree's head, in its branch's colour.
     Head(u8),
+    /// A worktree's uncommitted change.
+    Wip,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -98,7 +101,10 @@ pub struct Graph {
     colors: Colors,
     /// The names `Colors::pin` has had (it counts each call).
     pinned: HashSet<String>,
-    /// The history's row for each row laid out, in order.
+    /// The worktrees with uncommitted changes, the last written first: the
+    /// rows at the top.
+    wips: Vec<Wip>,
+    /// The history's row for each row laid out under the WIP rows, in order.
     shown: Vec<u32>,
     done: bool,
     total: Option<u64>,
@@ -130,6 +136,7 @@ impl Default for Graph {
             layout: Layout::new(),
             colors: Colors::default(),
             pinned: HashSet::new(),
+            wips: Vec::new(),
             shown: Vec::new(),
             done: false,
             total: None,
@@ -202,8 +209,17 @@ impl Graph {
     /// the edges of those above it (a parent folded away), so nothing laid
     /// out is kept.
     fn relayout(&mut self) {
-        let mut layout = if self.history.setup().trunk.is_some() { Layout::new() } else { Layout::without_trunk() };
+        let trunk = self.history.setup().trunk.as_ref().map(|t| t.name.as_str());
+        let mut layout = if trunk.is_some() { Layout::new() } else { Layout::without_trunk() };
         self.shown.clear();
+        // Each WIP row is a temporary commit on its worktree's head (or on
+        // the merge that folds the head away).
+        for w in &self.wips {
+            let head = self.history.find(&w.head).and_then(|i| self.history.hidden_by(i, &self.fold)).unwrap_or(w.head);
+            let name = w.branch.as_deref();
+            let row = ito_graph::Row { id: w.commit, parents: &[head], name, trunk: name.is_some() && name == trunk, dot: Dot::Wip };
+            layout.push(row, &mut self.colors);
+        }
         for (i, r) in self.history.rows().iter().enumerate() {
             let i = i as u32;
             if !self.history.shown(i, &self.fold) {
@@ -221,15 +237,20 @@ impl Graph {
         self.layout = layout;
         // A commit folded away gives the selection to its merge; one gone
         // (read again after a rebase) to the top.
-        if let Some(i) = self.selected.and_then(|id| self.history.find(&id)) {
-            if let Some(m) = self.history.hidden_by(i, &self.fold) {
-                self.selected = Some(m);
+        // A WIP row selected stays as it is.
+        let on_wip = self.selected.is_some_and(|id| self.wips.iter().any(|w| w.commit == id));
+        if !on_wip {
+            if let Some(i) = self.selected.and_then(|id| self.history.find(&id)) {
+                if let Some(m) = self.history.hidden_by(i, &self.fold) {
+                    self.selected = Some(m);
+                }
+            } else if self.done || !self.shown.is_empty() {
+                self.selected = None;
             }
-        } else if self.done || !self.shown.is_empty() {
-            self.selected = None;
         }
         if self.selected.is_none() {
-            self.selected = self.shown.first().map(|&i| self.history.rows()[i as usize].commit.id);
+            self.selected =
+                self.wips.first().map(|w| w.commit).or_else(|| self.shown.first().map(|&i| self.history.rows()[i as usize].commit.id));
         }
         self.mark();
     }
@@ -251,7 +272,10 @@ impl Graph {
         self.marks.clear();
         let heads: HashMap<Oid, Option<&str>> =
             self.history.setup().worktrees.iter().filter_map(|w| Some((Oid::parse(&w.head)?, w.branch.as_deref()))).collect();
+        let top = self.wips.len();
+        self.marks.extend((0..top as u32).map(|k| (k, Mark::Wip)));
         for (k, &i) in self.shown.iter().enumerate() {
+            let k = k + top;
             let c = &self.history.rows()[i as usize].commit;
             let mut mark = None;
             if self.hits.binary_search(&i).is_ok() {
@@ -280,16 +304,52 @@ impl Graph {
 
     /// How many rows are laid out.
     pub fn len(&self) -> u32 {
-        self.shown.len() as u32
+        (self.wips.len() + self.shown.len()) as u32
     }
 
     pub fn is_empty(&self) -> bool {
-        self.shown.is_empty()
+        self.wips.is_empty() && self.shown.is_empty()
+    }
+
+    /// The history's row laid out on row `k`, its index there; `None` for a
+    /// WIP row.
+    fn index(&self, k: u32) -> Option<u32> {
+        (k as usize).checked_sub(self.wips.len()).and_then(|k| self.shown.get(k)).copied()
     }
 
     /// The history's row laid out on row `k`.
     fn at(&self, k: u32) -> Option<&Row> {
-        self.shown.get(k as usize).map(|&i| &self.history.rows()[i as usize])
+        self.index(k).map(|i| &self.history.rows()[i as usize])
+    }
+
+    /// The uncommitted change on row `k`, when it is a WIP row.
+    pub fn wip(&self, k: u32) -> Option<&Wip> {
+        self.wips.get(k as usize)
+    }
+
+    /// The uncommitted change selected.
+    pub fn selected_wip(&self) -> Option<&Wip> {
+        let id = self.selected?;
+        self.wips.iter().find(|w| w.commit == id)
+    }
+
+    /// The worktrees' uncommitted changes are now `wips` (in any order). A
+    /// WIP row selected stays selected when its worktree still has a change.
+    pub fn set_wips(&mut self, mut wips: Vec<Wip>) {
+        wips.sort_by(|a, b| b.written.cmp(&a.written).then_with(|| a.path.cmp(&b.path)));
+        // Two worktrees with the same change on the same commit make the
+        // same commit: one row, as the layout wants each id once.
+        let mut seen = HashSet::new();
+        wips.retain(|w| seen.insert(w.commit));
+        if wips == self.wips {
+            return;
+        }
+        if let Some(old) = self.selected_wip() {
+            let path = old.path.clone();
+            self.selected = wips.iter().find(|w| w.path == path).map(|w| w.commit);
+        }
+        self.wips = wips;
+        self.relayout();
     }
 
     pub fn commit(&self, k: u32) -> Option<&Commit> {
@@ -349,7 +409,7 @@ impl Graph {
 
     /// Row `k` is drawn faint: a filter is in and does not hit it.
     pub fn dimmed(&self, k: u32) -> bool {
-        !self.query.is_empty() && self.shown.get(k as usize).is_some_and(|i| self.hits.binary_search(i).is_err())
+        !self.query.is_empty() && self.index(k).is_some_and(|i| self.hits.binary_search(&i).is_err())
     }
 
     pub fn marks(&self) -> &[(u32, Mark)] {
@@ -442,7 +502,7 @@ impl Graph {
         if !self.fold.on {
             return None;
         }
-        let i = *self.shown.get(k as usize)?;
+        let i = self.index(k)?;
         let r = &self.history.rows()[i as usize];
         let g = self.history.group(i).filter(|g| r.main && g.hidden > 0)?;
         let color = merged_name(&r.commit.subject, &self.history.setup().remotes).map(|n| self.colors.of(&n));
@@ -453,8 +513,8 @@ impl Graph {
 
     /// Selects row `k`.
     pub fn select(&mut self, k: u32) {
-        if let Some(r) = self.at(k) {
-            self.selected = Some(r.commit.id);
+        if let Some(id) = self.wip(k).map(|w| w.commit).or_else(|| self.at(k).map(|r| r.commit.id)) {
+            self.selected = Some(id);
             self.reveal = true;
         }
     }
@@ -589,7 +649,7 @@ impl Graph {
     /// The rows in sight now reach `last`: whether to ask for the next
     /// batch (once until it comes).
     pub fn wants_more(&mut self, last: u32) -> bool {
-        if (last as usize) + AHEAD < self.shown.len() {
+        if (last as usize) + AHEAD < self.len() as usize {
             return false;
         }
         self.ask_more()
@@ -662,6 +722,30 @@ pub(crate) mod fixture {
 
     pub const FEAT: &str = "Merge branch 'feat'";
 
+    /// The uncommitted change of the worktree at `path`, on commit `head`,
+    /// held in the temporary commit `commit`: one file, last written at
+    /// `written`.
+    pub fn wip(path: &str, branch: Option<&str>, head: u32, commit: u32, written: Option<i64>) -> Wip {
+        let file = michi_core::show::File {
+            status: michi_core::show::Status::Modified,
+            path: "src/lib.rs".into(),
+            from: None,
+            counts: Some((3, 1)),
+            hunks: Vec::new(),
+            eol_only: false,
+            cut: false,
+        };
+        Wip {
+            path: path.into(),
+            branch: branch.map(str::to_owned),
+            head: id(head),
+            commit: id(commit),
+            files: vec![file],
+            written,
+            left_out: Vec::new(),
+        }
+    }
+
     /// main: first ← m1 ← merge(feat: f1 ← f2) ← m2; a worktree on `wip`
     /// (w1) off the merge, `origin/main` on m2, a tag on m1.
     pub fn history() -> Vec<Commit> {
@@ -716,7 +800,62 @@ mod tests {
     }
 
     fn row_of(g: &Graph, subject: &str) -> u32 {
-        (0..g.len()).find(|&k| g.commit(k).unwrap().subject == subject).unwrap_or_else(|| panic!("no {subject}"))
+        (0..g.len()).find(|&k| g.commit(k).is_some_and(|c| c.subject == subject)).unwrap_or_else(|| panic!("no {subject}"))
+    }
+
+    #[test]
+    fn wip_rows_go_on_top_the_last_written_first() {
+        let mut g = read();
+        assert_eq!(g.selected_row(), Some(0));
+        g.set_wips(vec![wip("C:/r/wt", Some("wip"), 7, 10, Some(100)), wip("C:/r/repo", Some("main"), 6, 11, Some(200))]);
+        assert_eq!(g.len(), 7);
+        let paths: Vec<_> = (0..2).map(|k| g.wip(k).unwrap().path.to_str().unwrap()).collect();
+        assert_eq!(paths, ["C:/r/repo", "C:/r/wt"]);
+        assert!(g.wip(2).is_none() && g.commit(0).is_none());
+        assert_eq!(g.commit(2).unwrap().subject, "m2");
+        assert_eq!(g.placed(0).unwrap().dot, Dot::Wip);
+        assert_eq!(&g.marks()[..2], [(0, Mark::Wip), (1, Mark::Wip)]);
+        // Each hangs from its worktree's head.
+        let to = |k: u32| g.layout().edges_of(k).iter().map(|e| e.to).collect::<Vec<_>>();
+        assert_eq!(to(0), [Some(row_of(&g, "m2"))]);
+        assert_eq!(to(1), [Some(row_of(&g, "w1"))]);
+        // The commit selected before stays selected.
+        assert_eq!(g.selected(), Some(id(6)));
+        assert!(g.selected_wip().is_none());
+    }
+
+    #[test]
+    fn a_selected_wip_row_follows_its_worktree() {
+        let mut g = read();
+        g.set_wips(vec![wip("C:/r/repo", Some("main"), 6, 11, Some(200)), wip("C:/r/wt", Some("wip"), 7, 10, Some(100))]);
+        g.select(1);
+        assert_eq!(g.selected_wip().unwrap().path.to_str(), Some("C:/r/wt"));
+        // Written again: a new temporary commit, the same worktree.
+        g.set_wips(vec![wip("C:/r/repo", Some("main"), 6, 11, Some(200)), wip("C:/r/wt", Some("wip"), 7, 12, Some(300))]);
+        assert_eq!(g.selected(), Some(id(12)));
+        assert_eq!(g.selected_row(), Some(0), "now the last written");
+        // Committed: the selection goes to the top.
+        g.set_wips(vec![wip("C:/r/repo", Some("main"), 6, 11, Some(200))]);
+        assert_eq!(g.selected(), Some(id(11)));
+        g.set_wips(Vec::new());
+        assert_eq!(g.len(), 5);
+        assert_eq!(g.selected(), Some(id(6)));
+    }
+
+    #[test]
+    fn the_same_change_in_two_worktrees_is_one_row() {
+        let mut g = read();
+        g.set_wips(vec![wip("C:/r/a", None, 6, 11, Some(1)), wip("C:/r/b", None, 6, 11, Some(2))]);
+        assert_eq!(g.len(), 6);
+        assert_eq!(g.wip(0).unwrap().path.to_str(), Some("C:/r/b"));
+    }
+
+    #[test]
+    fn a_wip_on_a_folded_commit_hangs_from_its_merge() {
+        let mut g = read();
+        g.set_wips(vec![wip("C:/r/f", Some("feat"), 3, 11, None)]);
+        let to: Vec<_> = g.layout().edges_of(0).iter().map(|e| e.to).collect();
+        assert_eq!(to, [Some(row_of(&g, FEAT))]);
     }
 
     #[test]

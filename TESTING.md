@@ -113,3 +113,17 @@ The same repository as section 6.
 | 8.8 | Select a commit with a binary file, and a big one | The binary file says it has no diff to show; a very long diff ends with `… the rest is left out` |
 | 8.9 | Narrow the window below 900 wide | The side column goes and the detail stacks under the graph, still readable; Enter still spreads the diff |
 | 8.10 | Switch to the light theme | The diff's greens, reds and blues and the hatching stay readable |
+
+## 9. Uncommitted changes
+
+Open a repository whose worktree has edits, a deleted file and a new file; run a Claude in it from tsumugi.
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 9.1 | Look at the top of the graph | A row `Uncommitted: N files (+a −d)` in italics above the newest commit, with a dashed dot on the lane of the worktree's branch, author `—`, the time the change was last written and the hash `WIP`; the main worktree's change is on top when it was written last |
+| 9.2 | Edit a file in the worktree and wait a few seconds with michi in front | The row's counts and time follow without a key; the selection stays on the row it was on |
+| 9.3 | Select the WIP row | The detail says `Uncommitted changes on <branch>`, the worktree's folder in mono, when it was last written, `Read only here. Stage and commit in Changes (2).`, then the files and the diff from the worktree's `HEAD`; the new file is listed as added |
+| 9.4 | With the WIP row selected, have the Claude there run, then stop or ask | A box under the hint: `Claude is writing.` or `Claude has stopped.` with its state (glyph and word), the tab, its title and since when; a question in amber |
+| 9.5 | Put a file over 10 MB (or a folder over 2000 files or 50 MB) in the worktree, not ignored | The WIP row and its counts leave it out; the detail says `Untracked, too big to count: <path>` (three at most, then `and N more`); `git count-objects -vH` in the repository does not grow by its size; no `git.exe` keeps running after michi is closed |
+| 9.6 | Make the worktree clean again | The WIP row goes within a few seconds; a worktree whose only change is a big untracked folder has no WIP row |
+| 9.7 | Look at `git status` and the index after michi read the change | Nothing was staged; `git status` shows the same as before |
