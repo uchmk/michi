@@ -43,6 +43,12 @@ impl TempRepo {
 
     /// Runs git in `dir` and panics when it fails.
     pub fn git(&self, dir: &Path, args: &[&str]) {
+        self.out(dir, args);
+    }
+
+    /// Runs git in `dir` and returns what it wrote, the last line break taken
+    /// off; panics when it fails.
+    pub fn out(&self, dir: &Path, args: &[&str]) -> String {
         let minute = self.clock.get();
         self.clock.set(minute + 1);
         let date = format!("@{} +0000", START + minute * 60);
@@ -61,6 +67,14 @@ impl TempRepo {
             .output()
             .expect("git on the PATH");
         assert!(out.status.success(), "git {}: {}", args.join(" "), String::from_utf8_lossy(&out.stderr));
+        String::from_utf8_lossy(&out.stdout).trim_end_matches(['\n', '\r']).to_owned()
+    }
+
+    /// Writes `content` to `rel` under `dir`, making the folders.
+    pub fn write(&self, dir: &Path, rel: &str, content: &str) {
+        let path = dir.join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, content).unwrap();
     }
 }
 
