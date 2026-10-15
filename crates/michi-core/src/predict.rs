@@ -311,12 +311,26 @@ impl TempIndex {
     }
 
     /// Copies the index `worktree` uses into it; whether there was one to
-    /// copy. The original is only read.
+    /// copy. The original is only read. The copy keeps the original's
+    /// modified time: git takes an entry written in the same second as the
+    /// index as one to check by content, and a copy made later would let a
+    /// same-sized edit of that second pass as unchanged.
     fn seed_from(&self, worktree: &Path) -> bool {
         let Ok(path) = git::read_text(worktree, &["rev-parse", "--git-path", "index"]) else { return false };
         // Relative to the folder git ran in.
         let real = worktree.join(path);
-        std::fs::copy(real, &self.0).is_ok()
+        let Ok(modified) = std::fs::metadata(&real).and_then(|m| m.modified()) else { return false };
+        if std::fs::copy(&real, &self.0).is_err() {
+            return false;
+        }
+        let kept = std::fs::OpenOptions::new().write(true).open(&self.0).and_then(|f| f.set_modified(modified));
+        if kept.is_err() {
+            // Without the time, start from `HEAD`: every file is then
+            // read by content.
+            self.remove();
+            return false;
+        }
+        true
     }
 
     fn remove(&self) {
@@ -522,6 +536,26 @@ mod tests {
         assert_eq!(wip_commit(&wt), Ok(None));
         assert_eq!(wip_commit(&r.repo), Ok(None));
         assert_eq!(tip(&wt).unwrap().to_string(), r.out(&wt, &["rev-parse", "HEAD"]));
+    }
+
+    #[test]
+    fn an_edit_in_the_second_the_index_was_written_is_taken() {
+        let r = base("predict-racy");
+        let wt = r.root.join("wt");
+        let set = |p: &Path, t: std::time::SystemTime| fs::OpenOptions::new().write(true).open(p).unwrap().set_modified(t).unwrap();
+        let then = std::time::SystemTime::now() - std::time::Duration::from_secs(100);
+        // Staged with an old time, then edited to the same size and given
+        // that time back, in an index written at that time too: only the
+        // content tells the edit.
+        r.write(&wt, "f.txt", &lines("wt", "j"));
+        set(&wt.join("f.txt"), then);
+        r.git(&wt, &["add", "f.txt"]);
+        r.write(&wt, "f.txt", &lines("wt", "J"));
+        set(&wt.join("f.txt"), then);
+        set(&r.repo.join(".git/worktrees/wt/index"), then);
+
+        let wip = wip_commit(&wt).unwrap().expect("a dirty folder");
+        assert_eq!(r.out(&wt, &["show", &format!("{wip}:f.txt")]), lines("wt", "J").trim_end());
     }
 
     #[test]
