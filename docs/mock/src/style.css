@@ -355,9 +355,7 @@ body{background:var(--page);color:var(--ink);font-family:var(--sans);font-size:1
 
 /* logo board */
 .logos{display:flex;flex-direction:column;gap:16px}
-.logo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px}
 .lopt{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card);display:flex;flex-direction:column;cursor:pointer;text-align:left;font:inherit;color:inherit;padding:0}
-.lopt[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
 .lopt .tiles{display:grid;grid-template-columns:1fr 1fr}
 .lopt .tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:18px 10px}
 .lopt .tile.dk,.wm.dk{background:var(--lg-dk-bg);color:var(--lg-dk-fg);--lc:var(--lg-dk-c);--lg:var(--lg-dk-g);--lbg:var(--lg-dk-bg)}
@@ -368,13 +366,21 @@ body{background:var(--page);color:var(--ink);font-family:var(--sans);font-size:1
 .lopt .sm svg.s16{width:16px;height:16px}
 .lopt .lock{display:flex;align-items:center;gap:6px;font-weight:650;letter-spacing:.02em;font-size:13px}
 .lopt .lock svg{width:18px;height:18px}
-.lopt .cap{padding:10px 14px;display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--line)}
-.lopt .cap b{font-size:14px}
-.lopt .cap span{font-size:12.5px;color:var(--muted)}
 .wordmark{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
 .wm{display:flex;align-items:center;gap:10px;padding:14px 20px;border-radius:10px;font-size:30px;font-weight:650;letter-spacing:.01em}
 .wm svg{width:34px;height:34px}
 .wm.lt{border:1px solid var(--line)}
+.lopt.chosen{cursor:default;max-width:980px}
+.lopt.chosen .tiles{grid-template-columns:repeat(3,1fr)}
+.lopt .tile.ic{background:var(--card);color:var(--muted);font-size:12.5px}
+.lopt .ic .big svg.i72{width:72px;height:72px}
+.lh{margin:4px 0 0;font-size:14px;font-weight:650}
+.lothers{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:10px;max-width:980px}
+.lother{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.lother svg{width:32px;height:32px;flex:none;--lc:var(--muted);--lg:var(--muted);--lbg:var(--card)}
+.lother b{display:block;font-size:13px}
+.lother span{display:block;font-size:12px;color:var(--muted)}
+@media (max-width:640px){.lopt.chosen .tiles{grid-template-columns:1fr}}
 
 /* added with the script */
 [hidden]{display:none!important}

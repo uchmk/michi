@@ -5,6 +5,7 @@ Run `python build.py` here. data.json comes from `python gen_data.py data.json`
 """
 import json
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -31,7 +32,10 @@ css = read("style.css")
 body = read("body.html")
 app = read("app.js")
 data = json.loads(read("data.json"))
-script = f"const DATA={js_json(data)};\nconst FAKE={js_json(FAKE)};\n{app}"
+# The app icon is drawn from the repo's own copy, the only one that is edited.
+icon = read(os.path.join("..", "..", "..", "assets", "icon.svg"))
+icon = re.sub(r"\s*<!--.*?-->", "", icon, flags=re.S).strip()
+script = f"const DATA={js_json(data)};\nconst FAKE={js_json(FAKE)};\nconst ICON={js_json(icon)};\n{app}"
 
 inner = f"<style>\n{css}</style>\n{body}<script>\n{script}</script>\n"
 

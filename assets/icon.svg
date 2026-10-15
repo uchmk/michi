@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 32 32" role="img" aria-label="michi">
+  <!-- 道 michi, mark A "合流" (a meeting of ways): a branch (gold) joining main (tsumugi's cyan thread),
+       the way the graph draws main on its left lane. On kura's dark tile so the apps sit together. -->
+  <rect x=".5" y=".5" width="31" height="31" rx="6.8" fill="#16181d" stroke="#2c3039"/>
+  <g transform="translate(2.4 2.4) scale(.85)" fill="none" stroke-width="3" stroke-linecap="round">
+    <path d="M10 4v24" stroke="#6fd0d0"/>
+    <path d="M22 25v-5c0-6-12-5-12-11" stroke="#e8c87a"/>
+    <circle cx="22" cy="25" r="3.6" fill="#16181d" stroke="#e8c87a" stroke-width="2.4"/>
+    <circle cx="10" cy="7" r="3.6" fill="#6fd0d0" stroke="none"/>
+  </g>
+</svg>

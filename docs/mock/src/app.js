@@ -89,17 +89,19 @@ const LOGOS = {
       + '<path d="M16 27v-5M16 17v-3.5M16 10v-2" style="stroke:var(--lg)" stroke-width="2.6" stroke-linecap="round"/>',
   },
 };
+const LOGO = 'A';  // chosen on 2026-10-15
 const logoSvg = (k, cls = '') => `<svg viewBox="0 0 32 32"${cls ? ` class="${cls}"` : ''} aria-hidden="true">${LOGOS[k].body}</svg>`;
+// The app icon: assets/icon.svg (the mark on tsumugi Dark's tile), put in by build.py.
+const iconSvg = cls => ICON.replace(/^<svg /, `<svg class="${cls}" `).replace(/ role="img" aria-label="michi"/, ' aria-hidden="true"');
 
 /* ── state ────────────────────────────────────────────────── */
 const SCENES = ['graph', 'wt', 'cf', 'logo'];
 const S = {
-  scene: 'graph', width: '1280', theme: store.get('theme', 'tsumugi Dark'), fit: 'fit', logo: store.get('logo', 'A'),
+  scene: 'graph', width: '1280', theme: store.get('theme', 'tsumugi Dark'), fit: 'fit',
   view: 'graph', merging: false, sel: 0, wide: false, filter: '', limit: 64, open: { feat: true, fix: true },
   wtSel: 1, k: 1, cf: null, mx: false,
 };
 if (!THEMES[S.theme]) S.theme = 'tsumugi Dark';
-if (!LOGOS[S.logo]) S.logo = 'A';
 const narrow = () => S.width === '960';
 
 const WT = FAKE.worktrees;
@@ -965,7 +967,7 @@ function renderChrome() {
   $('#sb-right').innerHTML = '<span>⟳ fetch 3 分前</span>'
     + `<span>Claude <span class="run">● ${n('run')}</span> <span class="wait">◐ ${n('wait')}</span> <span class="st-done">✓ ${n('done')}</span></span>`
     + `<span>2026/10/15 (Thu) ${hm(S.merging ? FAKE.now_merge : FAKE.now)}</span>`;
-  $('#tb-logo').innerHTML = logoSvg(S.logo);
+  $('#tb-logo').innerHTML = logoSvg(LOGO);
 }
 
 const VIEWS = { graph: '#v-graph', changes: '#v-changes', wt: '#v-wt', cf: '#v-cf' };
@@ -1290,13 +1292,15 @@ function syncSeg() {
 }
 
 function renderLogos() {
-  const tile = (k, cls) => `<div class="tile ${cls}"><div class="big">${logoSvg(k)}</div><div class="sm">${logoSvg(k, 's32')}${logoSvg(k, 's18')}${logoSvg(k, 's16')}</div><div class="lock">${logoSvg(k)}<span>michi</span></div></div>`;
-  let h = '<h2>ロゴ案（字は michi だけ）</h2><p>3 つから 1 つ選んでください。押すと、下の窓のタイトルバーの印が変わります。色は窓ではテーマの run（シアン）と wait（黄）を使い、テーマを変えると追いかけます。小さい 3 つは 32・18・16 px（タスクバーとタブ）。</p><div class="logo-grid">';
-  for (const k of Object.keys(LOGOS)) {
-    h += `<button class="lopt" data-logo="${k}" aria-pressed="${S.logo === k}"><div class="tiles">${tile(k, 'dk')}${tile(k, 'lt')}</div><div class="cap"><b>${LOGOS[k].name}</b><span>${LOGOS[k].note}</span></div></button>`;
-  }
-  h += `</div><div class="wordmark"><div class="wm dk">${logoSvg(S.logo)}<span>michi</span></div><div class="wm lt">${logoSvg(S.logo)}<span>michi</span></div></div>`;
-  $('#logos').innerHTML = h;
+  const tile = cls => `<div class="tile ${cls}"><div class="big">${logoSvg(LOGO)}</div><div class="sm">${logoSvg(LOGO, 's32')}${logoSvg(LOGO, 's18')}${logoSvg(LOGO, 's16')}</div><div class="lock">${logoSvg(LOGO)}<span>michi</span></div></div>`;
+  const icon = `<div class="tile ic"><div class="big">${iconSvg('i72')}</div><div class="sm">${iconSvg('s32')}${iconSvg('s18')}${iconSvg('s16')}</div><div class="lock"><span>アプリのアイコン</span></div></div>`;
+  const others = Object.keys(LOGOS).filter(k => k !== LOGO)
+    .map(k => `<div class="lother">${logoSvg(k)}<div><b>${LOGOS[k].name}</b><span>${LOGOS[k].note}</span></div></div>`).join('');
+  $('#logos').innerHTML = `<h2>ロゴ: ${LOGOS[LOGO].name}（2026-10-15 に決定）</h2>`
+    + `<p>${LOGOS[LOGO].note} 字は michi だけです。窓の中ではテーマの run（シアン）と wait（黄）で描き、下の窓のタイトルバーもテーマを変えると追いかけます。アプリのアイコン（右）は tsumugi Dark の色で固定で、リポの <code>assets/icon.svg</code> そのものです。小さい 3 つは 32・18・16 px（タスクバーとタブ）。</p>`
+    + `<div class="lopt chosen"><div class="tiles">${tile('dk')}${tile('lt')}${icon}</div></div>`
+    + `<div class="wordmark"><div class="wm dk">${logoSvg(LOGO)}<span>michi</span></div><div class="wm lt">${logoSvg(LOGO)}<span>michi</span></div></div>`
+    + `<h3 class="lh">選ばなかった案</h3><div class="lothers">${others}</div>`;
 }
 
 const NOTES = {
@@ -1349,11 +1353,12 @@ const NOTES = {
       <li>rerere を既定で入れるか（<code>rerere.enabled</code> をこのリポジトリだけで有効にする）。</li></ul>`],
   ],
   logo: [
-    ['ロゴの選び方', `<ul>
-      <li>3 つから 1 つ。押すとタイトルバーの印が変わり、この PC の中だけで覚えます。</li>
-      <li>16 px でも形が分かるか、タスクバーとタブの大きさ（32・18・16）で見てください。</li>
-      <li>字は michi だけ（道の字は入れない）。字の形は窓と同じ Segoe UI の太字です。</li></ul>`],
-    ['色', '<p>窓の中ではテーマの run（シアン、main の線と同じ）と wait（黄）を使います。アイコンの .ico は tsumugi Dark の色で作ります。テーマを変えると窓のタイトルバーの印だけ色が追いかけます。</p>'],
+    ['決まったこと', `<ul>
+      <li>ロゴは A 合流（2026-10-15）。B 道標と C 道は使いません。</li>
+      <li>字は michi だけ（道の字は入れない）。字の形は窓と同じ Segoe UI の太字です。</li>
+      <li>アプリのアイコンは、kura と同じ tsumugi Dark の暗い板に印を載せたもの。正はリポの <code>assets/icon.svg</code> で、この画面もそれを読んでいます。</li></ul>`],
+    ['色', '<p>窓の中ではテーマの run（シアン、main の線と同じ）と wait（黄）を使い、テーマを変えると窓のタイトルバーの印が追いかけます。アイコンは tsumugi Dark の色で固定です（地 <code>#16181d</code>、main の線 <code>#6fd0d0</code>、合流する線 <code>#e8c87a</code>）。</p>'],
+    ['この先', '<p>Windows の <code>.ico</code> は、コードを始めるとき（v0.1.0）に kura と同じ手順で SVG から作ります。窓のアイコンは起動のときに SVG から描きます。</p>'],
   ],
 };
 function renderNotes() {
@@ -1407,14 +1412,6 @@ function init() {
       if (S.merging) renderCf();
       requestAnimationFrame(() => { drawBar(); ensureVisible(S.sel); });
     }
-  });
-  $('#logos').addEventListener('click', e => {
-    const b = e.target.closest('.lopt');
-    if (!b) return;
-    S.logo = b.dataset.logo;
-    store.set('logo', S.logo);
-    renderLogos();
-    renderChrome();
   });
   win.addEventListener('click', onClick);
   win.addEventListener('dblclick', e => { const r = e.target.closest('.grow[data-i]'); if (r) setWide(true); });

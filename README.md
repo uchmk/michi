@@ -22,4 +22,5 @@ next rounds. The page is built from [docs/mock/src](docs/mock/src) with
 ## License
 
 Dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at
-your option.
+your option. The icon in [assets](assets) is not part of that grant; see
+[assets/README.md](assets/README.md).
