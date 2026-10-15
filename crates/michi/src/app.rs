@@ -10,7 +10,7 @@ use michi_core::claude::{Session, State};
 use michi_core::git::{self, Version};
 use michi_core::oid::Oid;
 use michi_core::paths;
-use michi_core::summary::Summary;
+use michi_core::summary::{self, Summary};
 use michi_core::track::{Tree, Trees};
 use michi_core::unseen::Unseen;
 use michi_core::wip::Wip;
@@ -18,6 +18,7 @@ use michi_core::wip::Wip;
 use crate::changes::{Changes, Focus, Wish as StageWish};
 use crate::detail::Pane;
 use crate::graph::{Folded, Graph};
+use crate::picker::{Kind as PickKind, Picker};
 use crate::prefs::Prefs;
 use crate::repo::{Answer, Ask, Reading};
 use crate::review::{Ends, Review, Wish};
@@ -77,6 +78,8 @@ impl View {
                 ("o", "key.tab"),
                 ("l h", "key.open_fold"),
                 ("b", "key.branch"),
+                ("t", "key.revert"),
+                ("T", "key.tag"),
                 ("s", "key.stash"),
                 ("Esc", "key.back"),
             ],
@@ -198,6 +201,8 @@ pub struct App {
     pub last_fetch: Option<SystemTime>,
     /// A job waiting for a yes, under the title bar.
     pub band: Option<Band>,
+    /// The branch or tag palette, over the graph.
+    pub picker: Option<Picker>,
     pub quit: bool,
 }
 
@@ -231,6 +236,7 @@ impl App {
             net: None,
             last_fetch: None,
             band: None,
+            picker: None,
             quit: false,
         };
         app.set_language();
@@ -374,6 +380,13 @@ impl App {
                 // The selection stays on its worktree when the list changes.
                 let path = self.trees.trees.get(self.wt_sel).map(|t| t.wt.path.clone());
                 self.wt_sel = path.and_then(|p| trees.trees.iter().position(|t| t.wt.path == p)).unwrap_or(0);
+                // The title follows a switch made here or anywhere else.
+                if let Repo::Ready(s) = &mut self.repo {
+                    let top = paths::key(&s.top);
+                    if let Some(t) = trees.trees.iter().find(|t| paths::key(&t.wt.path) == top) {
+                        s.head = summary::head_of(&t.wt);
+                    }
+                }
                 self.trees = trees;
                 self.review_sync();
             }
@@ -418,6 +431,7 @@ impl App {
             }
             Answer::NetProgress(p) => self.net_progress(p),
             Answer::NetDone { job, result } => self.net_done(job, result),
+            Answer::ActDone { task, result } => self.act_done(task, result),
             Answer::Fetched(at) => self.last_fetch = at,
         }
     }
@@ -851,6 +865,7 @@ impl App {
         match (self.mode, c) {
             (Mode::Help, '?') => self.mode = Mode::Main,
             (Mode::Settings, _) | (Mode::Help, _) => return false,
+            (Mode::Main, _) if self.picker.is_some() => return false,
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
             (Mode::Main, '?') => self.mode = Mode::Help,
             (Mode::Main, ',') => self.mode = Mode::Settings,
@@ -874,6 +889,9 @@ impl App {
     fn graph_key(&mut self, c: char) -> bool {
         let g = &mut self.graph;
         match c {
+            'b' => self.open_picker(PickKind::Branch),
+            'T' => self.open_picker(PickKind::Tag),
+            't' => self.ask_revert(),
             'j' => g.move_by(1),
             'k' => g.move_by(-1),
             'l' => _ = g.open_fold(),
@@ -976,14 +994,17 @@ impl App {
         true
     }
 
-    /// Escape: close the help or the settings, else drop the job waiting
-    /// for a yes, else bring the graph back from beside a wide diff, else
+    /// Escape: close the help or the settings, else the branch palette,
+    /// else drop the job waiting for a yes, else bring the graph back from beside a wide diff, else
     /// clear the graph's filter; over the worktree table, bring the review's
     /// diff back to one column, else close the review. With nothing else to
     /// close, stop the fetch, pull or push that runs.
     pub fn escape(&mut self) -> bool {
         if self.mode != Mode::Main {
             self.mode = Mode::Main;
+            return true;
+        }
+        if self.picker.take().is_some() {
             return true;
         }
         if self.band.take().is_some() {
@@ -1059,7 +1080,7 @@ pub(crate) mod tests {
 
     /// The app with graph.rs's small history read in, as the reading
     /// thread sends it.
-    fn read() -> App {
+    pub(crate) fn read() -> App {
         let mut a = app();
         a.take(Answer::Setup { gen: 1, setup: Box::new(fixture::setup()) });
         a.take(Answer::Commits { gen: 1, batch: fixture::history(), done: true });
@@ -1201,8 +1222,8 @@ pub(crate) mod tests {
         a.toast = None;
         assert!(a.feed('f'), "fetch works now");
         assert!(a.toast.is_none() && a.net.is_none(), "no reading thread here: nothing runs");
-        assert!(a.feed('b'), "the graph's own key");
-        assert!(toast(&a).starts_with("Branch"));
+        assert!(a.feed('s'), "the graph's own key");
+        assert!(toast(&a).starts_with("Stash"));
         assert!(a.named("Enter"), "the diff side by side, no longer a later stage");
         assert!(a.detail.wide);
         a.feed('2');

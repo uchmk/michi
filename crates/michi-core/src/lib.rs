@@ -4,6 +4,7 @@
 //! changes. The window is the `michi` crate.
 
 pub mod backup;
+pub mod branch;
 pub mod change;
 pub mod clash;
 pub mod claude;
@@ -15,10 +16,12 @@ pub mod oid;
 pub mod paths;
 pub mod predict;
 pub mod refs;
+pub mod revert;
 pub mod review;
 pub mod show;
 pub mod stage;
 pub mod summary;
+pub mod tag;
 pub mod track;
 pub mod unseen;
 pub mod wip;

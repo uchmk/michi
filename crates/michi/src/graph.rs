@@ -922,9 +922,9 @@ pub(crate) mod fixture {
             trunk: Some("main".into()),
             trunk_head: Some(id(6)),
             trees: vec![
-                Tree { wt: wts[0].clone(), ahead_behind: Some((0, 0)), upstream: up("origin/main", 0, 0, false) },
-                Tree { wt: wts[1].clone(), ahead_behind: Some((1, 0)), upstream: up("origin/wip", 2, 1, false) },
-                Tree { wt: old, ahead_behind: Some((0, 3)), upstream: None },
+                Tree { wt: wts[0].clone(), ahead_behind: Some((0, 0)), upstream: up("origin/main", 0, 0, false), doing: None },
+                Tree { wt: wts[1].clone(), ahead_behind: Some((1, 0)), upstream: up("origin/wip", 2, 1, false), doing: None },
+                Tree { wt: old, ahead_behind: Some((0, 3)), upstream: None, doing: None },
             ],
         }
     }

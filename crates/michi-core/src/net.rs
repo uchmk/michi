@@ -58,6 +58,8 @@ pub enum Done {
     /// The branch went to `to` (`origin/main`): `new` there, with the
     /// upstream set; `saved`, the backup of what a push over it replaced.
     Pushed { to: String, new: bool, saved: Option<String> },
+    /// The tag `tag` went to `remote`.
+    PushedTag { remote: String, tag: String },
     /// Nothing to pull from or push to `to`: the same commit.
     Even { to: String },
     /// Stopped on the flag; what git had done stays.
@@ -236,6 +238,41 @@ pub fn push(dir: &Path, lease: Option<&Lease>, stop: &AtomicBool, tell: &mut dyn
     }
     c.arg(&remote).arg(format!("refs/heads/{branch}:{dest}"));
     let Some(said) = run(c, stop, tell)? else { return Ok(Done::Stopped) };
+    Ok(match pushed(&said, &to)? {
+        Some(done) => done,
+        None => Done::Pushed { to, new, saved },
+    })
+}
+
+/// `git push` of the tag `tag` to the remote pushes go to
+/// (`remote.pushDefault`, `origin`, the only one). One the remote has
+/// already on another commit is [`Why::Rejected`]: michi does not push
+/// over a tag.
+pub fn push_tag(dir: &Path, tag: &str, stop: &AtomicBool, tell: &mut dyn FnMut(Progress)) -> Result<Done, git::Error> {
+    let remote = match config(dir, "remote.pushDefault")? {
+        Some(r) => Some(r),
+        None => {
+            let all = remotes(dir)?;
+            if all.iter().any(|r| r == "origin") {
+                Some("origin".to_owned())
+            } else if all.len() == 1 {
+                all.into_iter().next()
+            } else {
+                None
+            }
+        }
+    };
+    let Some(remote) = remote else { return Ok(Done::Not(Why::NoRemote)) };
+    let full = format!("refs/tags/{tag}");
+    let mut c = git::command();
+    c.arg("-C").arg(dir).args(["push", "--porcelain", "--progress"]).arg(&remote).arg(format!("{full}:{full}"));
+    let Some(said) = run(c, stop, tell)? else { return Ok(Done::Stopped) };
+    Ok(pushed(&said, &remote)?.unwrap_or(Done::PushedTag { remote, tag: tag.to_owned() }))
+}
+
+/// What `push --porcelain` said when it did not push: a ref it rejected,
+/// or every ref there already. `None` when it pushed.
+fn pushed(said: &Said, to: &str) -> Result<Option<Done>, git::Error> {
     // `<flag>\t<from>:<to>\t<summary>` for each ref, between `To …` and `Done`.
     let refs: Vec<(char, &str)> = said
         .out
@@ -248,15 +285,15 @@ pub fn push(dir: &Path, lease: Option<&Lease>, stop: &AtomicBool, tell: &mut dyn
         })
         .collect();
     if let Some((_, reason)) = refs.iter().find(|(f, _)| *f == '!') {
-        return Ok(Done::Not(Why::Rejected { to, reason: (*reason).to_owned() }));
+        return Ok(Some(Done::Not(Why::Rejected { to: to.to_owned(), reason: (*reason).to_owned() })));
     }
     if !said.ok {
         return Err(said.refused());
     }
     if !refs.is_empty() && refs.iter().all(|(f, _)| *f == '=') {
-        return Ok(Done::Even { to });
+        return Ok(Some(Done::Even { to: to.to_owned() }));
     }
-    Ok(Done::Pushed { to, new, saved })
+    Ok(None)
 }
 
 /// When the repository whose common folder (`.git`) is `common` last
@@ -529,6 +566,33 @@ mod tests {
 
         t.git(&t.repo, &["remote", "add", "gone", &t.root.join("nowhere.git").to_string_lossy()]);
         assert!(fetch(&t.repo, &no, &mut quiet()).is_err());
+    }
+
+    #[test]
+    fn a_tag_goes_to_the_remote_but_not_over_its_own() {
+        let t = TempRepo::configured("net-tag-none");
+        let no = AtomicBool::new(false);
+        t.git(&t.repo, &["tag", "v1"]);
+        assert_eq!(push_tag(&t.repo, "v1", &no, &mut quiet()).unwrap(), Done::Not(Why::NoRemote));
+        drop(t);
+
+        let (t, other) = with_remote("net-tag");
+        t.git(&t.repo, &["tag", "-a", "-m", "One", "v1"]);
+        assert_eq!(push_tag(&t.repo, "v1", &no, &mut quiet()).unwrap(), Done::PushedTag { remote: "origin".into(), tag: "v1".into() });
+        assert_eq!(
+            t.out(&other, &["ls-remote", "--tags", "origin", "v1"]).split('\t').next(),
+            Some(&*t.out(&t.repo, &["rev-parse", "v1"]))
+        );
+        assert_eq!(push_tag(&t.repo, "v1", &no, &mut quiet()).unwrap(), Done::Even { to: "origin".into() });
+        commit(&t, &other, "a.txt");
+        t.git(&other, &["tag", "v2"]);
+        t.git(&other, &["push", "-q", "origin", "v2"]);
+        t.git(&t.repo, &["tag", "v2"]);
+        match push_tag(&t.repo, "v2", &no, &mut quiet()).unwrap() {
+            Done::Not(Why::Rejected { to, .. }) => assert_eq!(to, "origin"),
+            d => panic!("{d:?}"),
+        }
+        assert!(push_tag(&t.repo, "nope", &no, &mut quiet()).is_err());
     }
 
     #[test]

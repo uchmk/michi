@@ -1,0 +1,544 @@
+//! The branch and tag palette over the graph. `b` lists the branches to
+//! switch a worktree to, and makes a new one from what is typed; `T` lists
+//! the tags to show, push or delete, and makes one on the selected commit.
+//! What is typed is matched the way the other palettes match (ito-match).
+//! And `t`, which asks before it reverts the selected commit.
+
+use std::path::{Path, PathBuf};
+
+use ito_match::fuzzy;
+use michi_core::branch::Doing;
+use michi_core::history::Setup;
+use michi_core::oid::Oid;
+use michi_core::paths;
+use michi_core::worktree::Worktree;
+
+use crate::act::{self, Task};
+use crate::app::{App, Repo};
+use crate::work::{Band, Job, Then};
+
+/// What the palette lists.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Kind {
+    Branch,
+    Tag,
+}
+
+/// A row of the palette.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Item {
+    /// A branch; `at` is the worktree that has it checked out, `track` how
+    /// far it is ahead of its upstream and behind it.
+    Local {
+        name: String,
+        id: Oid,
+        at: Option<PathBuf>,
+        track: Option<(u32, u32)>,
+    },
+    /// A remote branch no local branch has the name of.
+    Remote {
+        remote: String,
+        name: String,
+        id: Oid,
+    },
+    Tag {
+        name: String,
+        id: Oid,
+    },
+    /// What is typed, as a new branch or tag.
+    Create {
+        name: String,
+    },
+}
+
+impl Item {
+    /// What the row says first, and what is matched: `origin/feat` for a
+    /// remote branch.
+    pub fn title(&self) -> String {
+        match self {
+            Item::Local { name, .. } | Item::Tag { name, .. } | Item::Create { name } => name.clone(),
+            Item::Remote { remote, name, .. } => format!("{remote}/{name}"),
+        }
+    }
+}
+
+/// A row that matches what is typed: the item and its characters that
+/// matched (char offsets into the title).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Row {
+    pub item: Item,
+    pub hits: Vec<usize>,
+}
+
+pub struct Picker {
+    pub kind: Kind,
+    /// What is typed: a branch's name; a tag's name, then its message.
+    pub query: String,
+    /// The query the rows are for.
+    matched: Option<String>,
+    pub sel: usize,
+    /// The worktree a branch switches.
+    pub wt: PathBuf,
+    /// Where a new branch or tag goes.
+    pub at: Oid,
+    items: Vec<Item>,
+    pub rows: Vec<Row>,
+    /// Opened this frame: the click that opened it is not a click outside.
+    pub opening: bool,
+}
+
+impl Picker {
+    /// The branches (or the tags) of `setup`, with `worktrees` to tell where
+    /// each branch is checked out.
+    pub fn new(kind: Kind, setup: &Setup, worktrees: &[Worktree], wt: PathBuf, at: Oid) -> Picker {
+        let refs = &setup.refs;
+        let items = match kind {
+            Kind::Branch => {
+                let locals = refs.locals.iter().map(|r| Item::Local {
+                    name: r.name.clone(),
+                    id: r.id,
+                    at: worktrees.iter().find(|w| w.branch.as_deref() == Some(r.name.as_str())).map(|w| w.path.clone()),
+                    track: refs.track.get(&r.name).copied(),
+                });
+                // A remote branch with a local one of its name is that one's.
+                let remotes = refs
+                    .remotes
+                    .iter()
+                    .filter(|r| r.name != "HEAD" && !refs.locals.iter().any(|l| l.name == r.name))
+                    .map(|r| Item::Remote { remote: r.remote.clone(), name: r.name.clone(), id: r.id });
+                locals.chain(remotes).collect()
+            }
+            Kind::Tag => refs.tags.iter().map(|r| Item::Tag { name: r.name.clone(), id: r.id }).collect(),
+        };
+        let mut p = Picker { kind, query: String::new(), matched: None, sel: 0, wt, at, items, rows: Vec::new(), opening: true };
+        p.sync();
+        p
+    }
+
+    /// The name typed: all of it for a branch, the first word for a tag.
+    pub fn name(&self) -> &str {
+        match self.kind {
+            Kind::Branch => self.query.trim(),
+            Kind::Tag => self.query.split_whitespace().next().unwrap_or(""),
+        }
+    }
+
+    /// A new tag's message: what is typed after its name.
+    pub fn message(&self) -> &str {
+        let q = self.query.trim_start();
+        q.find(char::is_whitespace).map_or("", |k| q[k..].trim())
+    }
+
+    /// Matches the rows again when the query has changed: the best first,
+    /// in the list's order when as good; what is typed as a new one last,
+    /// unless a branch has that name (a remote one is followed instead).
+    pub fn sync(&mut self) {
+        if self.matched.as_deref() == Some(self.query.as_str()) {
+            return;
+        }
+        self.matched = Some(self.query.clone());
+        let name = self.name().to_owned();
+        let case = fuzzy::is_case_sensitive(&name, true, false);
+        let mut hits: Vec<(i32, usize, Row)> = self
+            .items
+            .iter()
+            .enumerate()
+            .filter_map(|(k, item)| {
+                let hit = fuzzy::match_str(&name, &item.title(), case)?;
+                Some((hit.score, k, Row { item: item.clone(), hits: hit.positions }))
+            })
+            .collect();
+        hits.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+        self.rows = hits.into_iter().map(|(_, _, r)| r).collect();
+        let taken = |i: &Item| i.title() == name || matches!(i, Item::Remote { name: n, .. } if *n == name);
+        if !name.is_empty() && !self.items.iter().any(taken) {
+            self.rows.push(Row { item: Item::Create { name }, hits: Vec::new() });
+        }
+        self.sel = 0;
+    }
+
+    pub fn selected(&self) -> Option<&Item> {
+        self.rows.get(self.sel).map(|r| &r.item)
+    }
+
+    /// Moves the selection by `by` rows, stopping at the ends.
+    pub fn move_by(&mut self, by: i32) {
+        let last = self.rows.len().saturating_sub(1) as i64;
+        self.sel = (self.sel as i64 + i64::from(by)).clamp(0, last) as usize;
+    }
+}
+
+impl App {
+    /// `b` or `T`: the palette, for the worktree whose uncommitted change
+    /// the graph has selected, else for the window's own.
+    pub(crate) fn open_picker(&mut self, kind: Kind) {
+        let Repo::Ready(s) = &self.repo else {
+            self.say(self.tr("act.no_tree"));
+            return;
+        };
+        let worktrees = self.worktrees();
+        let (wt, at) = match self.graph.selected_wip() {
+            Some(w) => (w.path.clone(), Some(w.head)),
+            None => {
+                let head = worktrees.iter().find(|w| same(&w.path, &s.top)).and_then(|w| Oid::parse(&w.head));
+                (s.top.clone(), self.graph.selected().or(head))
+            }
+        };
+        let Some(at) = at else {
+            self.say(self.tr("act.pick_commit"));
+            return;
+        };
+        self.picker = Some(Picker::new(kind, self.graph.setup(), &worktrees, wt, at));
+    }
+
+    /// The worktrees as last read: the table's, else the graph's.
+    fn worktrees(&self) -> Vec<Worktree> {
+        if self.trees.trees.is_empty() {
+            self.graph.setup().worktrees.clone()
+        } else {
+            self.trees.trees.iter().map(|t| t.wt.clone()).collect()
+        }
+    }
+
+    /// What the worktree at `wt` is in the middle of, as last read.
+    fn doing_in(&self, wt: &Path) -> Option<Doing> {
+        self.trees.trees.iter().find(|t| same(&t.wt.path, wt)).and_then(|t| t.doing)
+    }
+
+    /// Enter on the palette's row (`shift`: Shift+Enter). A branch: switch
+    /// to it; a new one: make it (and switch to it). A tag: show it (push
+    /// it); a new one: make it (and push it). What cannot be done is said
+    /// and the palette stays.
+    pub(crate) fn picker_enter(&mut self, shift: bool) {
+        let Some(p) = &self.picker else { return };
+        let Some(item) = p.selected().cloned() else { return };
+        let (kind, wt, at, message) = (p.kind, p.wt.clone(), p.at, p.message().to_owned());
+        match (kind, item) {
+            (Kind::Branch, Item::Local { name, at: Some(there), .. }) => {
+                let text = if same(&there, &wt) {
+                    self.tr("act.here").replace("{wt}", &act::name(&wt)).replace("{name}", &name)
+                } else {
+                    self.tr("act.elsewhere").replace("{name}", &name).replace("{wt}", &act::name(&there))
+                };
+                self.say(text);
+            }
+            (Kind::Branch, Item::Local { name, at: None, .. }) => self.switch_to(Task::Switch { wt: wt.clone(), name }, &wt),
+            (Kind::Branch, Item::Remote { remote, name, .. }) => {
+                self.switch_to(Task::Track { wt: wt.clone(), remote: format!("{remote}/{name}"), name }, &wt);
+            }
+            (Kind::Branch, Item::Create { name }) if shift => self.switch_to(Task::Create { name, at, switch: Some(wt.clone()) }, &wt),
+            (Kind::Branch, Item::Create { name }) => {
+                self.picker = None;
+                self.act(Task::Create { name, at, switch: None });
+            }
+            (Kind::Tag, Item::Create { .. }) if shift && self.net.is_some() => self.busy(),
+            (Kind::Tag, Item::Create { name }) => {
+                self.picker = None;
+                self.act(Task::Tag { name, at, message, push: shift });
+            }
+            (Kind::Tag, Item::Tag { name, .. }) if shift => {
+                if self.net.is_some() {
+                    self.busy();
+                } else {
+                    self.picker = None;
+                    self.order(Job::PushTag { tag: name });
+                }
+            }
+            (Kind::Tag, Item::Tag { id, .. }) => {
+                self.picker = None;
+                self.go_to(id);
+            }
+            _ => {}
+        }
+    }
+
+    /// Switches the worktree at `wt` (`task`): not in the middle of a merge
+    /// or a rebase; where a Claude is working, after a yes.
+    fn switch_to(&mut self, task: Task, wt: &Path) {
+        if let Some(d) = self.doing_in(wt) {
+            let text = self.tr("act.doing").replace("{wt}", &act::name(wt)).replace("{doing}", d.word());
+            self.say_for(text, 8);
+            return;
+        }
+        self.picker = None;
+        if self.claude_working(wt) {
+            let name = match &task {
+                Task::Switch { name, .. } | Task::Track { name, .. } | Task::Create { name, .. } => name.as_str(),
+                _ => "",
+            };
+            let text = self.tr("act.claude_switch").replace("{wt}", &act::name(wt)).replace("{name}", name);
+            self.band = Some(Band::new(text, Then::Act(task)));
+        } else {
+            self.act(task);
+        }
+    }
+
+    /// Delete on the palette's row: a branch or a tag, after a yes. A
+    /// branch checked out somewhere, or a remote one, is not.
+    pub(crate) fn picker_delete(&mut self) {
+        let Some(item) = self.picker.as_ref().and_then(|p| p.selected().cloned()) else { return };
+        match item {
+            Item::Local { name, at: Some(there), .. } => {
+                let text = self.tr("act.delete_here").replace("{name}", &name).replace("{wt}", &act::name(&there));
+                self.say(text);
+            }
+            Item::Local { name, at: None, .. } => {
+                self.picker = None;
+                let text = self.tr("act.delete").replace("{name}", &name);
+                self.band = Some(Band::new(text, Then::Act(Task::Delete { name })));
+            }
+            Item::Remote { remote, name, .. } => {
+                let text = self.tr("act.delete_remote").replace("{remote}", &remote).replace("{name}", &name);
+                self.say_for(text, 8);
+            }
+            Item::Tag { name, .. } => {
+                self.picker = None;
+                let text = self.tr("act.untag").replace("{}", &name);
+                self.band = Some(Band::new(text, Then::Act(Task::Untag { name })));
+            }
+            Item::Create { .. } => {}
+        }
+    }
+
+    /// `t`: asks before it reverts the selected commit with a new commit on
+    /// the window's worktree; a merge asks which parent's side to keep.
+    pub(crate) fn ask_revert(&mut self) {
+        let Repo::Ready(s) = &self.repo else {
+            self.say(self.tr("act.no_tree"));
+            return;
+        };
+        let wt = s.top.clone();
+        let commit = match self.graph.selected_wip() {
+            Some(_) => None,
+            None => self.graph.selected().and_then(|id| self.graph.find_commit(&id)),
+        };
+        let Some(c) = commit else {
+            self.say(self.tr("act.pick_commit"));
+            return;
+        };
+        let (id, subject, parents) = (c.id, c.subject.clone(), c.parents.len());
+        if let Some(d) = self.doing_in(&wt) {
+            let text = self.tr("act.revert_doing").replace("{wt}", &act::name(&wt)).replace("{doing}", d.word());
+            self.say_for(text, 8);
+            return;
+        }
+        let branch = self.worktrees().into_iter().find(|w| same(&w.path, &wt)).and_then(|w| w.branch);
+        let branch = branch.unwrap_or_else(|| self.tr("act.detached").to_owned());
+        let key = if parents > 1 { "act.revert_merge" } else { "act.revert" };
+        let mut text = self
+            .tr(key)
+            .replace("{id}", &id.short())
+            .replace("{subject}", &subject)
+            .replace("{branch}", &branch)
+            .replace("{wt}", &act::name(&wt));
+        if self.claude_working(&wt) {
+            text.push_str(self.tr("act.revert_claude"));
+        }
+        let parents = if parents > 1 { parents.min(9) as u8 } else { 0 };
+        self.band = Some(Band { text, then: Then::Act(Task::Revert { wt, id, mainline: None }), parents });
+    }
+}
+
+pub(crate) fn same(a: &Path, b: &Path) -> bool {
+    paths::key(a) == paths::key(b)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::tests::{app, read, toast};
+    use crate::graph::fixture::{self, id};
+
+    fn titles(p: &Picker) -> Vec<String> {
+        p.rows.iter().map(|r| r.item.title()).collect()
+    }
+
+    fn picker(kind: Kind) -> Picker {
+        let s = fixture::setup();
+        Picker::new(kind, &s, &s.worktrees, PathBuf::from("C:/r/repo"), id(6))
+    }
+
+    #[test]
+    fn branches_then_the_remote_ones_no_local_has() {
+        let p = picker(Kind::Branch);
+        assert_eq!(titles(&p), ["main", "wip", "origin/feat"]);
+        let Item::Local { at, .. } = &p.rows[1].item else { panic!() };
+        assert_eq!(at.as_deref(), Some(Path::new("C:/r/wt")));
+        assert_eq!(titles(&picker(Kind::Tag)), ["v1"]);
+    }
+
+    #[test]
+    fn what_is_typed_filters_and_comes_last_as_a_new_one() {
+        let mut p = picker(Kind::Branch);
+        p.query = "fe".into();
+        p.sync();
+        assert_eq!(titles(&p), ["origin/feat", "fe"]);
+        assert_eq!(p.rows[0].hits, [7, 8]);
+        p.move_by(5);
+        assert_eq!(p.sel, 1);
+        // The same name as a branch: no new one.
+        p.query = "main ".into();
+        p.sync();
+        assert_eq!((titles(&p), p.sel), (vec!["main".to_owned()], 0));
+        // A remote branch's name: it is followed, not made anew.
+        p.query = "feat".into();
+        p.sync();
+        assert_eq!(titles(&p), ["origin/feat"]);
+        p.query = "zzz".into();
+        p.sync();
+        assert_eq!(p.rows.iter().map(|r| &r.item).collect::<Vec<_>>(), [&Item::Create { name: "zzz".into() }]);
+        // A tag: the name, then its message.
+        let mut t = picker(Kind::Tag);
+        t.query = "v2  Second release ".into();
+        t.sync();
+        assert_eq!((t.name(), t.message()), ("v2", "Second release"));
+        assert_eq!(titles(&t), ["v2"]);
+    }
+
+    /// The app, read, with the selection on the commit `subject`.
+    fn on(subject: &str) -> App {
+        use michi_core::summary::{Head, Summary};
+        let mut a = read();
+        let top = PathBuf::from("C:/r/repo");
+        a.repo = Repo::Ready(Summary { name: "repo".into(), head: Head::Branch("main".into()), worktrees: 3, top });
+        a.take(crate::repo::Answer::Trees(fixture::trees()));
+        let id = fixture::history().iter().find(|c| c.subject == subject).unwrap().id;
+        assert!(a.graph.select_id(&id));
+        a
+    }
+
+    fn typed(a: &mut App, q: &str) {
+        let p = a.picker.as_mut().unwrap();
+        p.query = q.into();
+        p.sync();
+    }
+
+    #[test]
+    fn b_makes_a_branch_at_the_selected_commit() {
+        let mut a = on("m1");
+        assert!(a.feed('b'));
+        let p = a.picker.as_ref().unwrap();
+        assert_eq!((p.kind, p.wt.as_path(), p.at), (Kind::Branch, Path::new("C:/r/repo"), id(4)));
+        typed(&mut a, "new");
+        a.picker_enter(false);
+        assert!(a.picker.is_none(), "no reading thread here: it closes all the same");
+        assert!(a.band.is_none());
+    }
+
+    #[test]
+    fn a_branch_checked_out_is_not_switched_to_nor_deleted() {
+        let mut a = on("m2");
+        assert!(a.feed('b'));
+        typed(&mut a, "main");
+        a.picker_enter(false);
+        assert_eq!(toast(&a), "repo is on main already");
+        typed(&mut a, "wip");
+        a.picker_enter(true);
+        assert_eq!(toast(&a), "wip is checked out in wt: a branch is in one worktree at a time");
+        a.picker_delete();
+        assert_eq!(toast(&a), "wip is checked out in wt: switch it away first");
+        typed(&mut a, "feat");
+        a.picker_delete();
+        assert_eq!(toast(&a), "Remote branches are not deleted here: git push origin --delete feat does it");
+        assert!(a.picker.is_some() && a.band.is_none(), "the palette stays");
+        assert!(a.escape());
+        assert!(a.picker.is_none());
+    }
+
+    #[test]
+    fn a_worktree_in_a_merge_is_not_switched() {
+        let mut a = on("m2");
+        let mut trees = fixture::trees();
+        trees.trees[0].doing = Some(Doing::Merge);
+        a.take(crate::repo::Answer::Trees(trees));
+        assert!(a.feed('b'));
+        typed(&mut a, "feat");
+        a.picker_enter(false);
+        assert!(toast(&a).starts_with("Branches can be made. Switching is stopped in repo: it is in the middle of a merge."));
+        assert!(a.picker.is_some());
+        // Made, not switched to: that goes.
+        typed(&mut a, "x");
+        a.picker_enter(true);
+        assert!(a.picker.is_some(), "and switched to: not");
+        a.picker_enter(false);
+        assert!(a.picker.is_none());
+    }
+
+    #[test]
+    fn deleting_a_branch_or_a_tag_waits_for_a_yes() {
+        let mut a = on("m2");
+        let mut s = fixture::setup();
+        s.refs.locals.push(michi_core::refs::Ref { name: "old".into(), id: id(3) });
+        a.picker = Some(Picker::new(Kind::Branch, &s, &s.worktrees, PathBuf::from("C:/r/repo"), id(6)));
+        typed(&mut a, "old");
+        a.picker_delete();
+        assert!(a.picker.is_none());
+        let band = a.band.as_ref().unwrap();
+        assert_eq!(band.then, Then::Act(Task::Delete { name: "old".into() }));
+        assert!(band.text.starts_with("Delete branch old?"));
+        assert!(a.escape());
+        assert!(a.feed('T'));
+        typed(&mut a, "v1");
+        a.picker_delete();
+        assert_eq!(a.band.as_ref().unwrap().then, Then::Act(Task::Untag { name: "v1".into() }));
+    }
+
+    #[test]
+    fn enter_on_a_tag_shows_its_commit() {
+        let mut a = on("m2");
+        assert!(a.feed('T'));
+        typed(&mut a, "v1");
+        a.picker_enter(false);
+        assert!(a.picker.is_none());
+        assert_eq!(a.graph.selected(), Some(id(4)));
+    }
+
+    #[test]
+    fn a_tag_to_push_waits_for_the_running_job() {
+        use std::sync::atomic::AtomicBool;
+        use std::sync::Arc;
+        let mut a = on("m2");
+        a.net = Some(crate::work::Running::new(crate::work::Kind::Fetch, Arc::new(AtomicBool::new(false))));
+        assert!(a.feed('T'));
+        typed(&mut a, "v2");
+        a.picker_enter(true);
+        assert!(toast(&a).starts_with("fetch is running"), "{}", toast(&a));
+        assert!(a.picker.is_some());
+    }
+
+    #[test]
+    fn t_asks_before_it_reverts() {
+        let mut a = on("m1");
+        assert!(a.feed('t'));
+        let band = a.band.take().unwrap();
+        let wt = PathBuf::from("C:/r/repo");
+        assert_eq!((band.then, band.parents), (Then::Act(Task::Revert { wt: wt.clone(), id: id(4), mainline: None }), 0));
+        assert_eq!(band.text, format!("Revert {} “m1” with a new commit on main in repo?", id(4).short()));
+
+        // A merge: which parent's side to keep.
+        let mut a = on(fixture::FEAT);
+        assert!(a.feed('t'));
+        let band = a.band.as_ref().unwrap();
+        assert_eq!(band.parents, 2);
+        assert!(band.text.contains("is a merge"));
+        assert!(a.feed('1'));
+        assert!(a.band.is_none());
+
+        // In the middle of a revert: not now.
+        let mut a = on("m1");
+        let mut trees = fixture::trees();
+        trees.trees[0].doing = Some(Doing::Revert);
+        a.take(crate::repo::Answer::Trees(trees));
+        assert!(a.feed('t'));
+        assert_eq!(toast(&a), "repo is in the middle of a revert: finish it first");
+        assert!(a.band.is_none());
+    }
+
+    #[test]
+    fn nothing_read_nothing_to_pick() {
+        let mut a = app();
+        assert!(a.feed('b'));
+        assert_eq!(toast(&a), "No worktree to work in");
+        assert!(a.picker.is_none());
+    }
+}

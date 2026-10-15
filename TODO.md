@@ -45,11 +45,16 @@
   - [x] Fetch / pull / push (v0.11.0): `f` `p` `P` in every view on the worktree the view points at, pull fast-forward only, push with
     the upstream set for a new branch, progress and Esc (the whole process tree) in the key bar, the last fetch's age, the band before
     `--force-with-lease` with the remote's tip kept under `refs/michi/backup/`, the Claude band before a pull （要確認: #15）
-  - [ ] Fetch / pull / push's leftovers: stop a pull during a merge (with the merge state, stage 3), push a tag (with the tags), pick the
-    remote to push to （要確認: #15）
-  - [ ] Branches: the picker on `b` (filter, switch, create at the selected commit, delete with a backup when not merged, a note when
-    another worktree has it checked out)
-  - [ ] The everyday operations in design.md (amend, revert, tags, stash, discard, clean-up), backups to `refs/michi/backup/<time>`
+  - [ ] Fetch / pull / push's leftovers: stop a pull during a merge (with the merge state, stage 3), pick the remote to push to
+    （要確認: #15）
+  - [x] Branches (v0.12.0): the palette on `b` (filter, switch, follow a remote one, make at the selected commit with Enter or make and
+    switch with Shift+Enter, Delete with the commits no other branch has kept under `refs/michi/backup/`, refusals when another worktree
+    has it, during a merge, and for remote branches), the Claude band before a switch （要確認: #16）
+  - [x] Tags and revert (v0.12.0): the tag palette on `T` (annotated with a message, light without; push; delete always kept under
+    `refs/michi/backup/`), revert on `t` after a band (a merge asks for the parent; one that clashes is called off) （要確認: #16）
+  - [ ] Branches' leftovers: rename, set the upstream, merge / rebase / cherry-pick (with the conflict screen, stage 3), hand a clashing
+    revert to the conflict screen （要確認: #16）
+  - [ ] The everyday operations left (stash, discard, clean-up), backups to `refs/michi/backup/<time>`
 - [ ] 3. Conflicts: the conflict screen (`4`), locks during a merge (and「· マージ中」in red on the chip), rerere asked once, cherry-pick; prediction moved to gix-merge and
   checked against `git merge-tree --write-tree`; the prediction's text while a merge is under way (「予測は衝突の解消（4）の実物に変わりました」)
 - [ ] 4. Worktrees: new work (`N`), remove (`x`), go to the tab (`o`), take in main (`m`), the PR button (`gh pr create`); needs tsumugi `new --worktree BRANCH --from REF`

@@ -5,7 +5,7 @@
 
 use std::time::{Duration, SystemTime};
 
-use egui::text::{LayoutJob, TextFormat};
+use egui::text::{LayoutJob, TextFormat, TextWrapping};
 use egui::{pos2, vec2, Align2, Color32, CornerRadius, CursorIcon, FontId, Id, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, ViewportCommand};
 use ito_common::Clock;
 use michi_core::git;
@@ -419,15 +419,19 @@ fn empty_view(ui: &mut Ui, app: &App, r: Rect) {
 const BAND_H: f32 = 34.0;
 /// The room the band leaves its keys at the right.
 const BAND_KEYS_W: f32 = 230.0;
+/// The room each parent's key after the first takes besides.
+const BAND_PARENT_W: f32 = 120.0;
 
-/// The band at the top of `r` asking for a yes to a fetch, pull or push:
-/// what it would do, `y` and `Esc`. Its height; 0 with no band.
+/// The band at the top of `r` asking for a yes to what would lose work or
+/// get in a Claude's way: what it would do, `y` and `Esc` (a merge's revert:
+/// a digit for each parent, not `y`). Its height; 0 with no band.
 fn band(ui: &mut Ui, app: &mut App, r: Rect, live: bool) -> f32 {
     let Some(b) = &app.band else { return 0.0 };
     let c = ito_theme::colors();
     let p = ui.painter().clone();
     let left = r.left() + 18.0;
-    let wrap = (r.width() - 36.0 - 18.0 - BAND_KEYS_W).max(120.0);
+    let keys_w = BAND_KEYS_W + f32::from(b.parents.saturating_sub(1)) * BAND_PARENT_W;
+    let wrap = (r.width() - 36.0 - 18.0 - keys_w).max(120.0);
     let mut job =
         LayoutJob::single_section(b.text.clone(), TextFormat { font_id: FontId::proportional(12.5), color: c.fg, ..Default::default() });
     job.wrap.max_width = wrap;
@@ -440,11 +444,20 @@ fn band(ui: &mut Ui, app: &mut App, r: Rect, live: bool) -> f32 {
     let pointer = ui.ctx().pointer_latest_pos();
     let mut right = band.right() - 18.0 - EDGE;
     let mut key = None;
-    for (k, word, c_) in [("Esc", "changes.no", 'n'), ("y", "changes.yes", 'y')] {
-        let cap = kbd(ui, &p, pos2(right, mid), k);
-        let w = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, app.tr(word), FontId::proportional(12.5), c.fg);
+    // Right to left: Esc, then y or the parents from the last.
+    let mut caps = vec![("Esc".to_owned(), app.tr("changes.no").to_owned(), 'n')];
+    if b.parents == 0 {
+        caps.push(("y".to_owned(), app.tr("changes.yes").to_owned(), 'y'));
+    }
+    for n in (1..=u32::from(b.parents)).rev() {
+        let d = char::from_digit(n, 10).unwrap_or('1');
+        caps.push((d.to_string(), app.tr("band.parent").replace("{}", &n.to_string()), d));
+    }
+    for (k, word, c_) in caps {
+        let cap = kbd(ui, &p, pos2(right, mid), &k);
+        let w = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, word, FontId::proportional(12.5), c.fg);
         let hit = w.union(cap).expand(3.0);
-        let resp = ui.interact(hit, Id::new(("net-band", k)), Sense::CLICK);
+        let resp = ui.interact(hit, Id::new(("net-band", c_)), Sense::CLICK);
         if live && pointer.is_some_and(|at| hit.contains(at)) {
             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
         }
@@ -544,33 +557,48 @@ fn key_bar(ui: &mut Ui, app: &App, r: Rect) {
     }
 }
 
-/// The list of every key: the global ones, then the view's.
+/// The list of every key: the global ones, then the view's, two to a line
+/// as the mock has them (one when the window is narrow), each its word at
+/// the left and its keys at the right.
 fn help(ui: &mut Ui, app: &App, r: Rect) {
+    const LINE: f32 = 20.0;
+    const GAP: f32 = 26.0;
     let c = ito_theme::colors();
     let p = ui.painter().clone();
     let w = r.width().min(640.0);
-    let card = Rect::from_center_size(r.center(), vec2(w, (r.height() - 24.0).clamp(80.0, 460.0)));
+    let cols = if w >= 440.0 { 2 } else { 1 };
+    let view = if app.keys() == app.view.keys() { app.view.label() } else { "key.branch_diff" };
+    let sections = [(app.tr("help.global"), &GLOBAL_KEYS[..]), (app.tr(view), app.keys())];
+    let lines: usize = sections.iter().map(|(_, rows)| rows.len().div_ceil(cols)).sum();
+    let need = 50.0 + sections.len() as f32 * (LINE + 8.0) + lines as f32 * LINE + 28.0;
+    let card = Rect::from_center_size(r.center(), vec2(w, need.min(r.height() - 24.0).max(80.0)));
     p.rect_filled(card, CornerRadius::same(10), c.raised());
     p.rect_stroke(card, CornerRadius::same(10), Stroke::new(1.0, c.border_strong()), StrokeKind::Inside);
     let mut y = card.top() + 18.0;
     p.text(pos2(card.left() + 20.0, y), Align2::LEFT_TOP, app.tr("help.title"), FontId::proportional(16.0), c.fg);
     y += 32.0;
-    let section = |title: &str, rows: &[(&str, &'static str)], y: &mut f32| {
-        p.text(pos2(card.left() + 20.0, *y), Align2::LEFT_TOP, title, FontId::proportional(11.5), accent());
-        *y += 20.0;
-        for (key, word) in rows {
-            if *y + 18.0 > card.bottom() - 28.0 {
-                return;
+    let col_w = (w - 40.0 - GAP * (cols - 1) as f32) / cols as f32;
+    'sections: for (title, rows) in sections {
+        p.text(pos2(card.left() + 20.0, y), Align2::LEFT_TOP, title, FontId::proportional(11.5), accent());
+        y += LINE;
+        for line in rows.chunks(cols) {
+            if y + 18.0 > card.bottom() - 28.0 {
+                break 'sections;
             }
-            p.text(pos2(card.left() + 20.0, *y), Align2::LEFT_TOP, *key, FontId::monospace(12.0), c.fg);
-            p.text(pos2(card.left() + 150.0, *y), Align2::LEFT_TOP, app.tr(word), FontId::proportional(12.5), c.dim);
-            *y += 20.0;
+            let mid = y + LINE / 2.0 - 1.0;
+            for (k, (key, word)) in line.iter().enumerate() {
+                let x = card.left() + 20.0 + k as f32 * (col_w + GAP);
+                let kg = p.layout_no_wrap((*key).to_owned(), FontId::monospace(12.0), c.fg);
+                let mut job = LayoutJob::simple_singleline(app.tr(word).to_owned(), FontId::proportional(12.5), c.dim);
+                job.wrap = TextWrapping::truncate_at_width((col_w - kg.size().x - 12.0).max(24.0));
+                let wg = p.layout_job(job);
+                p.galley(pos2(x, mid - wg.size().y / 2.0), wg, c.dim);
+                p.galley(pos2(x + col_w - kg.size().x, mid - kg.size().y / 2.0), kg, c.fg);
+            }
+            y += LINE;
         }
-        *y += 8.0;
-    };
-    section(app.tr("help.global"), &GLOBAL_KEYS, &mut y);
-    let view = if app.keys() == app.view.keys() { app.view.label() } else { "key.branch_diff" };
-    section(app.tr(view), app.keys(), &mut y);
+        y += 8.0;
+    }
     p.text(pos2(card.left() + 20.0, card.bottom() - 22.0), Align2::LEFT_CENTER, app.tr("help.close"), FontId::proportional(11.5), c.dim);
 }
 

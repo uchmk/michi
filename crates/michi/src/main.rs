@@ -6,6 +6,7 @@
 
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
+mod act;
 mod app;
 mod changes;
 mod changes_ui;
@@ -17,6 +18,8 @@ mod graph;
 mod graph_ui;
 mod i18n;
 mod icon;
+mod picker;
+mod picker_ui;
 mod prefs;
 mod repo;
 mod review;
@@ -75,6 +78,10 @@ impl Michi {
         if palette {
             self.palette();
         }
+        if self.app.picker.is_some() {
+            self.picker_keys(ctx);
+            return;
+        }
         let typing = ctx.memory(|m| m.has_focus(changes_ui::message_id()));
         let commit =
             (typing || self.app.view == View::Changes) && ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter));
@@ -105,7 +112,8 @@ impl Michi {
             }
             return;
         }
-        for e in events {
+        let mut events = events.into_iter();
+        while let Some(e) = events.next() {
             match e {
                 egui::Event::Key { key: egui::Key::Escape, pressed: true, .. } if !let_go => {
                     self.app.escape();
@@ -119,12 +127,58 @@ impl Michi {
                     }
                 }
                 egui::Event::Text(t) => {
-                    for c in t.chars() {
+                    let mut chars = t.chars();
+                    while let Some(c) = chars.next() {
                         self.app.feed(c);
+                        if let Some(p) = &mut self.app.picker {
+                            // Typed fast after `b`: the rest goes in the palette's box.
+                            let mut rest: String = chars.by_ref().collect();
+                            rest.extend(events.by_ref().filter_map(|e| match e {
+                                egui::Event::Text(t) => Some(t),
+                                _ => None,
+                            }));
+                            p.query = rest;
+                            p.sync();
+                            return;
+                        }
                     }
                 }
                 _ => {}
             }
+        }
+    }
+
+    /// The branch or tag palette's keys: the arrows move, Enter (Shift+Enter)
+    /// picks, Delete deletes, Escape closes; what is typed goes in its box.
+    fn picker_keys(&mut self, ctx: &egui::Context) {
+        let (enter, shift_enter, up, down, delete, esc) = ctx.input_mut(|i| {
+            let shift_enter = i.consume_key(egui::Modifiers::SHIFT, egui::Key::Enter);
+            let mut plain = |k| i.consume_key(egui::Modifiers::NONE, k);
+            (
+                plain(egui::Key::Enter),
+                shift_enter,
+                plain(egui::Key::ArrowUp),
+                plain(egui::Key::ArrowDown),
+                plain(egui::Key::Delete),
+                plain(egui::Key::Escape),
+            )
+        });
+        if esc {
+            self.app.escape();
+            return;
+        }
+        if let Some(p) = &mut self.app.picker {
+            if up {
+                p.move_by(-1);
+            }
+            if down {
+                p.move_by(1);
+            }
+        }
+        if enter || shift_enter {
+            self.app.picker_enter(shift_enter);
+        } else if delete {
+            self.app.picker_delete();
         }
     }
 
@@ -167,6 +221,7 @@ impl eframe::App for Michi {
             let mut body = ui.new_child(egui::UiBuilder::new().max_rect(out.body));
             settings::show(&mut body, &mut self.app);
         }
+        picker_ui::show(&ctx, &mut self.app);
         // A tab leaves the settings and the key list for its view; the gear
         // opens the settings and closes them.
         if let Some(v) = out.view {

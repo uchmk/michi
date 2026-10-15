@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use crate::branch::{self, Doing};
 use crate::git;
 use crate::oid::Oid;
 use crate::refs::{self, Refs};
@@ -31,6 +32,8 @@ pub struct Tree {
     pub ahead_behind: Option<(u32, u32)>,
     /// Its branch's upstream; `None` when it has none (or no branch).
     pub upstream: Option<Upstream>,
+    /// What it is in the middle of (a merge, a rebase).
+    pub doing: Option<Doing>,
 }
 
 /// The worktrees and the trunk they are measured against.
@@ -75,7 +78,8 @@ pub fn read(dir: &Path, worktrees: &[Worktree], cache: &mut Cache) -> Result<Tre
             _ => None,
         };
         let upstream = wt.branch.as_ref().and_then(|b| ups.get(b)).cloned();
-        trees.push(Tree { wt: wt.clone(), ahead_behind, upstream });
+        let doing = branch::doing(&wt.path);
+        trees.push(Tree { wt: wt.clone(), ahead_behind, upstream, doing });
     }
     cache.0 = counted;
     Ok(Trees { trunk_head: trunk.as_ref().map(|t| t.head), trunk: trunk.map(|t| t.name), trees })

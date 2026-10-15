@@ -82,7 +82,7 @@ const TOOLS: [Tool; 6] = [
     Tool { icon: Some(Icon::Fetch), word: "key.fetch", key: 'f', prime: false },
     Tool { icon: Some(Icon::Pull), word: "key.pull", key: 'p', prime: false },
     Tool { icon: Some(Icon::Push), word: "key.push", key: 'P', prime: false },
-    Tool { icon: None, word: "key.branch", key: 'b', prime: false },
+    Tool { icon: None, word: "tool.branch", key: 'b', prime: false },
     Tool { icon: None, word: "key.stash", key: 's', prime: false },
     Tool { icon: Some(Icon::Plus), word: "tool.new_work", key: 'N', prime: true },
 ];

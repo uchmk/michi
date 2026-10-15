@@ -39,7 +39,8 @@ pub fn summary(dir: &Path) -> Result<Summary, git::Error> {
     Ok(Summary { name: name_of(&first.path), head: head_of(here), worktrees: all.len(), top: here.path.clone() })
 }
 
-fn head_of(w: &Worktree) -> Head {
+/// What `w` has checked out.
+pub fn head_of(w: &Worktree) -> Head {
     match &w.branch {
         Some(b) => Head::Branch(b.clone()),
         None if w.bare => Head::Bare,

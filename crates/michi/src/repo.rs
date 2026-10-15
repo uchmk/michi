@@ -55,6 +55,7 @@ use michi_core::unseen::{self, Marks, Unseen};
 use michi_core::wip::{self, Wip};
 use michi_core::worktree::{self, Worktree};
 
+use crate::act::{self, Acted, Task};
 use crate::changes::{self as staging, Op};
 use crate::fswatch::{self, Fs};
 use crate::review::Wish;
@@ -111,6 +112,8 @@ pub enum Answer {
     NetDone { job: Job, result: Result<net::Done, git::Error> },
     /// When the repository last fetched, as it changed.
     Fetched(Option<SystemTime>),
+    /// A branch, tag or revert is done.
+    ActDone { task: Task, result: Result<Acted, git::Error> },
 }
 
 /// What the window asks of the reading thread.
@@ -147,6 +150,8 @@ pub struct Reading {
     stage_latest: Arc<[AtomicU32; 3]>,
     /// The fetches, pulls and pushes to run.
     nets: Sender<Order>,
+    /// The branches, tags and reverts to do.
+    acts: Sender<Task>,
 }
 
 /// What the window, and the folders' watcher, tell the watching thread.
@@ -220,6 +225,11 @@ impl Reading {
     /// Fetch, pull or push.
     pub fn net(&self, order: Order) {
         let _ = self.nets.send(order);
+    }
+
+    /// Make or delete a branch or tag, switch, revert.
+    pub fn act(&self, task: Task) {
+        let _ = self.acts.send(task);
     }
 }
 
@@ -298,6 +308,20 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         };
         networks(&net_dir, &net_rx, &net_pokes, send);
     });
+    let (acts, act_rx) = mpsc::channel();
+    let (act_tx, act_dir, act_ctx, act_pokes) = (tx.clone(), dir.clone(), ctx.clone(), pokes.clone());
+    // No thread for the tasks: none ends.
+    let _ = std::thread::Builder::new().name("act".into()).spawn(move || {
+        let send = |a: Answer| {
+            let _ = act_tx.send(a);
+            act_ctx.request_repaint();
+        };
+        for task in act_rx {
+            let result = act::run(&act_dir, &task);
+            let _ = act_pokes.send(Poke::Now);
+            send(Answer::ActDone { task, result });
+        }
+    });
     let thread_tx = tx.clone();
     let spawned = std::thread::Builder::new().name("repo".into()).spawn(move || {
         let send = |a: Answer| {
@@ -316,7 +340,7 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         // No thread: say so where the summary would have gone.
         let _ = tx.send(Answer::Summary(Err(git::Error::Io(e.to_string()))));
     }
-    Reading { answers, asks, wants, latest, pokes, looks, look_latest, stages, stage_latest, nets }
+    Reading { answers, asks, wants, latest, pokes, looks, look_latest, stages, stage_latest, nets, acts }
 }
 
 /// Runs each fetch, pull and push in turn, telling git's progress as it
@@ -335,6 +359,7 @@ fn networks(dir: &Path, orders: &Receiver<Order>, pokes: &Sender<Poke>, send: im
             Job::Fetch => net::fetch(dir, &stop, &mut tell),
             Job::Pull { wt } => net::pull(wt, &stop, &mut tell),
             Job::Push { wt, lease, .. } => net::push(wt, lease.as_ref(), &stop, &mut tell),
+            Job::PushTag { tag } => net::push_tag(dir, tag, &stop, &mut tell),
         };
         let _ = pokes.send(Poke::Now);
         send(Answer::NetDone { job, result });

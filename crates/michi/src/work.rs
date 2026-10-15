@@ -1,7 +1,8 @@
 //! fetch, pull and push: what the window sends the net thread, what it
 //! shows while one runs, and what it says when one ends. One runs at a
 //! time; Esc stops it. What would lose work waits on a band for `y`: a pull
-//! where a Claude is working, a push over commits the remote has.
+//! where a Claude is working, a push over commits the remote has, and the
+//! act thread's deletes and reverts.
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -12,6 +13,7 @@ use michi_core::claude::State;
 use michi_core::net::{self, Done, Lease, Progress, Why};
 use michi_core::{git, paths};
 
+use crate::act::{self, Task};
 use crate::app::{App, Repo, View};
 
 /// What the net thread is to do.
@@ -25,6 +27,8 @@ pub enum Job {
     /// `lease`. `over`: `F` asked for it, so commits the remote has and
     /// this branch has not bring the band that asks before a push over them.
     Push { wt: PathBuf, lease: Option<Lease>, over: bool },
+    /// The tag `tag`, to the remote branches are pushed to.
+    PushTag { tag: String },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -39,7 +43,7 @@ impl Job {
         match self {
             Job::Fetch => Kind::Fetch,
             Job::Pull { .. } => Kind::Pull,
-            Job::Push { .. } => Kind::Push,
+            Job::Push { .. } | Job::PushTag { .. } => Kind::Push,
         }
     }
 }
@@ -70,17 +74,38 @@ pub struct Running {
 }
 
 impl Running {
+    #[cfg(test)]
+    pub fn new(kind: Kind, stop: Arc<AtomicBool>) -> Running {
+        Running { kind, progress: None, stop }
+    }
+
     /// Whether Esc has asked it to stop.
     pub fn stopping(&self) -> bool {
         self.stop.load(Ordering::Relaxed)
     }
 }
 
+/// What a band does on a yes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Then {
+    Net(Job),
+    Act(Task),
+}
+
 /// A job waiting for a yes under the title bar: `y` runs it, Esc or `n`
 /// drops it.
 pub struct Band {
     pub text: String,
-    pub job: Job,
+    pub then: Then,
+    /// A merge's revert: `1`, `2`… run it with that parent's side kept,
+    /// not `y`. 0 for the rest.
+    pub parents: u8,
+}
+
+impl Band {
+    pub fn new(text: String, then: Then) -> Band {
+        Band { text, then, parents: 0 }
+    }
 }
 
 /// How long ago `at` was, in a few words (`3 min ago`).
@@ -93,11 +118,6 @@ pub fn ago(app: &App, at: SystemTime, now: SystemTime) -> String {
         _ => ("net.day", secs / 86400),
     };
     app.tr(key).replace("{}", &n.to_string())
-}
-
-/// The folder's name, to call a worktree by.
-fn name(wt: &Path) -> String {
-    wt.file_name().map_or_else(|| wt.display().to_string(), |n| n.to_string_lossy().into_owned())
 }
 
 impl App {
@@ -137,22 +157,22 @@ impl App {
     /// is working it waits for a yes.
     fn pull(&mut self, wt: PathBuf) {
         if self.claude_working(&wt) {
-            let text = self.tr("net.claude_pull").replace("{}", &name(&wt));
-            self.band = Some(Band { text, job: Job::Pull { wt } });
+            let text = self.tr("net.claude_pull").replace("{}", &act::name(&wt));
+            self.band = Some(Band::new(text, Then::Net(Job::Pull { wt })));
             return;
         }
         self.order(Job::Pull { wt });
     }
 
     /// Whether a Claude is at work in the worktree at `wt`.
-    fn claude_working(&self, wt: &Path) -> bool {
+    pub(crate) fn claude_working(&self, wt: &Path) -> bool {
         let key = paths::key(wt);
         let sessions = self.claude.iter().flatten().find(|(p, _)| paths::key(p) == key);
         sessions.is_some_and(|(_, s)| s.iter().any(|s| s.is_agent() && s.state == State::Running))
     }
 
     /// Sends `job` to the net thread, unless one runs.
-    fn order(&mut self, job: Job) {
+    pub(crate) fn order(&mut self, job: Job) {
         if self.net.is_some() {
             self.busy();
             return;
@@ -163,25 +183,37 @@ impl App {
         r.net(Order { job, stop });
     }
 
-    fn busy(&mut self) {
+    pub(crate) fn busy(&mut self) {
         let Some(n) = &self.net else { return };
         let text = self.tr("net.busy").replace("{}", n.kind.word());
         self.say(text);
     }
 
-    /// A key while the band is up: `y` runs its job, `n` drops it, the rest
-    /// do nothing.
+    /// A key while the band is up: `y` (a merge's revert: the parent's
+    /// digit) runs what it waits to do, `n` drops it, the rest do nothing.
     pub(crate) fn band_key(&mut self, c: char) -> bool {
+        let parents = self.band.as_ref().map_or(0, |b| u32::from(b.parents));
+        let side = c.to_digit(10).filter(|n| (1..=parents).contains(n));
         match c {
-            'y' => {
-                if let Some(b) = self.band.take() {
-                    self.order(b.job);
-                }
-            }
+            'y' if parents == 0 => self.band_yes(None),
+            _ if side.is_some() => self.band_yes(side),
             'n' => self.band = None,
             _ => {}
         }
         true
+    }
+
+    fn band_yes(&mut self, side: Option<u32>) {
+        let Some(b) = self.band.take() else { return };
+        match b.then {
+            Then::Net(job) => self.order(job),
+            Then::Act(mut task) => {
+                if let (Task::Revert { mainline, .. }, Some(n)) = (&mut task, side) {
+                    *mainline = Some(n);
+                }
+                self.act(task);
+            }
+        }
     }
 
     /// Esc with nothing else to close: stop the job that runs.
@@ -219,6 +251,7 @@ impl App {
             }
             Ok(Done::Pushed { to, new: true, .. }) => (self.tr("net.pushed_new").replace("{}", &to), 4),
             Ok(Done::Pushed { to, .. }) => (self.tr("net.pushed").replace("{}", &to), 4),
+            Ok(Done::PushedTag { remote, tag }) => (self.tr("net.pushed_tag").replace("{tag}", &tag).replace("{remote}", &remote), 4),
             Ok(Done::Even { to }) => {
                 let key = if kind == Kind::Push { "net.even_push" } else { "net.even_pull" };
                 (self.tr(key).replace("{}", &to), 4)
@@ -244,7 +277,7 @@ impl App {
                         (self.tr("net.diverged_push").replace("{to}", &lease.to).replace("{n}", &count.to_string()), 10)
                     } else {
                         let text = self.tr("net.lease").replace("{to}", &lease.to).replace("{n}", &count.to_string());
-                        self.band = Some(Band { text, job: Job::Push { wt, lease: Some(lease), over: true } });
+                        self.band = Some(Band::new(text, Then::Net(Job::Push { wt, lease: Some(lease), over: true })));
                         return;
                     }
                 }
@@ -388,7 +421,7 @@ mod tests {
             Ok(Done::Not(Why::Behind { lease: lease(), count: 2, ahead: 1 })),
         );
         let band = a.band.as_ref().expect("a band");
-        assert_eq!(band.job, Job::Push { wt: wt.clone(), lease: Some(lease()), over: true });
+        assert_eq!(band.then, Then::Net(Job::Push { wt: wt.clone(), lease: Some(lease()), over: true }));
         assert!(band.text.contains("origin/main has 2 commits"), "{}", band.text);
         // Other keys wait; n drops it.
         assert!(a.feed('j'));
@@ -396,12 +429,27 @@ mod tests {
         assert!(a.feed('n'));
         assert!(a.band.is_none());
         // Esc drops it too, before anything else.
-        a.band = Some(Band { text: String::new(), job: Job::Fetch });
+        a.band = Some(Band::new(String::new(), Then::Net(Job::Fetch)));
         assert!(a.escape());
         assert!(a.band.is_none());
         // y sends it (no reading thread here: nothing runs).
-        a.band = Some(Band { text: String::new(), job: Job::Fetch });
+        a.band = Some(Band::new(String::new(), Then::Net(Job::Fetch)));
         assert!(a.feed('y'));
+        assert!(a.band.is_none());
+    }
+
+    #[test]
+    fn a_merge_s_revert_takes_a_parent_s_digit() {
+        let mut a = app();
+        let id = Oid::parse(&"a".repeat(40)).unwrap();
+        let task = Task::Revert { wt: PathBuf::from("/r/main"), id, mainline: None };
+        a.band = Some(Band { text: String::new(), then: Then::Act(task), parents: 2 });
+        // Not y, nor a digit past its parents.
+        for c in ['y', '3', '0'] {
+            assert!(a.feed(c));
+            assert!(a.band.is_some(), "{c}");
+        }
+        assert!(a.feed('2'));
         assert!(a.band.is_none());
     }
 
@@ -430,7 +478,7 @@ mod tests {
         a.claude = Some(vec![(PathBuf::from("/r/main"), vec![s])]);
         assert!(a.feed('p'));
         let band = a.band.as_ref().expect("a band");
-        assert_eq!(band.job, Job::Pull { wt: PathBuf::from("/r/main") });
+        assert_eq!(band.then, Then::Net(Job::Pull { wt: PathBuf::from("/r/main") }));
         assert_eq!(band.text, "A Claude is working in main. Pull there anyway?");
         a.band = None;
         a.claude = None;
