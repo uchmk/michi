@@ -61,7 +61,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
 // ── the tool band ─────────────────────────────────────────────
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Icon {
+pub(crate) enum Icon {
     Fetch,
     Pull,
     Push,
@@ -158,7 +158,7 @@ fn tool_band(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
 }
 
 /// A tool's icon, about 10 points across, centred on `at`.
-fn paint_icon(p: &egui::Painter, at: Pos2, icon: Icon, ink: Color32) {
+pub(crate) fn paint_icon(p: &egui::Painter, at: Pos2, icon: Icon, ink: Color32) {
     let s = Stroke::new(1.3, ink);
     match icon {
         Icon::Fetch => {

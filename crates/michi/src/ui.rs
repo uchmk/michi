@@ -45,11 +45,13 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     let body = Rect::from_min_max(title.left_bottom(), keybar.right_top());
     let mut out = Out { view: None, settings: false, palette: false, body };
     if app.mode != Mode::Settings {
-        if app.view == View::Graph {
-            // The key list goes over the graph; the mouse is the list's then.
-            // The columns stay clear of the window's resize edge.
-            let live = app.mode == Mode::Main;
-            let r = Rect::from_min_max(body.min, pos2(body.right() - EDGE, body.bottom()));
+        // The key list goes over the view; the mouse is the list's then.
+        // The columns stay clear of the window's resize edge.
+        let live = app.mode == Mode::Main;
+        let r = Rect::from_min_max(body.min, pos2(body.right() - EDGE, body.bottom()));
+        if app.view == View::Worktree {
+            crate::wt_ui::show(ui, app, r, live);
+        } else if app.view == View::Graph {
             if matches!(app.repo, Repo::Failed(_)) {
                 crate::graph_ui::show(ui, app, r, live);
             } else {

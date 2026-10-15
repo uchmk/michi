@@ -15,7 +15,8 @@ use crate::predict::{self, LeftOut};
 use crate::show::{self, File};
 use crate::worktree::Worktree;
 
-/// A worktree with uncommitted changes.
+/// A worktree with uncommitted changes, or with untracked files too big to
+/// count and nothing else (no files then).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Wip {
     /// The worktree's top folder.
@@ -24,7 +25,8 @@ pub struct Wip {
     pub branch: Option<String>,
     /// The commit the change is on (the worktree's `HEAD`).
     pub head: Oid,
-    /// The temporary commit holding the change, `head` its parent.
+    /// The temporary commit holding the change, `head` its parent; `head`
+    /// itself when there are no files.
     pub commit: Oid,
     /// The changed files with their counts, no diff read.
     pub files: Vec<File>,
@@ -46,16 +48,26 @@ impl Wip {
 pub type Read = Result<Option<Wip>, git::Error>;
 
 /// The uncommitted change of the worktree `wt`; `None` when it is clean, bare
-/// or gone.
+/// or gone. Untracked files too big to count and nothing else give a
+/// [`Wip`] with no files.
 pub fn read(wt: &Worktree) -> Read {
     if wt.bare || wt.prunable.is_some() {
         return Ok(None);
     }
     let Some(snap) = predict::snapshot(&wt.path, predict::Limits::DEFAULT)? else { return Ok(None) };
-    let commit = snap.commit;
-    // The parent, not `wt.head`: `HEAD` may have moved since the list was read.
-    let parent = git::read_text(&wt.path, &["rev-parse", &format!("{commit}^")])?;
-    let head = Oid::parse(parent.trim()).ok_or_else(|| git::Error::Io(format!("git rev-parse: unexpected output: {parent}")))?;
+    // The snapshot's, not `wt.head`: `HEAD` may have moved since the list was read.
+    let head = snap.head;
+    let Some(commit) = snap.commit else {
+        return Ok(Some(Wip {
+            path: wt.path.clone(),
+            branch: wt.branch.clone(),
+            head,
+            commit: head,
+            files: Vec::new(),
+            written: None,
+            left_out: snap.left_out,
+        }));
+    };
     let files = show::changes(&wt.path, &head, &commit, false, &|| false)?.files;
     let written = files.iter().filter_map(|f| modified(&wt.path.join(&f.path))).max();
     Ok(Some(Wip { path: wt.path.clone(), branch: wt.branch.clone(), head, commit, files, written, left_out: snap.left_out }))

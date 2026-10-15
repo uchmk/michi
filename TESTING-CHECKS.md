@@ -23,7 +23,7 @@
 
 ## 2. Views and keys
 
-- [ ] **2.1** Press `1`, `2`, `3` → The tab in force moves and opens into the view; the graph shows the history (section 6), the other two say what will be there and "Coming in a later stage"
+- [ ] **2.1** Press `1`, `2`, `3` → The tab in force moves and opens into the view; the graph shows the history (section 6), the worktrees show their table (section 10), the changes say what will be there and "Coming in a later stage"
 - [ ] **2.2** Click each tab → Same as the digit
 - [ ] **2.3** Press `?` → A card with the keys: "Everywhere" first, then the view's; the tab stays lit under it; `?` or Esc closes it
 - [ ] **2.4** Press `N`, `f`, `p`, `P` in any view, `b` and `s` in the graph (Enter spreads the diff: 8.5), Space and `c` in the changes → A toast at the foot names the key's work and says it comes in a later stage; it goes after 4 seconds
@@ -104,3 +104,17 @@
 - [ ] **9.5** Put a file over 10 MB (or a folder over 2000 files or 50 MB) in the worktree, not ignored → The WIP row and its counts leave it out; the detail says `Untracked, too big to count: <path>` (three at most, then `and N more`); `git count-objects -vH` in the repository does not grow by its size; no `git.exe` keeps running after michi is closed
 - [ ] **9.6** Make the worktree clean again → The WIP row goes within a few seconds; a worktree whose only change is a big untracked folder has no WIP row
 - [ ] **9.7** Look at `git status` and the index after michi read the change → Nothing was staged; `git status` shows the same as before
+
+## 10. Worktree table
+
+- [ ] **10.1** Press `3` → `Reading the worktrees…`, then a title `<repo> · N worktrees` with `Read again` and `New work` (`N`) at the right, and a table: `Branch · folder`, `From main`, `Uncommitted`, and buttons; the main worktree on top, each row with its branch in its lane colour and its folder under it
+- [ ] **10.2** Run a Claude in a worktree from tsumugi, then quit tsumugi → The title adds ` · Claude N` and a `Claude (tsumugi)` column shows the state chip in bold, its note (two rows at most), `Tab N · <title>` with `o` and since when; rows with none say `No Claude running`; within a few seconds of quitting tsumugi the column goes
+- [ ] **10.3** Look at the `From main` column → `↑a ↓b` against main, and under it the branch against its upstream: `Same as origin/x`, `N not pushed to origin/x`, `origin/x is N ahead`, `Diverged from origin/x (↑a ↓b)`, `Not pushed yet`; the main row reads against `origin/main`
+- [ ] **10.4** Look at the `Uncommitted` column; then put a folder over 2000 files in a worktree, not ignored → `N files`, `+a −d` in green and red and `written at <time>`, or `None`; the big folder adds `Too big to count: <path>` and is not counted
+- [ ] **10.5** Look at the locked worktree with no branch → `No branch, at <hash>` and a `Locked` mark; a worktree whose folder was deleted says `Its folder is gone (git can prune it)`
+- [ ] **10.6** Press `j` / `k`, the arrows, PageDown / PageUp, Home / End, and click a row → The selection moves (10 rows a page) and the table scrolls to keep it in view; the wheel scrolls the table with no scrollbar
+- [ ] **10.7** Press Enter on a row with changes, and double-click a clean row → The graph opens with the row's `Uncommitted` row selected, or its branch's commit
+- [ ] **10.8** Press `d`, `m`, `x`, `o`, `p` and click `PR` → A toast at the foot names the work and says it comes in a later stage; `New work` gives the same toast as `N`; the main row shows `Pull` and `Show in the graph` instead, and has no `Remove`
+- [ ] **10.9** Click `Read again` → The toast `Reading the worktrees again…`, and the table follows a change made outside (a new commit, a new worktree)
+- [ ] **10.10** Narrow the window below 960 wide → Each worktree becomes a card: the branch and folder, then the Claude, `From main` and `Uncommitted` lines, then the buttons, which wrap; still readable at the smallest width
+- [ ] **10.11** Look at the foot, and switch to the light theme → `The unseen changes and the conflict prediction come in a later stage.` and, when the Claude column shows, how often it reads tsumugi; colours stay readable in both themes

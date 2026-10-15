@@ -22,17 +22,18 @@
     the stash section and the `↑N` / `↓N` counts in the left column
   - [x] The WIP rows (uncommitted changes of each worktree) and the Claude in that worktree in their detail (v0.4.0); untracked files
     over 10 MB, or past 2000 files or 50 MB in all, are left out and named
-  - [ ] A worktree whose only change is a big untracked folder has no WIP row: say so somewhere (the worktree table)
-  - [ ] The worktree table with the Claude column (`tsumugi ls --json`)
-  - [ ] Conflict prediction in the UI (⚠ on heads, a dashed frame on WIP rows); michi-core has it (`predict`)
-  - [ ] File watching (`notify` → `Ask::Reload`) and unseen marks
+  - [x] A worktree whose only change is a big untracked folder has no WIP row: say so somewhere (the worktree table, v0.5.0)
+  - [x] The worktree table with the Claude column (`tsumugi ls --json`), its cards below 960 wide (v0.5.0)
+  - [ ] Conflict prediction in the UI (⚠ on heads, a dashed frame on WIP rows, the column and the pair table in the worktree table);
+    michi-core has it (`predict`)
+  - [ ] File watching (`notify` → `Ask::Reload`) and unseen marks (also the worktree table's unseen column)
 - [ ] Second mock round before stage 2: changes and staging, the diff of a whole branch (seen marks, since last time, notes), rebase;
   ask the owner with a `question` issue
 - [ ] 2. Change: first the diff of a whole branch (`d`; seen marks, since last time, notes), then stage and commit (lines and hunks,
   the check while Claude is writing, the count of uncommitted files on the `2` tab), branches, fetch / pull / push with progress, the everyday operations in design.md (amend, revert, tags, stash, discard, clean-up), backups to `refs/michi/backup/<time>`
 - [ ] 3. Conflicts: the conflict screen (`4`), locks during a merge (and「· マージ中」in red on the chip), rerere asked once, cherry-pick; prediction moved to gix-merge and
   checked against `git merge-tree --write-tree`
-- [ ] 4. Worktrees: new work (`N`), remove (`x`), go to the tab (`o`), take in main (`m`); needs tsumugi `new --worktree BRANCH --from REF`
+- [ ] 4. Worktrees: new work (`N`), remove (`x`), go to the tab (`o`), take in main (`m`), the PR button (`gh pr create`); needs tsumugi `new --worktree BRANCH --from REF`
   and `focus N|NAME` (in tsumugi's TODO.md)
 - [ ] 5. Rebase: reorder, squash, reword, the in-progress band
 - [ ] 6. Claude: hand a conflict to Claude through `tsumugi send` and watch the markers, notify on waiting / done, hand over notes from the

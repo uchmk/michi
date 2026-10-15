@@ -554,7 +554,7 @@ fn file_row(ui: &Ui, p: &Painter, app: &App, f: &File, rr: Rect, max_count: u32)
 }
 
 /// `text` cut from the left to fit `width`, with `…` for what is cut.
-fn left_cut(ui: &Ui, text: &str, font: FontId, width: f32) -> String {
+pub(crate) fn left_cut(ui: &Ui, text: &str, font: FontId, width: f32) -> String {
     let g = ui.fonts_mut(|f| f.layout_no_wrap(text.to_owned(), font.clone(), Color32::WHITE));
     if g.size().x <= width {
         return text.to_owned();

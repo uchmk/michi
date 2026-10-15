@@ -12,8 +12,9 @@
 //! halfway stops when another comes.
 //!
 //! A third thread keeps an eye on the worktrees: each one's uncommitted
-//! change and the Claude sessions tsumugi runs in them, read again every few
-//! seconds while the window is in front and seldom behind it.
+//! change, how it stands against the trunk and its upstream, and the Claude
+//! sessions tsumugi runs in them, read again every few seconds while the
+//! window is in front and seldom behind it.
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -28,6 +29,7 @@ use michi_core::log::{self, Commit, Reader};
 use michi_core::oid::Oid;
 use michi_core::show::{self, Detail};
 use michi_core::summary::{self, Summary};
+use michi_core::track::{self, Trees};
 use michi_core::wip::{self, Wip};
 use michi_core::worktree;
 
@@ -48,8 +50,11 @@ pub enum Answer {
     Failed { gen: u32, error: git::Error },
     /// The commit `id` in full, as [`Reading::detail`] asked.
     Detail { id: Oid, result: Result<Box<Detail>, git::Error> },
-    /// The worktrees with uncommitted changes, each read anew.
+    /// The worktrees with uncommitted changes, each read anew (with those
+    /// whose only change is too big to count).
     Wips(Vec<Wip>),
+    /// How each worktree stands against the trunk and its upstream.
+    Trees(Trees),
     /// The Claude sessions in each worktree (by its folder; only those with
     /// some); `None` when tsumugi is not there to ask.
     Claude(Option<Vec<(PathBuf, Vec<Session>)>>),
@@ -77,8 +82,15 @@ pub struct Reading {
     wants: Sender<Want>,
     /// The newest wish's number: a read for any other is stale.
     latest: Arc<AtomicU32>,
-    /// Whether the window is in front, for the watching thread.
-    front: Sender<bool>,
+    /// Whether the window is in front, and wishes to read the worktrees
+    /// now, for the watching thread.
+    pokes: Sender<Poke>,
+}
+
+/// What the window tells the watching thread.
+enum Poke {
+    Front(bool),
+    Now,
 }
 
 impl Reading {
@@ -92,7 +104,12 @@ impl Reading {
     /// The window came in front (`true`) or went behind: the worktrees are
     /// read more or less often.
     pub fn front(&self, front: bool) {
-        let _ = self.front.send(front);
+        let _ = self.pokes.send(Poke::Front(front));
+    }
+
+    /// Read the worktrees again now, not at the next turn.
+    pub fn reread(&self) {
+        let _ = self.pokes.send(Poke::Now);
     }
 }
 
@@ -118,7 +135,7 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         };
         details(&detail_dir, &want_rx, &detail_latest, send);
     });
-    let (front, front_rx) = mpsc::channel();
+    let (pokes, poke_rx) = mpsc::channel();
     let (watch_tx, watch_dir, watch_ctx) = (tx.clone(), dir.clone(), ctx.clone());
     // No thread for the worktrees: no WIP rows and no Claude.
     let _ = std::thread::Builder::new().name("watch".into()).spawn(move || {
@@ -126,7 +143,7 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
             let _ = watch_tx.send(a);
             watch_ctx.request_repaint();
         };
-        watch(&watch_dir, &front_rx, send);
+        watch(&watch_dir, &poke_rx, send);
     });
     let thread_tx = tx.clone();
     let spawned = std::thread::Builder::new().name("repo".into()).spawn(move || {
@@ -146,24 +163,26 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         // No thread: say so where the summary would have gone.
         let _ = tx.send(Answer::Summary(Err(git::Error::Io(e.to_string()))));
     }
-    Reading { answers, asks, wants, latest, front }
+    Reading { answers, asks, wants, latest, pokes }
 }
 
 /// How often tsumugi is asked while the window is in front.
 const CLAUDE_FRONT: Duration = Duration::from_secs(2);
 /// … and while it is behind.
 const CLAUDE_BEHIND: Duration = Duration::from_secs(10);
-/// How often the uncommitted changes are read while the window is in front;
-/// behind, they are not, and they are read at once when it comes back.
+/// How often the uncommitted changes and how the worktrees stand are read
+/// while the window is in front; behind, they are not, and they are read at
+/// once when it comes back.
 const WIP_EVERY: Duration = Duration::from_secs(5);
 
-/// Reads the worktrees' uncommitted changes and asks tsumugi for its
-/// sessions, again and again, until the window is gone. An answer is sent
-/// only when it differs from the last.
-fn watch(dir: &Path, front_rx: &Receiver<bool>, send: impl Fn(Answer)) {
+/// Reads the worktrees' uncommitted changes and how they stand, and asks
+/// tsumugi for its sessions, again and again, until the window is gone. An
+/// answer is sent only when it differs from the last.
+fn watch(dir: &Path, pokes: &Receiver<Poke>, send: impl Fn(Answer)) {
     let mut front = true;
     let mut wips_read: Option<Instant> = None;
-    let (mut last_wips, mut last_claude) = (None, None);
+    let (mut last_wips, mut last_trees, mut last_claude) = (None, None, None);
+    let mut counts = track::Cache::default();
     let mut timeouts = 0u32;
     loop {
         let tick = Instant::now();
@@ -175,6 +194,14 @@ fn watch(dir: &Path, front_rx: &Receiver<bool>, send: impl Fn(Answer)) {
             if last_wips.as_ref() != Some(&wips) {
                 last_wips = Some(wips.clone());
                 send(Answer::Wips(wips));
+            }
+            match track::read(dir, wts, &mut counts) {
+                Ok(trees) if last_trees.as_ref() != Some(&trees) => {
+                    last_trees = Some(trees.clone());
+                    send(Answer::Trees(trees));
+                }
+                Ok(_) => {}
+                Err(e) => eprintln!("michi: {e}"),
             }
         }
         let claude = match claude::fetch() {
@@ -199,18 +226,23 @@ fn watch(dir: &Path, front_rx: &Receiver<bool>, send: impl Fn(Answer)) {
                 send(Answer::Claude(c));
             }
         }
-        // Wait out the tick; coming in front cuts it short.
+        // Wait out the tick; coming in front, or a wish to read now, cuts it
+        // short.
         let every = if front { CLAUDE_FRONT } else { CLAUDE_BEHIND };
         loop {
             let left = every.saturating_sub(tick.elapsed());
-            match front_rx.recv_timeout(left) {
-                Ok(f) => {
+            match pokes.recv_timeout(left) {
+                Ok(Poke::Front(f)) => {
                     let came = f && !front;
                     front = f;
                     if came {
                         wips_read = None;
                         break;
                     }
+                }
+                Ok(Poke::Now) => {
+                    wips_read = None;
+                    break;
                 }
                 Err(mpsc::RecvTimeoutError::Timeout) => break,
                 Err(mpsc::RecvTimeoutError::Disconnected) => return,

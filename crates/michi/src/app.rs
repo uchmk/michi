@@ -9,6 +9,8 @@ use michi_core::claude::Session;
 use michi_core::git::{self, Version};
 use michi_core::oid::Oid;
 use michi_core::summary::Summary;
+use michi_core::track::{Tree, Trees};
+use michi_core::wip::Wip;
 
 use crate::detail::Pane;
 use crate::graph::{Folded, Graph};
@@ -132,6 +134,13 @@ pub struct App {
     /// The Claude sessions in each worktree that has some; `None` when
     /// tsumugi is not there (or not asked yet).
     pub claude: Option<Vec<(PathBuf, Vec<Session>)>>,
+    /// The worktrees and how they stand, for the worktree table.
+    pub trees: Trees,
+    /// Each worktree's uncommitted change, those with only files too big to
+    /// count too (the graph shows the others).
+    pub wips: Vec<Wip>,
+    /// The worktree table's selected row.
+    pub wt_sel: usize,
     /// The side column's groups that are open (`b:feat`, `r:origin`).
     pub side_open: HashSet<String>,
     /// A commit clicked in the side column that is not read yet: read on
@@ -160,6 +169,9 @@ impl App {
             graph: Graph::default(),
             detail: Pane::default(),
             claude: None,
+            trees: Trees::default(),
+            wips: Vec::new(),
+            wt_sel: 0,
             side_open: HashSet::new(),
             seeking: None,
             detail_wip: None,
@@ -290,7 +302,16 @@ impl App {
                 self.graph.failed(gen, error);
             }
             Answer::Detail { id, result } => self.detail.take(id, result),
-            Answer::Wips(wips) => self.graph.set_wips(wips),
+            Answer::Wips(wips) => {
+                self.graph.set_wips(wips.iter().filter(|w| !w.files.is_empty()).cloned().collect());
+                self.wips = wips;
+            }
+            Answer::Trees(trees) => {
+                // The selection stays on its worktree when the list changes.
+                let path = self.trees.trees.get(self.wt_sel).map(|t| t.wt.path.clone());
+                self.wt_sel = path.and_then(|p| trees.trees.iter().position(|t| t.wt.path == p)).unwrap_or(0);
+                self.trees = trees;
+            }
             Answer::Claude(c) => self.claude = c,
         }
     }
@@ -299,6 +320,47 @@ impl App {
     /// first.
     pub fn claude_in(&self, path: &Path) -> &[Session] {
         self.claude.iter().flatten().find(|(p, _)| p == path).map_or(&[], |(_, s)| s.as_slice())
+    }
+
+    /// The uncommitted change of the worktree at `path`, if it has one.
+    pub fn wip_in(&self, path: &Path) -> Option<&Wip> {
+        self.wips.iter().find(|w| w.path == path)
+    }
+
+    /// The worktree table's selected row.
+    pub fn wt_selected(&self) -> Option<&Tree> {
+        self.trees.trees.get(self.wt_sel)
+    }
+
+    /// Moves the worktree table's selection by `by` rows, stopping at the
+    /// ends.
+    pub fn wt_move(&mut self, by: i32) {
+        let last = self.trees.trees.len().saturating_sub(1) as i64;
+        self.wt_sel = (self.wt_sel as i64 + i64::from(by)).clamp(0, last) as usize;
+    }
+
+    /// Opens the graph on the selected worktree: its uncommitted change, or
+    /// its commit when it has none.
+    pub fn wt_in_graph(&mut self) {
+        let Some(t) = self.wt_selected() else { return };
+        let path = t.wt.path.clone();
+        let head = Oid::parse(&t.wt.head);
+        self.view = View::Graph;
+        self.detail.wide = false;
+        if !self.graph.select_wip(&path) {
+            if let Some(id) = head {
+                self.go_to(id);
+            }
+        }
+    }
+
+    /// The table's button: read the worktrees again now.
+    pub fn reread(&mut self) {
+        if let Some(r) = &self.reading {
+            r.reread();
+        }
+        let text = self.tr("wt.rereading");
+        self.say(text);
     }
 
     /// The graph's rows in sight reach row `last`: read on before they run
@@ -338,6 +400,7 @@ impl App {
             (Mode::Main, c) => match View::from_digit(c) {
                 Some(v) => self.view = v,
                 None if self.view == View::Graph && self.graph_key(c) => {}
+                None if self.view == View::Worktree && self.wt_key(c) => {}
                 None => return self.later(|token| token.chars().eq([c])),
             },
         }
@@ -354,6 +417,16 @@ impl App {
             'h' => _ = g.close_fold(),
             '/' => g.focus_filter = true,
             'z' => self.fold(),
+            _ => return false,
+        }
+        true
+    }
+
+    /// The worktree table's own keys that work already.
+    fn wt_key(&mut self, c: char) -> bool {
+        match c {
+            'j' => self.wt_move(1),
+            'k' => self.wt_move(-1),
             _ => return false,
         }
         true
@@ -395,7 +468,27 @@ impl App {
             }
             return true;
         }
+        if self.view == View::Worktree {
+            let n = self.trees.trees.len() as i32;
+            match name {
+                "ArrowDown" => self.wt_move(1),
+                "ArrowUp" => self.wt_move(-1),
+                "PageDown" => self.wt_move(10),
+                "PageUp" => self.wt_move(-10),
+                "Home" => self.wt_move(-n),
+                "End" => self.wt_move(n),
+                "Enter" => self.wt_in_graph(),
+                _ => return self.later(|token| token == name),
+            }
+            return true;
+        }
         self.later(|token| token == name)
+    }
+
+    /// A button whose work comes in a later stage: say so.
+    pub fn later_word(&mut self, word: &'static str) {
+        let text = self.tr("later").replace("{}", self.tr(word));
+        self.say(text);
     }
 
     /// A key of the view or of every view whose work comes in a later stage:
@@ -769,5 +862,98 @@ mod tests {
         assert!(a.claude_in(Path::new("C:/r/repo")).is_empty());
         a.take(Answer::Claude(None));
         assert!(a.claude_in(Path::new("C:/r/wt")).is_empty());
+    }
+
+    fn wt_path(a: &App) -> &str {
+        a.wt_selected().and_then(|t| t.wt.path.to_str()).unwrap_or("")
+    }
+
+    #[test]
+    fn the_worktree_table_s_keys_move_the_selection() {
+        let mut a = read();
+        a.take(Answer::Trees(fixture::trees()));
+        a.feed('3');
+        assert_eq!(wt_path(&a), "C:/r/repo");
+        assert!(a.feed('j'));
+        assert_eq!(wt_path(&a), "C:/r/wt");
+        assert!(a.named("ArrowDown"));
+        assert!(a.named("ArrowDown"), "the last row stays");
+        assert_eq!(wt_path(&a), "C:/r/old");
+        assert!(a.feed('k'));
+        assert!(a.named("ArrowUp"));
+        assert_eq!(wt_path(&a), "C:/r/repo");
+        assert!(a.named("End"));
+        assert_eq!(wt_path(&a), "C:/r/old");
+        assert!(a.named("PageUp"));
+        assert_eq!(wt_path(&a), "C:/r/repo");
+        assert!(a.named("PageDown"));
+        assert!(a.named("Home"));
+        assert_eq!(wt_path(&a), "C:/r/repo");
+        assert!(a.toast.is_none(), "nothing to say");
+        // The keys of a later stage say so.
+        assert!(a.feed('m'));
+        assert!(toast(&a).starts_with("Take in main"), "{}", toast(&a));
+        a.later_word("wt.pr");
+        assert!(toast(&a).starts_with("Open a PR"), "{}", toast(&a));
+    }
+
+    #[test]
+    fn the_worktree_selection_stays_on_its_worktree() {
+        let mut a = app();
+        a.take(Answer::Trees(fixture::trees()));
+        a.wt_move(1);
+        assert_eq!(wt_path(&a), "C:/r/wt");
+        // The first worktree is gone: the selection stays on C:/r/wt.
+        let mut t = fixture::trees();
+        t.trees.remove(0);
+        a.take(Answer::Trees(t.clone()));
+        assert_eq!((a.wt_sel, wt_path(&a)), (0, "C:/r/wt"));
+        // Its worktree gone, the selection goes to the first.
+        a.wt_move(1);
+        t.trees.remove(1);
+        t.trees.remove(0);
+        a.take(Answer::Trees(t));
+        assert_eq!(a.wt_sel, 0);
+        a.take(Answer::Trees(Trees::default()));
+        assert_eq!(a.wt_sel, 0);
+        a.wt_move(3);
+        a.wt_in_graph();
+        assert_eq!(a.view, View::Graph, "nothing to open, nothing done");
+    }
+
+    #[test]
+    fn a_wip_with_only_folders_left_out_stays_out_of_the_graph() {
+        let mut a = read();
+        let mut only = fixture::wip("C:/r/repo", Some("main"), 6, 6, None);
+        only.files.clear();
+        only.left_out = vec![michi_core::predict::LeftOut { path: "target-v/".into(), files: 35584, bytes: 20 << 30 }];
+        a.take(Answer::Wips(vec![only, fixture::wip("C:/r/wt", Some("wip"), 7, 11, Some(1))]));
+        assert_eq!(a.graph.len(), 6, "one WIP row");
+        assert!(a.wip_in(Path::new("C:/r/repo")).is_some_and(|w| w.files.is_empty() && w.left_out.len() == 1));
+        assert!(a.wip_in(Path::new("C:/r/wt")).is_some());
+        assert!(a.wip_in(Path::new("C:/r/old")).is_none());
+    }
+
+    #[test]
+    fn enter_opens_the_graph_on_the_worktree() {
+        let mut a = read();
+        a.take(Answer::Wips(vec![fixture::wip("C:/r/wt", Some("wip"), 7, 11, Some(1))]));
+        a.take(Answer::Trees(fixture::trees()));
+        a.feed('3');
+        a.feed('j');
+        a.detail.wide = true;
+        assert!(a.named("Enter"));
+        assert_eq!(a.view, View::Graph);
+        assert!(!a.detail.wide);
+        assert_eq!(a.graph.selected(), Some(fixture::id(11)), "its uncommitted change");
+        // No change: its commit.
+        a.feed('3');
+        a.named("Home");
+        a.named("Enter");
+        assert_eq!(selected(&a), "m2");
+        a.feed('3');
+        a.named("End");
+        a.named("Enter");
+        assert_eq!(selected(&a), "m1");
     }
 }

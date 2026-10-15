@@ -19,6 +19,7 @@ mod repo;
 mod settings;
 mod side_ui;
 mod ui;
+mod wt_ui;
 
 use std::ffi::OsString;
 use std::path::PathBuf;

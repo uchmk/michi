@@ -333,6 +333,15 @@ impl Graph {
         self.wips.iter().find(|w| w.commit == id)
     }
 
+    /// Selects the WIP row of the worktree at `path`; false when it has
+    /// none.
+    pub fn select_wip(&mut self, path: &std::path::Path) -> bool {
+        let Some(id) = self.wips.iter().find(|w| w.path == path).map(|w| w.commit) else { return false };
+        self.selected = Some(id);
+        self.reveal = true;
+        true
+    }
+
     /// The worktrees' uncommitted changes are now `wips` (in any order). A
     /// WIP row selected stays selected when its worktree still has a change.
     pub fn set_wips(&mut self, mut wips: Vec<Wip>) {
@@ -779,6 +788,24 @@ pub(crate) mod fixture {
         };
         let worktrees = vec![wt("C:/r/repo", 6, Some("main")), wt("C:/r/wt", 7, Some("wip")), wt("C:/r/old", 4, None)];
         Setup::new(refs, worktrees, Some(Trunk { name: "main".into(), head: id(6), remote: Some("origin".into()) }))
+    }
+
+    /// The setup's worktrees as the worktree table reads them: `wip` a
+    /// commit ahead and pushed, the folder at v1 behind and locked.
+    pub fn trees() -> michi_core::track::Trees {
+        use michi_core::track::{Tree, Trees, Upstream};
+        let up = |name: &str, ahead, behind, gone| Some(Upstream { name: name.into(), ahead, behind, gone });
+        let wts = setup().worktrees;
+        let mut old = wts[2].clone();
+        old.locked = Some(String::new());
+        Trees {
+            trunk: Some("main".into()),
+            trees: vec![
+                Tree { wt: wts[0].clone(), ahead_behind: Some((0, 0)), upstream: up("origin/main", 0, 0, false) },
+                Tree { wt: wts[1].clone(), ahead_behind: Some((1, 0)), upstream: up("origin/wip", 2, 1, false) },
+                Tree { wt: old, ahead_behind: Some((0, 3)), upstream: None },
+            ],
+        }
     }
 }
 

@@ -13,6 +13,7 @@ pub mod predict;
 pub mod refs;
 pub mod show;
 pub mod summary;
+pub mod track;
 pub mod wip;
 pub mod worktree;
 

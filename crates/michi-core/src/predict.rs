@@ -133,7 +133,10 @@ pub struct LeftOut {
 /// A worktree's uncommitted change held in a commit.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Snapshot {
-    pub commit: Oid,
+    /// The worktree's `HEAD`, the commit's parent.
+    pub head: Oid,
+    /// `None` when all that changed is left out.
+    pub commit: Option<Oid>,
     /// The untracked files and folders not in it.
     pub left_out: Vec<LeftOut>,
 }
@@ -141,14 +144,14 @@ pub struct Snapshot {
 /// A commit holding the working folder of `worktree` as it is now; see
 /// [`snapshot`].
 pub fn wip_commit(worktree: &Path) -> Result<Option<Oid>, git::Error> {
-    Ok(snapshot(worktree, Limits::DEFAULT)?.map(|s| s.commit))
+    Ok(snapshot(worktree, Limits::DEFAULT)?.and_then(|s| s.commit))
 }
 
 /// A commit holding the working folder of `worktree` as it is now (tracked
 /// changes, deleted files, and untracked files that are not ignored up to
 /// `limits`), with `HEAD` as its parent, so `HEAD` against it is the
-/// uncommitted change. `None` when the folder is clean, or all that changed
-/// is left out. The index, `HEAD`, the branch and the files stay as they
+/// uncommitted change. `None` when the folder is clean; no commit when all
+/// that changed is left out. The index, `HEAD`, the branch and the files stay as they
 /// were: the commit is built from a temporary copy of the index (so
 /// `git add` skips what the stat data says is unchanged), deleted
 /// afterwards. The real index is only read, and no call takes its lock. The
@@ -187,10 +190,10 @@ pub fn snapshot(worktree: &Path, limits: Limits) -> Result<Option<Snapshot>, git
     }
     let tree = with_index(&["write-tree"])?;
     if tree == head_tree {
-        return Ok(None);
+        return Ok((!left_out.is_empty()).then_some(Snapshot { head, commit: None, left_out }));
     }
     let commit = with_index(&["commit-tree", &tree, "-p", &head_hex, "-m", "wip", "--no-gpg-sign"])?;
-    Ok(Some(Snapshot { commit: parse_oid(&commit, "commit-tree")?, left_out }))
+    Ok(Some(Snapshot { head, commit: Some(parse_oid(&commit, "commit-tree")?), left_out }))
 }
 
 /// The untracked entries of `git status --porcelain=v2 -z`: files, and
@@ -592,24 +595,28 @@ mod tests {
         r.write(&wt, "spaced [x].txt", "s\n");
         let before = state(&r, &wt);
         let s = snapshot(&wt, limits).unwrap().expect("small files");
-        let tree = r.out(&wt, &["ls-tree", "-r", "--name-only", &s.commit.to_string()]);
+        assert_eq!(s.head.to_string(), r.out(&wt, &["rev-parse", "HEAD"]));
+        let commit = s.commit.expect("a commit");
+        let tree = r.out(&wt, &["ls-tree", "-r", "--name-only", &commit.to_string()]);
         assert_eq!(tree.lines().collect::<Vec<_>>(), ["f.txt", "few/a.txt", "few/sub/b.txt", "small.txt", "spaced [x].txt"]);
         let left: Vec<_> = s.left_out.iter().map(|l| l.path.as_str()).collect();
         assert_eq!(left, ["big.bin", "many/", "mixed/"]);
         assert_eq!((s.left_out[1].files, s.left_out[1].bytes), (3, 6));
-        assert_eq!(r.out(&wt, &["show", &format!("{}:spaced [x].txt", s.commit)]), "s");
+        assert_eq!(r.out(&wt, &["show", &format!("{commit}:spaced [x].txt")]), "s");
         assert_eq!(state(&r, &wt), before);
         // With room, all of it.
         let s = snapshot(&wt, Limits { file_bytes: 100, files: 100, bytes: 1000 }).unwrap().unwrap();
         assert!(s.left_out.is_empty());
-        // Only big untracked files: no change to show.
+        // Only big untracked files: no change to show, but what was left out.
         for p in ["small.txt", "spaced [x].txt", "big.bin"] {
             fs::remove_file(wt.join(p)).unwrap();
         }
         for p in ["few", "many"] {
             fs::remove_dir_all(wt.join(p)).unwrap();
         }
-        assert_eq!(snapshot(&wt, limits), Ok(None));
+        let s = snapshot(&wt, limits).unwrap().expect("left out");
+        assert_eq!(s.commit, None);
+        assert_eq!(s.left_out.iter().map(|l| l.path.as_str()).collect::<Vec<_>>(), ["mixed/"]);
     }
 
     #[test]
