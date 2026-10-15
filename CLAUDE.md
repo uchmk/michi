@@ -7,7 +7,7 @@
 
 - **画面と動きの正は [docs/design.md](docs/design.md) と HTML のモック [docs/mock/michi.html](docs/mock/michi.html)**（ブラウザで開いて `?`）。
   持ち主が 2026-10-15 に確定した。変えるときは先に `question` の issue で聞く。v1 でやらないことは [docs/v1-scope.md](docs/v1-scope.md)。
-- 最初に頼まれた作業の手順は [docs/dev-prompt.md](docs/dev-prompt.md)。
+- 最初に頼まれた作業の手順は [docs/dev-prompt.md](docs/dev-prompt.md)。前の会話からの引き継ぎ（今の版・次にやること・道具）は [docs/handoff.md](docs/handoff.md)。
 - モックは `docs/mock/src` で `python build.py` を回して `docs/mock/michi.html` を作り直す（手で `michi.html` を直さない）。
 - **uchmk のアプリの共通仕様**（common.toml・設定の画面・テーマ・時計、`ito-common`・`ito-theme`・`ito-prefs`）は
   ito の [docs/common-spec.md](https://github.com/uchmk/ito/blob/main/docs/common-spec.md)。これに従う。
