@@ -20,6 +20,10 @@ impl TempRepo {
     pub fn new(name: &str) -> TempRepo {
         let root = std::env::temp_dir().join(format!("michi-test-{}-{name}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        // git prints long paths; the temp folder can come as a short one
+        // (`C:\Users\RUNNER~1\…` on the CI's Windows).
+        let root = long_path(&root);
         let repo = root.join("repo");
         fs::create_dir_all(&repo).unwrap();
         let config = root.join("gitconfig");
@@ -47,6 +51,16 @@ impl TempRepo {
             .output()
             .expect("git on the PATH");
         assert!(out.status.success(), "git {}: {}", args.join(" "), String::from_utf8_lossy(&out.stderr));
+    }
+}
+
+/// `path` with its short (8.3) names spelled out, without the `\\?\` that
+/// `canonicalize` puts in front on Windows.
+fn long_path(path: &Path) -> PathBuf {
+    let full = fs::canonicalize(path).unwrap();
+    match full.to_string_lossy().strip_prefix(r"\\?\") {
+        Some(rest) if !rest.starts_with("UNC") => PathBuf::from(rest),
+        _ => full,
     }
 }
 
