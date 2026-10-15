@@ -13,6 +13,7 @@ pub mod oid;
 pub mod paths;
 pub mod predict;
 pub mod refs;
+pub mod review;
 pub mod show;
 pub mod summary;
 pub mod track;

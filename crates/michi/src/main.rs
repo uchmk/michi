@@ -17,6 +17,8 @@ mod i18n;
 mod icon;
 mod prefs;
 mod repo;
+mod review;
+mod review_ui;
 mod settings;
 mod side_ui;
 mod ui;

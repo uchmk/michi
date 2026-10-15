@@ -17,20 +17,20 @@ use crate::graph_ui::{claude_look, clipped, paint_pill, pill_width, wip_name};
 use crate::ui::kbd;
 
 /// The sides' padding.
-const X: f32 = 14.0;
+pub(crate) const X: f32 = 14.0;
 /// A row of the file list.
-const FILE_H: f32 = 23.0;
+pub(crate) const FILE_H: f32 = 23.0;
 /// A row of a merge's commits.
 const MERGED_H: f32 = 22.0;
 /// A merge's heading, with its note under it.
 const MERGED_HEAD_H: f32 = 44.0;
 /// A file's title over its diff.
-const TITLE_H: f32 = 32.0;
+pub(crate) const TITLE_H: f32 = 32.0;
 /// A row of a diff; a long line wraps, each more line of text taking the
 /// font's row height.
-const DIFF_H: f32 = 18.0;
+pub(crate) const DIFF_H: f32 = 18.0;
 /// A line of a note.
-const NOTE_H: f32 = 34.0;
+pub(crate) const NOTE_H: f32 = 34.0;
 /// A line number's column.
 const LN_W: f32 = 38.0;
 /// The `+` / `-` column.
@@ -515,7 +515,7 @@ fn wip_header(ui: &Ui, app: &App, w: &Wip, at: Pos2, width: f32, paint: Option<&
 }
 
 /// A status's letter and colour.
-fn status_ink(s: Status) -> Color32 {
+pub(crate) fn status_ink(s: Status) -> Color32 {
     let c = ito_theme::colors();
     match s {
         Status::Added => c.done,
@@ -615,7 +615,7 @@ fn title(ui: &Ui, p: &Painter, app: &App, f: &File, rr: Rect, first: bool, live:
 }
 
 /// How long lines wrap at the detail's width.
-struct Wrap {
+pub(crate) struct Wrap {
     wide: bool,
     /// The text's width in a row, a narrow character's and a wide one's.
     text_w: f32,
@@ -626,7 +626,7 @@ struct Wrap {
 }
 
 impl Wrap {
-    fn new(ui: &Ui, width: f32, wide: bool) -> Wrap {
+    pub(crate) fn new(ui: &Ui, width: f32, wide: bool) -> Wrap {
         let font = FontId::monospace(12.0);
         let (char_w, wide_w, more_h) = ui.fonts_mut(|f| (f.glyph_width(&font, '0'), f.glyph_width(&font, '日'), f.row_height(&font)));
         // The text's width as `unified_row` and `half_row` lay it out.
@@ -647,7 +647,7 @@ impl Wrap {
     }
 
     /// Where each row of `rows` starts, from 0, and where the last ends.
-    fn tops(&self, rows: &crate::detail::Rows) -> Vec<f32> {
+    pub(crate) fn tops(&self, rows: &crate::detail::Rows) -> Vec<f32> {
         let mut y = 0.0;
         let mut out = vec![0.0];
         for n in rows.wraps(self.wide, |c| self.lines(c)) {
@@ -659,7 +659,7 @@ impl Wrap {
 }
 
 /// A file's diff in `body`, only the rows inside `view`.
-fn diff(ui: &Ui, p: &Painter, f: &File, rows: &crate::detail::Rows, body: Rect, view: Rect, wrap: &Wrap) {
+pub(crate) fn diff(ui: &Ui, p: &Painter, f: &File, rows: &crate::detail::Rows, body: Rect, view: Rect, wrap: &Wrap) {
     let wide = wrap.wide;
     let tops = wrap.tops(rows);
     let n = tops.len() - 1;

@@ -49,7 +49,9 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
         // The columns stay clear of the window's resize edge.
         let live = app.mode == Mode::Main;
         let r = Rect::from_min_max(body.min, pos2(body.right() - EDGE, body.bottom()));
-        if app.view == View::Worktree {
+        if app.view == View::Worktree && app.review.is_some() {
+            crate::review_ui::show(ui, app, r, live);
+        } else if app.view == View::Worktree {
             crate::wt_ui::show(ui, app, r, live);
         } else if app.view == View::Graph {
             if matches!(app.repo, Repo::Failed(_)) {
@@ -426,7 +428,7 @@ fn key_bar(ui: &mut Ui, app: &App, r: Rect) {
     let keys: Vec<(&str, &'static str)> = match app.mode {
         Mode::Settings => vec![("Esc", "key.back"), ("Ctrl+Tab", "key.page")],
         Mode::Help => vec![("? Esc", "key.back")],
-        Mode::Main => app.view.keys().iter().take(KEYBAR_KEYS).copied().chain([("?", "key.help")]).collect(),
+        Mode::Main => app.keys().iter().take(KEYBAR_KEYS).copied().chain([("?", "key.help")]).collect(),
     };
     let mut x = r.left() + 10.0;
     for (k, (key, word)) in keys.iter().enumerate() {
@@ -468,7 +470,8 @@ fn help(ui: &mut Ui, app: &App, r: Rect) {
         *y += 8.0;
     };
     section(app.tr("help.global"), &GLOBAL_KEYS, &mut y);
-    section(app.tr(app.view.label()), app.view.keys(), &mut y);
+    let view = if app.keys() == app.view.keys() { app.view.label() } else { "key.branch_diff" };
+    section(app.tr(view), app.keys(), &mut y);
     p.text(pos2(card.left() + 20.0, card.bottom() - 22.0), Align2::LEFT_CENTER, app.tr("help.close"), FontId::proportional(11.5), c.dim);
 }
 

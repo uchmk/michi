@@ -107,6 +107,18 @@ pub fn check(dir: &Path, args: &[&str]) -> Result<bool, Error> {
     }
 }
 
+/// [`read`] of a command that exits 1 when there is nothing to tell
+/// (`merge-base` of two unrelated commits, `rev-parse --verify -q` of a
+/// missing ref): `None` then.
+pub fn read_maybe(dir: &Path, args: &[&str]) -> Result<Option<Vec<u8>>, Error> {
+    let out = command().arg("-C").arg(dir).args(args).output().map_err(started)?;
+    match out.status.code() {
+        Some(0) => Ok(Some(out.stdout)),
+        Some(1) => Ok(None),
+        _ => Err(refused(&String::from_utf8_lossy(&out.stderr))),
+    }
+}
+
 /// [`read`] as text, the last line break taken off.
 pub fn read_text(dir: &Path, args: &[&str]) -> Result<String, Error> {
     let out = read(dir, args)?;

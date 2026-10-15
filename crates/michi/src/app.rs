@@ -18,6 +18,7 @@ use crate::detail::Pane;
 use crate::graph::{Folded, Graph};
 use crate::prefs::Prefs;
 use crate::repo::{Answer, Ask, Reading};
+use crate::review::{Ends, Review, Wish};
 
 /// The three views, opened by `1` to `3` (docs/design.md).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -101,6 +102,17 @@ pub const GLOBAL_KEYS: [(&str, &str); 8] = [
     ("?", "key.help"),
 ];
 
+/// The keys of the branch review, drawn over the worktree table.
+pub const REVIEW_KEYS: [(&str, &str); 7] = [
+    ("j k", "key.file"),
+    ("Space", "key.seen"),
+    ("u", "key.uncommitted"),
+    ("s", "key.since_last"),
+    ("Enter", "key.side"),
+    ("PageDown PageUp", "key.scroll"),
+    ("Esc", "key.back"),
+];
+
 /// What the window shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
@@ -147,6 +159,8 @@ pub struct App {
     pub unseen: Unseen,
     /// The worktree table's selected row.
     pub wt_sel: usize,
+    /// The branch review (`d`), over the worktree table.
+    pub review: Option<Review>,
     /// The side column's groups that are open (`b:feat`, `r:origin`).
     pub side_open: HashSet<String>,
     /// A commit clicked in the side column that is not read yet: read on
@@ -180,6 +194,7 @@ impl App {
             clashes: Clashes::default(),
             unseen: Unseen::default(),
             wt_sel: 0,
+            review: None,
             side_open: HashSet::new(),
             seeking: None,
             detail_wip: None,
@@ -321,16 +336,153 @@ impl App {
             Answer::Wips(wips) => {
                 self.graph.set_wips(wips.iter().filter(|w| !w.files.is_empty()).cloned().collect());
                 self.wips = wips;
+                self.review_sync();
             }
             Answer::Trees(trees) => {
                 // The selection stays on its worktree when the list changes.
                 let path = self.trees.trees.get(self.wt_sel).map(|t| t.wt.path.clone());
                 self.wt_sel = path.and_then(|p| trees.trees.iter().position(|t| t.wt.path == p)).unwrap_or(0);
                 self.trees = trees;
+                self.review_sync();
             }
             Answer::Claude(c) => self.claude = c,
             Answer::Clashes(c) => self.clashes = c,
             Answer::Unseen(u) => self.unseen = u,
+            Answer::ReviewList { gen, result, checks } => {
+                let wish = self.review.as_mut().and_then(|r| r.take_list(gen, result.map(|l| *l), checks));
+                self.wish(wish);
+            }
+            Answer::ReviewFile { gen, result } => {
+                if let Some(r) = self.review.as_mut() {
+                    r.take_file(gen, result.map(|c| *c));
+                }
+            }
+        }
+    }
+
+    /// `d`: the selected worktree's branch as a whole, from where it left
+    /// the trunk.
+    pub fn open_review(&mut self) {
+        let Some(t) = self.wt_selected() else { return };
+        let (path, branch) = (t.wt.path.clone(), t.wt.branch.clone());
+        let word = match branch {
+            _ if self.trees.trunk_head.is_none() => "review.no_trunk",
+            None => "review.detached",
+            Some(branch) => {
+                self.review = Some(Review::new(path, branch));
+                self.review_sync();
+                return;
+            }
+        };
+        let text = self.tr(word);
+        self.say(text);
+    }
+
+    /// Closes the branch review.
+    pub fn close_review(&mut self) {
+        self.review = None;
+        if let Some(r) = &self.reading {
+            r.review_closed();
+        }
+    }
+
+    /// What the branch review reads to: the trunk, its worktree's commit and
+    /// uncommitted change as they are now; `None` while its worktree is not
+    /// on its branch.
+    pub fn review_ends(&self) -> Option<Ends> {
+        let r = self.review.as_ref()?;
+        let t = self.trees.trees.iter().find(|t| t.wt.path == r.path)?;
+        if t.wt.branch.as_deref() != Some(r.branch.as_str()) {
+            return None;
+        }
+        let trunk = self.trees.trunk_head?;
+        let head = Oid::parse(&t.wt.head)?;
+        let wip = self.wip_in(&r.path).filter(|w| !w.files.is_empty() && w.head == head).map(|w| w.commit);
+        Some(Ends { trunk, head, wip })
+    }
+
+    /// Asks for the branch review's list again when what it reads to has
+    /// moved, while it is in sight.
+    pub fn review_sync(&mut self) {
+        if self.view != View::Worktree {
+            return;
+        }
+        let Some(ends) = self.review_ends() else { return };
+        let wish = self.review.as_mut().and_then(|r| r.ask(ends));
+        self.wish(wish);
+    }
+
+    /// Sends what the branch review wants to the reading thread.
+    pub(crate) fn wish(&self, wishes: impl IntoIterator<Item = Wish>) {
+        if let Some(r) = &self.reading {
+            for w in wishes {
+                r.review(w);
+            }
+        }
+    }
+
+    /// The branch review's own keys.
+    fn review_key(&mut self, c: char) -> bool {
+        let Some(r) = self.review.as_mut() else { return false };
+        let mut said = None;
+        let wishes = match c {
+            'j' => r.move_by(1).into_iter().collect(),
+            'k' => r.move_by(-1).into_iter().collect(),
+            ' ' => r.check(),
+            'u' => {
+                r.wip = !r.wip;
+                Vec::new()
+            }
+            's' => {
+                said = r.toggle_since().err();
+                Vec::new()
+            }
+            _ => return false,
+        };
+        self.wish(wishes);
+        match said {
+            Some(word) => {
+                let text = self.tr(word);
+                self.say(text);
+            }
+            None => self.review_sync(),
+        }
+        true
+    }
+
+    /// The branch review's keys with a name.
+    fn review_named(&mut self, name: &str) -> bool {
+        let Some(r) = self.review.as_mut() else { return false };
+        let wish = match name {
+            "ArrowDown" => r.move_by(1),
+            "ArrowUp" => r.move_by(-1),
+            "Home" => r.select(0),
+            "End" => r.select(usize::MAX),
+            "PageDown" => {
+                r.pages += 1;
+                None
+            }
+            "PageUp" => {
+                r.pages -= 1;
+                None
+            }
+            "Enter" => {
+                r.wide = !r.wide;
+                None
+            }
+            _ => return false,
+        };
+        self.wish(wish);
+        true
+    }
+
+    /// The keys that work now: the view's, or the branch review's over the
+    /// worktree table.
+    pub fn keys(&self) -> &'static [(&'static str, &'static str)] {
+        if self.view == View::Worktree && self.review.is_some() {
+            &REVIEW_KEYS
+        } else {
+            self.view.keys()
         }
     }
 
@@ -422,8 +574,16 @@ impl App {
             (Mode::Main, '?') => self.mode = Mode::Help,
             (Mode::Main, ',') => self.mode = Mode::Settings,
             (Mode::Main, c) => match View::from_digit(c) {
-                Some(v) => self.view = v,
+                Some(v) => {
+                    self.view = v;
+                    self.review_sync();
+                }
                 None if self.view == View::Graph && self.graph_key(c) => {}
+                None if self.view == View::Worktree && self.review.is_some() => {
+                    if !self.review_key(c) {
+                        return self.later(|token| token.chars().eq([c]));
+                    }
+                }
                 None if self.view == View::Worktree && self.wt_key(c) => {}
                 None => return self.later(|token| token.chars().eq([c])),
             },
@@ -451,6 +611,7 @@ impl App {
         match c {
             'j' => self.wt_move(1),
             'k' => self.wt_move(-1),
+            'd' => self.open_review(),
             _ => return false,
         }
         true
@@ -492,6 +653,9 @@ impl App {
             }
             return true;
         }
+        if self.view == View::Worktree && self.review.is_some() {
+            return self.review_named(name) || self.later(|token| token == name);
+        }
         if self.view == View::Worktree {
             let n = self.trees.trees.len() as i32;
             match name {
@@ -518,7 +682,7 @@ impl App {
     /// A key of the view or of every view whose work comes in a later stage:
     /// say so. `Space` is the space character.
     fn later(&mut self, is: impl Fn(&str) -> bool) -> bool {
-        let found = self.view.keys().iter().chain(GLOBAL_KEYS.iter()).find(|(keys, _)| {
+        let found = self.keys().iter().chain(GLOBAL_KEYS.iter()).find(|(keys, _)| {
             keys.split(' ').any(|token| {
                 let token = if token == "Space" { " " } else { token };
                 is(token)
@@ -531,7 +695,9 @@ impl App {
     }
 
     /// Escape: close the help or the settings, else bring the graph back
-    /// from beside a wide diff, else clear the graph's filter.
+    /// from beside a wide diff, else clear the graph's filter; over the
+    /// worktree table, bring the review's diff back to one column, else close
+    /// the review.
     pub fn escape(&mut self) -> bool {
         if self.mode != Mode::Main {
             self.mode = Mode::Main;
@@ -544,6 +710,16 @@ impl App {
         if self.view == View::Graph && !self.graph.filter().is_empty() {
             self.graph.set_filter("");
             return true;
+        }
+        if self.view == View::Worktree {
+            if let Some(r) = self.review.as_mut().filter(|r| r.wide) {
+                r.wide = false;
+                return true;
+            }
+            if self.review.is_some() {
+                self.close_review();
+                return true;
+            }
         }
         false
     }
@@ -647,9 +823,74 @@ mod tests {
             assert_ne!(crate::i18n::tr("en", v.label()), v.label());
             assert_ne!(crate::i18n::tr("en", v.empty()), v.empty());
         }
-        for (_, w) in GLOBAL_KEYS {
-            assert_ne!(crate::i18n::tr("en", w), w, "no words for {w}");
+        for (_, w) in GLOBAL_KEYS.iter().chain(&REVIEW_KEYS) {
+            assert_ne!(crate::i18n::tr("en", w), *w, "no words for {w}");
         }
+    }
+
+    #[test]
+    fn d_opens_the_branch_review_over_the_worktree_table() {
+        use michi_core::review::List;
+        use michi_core::show::Changes;
+        let mut a = app();
+        a.view = View::Worktree;
+        let mut trees = fixture::trees();
+        trees.trunk_head = None;
+        a.take(Answer::Trees(trees));
+        a.wt_sel = 1;
+        assert!(a.feed('d'));
+        assert_eq!(toast(&a), "No trunk to compare with");
+        a.take(Answer::Trees(fixture::trees()));
+        a.wt_sel = 2;
+        assert!(a.feed('d'));
+        assert_eq!(toast(&a), "This worktree is on no branch");
+        assert!(a.review.is_none());
+
+        a.take(Answer::Wips(vec![fixture::wip("C:/r/wt", Some("wip"), 7, 11, Some(1))]));
+        a.wt_sel = 1;
+        assert!(a.feed('d'));
+        assert_eq!(a.keys(), &REVIEW_KEYS[..]);
+        let wip = Ends { trunk: fixture::id(6), head: fixture::id(7), wip: Some(fixture::id(11)) };
+        assert_eq!(a.review_ends(), Some(wip), "to the uncommitted changes");
+        let gen = |a: &App| a.review.as_ref().unwrap().gens().0;
+        let first = gen(&a);
+        assert_ne!(first, 0, "the list is asked");
+        assert!(a.feed('s'));
+        assert_eq!(toast(&a), "Reading the branch…");
+        let list = List { base: Some(fixture::id(5)), last: None, changes: Changes::default() };
+        a.take(Answer::ReviewList { gen: first, result: Ok(Box::new(list)), checks: Default::default() });
+        assert!(a.review.as_ref().unwrap().list.as_ref().is_some_and(|l| l.is_ok()));
+        assert!(a.feed('s'));
+        assert_eq!(toast(&a), "Not looked over before: all of it is new");
+        assert!(!a.review.as_ref().unwrap().since_last);
+
+        // Without the uncommitted changes, and the branch moving on: asked again.
+        assert!(a.feed('u'));
+        let second = gen(&a);
+        assert!(!a.review.as_ref().unwrap().wip && second != first);
+        let mut trees = fixture::trees();
+        trees.trees[1].wt.head = fixture::id(8).to_string();
+        a.take(Answer::Trees(trees.clone()));
+        assert_ne!(gen(&a), second);
+        // Another branch there: nothing to read to until it comes back.
+        let third = gen(&a);
+        trees.trees[1].wt.branch = Some("other".into());
+        a.take(Answer::Trees(trees));
+        assert_eq!((a.review_ends(), gen(&a)), (None, third));
+
+        // Over the worktree table only; the other views keep their keys.
+        assert!(a.feed('1'));
+        assert_eq!(a.keys(), View::Graph.keys());
+        assert!(a.feed('3'));
+        assert!(a.review.is_some());
+        assert!(!a.feed('q'), "not a key of the review");
+        assert!(a.named("Enter"));
+        assert!(a.review.as_ref().unwrap().wide);
+        assert!(a.escape());
+        assert!(a.review.as_ref().is_some_and(|r| !r.wide), "one column first");
+        assert!(a.escape());
+        assert!(a.review.is_none());
+        assert_eq!(a.keys(), View::Worktree.keys());
     }
 
     #[test]

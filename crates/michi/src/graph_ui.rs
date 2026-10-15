@@ -743,7 +743,7 @@ fn head_clashes(app: &App, id: Oid) -> Option<String> {
 }
 
 /// `key`'s words for a conflict with `other`: its places and its files.
-fn clash_line(app: &App, key: &'static str, other: &str, c: &Conflict) -> String {
+pub(crate) fn clash_line(app: &App, key: &'static str, other: &str, c: &Conflict) -> String {
     app.tr(key).replace("{b}", other).replace("{n}", &c.places().to_string()).replace("{files}", &leaves(app, c))
 }
 

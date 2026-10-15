@@ -149,3 +149,17 @@
 - [ ] **12.9** Run `cargo build` (or write many files) in an ignored folder of a worktree, and run `git status` there, with michi in front → michi reads nothing for them: no `git.exe` keeps coming up in Task Manager, and the table does not change; a `git status` does not start a read that starts another
 - [ ] **12.10** Open a repository on a network share (`\\server\share` or a mapped drive) → Changes there show within about 5 s while michi is in front; nothing is read while it is behind
 - [ ] **12.11** Switch to the light theme → The blue dots and bold subjects in the graph, the column and the box stay readable
+
+## 13. Branch review
+
+- [~] **13.1** Press `3`, select the worktree and press `d` (or click `Diff d` on it) → The review takes the view: the branch in bold, the switches `Uncommitted u` (lit) and `Since last look s`, `Seen 0 / 5` and `Back Esc`; under them, in red, `Would conflict with main in 1 places (lib.rs)`; the files on the left with a box, the letter (R A M in their colours), the path and `+n −n` (`Binary` for the image); the first file's diff on the right; the key bar lists `j k`, `Space`, `u`, `s`, `Enter`, `PageDown PageUp`, `Esc`
+- [ ] **13.2** Press `j` / `k`; click a file's name; click another file's box → The selection and the diff follow the keys and the click; the click on a box ticks that file without moving the selection
+- [ ] **13.3** Press Space on a file, then on a ticked one → The first is ticked, the selection goes on to the next file not ticked and `Seen` counts up; Space on a ticked file takes the tick off
+- [ ] **13.4** Press Esc, change and save a ticked file in the worktree, wait a second and press `d` → The other ticks are kept; the changed file is not ticked any more (a tick is for the content it was given to); the file above lists the branch
+- [ ] **13.5** Press `u`, then `u` again → The switch goes dark and the file changed only in the worktree leaves the list, `Seen n / m` with it; the second `u` brings it back
+- [ ] **13.6** On a branch never looked over, press `s`; then Esc, commit once more in the worktree, press `d` and `s` → First the toast `Not looked over before: all of it is new`; then the switch is lit, the title reads `since the last look (<short hash>)` and only the files changed since show (and the uncommitted ones); with nothing new, `No file changed since the last look`
+- [ ] **13.7** Press Enter, then Esc twice → Enter widens the diff side by side (the switch reads `Back to one column Esc`), the first Esc puts it back, the second closes the review on the worktree table
+- [ ] **13.8** Select a file with a long diff; roll the wheel over it, press PageDown and PageUp; select another file → The diff scrolls (no scrollbar); the other file starts at its top
+- [ ] **13.9** Press `d` on a worktree with a detached HEAD; on a branch with nothing from main → The toast `This worktree is on no branch`; the review reads `No file changed from main`
+- [ ] **13.10** Commit in the worktree while the review is open; switch the worktree to another branch from a terminal → The list follows the new commit within about a second, keeping the ticks; on another branch the list stays as it was and nothing is read
+- [ ] **13.11** Narrow the window to its smallest; switch to the light theme → The branch name is cut with `…`, the files keep their counts and the key bar folds what does not fit; the colours stay readable in both themes

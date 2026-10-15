@@ -32,8 +32,15 @@
   - [x] File watching (`notify` → `Ask::Reload`) and unseen marks (also the worktree table's unseen column) (v0.7.0)
 - [x] ~~Second mock round before stage 2~~: dropped (the owner, 2026-10-15: go on with the implementation). What stage 2 has to
   decide goes into `question` issues in words, and the work goes on with the recommendation
-- [ ] 2. Change: first the diff of a whole branch (`d`; seen marks, since last time, notes), then stage and commit (lines and hunks,
-  the check while Claude is writing, the count of uncommitted files on the `2` tab), branches, fetch / pull / push with progress, the everyday operations in design.md (amend, revert, tags, stash, discard, clean-up), backups to `refs/michi/backup/<time>`
+- [ ] 2. Change
+  - [x] The diff of a whole branch (`d` in the worktree table, v0.9.0): `main...<branch>` with the uncommitted changes in or out (`u`),
+    files checked as seen by path and blob (`Space`), since the last look (`s`, `refs/michi/seen/<branch>`), the prediction against
+    main on top, side by side (`Enter`) （要確認: #10）
+  - [ ] The branch review's leftovers: notes on lines sent to the branch's Claude (stage 6), merge from the review (with `m`, stages 3–4),
+    `Open PR` (with the PR button, stage 4) （要確認: #10）
+  - [ ] Stage and commit (lines and hunks, the check while Claude is writing, the count of uncommitted files on the `2` tab)
+  - [ ] Branches, fetch / pull / push with progress
+  - [ ] The everyday operations in design.md (amend, revert, tags, stash, discard, clean-up), backups to `refs/michi/backup/<time>`
 - [ ] 3. Conflicts: the conflict screen (`4`), locks during a merge (and「· マージ中」in red on the chip), rerere asked once, cherry-pick; prediction moved to gix-merge and
   checked against `git merge-tree --write-tree`; the prediction's text while a merge is under way (「予測は衝突の解消（4）の実物に変わりました」)
 - [ ] 4. Worktrees: new work (`N`), remove (`x`), go to the tab (`o`), take in main (`m`), the PR button (`gh pr create`); needs tsumugi `new --worktree BRANCH --from REF`

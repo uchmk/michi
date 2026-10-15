@@ -11,6 +11,10 @@
 //! never holds up the history: only the newest wish is read, and one read
 //! halfway stops when another comes.
 //!
+//! A fourth thread reads for the branch review: a branch's files from where
+//! it left the trunk, and one file's diff, each only for the newest wish,
+//! and keeps the files checked as looked at.
+//!
 //! A third thread keeps an eye on the worktrees: each one's uncommitted
 //! change, how it stands against the trunk and its upstream, which would
 //! conflict with which, the commits not seen yet, and the Claude sessions
@@ -20,7 +24,7 @@
 //! seconds while the window is in front and seldom behind it. When the refs
 //! moved, the history is read again.
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -34,7 +38,8 @@ use michi_core::git::{self, Version};
 use michi_core::history::Setup;
 use michi_core::log::{self, Commit, Reader};
 use michi_core::oid::Oid;
-use michi_core::show::{self, Detail};
+use michi_core::review::{self, Checks, List};
+use michi_core::show::{self, Changes, Detail};
 use michi_core::summary::{self, Summary};
 use michi_core::track::{self, Trees};
 use michi_core::unseen::{self, Marks, Unseen};
@@ -42,6 +47,7 @@ use michi_core::wip::{self, Wip};
 use michi_core::worktree::{self, Worktree};
 
 use crate::fswatch::{self, Fs};
+use crate::review::Wish;
 
 /// What the reading thread sends back.
 #[derive(Debug)]
@@ -72,6 +78,11 @@ pub enum Answer {
     /// The Claude sessions in each worktree (by its folder; only those with
     /// some); `None` when tsumugi is not there to ask.
     Claude(Option<Sessions>),
+    /// The files of a branch review, as [`Reading::review`] asked, and those
+    /// of its branch checked as looked at.
+    ReviewList { gen: u32, result: Result<Box<List>, git::Error>, checks: BTreeSet<review::Key> },
+    /// One file's diff in a branch review.
+    ReviewFile { gen: u32, result: Result<Box<Changes>, git::Error> },
 }
 
 /// What the window asks of the reading thread.
@@ -98,6 +109,10 @@ pub struct Reading {
     /// Whether the window is in front, and wishes to read the worktrees
     /// now, for the watching thread.
     pokes: Sender<Poke>,
+    /// What the branch review wants, and the newest list's and diff's
+    /// numbers.
+    looks: Sender<Wish>,
+    look_latest: Arc<[AtomicU32; 2]>,
 }
 
 /// What the window, and the folders' watcher, tell the watching thread.
@@ -134,6 +149,26 @@ impl Reading {
     /// The commit `id` was selected in the graph: it is seen now.
     pub fn seen(&self, id: Oid) {
         let _ = self.pokes.send(Poke::Seen(id));
+    }
+}
+
+impl Reading {
+    /// What the branch review wants read; an older wish of the same kind
+    /// not yet answered is dropped.
+    pub fn review(&self, wish: Wish) {
+        match &wish {
+            Wish::List { gen, .. } => self.look_latest[0].store(*gen, Ordering::SeqCst),
+            Wish::File { gen, .. } => self.look_latest[1].store(*gen, Ordering::SeqCst),
+            Wish::Check { .. } => {}
+        }
+        let _ = self.looks.send(wish);
+    }
+
+    /// The branch review is closed: what it asked is not read on.
+    pub fn review_closed(&self) {
+        for l in self.look_latest.iter() {
+            l.store(0, Ordering::SeqCst);
+        }
     }
 }
 
@@ -180,6 +215,17 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         });
         watch(&watch_dir, &poke_rx, &watch_asks, fs, send);
     });
+    let (looks, look_rx) = mpsc::channel();
+    let look_latest = Arc::new([AtomicU32::new(0), AtomicU32::new(0)]);
+    let (look_tx, look_dir, look_ctx, latests) = (tx.clone(), dir.clone(), ctx.clone(), look_latest.clone());
+    // No thread for the review: it stays empty.
+    let _ = std::thread::Builder::new().name("review".into()).spawn(move || {
+        let send = |a: Answer| {
+            let _ = look_tx.send(a);
+            look_ctx.request_repaint();
+        };
+        reviews(&look_dir, &look_rx, &latests, send);
+    });
     let thread_tx = tx.clone();
     let spawned = std::thread::Builder::new().name("repo".into()).spawn(move || {
         let send = |a: Answer| {
@@ -198,7 +244,7 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         // No thread: say so where the summary would have gone.
         let _ = tx.send(Answer::Summary(Err(git::Error::Io(e.to_string()))));
     }
-    Reading { answers, asks, wants, latest, pokes }
+    Reading { answers, asks, wants, latest, pokes, looks, look_latest }
 }
 
 /// How long the folders must stay quiet after a change before it is read.
@@ -240,7 +286,7 @@ struct Last {
 /// is sent only when it differs from the last.
 fn watch(dir: &Path, pokes: &Receiver<Poke>, asks: &Sender<Ask>, mut fs: Fs, send: impl Fn(Answer)) {
     let common = unseen::common_dir(dir).ok();
-    let marks_file = common.as_deref().and_then(marks_path);
+    let marks_file = common.as_deref().and_then(|c| state_path(c, "seen"));
     let mut marks = marks_file.as_deref().and_then(|f| std::fs::read_to_string(f).ok()).map(|t| Marks::parse(&t)).unwrap_or_default();
     let mut last = Last::default();
     let mut caches = (track::Cache::default(), clash::Cache::default(), unseen::Cache::default());
@@ -440,9 +486,9 @@ fn refs_print(dir: &Path, wts: &[Worktree]) -> Option<String> {
     Some(out)
 }
 
-/// The state file of what has been seen in the repository whose common git
-/// folder is `common`.
-fn marks_path(common: &Path) -> Option<PathBuf> {
+/// The state file in michi's `folder` (`seen`, `review`) for the
+/// repository whose common git folder is `common`.
+fn state_path(common: &Path, folder: &str) -> Option<PathBuf> {
     let own = common.file_name()?.to_string_lossy().into_owned();
     // `repo/.git` goes by `repo`; a bare `repo.git` by `repo`.
     let name = if own.eq_ignore_ascii_case(".git") {
@@ -450,13 +496,79 @@ fn marks_path(common: &Path) -> Option<PathBuf> {
     } else {
         own.strip_suffix(".git").unwrap_or(&own).to_owned()
     };
-    Some(ito_common::state_dir("michi")?.join("seen").join(unseen::file_name(&name, common)))
+    Some(ito_common::state_dir("michi")?.join(folder).join(unseen::file_name(&name, common)))
 }
 
 fn save_marks(marks: &Marks, file: Option<&Path>) {
     let Some(file) = file else { return };
     if let Err(e) = ito_common::write_atomic(file, marks.to_json()) {
         eprintln!("michi: {e}");
+    }
+}
+
+/// Reads what the branch review wants, until the window is gone: of the
+/// wishes that came while one was read, the newest list and the newest diff
+/// (a read stopped and dropped once a newer one comes), and every check.
+fn reviews(dir: &Path, wishes: &Receiver<Wish>, latest: &[AtomicU32; 2], send: impl Fn(Answer)) {
+    let file = unseen::common_dir(dir).ok().and_then(|c| state_path(&c, "review"));
+    let mut checks = file.as_deref().and_then(|f| std::fs::read_to_string(f).ok()).map(|t| Checks::parse(&t)).unwrap_or_default();
+    let save = |checks: &Checks| {
+        let Some(file) = &file else { return };
+        if let Err(e) = ito_common::write_atomic(file, checks.to_json()) {
+            eprintln!("michi: {e}");
+        }
+    };
+    // Takes in a wish that came: a check at once, the newest list and diff
+    // for their turn.
+    let take = |w: Wish, checks: &mut Checks, list: &mut Option<Wish>, one: &mut Option<Wish>| match w {
+        Wish::List { .. } => *list = Some(w),
+        Wish::File { .. } => *one = Some(w),
+        Wish::Check { branch, key, on } => {
+            if checks.set(&branch, &key, on) {
+                save(checks);
+            }
+        }
+    };
+    let (mut list, mut one) = (None, None);
+    loop {
+        if list.is_none() && one.is_none() {
+            match wishes.recv() {
+                Ok(w) => take(w, &mut checks, &mut list, &mut one),
+                Err(_) => return,
+            }
+        }
+        while let Ok(w) = wishes.try_recv() {
+            take(w, &mut checks, &mut list, &mut one);
+        }
+        if let Some(Wish::List { gen, branch, trunk, head, end, since, prune }) = list.take() {
+            let stale = || latest[0].load(Ordering::SeqCst) != gen;
+            if !stale() {
+                let result = review::list(dir, &branch, &trunk, &head, &end, since.as_ref(), &stale);
+                // The checks that came while it was read go with it.
+                while let Ok(w) = wishes.try_recv() {
+                    take(w, &mut checks, &mut list, &mut one);
+                }
+                if let Ok(l) = &result {
+                    // Only the whole of the branch tells which checks are stale.
+                    if prune && l.base.is_some() && !l.changes.cut && !stale() && checks.prune(&branch, &l.changes.files) {
+                        save(&checks);
+                    }
+                }
+                if !stale() {
+                    send(Answer::ReviewList { gen, result: result.map(Box::new), checks: checks.of(&branch) });
+                }
+            }
+        }
+        if let Some(Wish::File { gen, from, to, paths }) = one.take() {
+            let stale = || latest[1].load(Ordering::SeqCst) != gen;
+            if !stale() {
+                let paths: Vec<&str> = paths.iter().map(String::as_str).collect();
+                let result = show::changes_in(dir, &from, &to, &paths, true, &stale);
+                if !stale() {
+                    send(Answer::ReviewFile { gen, result: result.map(Box::new) });
+                }
+            }
+        }
     }
 }
 

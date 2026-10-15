@@ -857,6 +857,7 @@ pub(crate) mod fixture {
             status: michi_core::show::Status::Modified,
             path: "src/lib.rs".into(),
             from: None,
+            blob: None,
             counts: Some((3, 1)),
             hunks: Vec::new(),
             eol_only: false,

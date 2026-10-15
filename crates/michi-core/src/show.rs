@@ -78,6 +78,8 @@ pub struct File {
     pub path: String,
     /// Where a renamed or copied file came from.
     pub from: Option<String>,
+    /// Its content after the change (the blob's id); `None` when deleted.
+    pub blob: Option<Oid>,
     /// Lines added and deleted; `None` for a binary file.
     pub counts: Option<(u32, u32)>,
     pub hunks: Vec<Hunk>,
@@ -209,7 +211,7 @@ pub fn read(dir: &Path, id: &Oid, patch: bool, stop: &dyn Fn() -> bool) -> Resul
 
 fn read_with(dir: &Path, id: &Oid, patch: bool, limits: &Limits, stop: &dyn Fn() -> bool) -> Result<Detail, git::Error> {
     let mut c = git::command();
-    c.arg("-C").arg(dir).args(["-c", "core.quotePath=false", "show", FORMAT, "-z", "--raw", "--numstat", "-M", "--root"]);
+    c.arg("-C").arg(dir).args(["-c", "core.quotePath=false", "show", FORMAT, "-z", "--raw", "--no-abbrev", "--numstat", "-M", "--root"]);
     c.args(["--diff-merges=first-parent", "--no-color", "--no-ext-diff", "--no-relative", "--no-show-signature"]);
     c.args(["--encoding=UTF-8", "--src-prefix=a/", "--dst-prefix=b/"]);
     if patch {
@@ -244,13 +246,23 @@ pub struct Changes {
 /// (a worktree's uncommitted changes: from its head to its WIP commit), as
 /// [`read`] gives a commit's.
 pub fn changes(dir: &Path, from: &Oid, to: &Oid, patch: bool, stop: &dyn Fn() -> bool) -> Result<Changes, git::Error> {
+    changes_in(dir, from, to, &[], patch, stop)
+}
+
+/// [`changes`] of the files at `paths` alone (all of them when there are
+/// none): a renamed file is found when both its paths are given.
+pub fn changes_in(dir: &Path, from: &Oid, to: &Oid, paths: &[&str], patch: bool, stop: &dyn Fn() -> bool) -> Result<Changes, git::Error> {
     let mut c = git::command();
-    c.arg("-C").arg(dir).args(["-c", "core.quotePath=false", "diff", "-z", "--raw", "--numstat", "-M"]);
+    c.env("GIT_LITERAL_PATHSPECS", "1");
+    c.arg("-C").arg(dir).args(["-c", "core.quotePath=false", "diff", "-z", "--raw", "--no-abbrev", "--numstat", "-M"]);
     c.args(["--no-color", "--no-ext-diff", "--no-relative", "--src-prefix=a/", "--dst-prefix=b/"]);
     if patch {
         c.arg("--patch");
     }
     c.args([from.to_string(), to.to_string()]);
+    if !paths.is_empty() {
+        c.arg("--").args(paths);
+    }
     let mut run = git::Running::start(c, "diff")?;
     let mut changes = Changes::default();
     let ended = files(&mut run.out, &mut changes.files, &mut changes.cut, patch, &LIMITS, stop).map_err(|e| run.io(e))?;
@@ -313,12 +325,24 @@ fn files(
         let f = String::from_utf8_lossy(f).into_owned();
         if let Some(meta) = f.strip_prefix(':') {
             let status = Status::parse(meta.rsplit(' ').next().unwrap_or(""));
+            // `old-mode new-mode old-id new-id status`.
+            let blob = meta.split(' ').nth(3).and_then(Oid::parse).filter(|b| !b.is_zero());
             let one = field(out, &mut buf)?;
             let (path, from) = match status {
                 Status::Renamed | Status::Copied => (field(out, &mut buf)?, Some(one)),
                 _ => (one, None),
             };
-            files.push(File { status, path, from, counts: Some((0, 0)), hunks: Vec::new(), eol_only: false, cut: false, not_utf8: false });
+            files.push(File {
+                status,
+                path,
+                from,
+                blob,
+                counts: Some((0, 0)),
+                hunks: Vec::new(),
+                eol_only: false,
+                cut: false,
+                not_utf8: false,
+            });
         } else {
             let mut p = f.splitn(3, '\t');
             let (added, deleted) = (p.next().unwrap_or(""), p.next().unwrap_or(""));
@@ -712,13 +736,7 @@ mod tests {
     fn the_changes_between_two_commits_are_read() {
         let r = TempRepo::new("show-changes");
         let from = head(&r);
-        fs::write(
-            r.repo.join("n.txt"),
-            "one
-two
-",
-        )
-        .unwrap();
+        fs::write(r.repo.join("n.txt"), "one\ntwo\n").unwrap();
         r.git(&r.repo, &["add", "n.txt"]);
         r.git(&r.repo, &["commit", "-q", "-m", "n"]);
         let to = head(&r);
@@ -731,6 +749,37 @@ two
         let c = changes(&r.repo, &from, &to, false, &never).unwrap();
         assert!(c.files[0].hunks.is_empty() && c.files[0].counts == Some((2, 0)));
         assert!(changes(&r.repo, &to, &to, true, &never).unwrap().files.is_empty());
+    }
+
+    #[test]
+    fn one_file_s_changes_are_read_with_its_blob() {
+        let r = TempRepo::new("show-one-file");
+        r.write(&r.repo, "a.txt", &"a line that stays the same\n".repeat(8));
+        r.write(&r.repo, "b.txt", "b\n");
+        r.git(&r.repo, &["add", "-A"]);
+        r.git(&r.repo, &["commit", "-q", "-m", "files"]);
+        let from = head(&r);
+        fs::rename(r.repo.join("a.txt"), r.repo.join("moved.txt")).unwrap();
+        r.write(&r.repo, "b.txt", "b\nmore\n");
+        r.write(&r.repo, "[c].txt", "c\n");
+        r.git(&r.repo, &["add", "-A"]);
+        r.git(&r.repo, &["commit", "-q", "-m", "change"]);
+        let to = head(&r);
+        let blob = |path: &str| Oid::parse(&r.out(&r.repo, &["rev-parse", &format!("HEAD:{path}")]));
+        let all = changes(&r.repo, &from, &to, false, &never).unwrap().files;
+        let got: Vec<_> = all.iter().map(|f| (f.path.as_str(), f.blob)).collect();
+        assert_eq!(got, [("[c].txt", blob("[c].txt")), ("b.txt", blob("b.txt")), ("moved.txt", blob("moved.txt"))]);
+        let one = changes_in(&r.repo, &from, &to, &["moved.txt", "a.txt"], true, &never).unwrap().files;
+        assert_eq!(one.len(), 1);
+        assert_eq!((one[0].status, one[0].from.as_deref()), (Status::Renamed, Some("a.txt")));
+        // Taken as it is, not as a pattern.
+        let one = changes_in(&r.repo, &from, &to, &["[c].txt"], true, &never).unwrap().files;
+        assert_eq!(one.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), ["[c].txt"]);
+        assert_eq!(kinds(&one[0].hunks[0]), "+");
+        r.git(&r.repo, &["rm", "-q", "b.txt"]);
+        r.git(&r.repo, &["commit", "-q", "-m", "gone"]);
+        let gone = changes(&r.repo, &to, &head(&r), false, &never).unwrap().files;
+        assert_eq!((gone[0].status, gone[0].blob), (Status::Deleted, None));
     }
 
     #[test]
