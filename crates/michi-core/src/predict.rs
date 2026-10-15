@@ -41,6 +41,12 @@ impl Conflict {
     pub fn hunks(&self) -> u32 {
         self.files.iter().filter_map(|f| f.hunks).sum()
     }
+
+    /// The places to resolve: the hunks, and a file with none to count (a
+    /// deletion against an edit, a binary file) as one.
+    pub fn places(&self) -> u32 {
+        self.files.iter().map(|f| f.hunks.unwrap_or(1)).sum()
+    }
 }
 
 /// Whether merging `b` into `a` (any two revisions) would conflict, run in
@@ -481,7 +487,7 @@ mod tests {
         commit_in(&r, &wt, "d/g.txt", "two\n");
         let c = predict(&r.repo, "main", "wt").unwrap().unwrap();
         assert_eq!(c.files, [ConflictFile { path: "d/g.txt".into(), hunks: None }]);
-        assert_eq!(c.hunks(), 0);
+        assert_eq!((c.hunks(), c.places()), (0, 1));
     }
 
     #[test]

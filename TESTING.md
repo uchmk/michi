@@ -134,7 +134,7 @@ Open a repository with a main worktree, a worktree on a branch that is pushed an
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 10.1 | Press `3` | `Reading the worktrees…`, then a title `<repo> · N worktrees` with `Read again` and `New work` (`N`) at the right, and a table: `Branch · folder`, `From main`, `Uncommitted`, and buttons; the main worktree on top, each row with its branch in its lane colour and its folder under it |
+| 10.1 | Press `3` | `Reading the worktrees…`, then a title `<repo> · N worktrees` with `Read again` and `New work` (`N`) at the right, and a table: `Branch · folder`, `From main`, `Uncommitted`, `Conflicts ahead`, and buttons; the main worktree on top, each row with its branch in its lane colour and its folder under it |
 | 10.2 | Run a Claude in a worktree from tsumugi, then quit tsumugi | The title adds ` · Claude N` and a `Claude (tsumugi)` column shows the state chip in bold, its note (two rows at most), `Tab N · <title>` with `o` and since when; rows with none say `No Claude running`; within a few seconds of quitting tsumugi the column goes |
 | 10.3 | Look at the `From main` column | `↑a ↓b` against main, and under it the branch against its upstream: `Same as origin/x`, `N not pushed to origin/x`, `origin/x is N ahead`, `Diverged from origin/x (↑a ↓b)`, `Not pushed yet`; the main row reads against `origin/main` |
 | 10.4 | Look at the `Uncommitted` column; then put a folder over 2000 files in a worktree, not ignored | `N files`, `+a −d` in green and red and `written at <time>`, or `None`; the big folder adds `Too big to count: <path>` and is not counted |
@@ -143,5 +143,20 @@ Open a repository with a main worktree, a worktree on a branch that is pushed an
 | 10.7 | Press Enter on a row with changes, and double-click a clean row | The graph opens with the row's `Uncommitted` row selected, or its branch's commit |
 | 10.8 | Press `d`, `m`, `x`, `o`, `p` and click `PR` | A toast at the foot names the work and says it comes in a later stage; `New work` gives the same toast as `N`; the main row shows `Pull` and `Show in the graph` instead, and has no `Remove` |
 | 10.9 | Click `Read again` | The toast `Reading the worktrees again…`, and the table follows a change made outside (a new commit, a new worktree) |
-| 10.10 | Narrow the window below 960 wide | Each worktree becomes a card: the branch and folder, then the Claude, `From main` and `Uncommitted` lines, then the buttons, which wrap; still readable at the smallest width |
-| 10.11 | Look at the foot, and switch to the light theme | `The unseen changes and the conflict prediction come in a later stage.` and, when the Claude column shows, how often it reads tsumugi; colours stay readable in both themes |
+| 10.10 | Narrow the window below 960 wide | Each worktree becomes a card: the branch and folder, then the Claude, `From main`, `Uncommitted` and `Conflicts ahead` lines, then the buttons, which wrap; still readable at the smallest width |
+| 10.11 | Look at the foot, and switch to the light theme | `The unseen changes come in a later stage.` and, when the Claude column shows, how often it reads tsumugi; colours stay readable in both themes |
+
+## 11. Conflict prediction
+
+Set up: two worktrees that change the same lines of a file, each committed; a third whose change to that file is not committed yet.
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 11.1 | Press `1` and look at the two worktrees' head commits | Each has a red `⚠ Conflict ahead` pill after its names; hovering says `Would conflict with <branch> in N places (<files>)`, one line per worktree it clashes with |
+| 11.2 | Look at the third worktree's `Uncommitted` row | A dashed yellow `⚠ Conflict ahead` pill after the counts; hovering says `Counting the uncommitted changes, would conflict with <branch> in N places (<files>)` |
+| 11.3 | Press `3` and look at the `Conflicts ahead` column | Red `⚠ <branch>: N places` with the files under it, one for each worktree it clashes with; yellow with `(uncommitted)` for the third; `None` for a worktree that clashes with nothing |
+| 11.4 | Look at the box under the table | `Conflicts ahead (uncommitted changes counted)`, a table of the worktrees' short names both ways: `—` against itself, `·` for a clean pair, the number of places in red, or in yellow with a dashed frame for the uncommitted one; the hint under it and the foot about `git merge-tree` |
+| 11.5 | Hover a number, then click it, then click it again | The tip lists each file with its places; the click frames the cell and the note reads `<a> × <b>: <file> N places. ` with what to expect when they go into main (or, for the yellow one, that committing turns the frame solid); the second click puts the hint back |
+| 11.6 | Commit the third worktree's change; then undo the conflicting edit in one of the first two and commit | Within about 5 s with michi in front, the yellow pill and cell turn red; then the red ones go, and the column says `None` |
+| 11.7 | Narrow the window below 960 wide, then to 1000 wide; switch to the light theme | As cards, each has a `Conflicts ahead` line and the box takes the full width; at 1000 wide the table's columns shrink but nothing overlaps; red and yellow stay readable in light |
+| 11.8 | Open a repository with only one worktree, and look at `git status`, the branches and `git count-objects -vH` after a minute | The box says `Only one worktree: nothing to pair yet.`; nothing was staged, no branch moved, and the objects do not grow by more than the temporary trees; no `git.exe` keeps running after michi is closed |

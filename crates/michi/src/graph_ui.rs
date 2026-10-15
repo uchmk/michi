@@ -14,7 +14,10 @@ use ito_graph::Metrics;
 
 use crate::app::{failed_word, App, Repo};
 use crate::graph::{bot, when, Mark, PillKind};
+use michi_core::clash::Outcome;
 use michi_core::claude::{Session, State};
+use michi_core::oid::Oid;
+use michi_core::predict::Conflict;
 use michi_core::wip::Wip;
 
 /// The band of buttons and the filter over the rows.
@@ -370,6 +373,16 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
             }
             x = pr.right() + 5.0;
         }
+        if let Some(tip) = head_clashes(app, commit.id) {
+            let text = app.tr("clash.pill");
+            let w = warn_width(ui, text);
+            if x + w <= cell_end - 60.0 {
+                let pr = Rect::from_min_size(pos2(x, mid - 8.5), vec2(w, 17.0));
+                paint_warn(ui, &p, pr, text, false, fade);
+                ui.interact(pr, Id::new(("graph-clash", k)), Sense::hover()).on_hover_text(tip);
+                x = pr.right() + 5.0;
+            }
+        }
         if let Some(chip) = g.chip(k) {
             let digits = ui.fonts_mut(|f| f.layout_no_wrap(chip.hidden.to_string(), FontId::monospace(10.5), c.dim));
             let w = 6.0 + 8.0 + 3.0 + digits.size().x + 6.0;
@@ -687,10 +700,78 @@ pub(crate) fn claude_look(app: &App, s: &Session) -> Option<(&'static str, &'sta
     })
 }
 
-/// A WIP row's subject cell: how much is uncommitted, in italics, and what
-/// the Claude there is doing.
+/// What the worktrees whose head is `id` would conflict with, their
+/// commits alone, one line each; `None` when nothing.
+fn head_clashes(app: &App, id: Oid) -> Option<String> {
+    let cl = &app.clashes;
+    let lines: Vec<String> = (0..cl.sides.len())
+        .filter(|&i| cl.sides[i].head == id)
+        .flat_map(|i| cl.of(i))
+        .filter_map(|(j, o)| match o {
+            Outcome::Committed(c) => Some(clash_line(app, "clash.head", &cl.sides[j].name, c)),
+            _ => None,
+        })
+        .collect();
+    (!lines.is_empty()).then(|| {
+        lines.join(
+            "
+",
+        )
+    })
+}
+
+/// `key`'s words for a conflict with `other`: its places and its files.
+fn clash_line(app: &App, key: &'static str, other: &str, c: &Conflict) -> String {
+    app.tr(key).replace("{b}", other).replace("{n}", &c.places().to_string()).replace("{files}", &leaves(app, c))
+}
+
+/// A conflict's files by their last names.
+pub(crate) fn leaves(app: &App, c: &Conflict) -> String {
+    let names: Vec<&str> = c.files.iter().map(|f| f.path.rsplit('/').next().unwrap_or(&f.path)).collect();
+    names.join(app.tr("clash.files_sep"))
+}
+
+/// What the worktree at `path` would conflict with only once its
+/// uncommitted change is counted; `None` when nothing.
+fn wip_clashes(app: &App, path: &std::path::Path) -> Option<String> {
+    let items: Vec<String> = app
+        .clashes_in(path)
+        .into_iter()
+        .filter_map(|(side, o)| match o {
+            Outcome::Uncommitted(c) => Some(clash_line(app, "clash.wip_one", &side.name, c)),
+            _ => None,
+        })
+        .collect();
+    (!items.is_empty()).then(|| app.tr("clash.wip").replace("{}", &items.join(app.tr("clash.wip_sep"))))
+}
+
+/// How wide the ⚠ pill with `text` is.
+pub(crate) fn warn_width(ui: &Ui, text: &str) -> f32 {
+    5.0 + ui.fonts_mut(|f| f.layout_no_wrap(text.to_owned(), FontId::proportional(11.0), Color32::WHITE)).size().x + 5.0
+}
+
+/// The ⚠ pill: outlined in the error colour when the commits conflict,
+/// dashed in the waiting colour when only the uncommitted changes do.
+pub(crate) fn paint_warn(ui: &Ui, p: &egui::Painter, r: Rect, text: &str, wip: bool, fade: f32) {
+    let c = ito_theme::colors();
+    let ink = if wip { c.wait } else { c.err }.gamma_multiply(fade);
+    if wip {
+        let dash = ink.gamma_multiply(0.7);
+        let corners = [r.left_top(), r.right_top(), r.right_bottom(), r.left_bottom(), r.left_top()];
+        p.extend(Shape::dashed_line(&corners, Stroke::new(1.0, dash), 3.0, 2.0));
+    } else {
+        p.rect_stroke(r, CornerRadius::same(3), Stroke::new(1.0, ink), StrokeKind::Inside);
+    }
+    let g = ui.fonts_mut(|f| f.layout_no_wrap(text.to_owned(), FontId::proportional(11.0), ink));
+    p.galley(pos2(r.left() + 5.0, r.center().y - g.size().y / 2.0), g, ink);
+}
+
+/// A WIP row's subject cell: how much is uncommitted, in italics, what
+/// the Claude there is doing, and the ⚠ when the change would conflict.
 fn wip_cell(ui: &Ui, app: &App, p: &egui::Painter, w: &Wip, left_center: Pos2, width: f32) {
     let c = ito_theme::colors();
+    let warn = wip_clashes(app, &w.path).map(|tip| (tip, warn_width(ui, app.tr("clash.pill"))));
+    let width = width - warn.as_ref().map_or(0.0, |(_, pw)| pw + 10.0);
     let (a, d) = w.counts();
     let text =
         app.tr("wip.subject").replace("{n}", &w.files.len().to_string()).replace("{a}", &a.to_string()).replace("{d}", &d.to_string());
@@ -702,7 +783,13 @@ fn wip_cell(ui: &Ui, app: &App, p: &egui::Painter, w: &Wip, left_center: Pos2, w
     }
     job.wrap = TextWrapping::truncate_at_width(width.max(8.0));
     let g = ui.fonts_mut(|f| f.layout_job(job));
+    let end = left_center.x + g.size().x;
     p.galley(pos2(left_center.x, left_center.y - g.size().y / 2.0), g, c.dim);
+    if let Some((tip, pw)) = warn {
+        let pr = Rect::from_min_size(pos2(end + 10.0, left_center.y - 8.5), vec2(pw, 17.0));
+        paint_warn(ui, p, pr, app.tr("clash.pill"), true, 1.0);
+        ui.interact(pr, Id::new(("graph-clash-wip", &w.path)), Sense::hover()).on_hover_text(tip);
+    }
 }
 
 // ── pieces ────────────────────────────────────────────────────
@@ -817,8 +904,8 @@ mod tests {
         assert_eq!(reveal(0.0, row, row, 0), 0.0);
     }
 
-    /// The view draws without a window: before the history, with it,
-    /// filtered, unfolded, narrow, and when the repository failed.
+    /// The view draws without a window: before the history, with it, with
+    /// conflicts ahead, filtered, unfolded, narrow, and when the repository failed.
     #[test]
     fn the_view_draws_in_every_state() {
         use crate::graph::fixture;
@@ -838,6 +925,11 @@ mod tests {
         app.take(Answer::Setup { gen: 1, setup: Box::new(fixture::setup()) });
         app.take(Answer::Commits { gen: 1, batch: fixture::history(), done: true });
         frame(&mut app, 1280.0);
+        // Conflicts ahead: on the heads and on a WIP row.
+        app.take(Answer::Wips(vec![fixture::wip("C:/r/wt", Some("wip"), 7, 11, Some(1_767_225_600))]));
+        app.take(Answer::Clashes(fixture::clashes()));
+        frame(&mut app, 1280.0);
+        frame(&mut app, 720.0);
         app.graph.set_filter("f");
         frame(&mut app, 1280.0);
         app.graph.toggle_fold();

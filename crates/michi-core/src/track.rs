@@ -38,6 +38,9 @@ pub struct Tree {
 pub struct Trees {
     /// The trunk's name (`main`); `None` when the repository has no branch.
     pub trunk: Option<String>,
+    /// The trunk's commit: the local branch's, or its remote's when that is
+    /// ahead.
+    pub trunk_head: Option<Oid>,
     pub trees: Vec<Tree>,
 }
 
@@ -75,7 +78,7 @@ pub fn read(dir: &Path, worktrees: &[Worktree], cache: &mut Cache) -> Result<Tre
         trees.push(Tree { wt: wt.clone(), ahead_behind, upstream });
     }
     cache.0 = counted;
-    Ok(Trees { trunk: trunk.map(|t| t.name), trees })
+    Ok(Trees { trunk_head: trunk.as_ref().map(|t| t.head), trunk: trunk.map(|t| t.name), trees })
 }
 
 /// Commits `head` has that `base` has not, and the other way.
@@ -162,6 +165,7 @@ refs/heads/old\0origin/old\0gone\nrefs/heads/local\0\0\nrefs/heads/up\0origin/up
         let mut cache = Cache::default();
         let t = read(&r.repo, &all, &mut cache).unwrap();
         assert_eq!(t.trunk.as_deref(), Some("main"));
+        assert_eq!(t.trunk_head.map(|h| h.to_string()), Some(r.out(&r.repo, &["rev-parse", "main"])));
         assert_eq!(t.trees.len(), 3);
         let main = &t.trees[0];
         assert_eq!(main.ahead_behind, Some((0, 0)));

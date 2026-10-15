@@ -800,10 +800,28 @@ pub(crate) mod fixture {
         old.locked = Some(String::new());
         Trees {
             trunk: Some("main".into()),
+            trunk_head: Some(id(6)),
             trees: vec![
                 Tree { wt: wts[0].clone(), ahead_behind: Some((0, 0)), upstream: up("origin/main", 0, 0, false) },
                 Tree { wt: wts[1].clone(), ahead_behind: Some((1, 0)), upstream: up("origin/wip", 2, 1, false) },
                 Tree { wt: old, ahead_behind: Some((0, 3)), upstream: None },
+            ],
+        }
+    }
+
+    /// The three worktrees' sides: `main` and `wip` conflict in two files,
+    /// `wip`'s uncommitted change with the folder at v1 in one.
+    pub fn clashes() -> michi_core::clash::Clashes {
+        use michi_core::clash::{Clashes, Outcome, Side};
+        use michi_core::predict::{Conflict, ConflictFile};
+        let side = |name: &str, path: &str, head, tip| Side { name: name.into(), path: Some(path.into()), head: id(head), tip: id(tip) };
+        let file = |path: &str, hunks| ConflictFile { path: path.into(), hunks };
+        Clashes {
+            sides: vec![side("main", "C:/r/repo", 6, 6), side("wip", "C:/r/wt", 7, 11), side("C:/r/old", "C:/r/old", 4, 4)],
+            pairs: vec![
+                Outcome::Committed(Conflict { files: vec![file("src/lib.rs", Some(2)), file("assets/logo.png", None)] }),
+                Outcome::Clean,
+                Outcome::Uncommitted(Conflict { files: vec![file("src/lib.rs", Some(1))] }),
             ],
         }
     }

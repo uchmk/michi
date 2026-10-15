@@ -12,7 +12,8 @@
 //! halfway stops when another comes.
 //!
 //! A third thread keeps an eye on the worktrees: each one's uncommitted
-//! change, how it stands against the trunk and its upstream, and the Claude
+//! change, how it stands against the trunk and its upstream, which would
+//! conflict with which, and the Claude
 //! sessions tsumugi runs in them, read again every few seconds while the
 //! window is in front and seldom behind it.
 
@@ -22,6 +23,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use michi_core::clash::{self, Clashes};
 use michi_core::claude::{self, Session};
 use michi_core::git::{self, Version};
 use michi_core::history::Setup;
@@ -55,6 +57,8 @@ pub enum Answer {
     Wips(Vec<Wip>),
     /// How each worktree stands against the trunk and its upstream.
     Trees(Trees),
+    /// Which worktrees would conflict with which.
+    Clashes(Clashes),
     /// The Claude sessions in each worktree (by its folder; only those with
     /// some); `None` when tsumugi is not there to ask.
     Claude(Option<Vec<(PathBuf, Vec<Session>)>>),
@@ -181,8 +185,9 @@ const WIP_EVERY: Duration = Duration::from_secs(5);
 fn watch(dir: &Path, pokes: &Receiver<Poke>, send: impl Fn(Answer)) {
     let mut front = true;
     let mut wips_read: Option<Instant> = None;
-    let (mut last_wips, mut last_trees, mut last_claude) = (None, None, None);
+    let (mut last_wips, mut last_trees, mut last_clashes, mut last_claude) = (None, None, None, None);
     let mut counts = track::Cache::default();
+    let mut predictions = clash::Cache::default();
     let mut timeouts = 0u32;
     loop {
         let tick = Instant::now();
@@ -193,15 +198,24 @@ fn watch(dir: &Path, pokes: &Receiver<Poke>, send: impl Fn(Answer)) {
             let wips: Vec<Wip> = wip::read_all(wts).into_iter().filter_map(|r| r.ok().flatten()).collect();
             if last_wips.as_ref() != Some(&wips) {
                 last_wips = Some(wips.clone());
-                send(Answer::Wips(wips));
+                send(Answer::Wips(wips.clone()));
             }
+            let mut trunk = None;
             match track::read(dir, wts, &mut counts) {
-                Ok(trees) if last_trees.as_ref() != Some(&trees) => {
-                    last_trees = Some(trees.clone());
-                    send(Answer::Trees(trees));
+                Ok(trees) => {
+                    trunk = trees.trunk.clone().zip(trees.trunk_head);
+                    if last_trees.as_ref() != Some(&trees) {
+                        last_trees = Some(trees.clone());
+                        send(Answer::Trees(trees));
+                    }
                 }
-                Ok(_) => {}
                 Err(e) => eprintln!("michi: {e}"),
+            }
+            let sides = clash::sides(wts, &wips, trunk.as_ref().map(|(n, h)| (n.as_str(), *h)));
+            let clashes = clash::read(dir, sides, &mut predictions);
+            if last_clashes.as_ref() != Some(&clashes) {
+                last_clashes = Some(clashes.clone());
+                send(Answer::Clashes(clashes));
             }
         }
         let claude = match claude::fetch() {

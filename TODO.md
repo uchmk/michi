@@ -24,8 +24,10 @@
     over 10 MB, or past 2000 files or 50 MB in all, are left out and named
   - [x] A worktree whose only change is a big untracked folder has no WIP row: say so somewhere (the worktree table, v0.5.0)
   - [x] The worktree table with the Claude column (`tsumugi ls --json`), its cards below 960 wide (v0.5.0)
-  - [ ] Conflict prediction in the UI (⚠ on heads, a dashed frame on WIP rows, the column and the pair table in the worktree table);
-    michi-core has it (`predict`)
+  - [x] Conflict prediction in the UI (⚠ on heads, a dashed frame on WIP rows, the column and the pair table in the worktree table,
+    v0.6.0): the worktrees and the trunk paired, every 5 s while in front
+  - [ ] Conflict prediction's leftovers: every local branch against main (not only the worktrees), reading again 2 s after a folder
+    changes (with the file watching), and the text while a merge is under way (stage 3)
   - [ ] File watching (`notify` → `Ask::Reload`) and unseen marks (also the worktree table's unseen column)
 - [ ] Second mock round before stage 2: changes and staging, the diff of a whole branch (seen marks, since last time, notes), rebase;
   ask the owner with a `question` issue

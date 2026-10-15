@@ -1,8 +1,9 @@
 //! The worktree view (`3`): a row per worktree with its branch and folder,
 //! the Claude working in it, how far it is from the trunk and from where it
-//! pushes, and what is not committed. Drawn with the painter; it scrolls by
-//! the wheel with no scrollbar (docs/design.md: the graph's is the one). In
-//! a narrow window the rows become cards (docs/mock).
+//! pushes, what is not committed and what it would conflict with; under
+//! them, the table of the pairs that would conflict. Drawn with the painter;
+//! it scrolls by the wheel with no scrollbar (docs/design.md: the graph's is
+//! the one). In a narrow window the rows become cards (docs/mock).
 
 use std::sync::Arc;
 
@@ -11,6 +12,7 @@ use egui::{
     pos2, vec2, Align2, Color32, CornerRadius, CursorIcon, FontId, Galley, Id, Painter, Pos2, Rect, Sense, Stroke, StrokeKind, TextFormat,
     Ui,
 };
+use michi_core::clash::Outcome;
 use michi_core::claude::{Session, State};
 use michi_core::track::Tree;
 
@@ -26,7 +28,14 @@ const CELL_X: f32 = 10.0;
 const CELL_Y: f32 = 9.0;
 const TRUNK_W: f32 = 230.0;
 const WIP_W: f32 = 180.0;
+const CLASH_W: f32 = 200.0;
 const ACTS_W: f32 = 250.0;
+/// The narrowest the name and Claude columns get before the others give.
+const REST_MIN: f32 = 200.0;
+const REST_MIN_CLAUDE: f32 = 340.0;
+/// The table of pairs' box: its padding and a cell's height.
+const BOX_PAD: f32 = 12.0;
+const MX_H: f32 = 26.0;
 /// Below this width the rows are cards.
 pub const CARDS: f32 = 960.0;
 /// The label column of a card's lines.
@@ -44,6 +53,11 @@ fn scroll_id() -> Id {
 /// selection moved by the keys.
 fn seen_id() -> Id {
     Id::new("wt-seen")
+}
+
+/// The pair picked in the table of pairs, by the two sides' names.
+fn picked_id() -> Id {
+    Id::new("wt-pair")
 }
 
 /// What a button does.
@@ -318,6 +332,33 @@ fn wip_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
     out
 }
 
+/// What the worktree would conflict with: each side, in how many places,
+/// in which files; yellow where only its uncommitted change does.
+fn clash_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
+    let c = ito_theme::colors();
+    if app.clashes.side_of(&t.wt.path).is_none() {
+        return vec![text(layout(ui, "—", FontId::proportional(12.5), c.dim, w), 0.0)];
+    }
+    let mut out = Vec::new();
+    for (side, o) in app.clashes_in(&t.wt.path) {
+        let Some(cf) = o.conflict() else { continue };
+        let wip = matches!(o, Outcome::Uncommitted(_));
+        let words = app.tr("wt.clash").replace("{b}", &side.name).replace("{n}", &cf.places().to_string());
+        let ink = if wip { c.wait } else { c.err };
+        let gap = if out.is_empty() { 0.0 } else { 5.0 };
+        out.push(Piece::Text { g: layout(ui, words, FontId::proportional(12.5), ink, w), gap, indent: 0.0, bold: true });
+        let mut files = crate::graph_ui::leaves(app, cf);
+        if wip {
+            files = app.tr("wt.clash_wip").replace("{}", &files);
+        }
+        out.push(text(layout(ui, files, FontId::proportional(11.5), c.dim, w), 2.0));
+    }
+    if out.is_empty() {
+        out.push(text(layout(ui, app.tr("wt.none"), FontId::proportional(12.5), c.dim, w), 0.0));
+    }
+    out
+}
+
 /// The row's buttons: the trunk's pulls and opens the graph; the others
 /// show their diff, take in the trunk, open a PR or go.
 fn buttons(ui: &Ui, app: &App, t: &Tree, k: usize, trunk: &str) -> Vec<Button> {
@@ -359,8 +400,14 @@ struct Block {
 /// The table's columns: `(left, width)` of each, from the content's left,
 /// with no Claude column when tsumugi is not running.
 fn columns(width: f32, claude: bool) -> Vec<(f32, f32)> {
-    let rest = (width - TRUNK_W - WIP_W - ACTS_W).max(120.0);
-    let widths: Vec<f32> = if claude { vec![rest * 0.45, rest * 0.55, TRUNK_W, WIP_W, ACTS_W] } else { vec![rest, TRUNK_W, WIP_W, ACTS_W] };
+    let fixed = [TRUNK_W, WIP_W, CLASH_W, ACTS_W];
+    let sum: f32 = fixed.iter().sum();
+    let least = if claude { REST_MIN_CLAUDE } else { REST_MIN };
+    // In a window just over the cards' width, the fixed columns give too.
+    let scale = ((width - least) / sum).clamp(0.6, 1.0);
+    let rest = (width - sum * scale).max(120.0);
+    let mut widths: Vec<f32> = if claude { vec![rest * 0.45, rest * 0.55] } else { vec![rest] };
+    widths.extend(fixed.map(|w| w * scale));
     let mut x = 0.0;
     widths
         .into_iter()
@@ -388,6 +435,8 @@ fn row_block(ui: &Ui, app: &App, t: &Tree, k: usize, trunk: &str, cols: &[(f32, 
     let (x, w) = cell(n + 1);
     out.push(Col { x, w, pieces: wip_cell(ui, app, t, w) });
     let (x, w) = cell(n + 2);
+    out.push(Col { x, w, pieces: clash_cell(ui, app, t, w) });
+    let (x, w) = cell(n + 3);
     out.push(Col { x, w, pieces: vec![Piece::Buttons { gap: 0.0, buttons: buttons(ui, app, t, k, trunk) }] });
     let height = line_h(&out) + 2.0 * CELL_Y;
     Block { lines: vec![(CELL_Y, out)], height, card: false }
@@ -424,6 +473,7 @@ fn card_block(ui: &Ui, app: &App, t: &Tree, k: usize, trunk: &str, width: f32, c
     };
     push(kv(app.tr("wt.col.trunk").replace("{}", trunk), trunk_cell(ui, app, t, value_w)), &mut y);
     push(kv(app.tr("wt.col.wip").to_owned(), wip_cell(ui, app, t, value_w)), &mut y);
+    push(kv(app.tr("wt.col.clash").to_owned(), clash_cell(ui, app, t, value_w)), &mut y);
     push(vec![Col { x: pad_x, w: inner, pieces: vec![Piece::Buttons { gap: 0.0, buttons: buttons(ui, app, t, k, trunk) }] }], &mut y);
     Block { lines, height: y - gap + pad_y, card: true }
 }
@@ -481,6 +531,176 @@ fn draw_col(ui: &Ui, p: &Painter, col: &Col, at: Pos2, id: Id, live: bool, act: 
             }
         }
     }
+}
+
+/// The table of pairs, laid out from its box's top left.
+struct Pairs {
+    w: f32,
+    h: f32,
+    title: Arc<Galley>,
+    /// The sides' short names across the top and down the left, cut to fit.
+    tops: Vec<Arc<Galley>>,
+    lefts: Vec<Arc<Galley>>,
+    head_w: f32,
+    cell_w: f32,
+    /// The pair picked, its sides in the table's order.
+    picked: Option<(usize, usize)>,
+    note: Arc<Galley>,
+    foot: Arc<Galley>,
+}
+
+impl Pairs {
+    /// The table's top, from the box's.
+    fn grid_top(&self) -> f32 {
+        BOX_PAD + self.title.size().y + 10.0
+    }
+
+    fn grid_h(&self) -> f32 {
+        if self.tops.len() < 2 {
+            0.0
+        } else {
+            (self.tops.len() + 1) as f32 * MX_H + 10.0
+        }
+    }
+}
+
+/// A side's name without what is before its last `/`.
+fn short(name: &str) -> &str {
+    name.rsplit('/').next().filter(|s| !s.is_empty()).unwrap_or(name)
+}
+
+fn pairs_box(ui: &Ui, app: &App, w: f32) -> Pairs {
+    let c = ito_theme::colors();
+    let inner = w - 2.0 * BOX_PAD;
+    let cl = &app.clashes;
+    let n = cl.sides.len();
+    let font = FontId::proportional(11.5);
+    let title = layout(ui, app.tr("mx.title"), FontId::proportional(12.5), c.fg, inner);
+    let wide = |s: &str| ui.fonts_mut(|f| f.layout_no_wrap(s.to_owned(), font.clone(), c.dim)).size().x;
+    let widest = cl.sides.iter().map(|s| wide(short(&s.name))).fold(0.0, f32::max);
+    let head_w = widest.min(140.0) + 20.0;
+    let cell_w = if n == 0 { 0.0 } else { (widest + 20.0).clamp(40.0, 140.0).min(((inner - head_w) / n as f32).max(30.0)) };
+    let cut = |s: &str, room: f32| layout(ui, cut_end(ui, short(s), font.clone(), room), font.clone(), c.dim, f32::INFINITY);
+    let tops = cl.sides.iter().map(|s| cut(&s.name, cell_w - 12.0)).collect();
+    let lefts = cl.sides.iter().map(|s| cut(&s.name, head_w - 20.0)).collect();
+    let picked = ui.ctx().data(|d| d.get_temp::<(String, String)>(picked_id())).and_then(|(a, b)| {
+        let i = cl.sides.iter().position(|s| s.name == a)?;
+        let j = cl.sides.iter().position(|s| s.name == b)?;
+        cl.between(i, j)?.conflict()?;
+        Some((i, j))
+    });
+    let note = match picked.and_then(|(i, j)| Some((i, j, cl.between(i, j)?))) {
+        _ if n < 2 => app.tr("mx.alone").to_owned(),
+        Some((i, j, o)) => {
+            let places: Vec<String> = o
+                .conflict()
+                .map(|cf| &cf.files[..])
+                .unwrap_or_default()
+                .iter()
+                .map(|f| app.tr("mx.place").replace("{path}", &f.path).replace("{n}", &f.hunks.unwrap_or(1).to_string()))
+                .collect();
+            let mut t = app
+                .tr("mx.pair")
+                .replace("{a}", &cl.sides[i].name)
+                .replace("{b}", &cl.sides[j].name)
+                .replace("{files}", &places.join(app.tr("mx.sep")));
+            let trunk = app.trees.trunk.as_deref().unwrap_or("main");
+            t.push_str(&match o {
+                Outcome::Uncommitted(_) => app.tr("mx.uncommitted").to_owned(),
+                _ => app.tr("mx.committed").replace("{}", trunk),
+            });
+            t
+        }
+        None => app.tr("mx.hint").to_owned(),
+    };
+    let note = layout(ui, note, FontId::proportional(11.5), if picked.is_some() { c.fg } else { c.dim }, inner);
+    let foot = layout(ui, app.tr("mx.foot"), FontId::proportional(11.0), c.dim, inner);
+    let mut b = Pairs { w, h: 0.0, title, tops, lefts, head_w, cell_w, picked, note, foot };
+    b.h = b.grid_top() + b.grid_h() + b.note.size().y + 8.0 + b.foot.size().y + BOX_PAD;
+    b
+}
+
+/// The table of pairs in its box from `at`; the pair clicked, if one was.
+fn draw_pairs(ui: &Ui, p: &Painter, app: &App, b: &Pairs, at: Pos2, live: bool) -> Option<(usize, usize)> {
+    let c = ito_theme::colors();
+    let cl = &app.clashes;
+    let frame = Rect::from_min_size(at, vec2(b.w, b.h));
+    p.rect_stroke(frame, CornerRadius::same(8), Stroke::new(1.0, c.border), StrokeKind::Inside);
+    let x0 = at.x + BOX_PAD;
+    for dx in [0.0, 0.45] {
+        p.galley(pos2(x0 + dx, at.y + BOX_PAD), b.title.clone(), c.fg);
+    }
+    let mut clicked = None;
+    if b.tops.len() >= 2 {
+        let top = at.y + b.grid_top();
+        let edge = Stroke::new(1.0, c.border);
+        let cell = |row: usize, col: usize| {
+            let x = if col == 0 { x0 } else { x0 + b.head_w + (col - 1) as f32 * b.cell_w };
+            let w = if col == 0 { b.head_w } else { b.cell_w };
+            Rect::from_min_size(pos2(x, top + row as f32 * MX_H), vec2(w, MX_H))
+        };
+        p.rect_stroke(cell(0, 0), 0.0, edge, StrokeKind::Middle);
+        for (j, g) in b.tops.iter().enumerate() {
+            let r = cell(0, j + 1);
+            p.rect_stroke(r, 0.0, edge, StrokeKind::Middle);
+            p.galley(r.center() - g.size() / 2.0, g.clone(), c.dim);
+        }
+        for (i, g) in b.lefts.iter().enumerate() {
+            let r = cell(i + 1, 0);
+            p.rect_stroke(r, 0.0, edge, StrokeKind::Middle);
+            p.galley(pos2(r.right() - 10.0 - g.size().x, r.center().y - g.size().y / 2.0), g.clone(), c.dim);
+            for j in 0..b.tops.len() {
+                let r = cell(i + 1, j + 1);
+                let mid = r.center();
+                let picked = b.picked.is_some_and(|q| q == (i, j) || q == (j, i));
+                let dim = |s: &str| {
+                    p.text(mid, Align2::CENTER_CENTER, s, FontId::proportional(12.0), c.dim);
+                };
+                match cl.between(i, j) {
+                    None => {
+                        p.rect_filled(r, 0.0, c.fg.gamma_multiply(0.03));
+                        dim("—");
+                    }
+                    Some(Outcome::Clean) => dim("·"),
+                    Some(Outcome::Unknown) => dim("?"),
+                    Some(o) => {
+                        let Some(cf) = o.conflict() else { continue };
+                        let wip = matches!(o, Outcome::Uncommitted(_));
+                        let ink = if wip { c.wait } else { c.err };
+                        p.rect_filled(r, 0.0, ink.gamma_multiply(if wip { 0.08 } else { 0.1 }));
+                        if picked {
+                            p.rect_stroke(r.shrink(2.0), 0.0, Stroke::new(1.5, ink), StrokeKind::Inside);
+                        } else if wip {
+                            let q = r.shrink(3.0);
+                            let corners = [q.left_top(), q.right_top(), q.right_bottom(), q.left_bottom(), q.left_top()];
+                            p.extend(egui::Shape::dashed_line(&corners, Stroke::new(1.0, ink.gamma_multiply(0.7)), 3.0, 2.0));
+                        }
+                        let n = cf.places().to_string();
+                        for dx in [0.0, 0.45] {
+                            p.text(mid + vec2(dx, 0.0), Align2::CENTER_CENTER, &n, FontId::proportional(12.0), ink);
+                        }
+                        let resp = ui.interact(r.intersect(p.clip_rect()), Id::new(("wt-pair", i, j)), Sense::CLICK);
+                        if live && resp.hovered() {
+                            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+                        }
+                        if live && resp.clicked() {
+                            clicked = Some((i, j));
+                        }
+                        if live {
+                            let mut tip: Vec<String> = if wip { vec![app.tr("mx.tip_wip").to_owned()] } else { Vec::new() };
+                            tip.extend(cf.files.iter().map(|f| format!("{} {}", f.path, f.hunks.unwrap_or(1))));
+                            resp.on_hover_text(tip.join("\n"));
+                        }
+                    }
+                }
+                p.rect_stroke(r, 0.0, edge, StrokeKind::Middle);
+            }
+        }
+    }
+    let y = at.y + b.grid_top() + b.grid_h();
+    p.galley(pos2(x0, y), b.note.clone(), c.dim);
+    p.galley(pos2(x0, y + b.note.size().y + 8.0), b.foot.clone(), c.dim);
+    clicked
 }
 
 /// A button of the top bar, its right edge at `right`; its left edge, and
@@ -552,13 +772,15 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         tops.push(y);
         y += b.height + gap;
     }
+    let pairs_top = y + 14.0;
+    let pairs = pairs_box(ui, app, if cards { width } else { ((width - 18.0) / 2.0).max(420.0).min(width) });
     let foot_w = width.min(900.0);
     let feet: Vec<Arc<Galley>> = ["wt.foot_later", if claude { "wt.foot_claude" } else { "" }]
         .into_iter()
         .filter(|w| !w.is_empty())
         .map(|w| layout(ui, app.tr(w), FontId::proportional(11.5), c.dim, foot_w))
         .collect();
-    let foot_top = y + 14.0;
+    let foot_top = pairs_top + pairs.h + 14.0;
     let total = foot_top + feet.iter().map(|g| g.size().y + 4.0).sum::<f32>() + 16.0;
 
     let mut scroll = ctx.data(|d| d.get_temp::<f32>(scroll_id())).unwrap_or(0.0);
@@ -611,6 +833,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         }
         words.push(app.tr("wt.col.trunk").replace("{}", &trunk));
         words.push(app.tr("wt.col.wip").to_owned());
+        words.push(app.tr("wt.col.clash").to_owned());
         for (word, (x, w)) in words.into_iter().zip(&cols) {
             let word = cut_end(ui, &word, FontId::proportional(11.0), w - 2.0 * CELL_X);
             p.text(pos2(left + x + CELL_X, top + HEAD_H / 2.0), Align2::LEFT_CENTER, word, FontId::proportional(11.0), c.dim);
@@ -655,6 +878,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         }
     }
 
+    let pair = draw_pairs(ui, &p, app, &pairs, pos2(left, at(pairs_top)), live);
     let mut y = at(foot_top);
     for g in feet {
         let h = g.size().y;
@@ -662,6 +886,18 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         y += h + 4.0;
     }
 
+    if let Some((i, j)) = pair {
+        let names = (app.clashes.sides[i].name.clone(), app.clashes.sides[j].name.clone());
+        let same = pairs.picked.is_some_and(|q| q == (i, j) || q == (j, i));
+        ctx.data_mut(|d| {
+            if same {
+                d.remove_temp::<(String, String)>(picked_id());
+            } else {
+                d.insert_temp(picked_id(), names);
+            }
+        });
+        ctx.request_repaint();
+    }
     if again {
         app.reread();
     }
@@ -776,5 +1012,39 @@ mod tests {
         app.wt_move(-2);
         frame(&mut app, 600.0);
         assert_eq!(ctx.data(|d| d.get_temp::<f32>(scroll_id())), Some(0.0));
+        // Conflicts ahead: in the column, in the table of pairs, with a pair
+        // picked, and with one side only.
+        app.take(Answer::Clashes(fixture::clashes()));
+        assert_eq!(app.clashes_in(std::path::Path::new("C:/r/wt")).len(), 2);
+        for width in [1600.0, 1200.0, 980.0, 600.0, 200.0] {
+            frame(&mut app, width);
+        }
+        ctx.data_mut(|d| d.insert_temp(picked_id(), ("wip".to_owned(), "C:/r/old".to_owned())));
+        frame(&mut app, 1200.0);
+        ctx.data_mut(|d| d.insert_temp(picked_id(), ("main".to_owned(), "wip".to_owned())));
+        frame(&mut app, 600.0);
+        let mut one = fixture::clashes();
+        one.sides.truncate(1);
+        one.pairs.clear();
+        app.take(Answer::Clashes(one));
+        frame(&mut app, 1200.0);
+    }
+
+    #[test]
+    fn the_columns_fill_the_width_and_give_near_the_cards() {
+        for (width, claude) in [(1600.0, true), (1200.0, true), (CARDS, true), (CARDS, false)] {
+            let cols = columns(width, claude);
+            let (x, w) = *cols.last().unwrap();
+            assert!((x + w - width).abs() < 0.5, "{width} {claude}: {cols:?}");
+            assert!(cols[0].1 >= 120.0, "{width} {claude}: {cols:?}");
+        }
+        assert_eq!(columns(1600.0, false)[3].1, CLASH_W);
+    }
+
+    #[test]
+    fn a_side_goes_by_the_last_part_of_its_name() {
+        assert_eq!(short("feature/login"), "login");
+        assert_eq!(short("main"), "main");
+        assert_eq!(short("odd/"), "odd/");
     }
 }

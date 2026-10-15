@@ -5,6 +5,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+use michi_core::clash::{Clashes, Outcome, Side};
 use michi_core::claude::Session;
 use michi_core::git::{self, Version};
 use michi_core::oid::Oid;
@@ -139,6 +140,8 @@ pub struct App {
     /// Each worktree's uncommitted change, those with only files too big to
     /// count too (the graph shows the others).
     pub wips: Vec<Wip>,
+    /// Which worktrees would conflict with which.
+    pub clashes: Clashes,
     /// The worktree table's selected row.
     pub wt_sel: usize,
     /// The side column's groups that are open (`b:feat`, `r:origin`).
@@ -171,6 +174,7 @@ impl App {
             claude: None,
             trees: Trees::default(),
             wips: Vec::new(),
+            clashes: Clashes::default(),
             wt_sel: 0,
             side_open: HashSet::new(),
             seeking: None,
@@ -313,6 +317,7 @@ impl App {
                 self.trees = trees;
             }
             Answer::Claude(c) => self.claude = c,
+            Answer::Clashes(c) => self.clashes = c,
         }
     }
 
@@ -325,6 +330,12 @@ impl App {
     /// The uncommitted change of the worktree at `path`, if it has one.
     pub fn wip_in(&self, path: &Path) -> Option<&Wip> {
         self.wips.iter().find(|w| w.path == path)
+    }
+
+    /// The sides the worktree at `path` would conflict with, and how.
+    pub fn clashes_in(&self, path: &Path) -> Vec<(&Side, &Outcome)> {
+        let Some(i) = self.clashes.side_of(path) else { return Vec::new() };
+        self.clashes.of(i).into_iter().map(|(j, o)| (&self.clashes.sides[j], o)).collect()
     }
 
     /// The worktree table's selected row.
