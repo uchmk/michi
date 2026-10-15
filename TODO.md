@@ -13,8 +13,8 @@
   (target 0.3 s)
 - [ ] Second mock round before stage 2: changes and staging, the diff of a whole branch (seen marks, since last time, notes), rebase;
   ask the owner with a `question` issue
-- [ ] 2. Change: stage and commit (lines and hunks, the check while Claude is writing), branches, fetch / pull / push with progress,
-  the everyday operations in design.md (amend, revert, tags, stash, discard, clean-up), backups to `refs/michi/backup/<time>`
+- [ ] 2. Change: first the diff of a whole branch (`d`; seen marks, since last time, notes), then stage and commit (lines and hunks,
+  the check while Claude is writing), branches, fetch / pull / push with progress, the everyday operations in design.md (amend, revert, tags, stash, discard, clean-up), backups to `refs/michi/backup/<time>`
 - [ ] 3. Conflicts: the conflict screen (`4`), locks during a merge, rerere asked once, cherry-pick; prediction moved to gix-merge and
   checked against `git merge-tree --write-tree`
 - [ ] 4. Worktrees: new work (`N`), remove (`x`), go to the tab (`o`), take in main (`m`); needs tsumugi `new --worktree BRANCH --from REF`
