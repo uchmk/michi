@@ -17,7 +17,9 @@
   - [ ] Write a commit-graph in the background when the repository has none（要確認: #2）
   - [ ] Folding and the filter cost 56 ms and 42 ms at 100k commits, on the UI thread at every key: lay out on the reading thread, or only
     the rows that changed
-  - [ ] The left column and the commit detail with its diff
+  - [x] The left column and the commit detail with its diff (v0.3.0)
+  - [ ] The detail's leftovers: tell a file that is not UTF-8 (now read lossily), wrap long diff lines (now cut at the pane's edge),
+    the stash section and the `↑N` / `↓N` counts in the left column
   - [ ] The WIP rows (uncommitted changes of each worktree)
   - [ ] The worktree table with the Claude column (`tsumugi ls --json`)
   - [ ] Conflict prediction including uncommitted changes (`git merge-tree --write-tree`)

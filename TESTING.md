@@ -29,7 +29,7 @@ What text can check (reading the repository, the git version, the command line) 
 | 2.1 | Press `1`, `2`, `3` | The tab in force moves and opens into the view; the graph shows the history (section 6), the other two say what will be there and "Coming in a later stage" |
 | 2.2 | Click each tab | Same as the digit |
 | 2.3 | Press `?` | A card with the keys: "Everywhere" first, then the view's; the tab stays lit under it; `?` or Esc closes it |
-| 2.4 | Press `N`, `f`, `p`, `P` in any view, Enter, `b` and `s` in the graph, Space and `c` in the changes | A toast at the foot names the key's work and says it comes in a later stage; it goes after 4 seconds |
+| 2.4 | Press `N`, `f`, `p`, `P` in any view, `b` and `s` in the graph (Enter spreads the diff: 8.5), Space and `c` in the changes | A toast at the foot names the key's work and says it comes in a later stage; it goes after 4 seconds |
 | 2.5 | Press Ctrl+Shift+P, or click the palette field | The same toast for the command search; the field lights under the pointer with a text cursor |
 | 2.6 | Press a key with no work (`q`, `4`) | Nothing happens |
 
