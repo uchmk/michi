@@ -30,6 +30,7 @@
 - **整形は `cargo fmt --all` で揃える。**設定は ito・yagura・minato と同じ `rustfmt.toml`（`max_width = 140`、`use_small_heuristics = "Max"`）。
   CI と verify.sh が `cargo fmt --all --check` で見る。整形だけのコミットは `.git-blame-ignore-revs` に書く。
 - clippy は `--all-targets -- -D warnings` で警告ゼロを保つ。検証は CI と同じ stable で回す。
+  CI の `clippy` も Linux の機械から Linux・`x86_64-pc-windows-msvc`・`aarch64-apple-darwin` の 3 つを見る（macOS は 2026-10-16 から）。
 
 ## 共有のクレート（ito）
 
