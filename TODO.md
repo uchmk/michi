@@ -42,7 +42,13 @@
     when the head is pushed), the check while Claude is writing, the count of uncommitted files on the `2` tab （要確認: #12）
   - [ ] Stage and commit's leftovers: splitting a hunk (`s` of `git add -p`), the commit hooks' output shown whole (now one line in a
     toast); discard and stash are in the everyday operations below （要確認: #12）
-  - [ ] Branches, fetch / pull / push with progress
+  - [x] Fetch / pull / push (v0.11.0): `f` `p` `P` in every view on the worktree the view points at, pull fast-forward only, push with
+    the upstream set for a new branch, progress and Esc (the whole process tree) in the key bar, the last fetch's age, the band before
+    `--force-with-lease` with the remote's tip kept under `refs/michi/backup/`, the Claude band before a pull （要確認: #15）
+  - [ ] Fetch / pull / push's leftovers: stop a pull during a merge (with the merge state, stage 3), push a tag (with the tags), pick the
+    remote to push to （要確認: #15）
+  - [ ] Branches: the picker on `b` (filter, switch, create at the selected commit, delete with a backup when not merged, a note when
+    another worktree has it checked out)
   - [ ] The everyday operations in design.md (amend, revert, tags, stash, discard, clean-up), backups to `refs/michi/backup/<time>`
 - [ ] 3. Conflicts: the conflict screen (`4`), locks during a merge (and「· マージ中」in red on the chip), rerere asked once, cherry-pick; prediction moved to gix-merge and
   checked against `git merge-tree --write-tree`; the prediction's text while a merge is under way (「予測は衝突の解消（4）の実物に変わりました」)
