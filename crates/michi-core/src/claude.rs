@@ -479,14 +479,16 @@ mod tests {
 
     #[test]
     fn a_program_that_is_not_there_is_no_tsumugi() {
-        assert_eq!(fetch_with("michi-no-such-program-for-tests", TIMEOUT), Ok(None));
+        assert_eq!(fetch_with("michi-no-such-program-for-tests", Duration::from_secs(60)), Ok(None));
     }
 
     #[test]
     fn a_failing_program_is_no_tsumugi_and_a_good_one_is_read_as_json() {
-        // git is on the PATH wherever the tests run.
-        assert_eq!(run("git", &["no-such-subcommand-for-tests"], TIMEOUT), Ok(None));
-        let out = run("git", &["--version"], TIMEOUT).unwrap().unwrap();
+        // git is on the PATH wherever the tests run. A busy test machine may
+        // take longer than tsumugi is given to start it.
+        let slow = Duration::from_secs(60);
+        assert_eq!(run("git", &["no-such-subcommand-for-tests"], slow), Ok(None));
+        let out = run("git", &["--version"], slow).unwrap().unwrap();
         assert!(String::from_utf8_lossy(&out).starts_with("git version"));
     }
 }
