@@ -1,0 +1,36 @@
+name: Re-test / 再テスト
+description: Rows whose behaviour changed, to press again on the real machine / 動きが変わった行。実機でもう一度押す
+labels: [retest]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Opened by the session that changed the behaviour, after taking the rows' `[x]` off in
+        TESTING-CHECKS.md. Whoever presses them on the real machine (the PC session, or the x64 lane
+        once michi has one) ticks rows here as it goes, and closes the issue once all are ticked.
+
+        動きを変えたセッションが、TESTING-CHECKS.md の `[x]` を外してから立てます。実機で押す人（PC のセッション、
+        レーンができたら x64 のレーン）は押した行をここで `[x]` にし、全部済んだら閉じます。
+
+  - type: input
+    id: rev
+    attributes:
+      label: Version that changed them / 変えた版
+      placeholder: v0.1.1
+    validations:
+      required: true
+
+  - type: textarea
+    id: rows
+    attributes:
+      label: Rows / 行
+      description: One row ID per line, as a checklist. / 1 行に 1 つ、チェックリストで。
+      value: |
+        - [ ] 1.1
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: What changed / 何が変わったか

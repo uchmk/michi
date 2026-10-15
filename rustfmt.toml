@@ -1,0 +1,6 @@
+# The hand-formatted style of kura and tsumugi (`Self { a, b, c }` on one
+# line), written down so `cargo fmt` keeps it instead of fighting it -- the
+# same settings as ito, yagura and minato. CI checks it from the first
+# commit on (`cargo fmt --check`).
+max_width = 140
+use_small_heuristics = "Max"

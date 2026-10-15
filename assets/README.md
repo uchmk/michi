@@ -11,9 +11,11 @@ kura's icon. Inside the window the title bar draws the mark alone in the
 theme's colors; the mock ([docs/mock/michi.html](../docs/mock/michi.html))
 reads this file.
 
-When the code starts (v0.1.0), `icon.ico` for Windows is generated from the SVG
-the way kura does it (`cargo run --example make-icon`), and the window's icon is
-rasterized from the SVG at startup.
+The program does not read the SVG: `crates/michi/src/icon.rs` draws the same
+picture in code at any size, for the window's icon and the title bar's logo,
+and `crates/michi/build.rs` bakes it into `michi.exe` at eight sizes with
+ito's `ito-winres` (the way tsumugi does it). There is no `.ico` to keep in
+step. A change to `icon.svg` is copied into `icon.rs` by hand.
 
 ## Licensing
 

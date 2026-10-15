@@ -35,7 +35,7 @@ uchmk/michi で、Git のデスクトップのクライアント michi を作り
   `?` のキー一覧。設定の画面は ito の共通のもの。窓は 1280×800 で開く。
 - 起動の引数 `michi <path>`（無ければ今のフォルダ）でリポジトリを開き、タイトルバーの札に名前・今のブランチ・worktree の数を出す
   （`git worktree list --porcelain` をワーカースレッドで）。git の版を確かめ、2.38 より古ければ知らせる。
-- `icon.rs` で `assets/icon.svg` の絵をコードから描き、窓のアイコンにする。`.ico` を kura と同じ手順で SVG から作り、`build.rs` で exe に焼く。
+- `icon.rs` で `assets/icon.svg` の絵をコードから描き、窓のアイコンにする。`build.rs` で同じ絵を `ito-winres` で exe に焼く（tsumugi と同じ。`.ico` は持たない）。
 - `rustfmt.toml`（`max_width = 140`、`use_small_heuristics = "Max"`）、`scripts/verify.sh`（fmt の check・test・clippy `-D warnings` を Linux と
   `x86_64-pc-windows-msvc`）、CI（`ci.yml`・`arm64.yml`・`checklists.yml`、release は後でよい）、`.gitattributes`、
   issue のフォーム（finding・question・needs-pc・retest）とラベル（`scripts/labels.sh`）、TESTING.md と make-testcheck、TODO.md、CHANGELOG.md。

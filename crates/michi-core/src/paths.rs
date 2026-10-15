@@ -1,0 +1,48 @@
+//! Comparing the paths git prints with each other and with the ones a user or
+//! tsumugi gives: the one place that knows Windows paths ignore case and take
+//! either slash.
+
+use std::path::Path;
+
+/// Whether `a` and `b` name the same folder. On Windows `C:/dev/x`,
+/// `c:\dev\x\` and `\\?\C:\dev\x` are the same; elsewhere only a trailing
+/// slash is let go.
+pub fn same_path(a: &Path, b: &Path) -> bool {
+    key(a) == key(b)
+}
+
+/// The form two paths are compared in.
+pub fn key(p: &Path) -> String {
+    key_of(&p.to_string_lossy(), cfg!(windows))
+}
+
+fn key_of(p: &str, windows: bool) -> String {
+    if !windows {
+        let t = p.trim_end_matches('/');
+        return if t.is_empty() && !p.is_empty() { "/".into() } else { t.into() };
+    }
+    let p = p.strip_prefix(r"\\?\").unwrap_or(p);
+    p.replace('\\', "/").trim_end_matches('/').to_lowercase()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn windows_paths_ignore_case_and_slashes() {
+        let k = |p| key_of(p, true);
+        assert_eq!(k("C:/dev/michi"), k(r"c:\dev\Michi\"));
+        assert_eq!(k(r"\\?\C:\dev\michi"), k("C:/dev/michi"));
+        assert_eq!(k(r"\\server\share\x"), "//server/share/x");
+        assert_ne!(k("C:/dev/michi"), k("C:/dev/michi-wt"));
+    }
+
+    #[test]
+    fn other_paths_keep_their_case() {
+        let k = |p| key_of(p, false);
+        assert_eq!(k("/home/u/michi/"), k("/home/u/michi"));
+        assert_ne!(k("/home/u/Michi"), k("/home/u/michi"));
+        assert_eq!(k("/"), "/");
+    }
+}

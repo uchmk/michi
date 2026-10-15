@@ -1,0 +1,8 @@
+[package]
+name = "michi-core"
+description = "michi's Git reading and logic, independent of the UI"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true

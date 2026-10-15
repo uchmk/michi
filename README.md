@@ -18,9 +18,18 @@ press `?` for the keys. It draws the commit graph (lane PRs folded into their
 merge on main, the commit detail and its diff), the worktree table with
 conflict prediction and the conflict screen, using the real history of
 tsumugi with three made-up Claude sessions on top. The page is built from
-[docs/mock/src](docs/mock/src) with `python build.py`. Development starts from
-[docs/dev-prompt.md](docs/dev-prompt.md), with the skeleton (v0.1.0) first.
-No code yet.
+[docs/mock/src](docs/mock/src) with `python build.py`. Development follows
+[docs/dev-prompt.md](docs/dev-prompt.md) in stages.
+
+v0.1.0 is the skeleton: the window with its own title bar (the view tabs, the
+repository chip with the branch and the count of worktrees, the palette
+field), the three views still empty, the keybar with the clock, `?` for the
+keys and the settings shared by every uchmk app. It checks that git is 2.38
+or newer. Nothing in it changes a repository yet.
+
+```sh
+cargo run -p michi -- C:\dev\some-repo   # or no path: the current folder
+```
 
 ## License
 

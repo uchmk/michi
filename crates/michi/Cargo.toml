@@ -1,0 +1,30 @@
+[package]
+name = "michi"
+description = "A keyboard-driven Git client for a repository many Claude Code sessions work in at once"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+# The checklist generator; its own tests run with the rest.
+[[example]]
+name = "make-testcheck"
+test = true
+
+[build-dependencies]
+ito-winres = { git = "https://github.com/uchmk/ito", rev = "a0d3a550f6df584a7a3bbe97c842721806ed8bd7" }
+
+[dependencies]
+michi-core = { path = "../michi-core" }
+# Every ito crate at the same rev as tsumugi and kura.
+ito-i18n = { git = "https://github.com/uchmk/ito", rev = "a0d3a550f6df584a7a3bbe97c842721806ed8bd7", features = ["edit"] }
+ito-common = { git = "https://github.com/uchmk/ito", rev = "a0d3a550f6df584a7a3bbe97c842721806ed8bd7", features = ["clock"] }
+ito-theme = { git = "https://github.com/uchmk/ito", rev = "a0d3a550f6df584a7a3bbe97c842721806ed8bd7" }
+ito-prefs = { git = "https://github.com/uchmk/ito", rev = "a0d3a550f6df584a7a3bbe97c842721806ed8bd7" }
+# eframe's own defaults, but for `winit/default` (see tsumugi): the Wayland
+# frame is drawn without the title's text, which brings an unmaintained crate.
+eframe = { version = "0.36", default-features = false, features = ["accesskit", "default_fonts", "links", "wayland", "web_screen_reader", "wgpu", "x11"] }
+winit = { version = "0.30", default-features = false, features = ["rwh_06", "x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita-notitle"] }
+egui = "0.36"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
