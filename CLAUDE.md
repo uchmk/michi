@@ -13,7 +13,8 @@
   ito の [docs/common-spec.md](https://github.com/uchmk/ito/blob/main/docs/common-spec.md)。これに従う。
 - Cargo の workspace。クレートは `crates/` の下に置く。版はルートの `Cargo.toml` の `[workspace.package]` で 1 つ。
 - **push の前に `scripts/verify.sh` を 1 回回す**（骨組みで作る）。最後の行が `ALL OK: …` なら push してよい
-  （fmt の check、test、clippy を Linux と `x86_64-pc-windows-msvc` の両方で `-D warnings`）。
+  （fmt の check、test、clippy を Linux・`x86_64-pc-windows-msvc`・`aarch64-apple-darwin` の 3 つで `-D warnings`。
+  C を要る依存が無いので、どの機械からでも 3 つとも回る）。
 
 ## 作業ルール
 
