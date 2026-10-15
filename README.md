@@ -16,7 +16,8 @@ press `?` for the keys. The first round draws the commit graph (with the
 commit detail and its diff), the worktree table and the conflict screen, using
 the real history of tsumugi with three made-up Claude sessions on top. The
 changes and staging screen, the diff of a whole branch and rebase come in the
-next rounds. No code yet.
+next rounds. The page is built from [docs/mock/src](docs/mock/src) with
+`python build.py`. No code yet.
 
 ## License
 

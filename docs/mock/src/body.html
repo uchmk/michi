@@ -1,0 +1,72 @@
+<div class="page">
+  <header class="intro">
+    <p class="kicker"><b>michi</b> · 画面イメージ 1 回目</p>
+    <h1>樹形図・worktree・衝突の解消</h1>
+    <p class="lede">中身は tsumugi の本当の履歴（origin/main の新しい 130 件）に、Claude が 3 つの worktree で作業している途中の作り話（6 コミット）を重ねたものです。窓をクリックしてから <code>?</code> でキーの一覧が出ます。</p>
+  </header>
+
+  <div class="controls" id="controls">
+    <div class="ctl"><span>場面</span><div class="seg" data-ctl="scene">
+      <button data-v="graph">樹形図</button><button data-v="wt">worktree</button><button data-v="cf">衝突の解消</button><button data-v="logo">ロゴ案</button>
+    </div></div>
+    <div class="ctl"><span>幅</span><div class="seg" data-ctl="width">
+      <button data-v="1280">1280</button><button data-v="960">960</button>
+    </div></div>
+    <div class="ctl"><span>テーマ</span><div class="seg" data-ctl="theme">
+      <button data-v="tsumugi Dark">tsumugi Dark</button><button data-v="tsumugi Light">tsumugi Light</button><button data-v="Tokyo Night">Tokyo Night</button><button data-v="Nord">Nord</button>
+    </div></div>
+    <div class="ctl"><span>大きさ</span><div class="seg" data-ctl="fit">
+      <button data-v="fit">縮める</button><button data-v="real">実寸</button>
+    </div></div>
+  </div>
+
+  <section class="logos" id="logos" hidden></section>
+
+  <div class="stage" id="stage"><div class="frame" id="frame">
+    <div class="win" id="win" tabindex="0" aria-label="michi の窓">
+      <div class="tb">
+        <span class="tb-logo" id="tb-logo"></span><span class="tb-name">michi</span>
+        <nav class="tabs" id="tabs"></nav>
+        <span class="tb-chip" id="tb-chip"></span>
+        <span class="tb-pal" data-act="pal"><span>コマンドを探す</span><kbd>Ctrl+Shift+P</kbd></span>
+        <span class="tb-btns"><span>─</span><span>☐</span><span class="x">✕</span></span>
+      </div>
+
+      <div class="bodyw">
+        <section class="v v-graph" id="v-graph">
+          <aside class="side" id="side"></aside>
+          <div class="gcol" id="gcol">
+            <div class="tool">
+              <button class="tbtn" data-act="fetch">⟳ fetch <span class="k">f</span></button>
+              <button class="tbtn" data-act="pull">↓ pull <span class="k">p</span></button>
+              <button class="tbtn" data-act="push">↑ push <span class="k">P</span></button>
+              <span class="tsep"></span>
+              <button class="tbtn" data-act="branch">ブランチ <span class="k">b</span></button>
+              <button class="tbtn" data-act="stash">stash <span class="k">s</span></button>
+              <button class="tbtn prime" data-act="new">＋ 新しい作業 <span class="k">N</span></button>
+              <label class="filter"><span class="dim">/</span><input id="filter" placeholder="絞る（説明・ハッシュ・名前）" autocomplete="off" spellcheck="false"><span id="fcount" class="dim"></span></label>
+            </div>
+            <div class="ghead"><div></div><div>説明</div><div class="c-au">作者</div><div class="c-dt">日時</div><div class="c-h">コミット</div></div>
+            <div class="glist" id="glist"><div class="gin" id="gin"></div></div>
+            <div class="gbar" id="gbar"></div>
+          </div>
+          <div class="detail" id="detail"></div>
+        </section>
+
+        <section class="v v-changes" id="v-changes" hidden>
+          <div class="ph"><b>変更とステージ</b><span>次の回で描きます。worktree ごとの未コミットの変更、hunk と行のステージ、コミットの文、Claude が書いている途中の印。</span></div>
+        </section>
+
+        <section class="v v-wt" id="v-wt" hidden></section>
+        <section class="v v-cf" id="v-cf" hidden></section>
+      </div>
+
+      <div class="sb"><div class="sb-keys" id="sb-keys"></div><div class="sb-right" id="sb-right"></div></div>
+
+      <div class="ov" id="ov" hidden></div>
+      <div class="toast" id="toast" hidden></div>
+    </div>
+  </div></div>
+
+  <div class="notes" id="notes"></div>
+</div>

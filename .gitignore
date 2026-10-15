@@ -1,1 +1,4 @@
 /target*
+/docs/mock/src/michi-artifact.html
+/docs/mock/src/check.js
+__pycache__/
