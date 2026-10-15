@@ -41,6 +41,31 @@ impl TempRepo {
         r
     }
 
+    /// [`new`](Self::new), with settings of its own that beat the machine's:
+    /// for the tests of what writes, whose calls run git as michi does, with
+    /// the user's configuration.
+    pub fn configured(name: &str) -> TempRepo {
+        let t = TempRepo::new(name);
+        t.configure(&t.repo);
+        t
+    }
+
+    /// Settings in the repository at `dir` that beat the machine's.
+    pub fn configure(&self, dir: &Path) {
+        for (k, v) in [
+            ("user.name", "michi"),
+            ("user.email", "michi@example.invalid"),
+            ("commit.gpgsign", "false"),
+            ("core.autocrlf", "false"),
+            ("core.safecrlf", "false"),
+            ("core.hooksPath", "no-hooks"),
+            ("core.excludesFile", "no-excludes"),
+            ("apply.whitespace", "nowarn"),
+        ] {
+            self.git(dir, &["config", k, v]);
+        }
+    }
+
     /// Runs git in `dir` and panics when it fails.
     pub fn git(&self, dir: &Path, args: &[&str]) {
         self.out(dir, args);

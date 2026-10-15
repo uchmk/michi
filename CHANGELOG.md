@@ -2,6 +2,23 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.11.0] - 2026-10-16
+
+### 追加
+
+- fetch（`f`）・pull（`p`）・push（`P`）。どの画面でも効き、`1` のツールの帯のボタンと `3` のカードの `pull p` からも呼べる。
+  - `1` では michi を開いた worktree、`2` では表示中の worktree、`3` では選んだ worktree で行う。
+  - fetch は remote ごとに `--prune`。pull は fast-forward だけ（分かれていれば何も取り込まずに ↑↓ の数を出す）。
+    上流の無いブランチの push は `-u` で上流を設定する。
+  - 動いている間は keybar の右に進み具合（段階と %）と「Esc で止める」を出し、`Esc` で git の子プロセスごと止める。
+    終わりはトーストで知らせる（動いた ref の数、取り込んだコミットの数、push 先、断られた理由）。
+  - keybar の右に、最後に fetch してからの時間（「⟳ fetch 3 分前」）を出す。
+  - push を断られたとき、相手に無いコミットがあるなら「`f` で fetch すると、`P` が上書きの前に聞きます」と添える。
+    fetch の後の `P` は、相手の持つコミットの数を出して上書きを確かめる帯を出し、`y` で `--force-with-lease` で push する。
+    その前に相手の先を `refs/michi/backup/<時刻>` に退避し、トーストに退避先を書く。
+  - Claude が作業中の worktree への pull は、先に帯で確かめる（`y` で進める、`Esc` でやめる）。
+  - Credential Manager の窓はそのまま出る。ssh の鍵で止まったら ssh-agent と `ssh-add` を案内する。
+
 ## [0.10.1] - 2026-10-16
 
 ### 修正

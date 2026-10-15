@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use michi_core::clash::{Clashes, Outcome, Side};
 use michi_core::claude::{Session, State};
@@ -21,6 +21,7 @@ use crate::graph::{Folded, Graph};
 use crate::prefs::Prefs;
 use crate::repo::{Answer, Ask, Reading};
 use crate::review::{Ends, Review, Wish};
+use crate::work::{Band, Running};
 
 /// The three views, opened by `1` to `3` (docs/design.md).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -190,6 +191,12 @@ pub struct App {
     pub new_title: Option<String>,
     /// One line at the foot, until its instant.
     pub toast: Option<(String, Instant)>,
+    /// The fetch, pull or push that runs.
+    pub net: Option<Running>,
+    /// When the repository last fetched (`FETCH_HEAD`'s time).
+    pub last_fetch: Option<SystemTime>,
+    /// A job waiting for a yes, under the title bar.
+    pub band: Option<Band>,
     pub quit: bool,
 }
 
@@ -220,6 +227,9 @@ impl App {
             detail_wip: None,
             new_title: None,
             toast: None,
+            net: None,
+            last_fetch: None,
+            band: None,
             quit: false,
         };
         app.set_language();
@@ -339,7 +349,7 @@ impl App {
                 let word = self.tr(failed_word(&e));
                 let path = self.dir.display();
                 let text = match &e {
-                    git::Error::Git(d) | git::Error::Io(d) => format!("{word}: {d} — {path}"),
+                    git::Error::Git(d) | git::Error::Io(d) | git::Error::Told { line: d, .. } => format!("{word}: {d} — {path}"),
                     _ => format!("{word} — {path}"),
                 };
                 self.say_for(text, 10);
@@ -405,6 +415,9 @@ impl App {
                 let wish = self.changes.take_done(&wt, commit, result.is_ok());
                 self.stage_wish(wish);
             }
+            Answer::NetProgress(p) => self.net_progress(p),
+            Answer::NetDone { job, result } => self.net_done(job, result),
+            Answer::Fetched(at) => self.last_fetch = at,
         }
     }
 
@@ -837,6 +850,7 @@ impl App {
         match (self.mode, c) {
             (Mode::Help, '?') => self.mode = Mode::Main,
             (Mode::Settings, _) | (Mode::Help, _) => return false,
+            (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
             (Mode::Main, '?') => self.mode = Mode::Help,
             (Mode::Main, ',') => self.mode = Mode::Settings,
             (Mode::Main, c) => match View::from_digit(c) {
@@ -845,13 +859,10 @@ impl App {
                     self.review_sync();
                 }
                 None if self.view == View::Graph && self.graph_key(c) => {}
-                None if self.view == View::Worktree && self.review.is_some() => {
-                    if !self.review_key(c) {
-                        return self.later(|token| token.chars().eq([c]));
-                    }
-                }
-                None if self.view == View::Worktree && self.wt_key(c) => {}
+                None if self.view == View::Worktree && self.review.is_some() && self.review_key(c) => {}
+                None if self.view == View::Worktree && self.review.is_none() && self.wt_key(c) => {}
                 None if self.view == View::Changes && self.changes_key(c) => {}
+                None if self.net_key(c) => {}
                 None => return self.later(|token| token.chars().eq([c])),
             },
         }
@@ -964,13 +975,17 @@ impl App {
         true
     }
 
-    /// Escape: close the help or the settings, else bring the graph back
-    /// from beside a wide diff, else clear the graph's filter; over the
-    /// worktree table, bring the review's diff back to one column, else close
-    /// the review.
+    /// Escape: close the help or the settings, else drop the job waiting
+    /// for a yes, else bring the graph back from beside a wide diff, else
+    /// clear the graph's filter; over the worktree table, bring the review's
+    /// diff back to one column, else close the review. With nothing else to
+    /// close, stop the fetch, pull or push that runs.
     pub fn escape(&mut self) -> bool {
         if self.mode != Mode::Main {
             self.mode = Mode::Main;
+            return true;
+        }
+        if self.band.take().is_some() {
             return true;
         }
         if self.view == View::Graph && self.detail.wide {
@@ -1005,7 +1020,7 @@ impl App {
                 return true;
             }
         }
-        false
+        self.net_stop()
     }
 
     /// Whether the bar's tab for `v` is the one in force: the view's, under
@@ -1020,24 +1035,24 @@ pub fn failed_word(e: &git::Error) -> &'static str {
     match e {
         git::Error::NoGit => "repo.no_git",
         git::Error::NotRepo => "repo.not_repo",
-        git::Error::Git(_) | git::Error::Io(_) => "repo.failed",
+        git::Error::Git(_) | git::Error::Io(_) | git::Error::Told { .. } => "repo.failed",
     }
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::graph::fixture::{self, FEAT};
     use michi_core::claude::State;
     use michi_core::summary::Head;
 
-    fn app() -> App {
+    pub(crate) fn app() -> App {
         let mut a = App::new(Prefs::empty(), PathBuf::from("C:/dev/x"));
         a.lang = "en".into();
         a
     }
 
-    fn toast(a: &App) -> &str {
+    pub(crate) fn toast(a: &App) -> &str {
         a.toast.as_ref().map_or("", |(t, _)| t)
     }
 
@@ -1182,8 +1197,9 @@ mod tests {
         let mut a = app();
         assert!(a.feed('N'));
         assert_eq!(toast(&a), "New work (worktree + Claude) — coming in a later stage");
-        assert!(a.feed('f'));
-        assert!(toast(&a).starts_with("Fetch"));
+        a.toast = None;
+        assert!(a.feed('f'), "fetch works now");
+        assert!(a.toast.is_none() && a.net.is_none(), "no reading thread here: nothing runs");
         assert!(a.feed('b'), "the graph's own key");
         assert!(toast(&a).starts_with("Branch"));
         assert!(a.named("Enter"), "the diff side by side, no longer a later stage");

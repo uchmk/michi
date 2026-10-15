@@ -52,6 +52,9 @@ pub enum Error {
     NotRepo,
     /// git ran and refused: the first line it wrote on standard error.
     Git(String),
+    /// git ran and refused, and said more than a line (a hook's output, a
+    /// remote's answer): the line to show, and all of it.
+    Told { line: String, all: String },
     /// git could not be started, or wrote what could not be read.
     Io(String),
 }
@@ -61,12 +64,23 @@ impl fmt::Display for Error {
         match self {
             Error::NoGit => f.write_str("git was not found on the PATH"),
             Error::NotRepo => f.write_str("not a git repository"),
-            Error::Git(e) | Error::Io(e) => f.write_str(e),
+            Error::Git(e) | Error::Io(e) | Error::Told { line: e, .. } => f.write_str(e),
         }
     }
 }
 
 impl std::error::Error for Error {}
+
+impl Error {
+    /// All git said: more than [`Display`](fmt::Display) when it said more
+    /// than a line.
+    pub fn all(&self) -> String {
+        match self {
+            Error::Told { all, .. } => all.clone(),
+            e => e.to_string(),
+        }
+    }
+}
 
 /// A git command with michi's environment, not yet run.
 pub fn command() -> Command {
@@ -147,7 +161,7 @@ pub fn feed(mut c: Command, input: &[u8]) -> Result<Vec<u8>, Error> {
     if out.status.success() {
         Ok(out.stdout)
     } else {
-        Err(refused(&String::from_utf8_lossy(&out.stderr)))
+        Err(refused_all(&String::from_utf8_lossy(&out.stderr)))
     }
 }
 
@@ -241,6 +255,16 @@ pub(crate) fn refused(stderr: &str) -> Error {
     Error::Git(line.strip_prefix("fatal: ").unwrap_or(line).to_owned())
 }
 
+/// [`refused`], keeping all git said when it said more than a line.
+pub(crate) fn refused_all(stderr: &str) -> Error {
+    match refused(stderr) {
+        Error::Git(line) if stderr.lines().filter(|l| !l.trim().is_empty()).nth(1).is_some() => {
+            Error::Told { line, all: stderr.trim_matches(['\n', '\r']).to_owned() }
+        }
+        e => e,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -270,6 +294,13 @@ mod tests {
         assert_eq!(refused(not_repo), Error::NotRepo);
         assert_eq!(refused("\nfatal: bad revision 'x'\n"), Error::Git("bad revision 'x'".into()));
         assert_eq!(refused(""), Error::Git("git failed".into()));
+        let hook = "lint: 2 problems\n  a.rs:1 unused\n";
+        let e = refused_all(hook);
+        assert_eq!(e, Error::Told { line: "lint: 2 problems".into(), all: "lint: 2 problems\n  a.rs:1 unused".into() });
+        assert_eq!(e.to_string(), "lint: 2 problems");
+        assert_eq!(e.all(), "lint: 2 problems\n  a.rs:1 unused");
+        assert_eq!(refused_all("fatal: one line\n"), Error::Git("one line".into()));
+        assert_eq!(Error::Git("one".into()).all(), "one");
     }
 
     #[test]

@@ -3,12 +3,17 @@
 //! (docs/design.md: the graph's is the one scrollbar, in `graph_ui.rs`). The
 //! look follows docs/mock.
 
-use egui::{pos2, vec2, Align2, Color32, CornerRadius, CursorIcon, FontId, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, ViewportCommand};
+use std::time::{Duration, SystemTime};
+
+use egui::text::{LayoutJob, TextFormat};
+use egui::{pos2, vec2, Align2, Color32, CornerRadius, CursorIcon, FontId, Id, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, ViewportCommand};
 use ito_common::Clock;
 use michi_core::git;
 use michi_core::summary::Head;
 
 use crate::app::{failed_word, App, Mode, Repo, View, GLOBAL_KEYS};
+use crate::graph_ui::{paint_icon, Icon};
+use crate::work::{self, Kind};
 
 /// The accent of the tabs, the chip's name and the best key: main's cyan,
 /// the colour of the left lane in the graph.
@@ -48,7 +53,9 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
         // The key list goes over the view; the mouse is the list's then.
         // The columns stay clear of the window's resize edge.
         let live = app.mode == Mode::Main;
-        let r = Rect::from_min_max(body.min, pos2(body.right() - EDGE, body.bottom()));
+        // A job waiting for a yes takes the top of the body.
+        let top = body.top() + band(ui, app, body, live);
+        let r = Rect::from_min_max(pos2(body.left(), top), pos2(body.right() - EDGE, body.bottom()));
         if app.view == View::Worktree && app.review.is_some() {
             crate::review_ui::show(ui, app, r, live);
         } else if app.view == View::Worktree {
@@ -408,8 +415,89 @@ fn empty_view(ui: &mut Ui, app: &App, r: Rect) {
     p.text(mid + vec2(0.0, 34.0), Align2::CENTER_CENTER, app.tr("empty.soon"), FontId::proportional(12.0), c.dim.gamma_multiply(0.7));
 }
 
+/// The band's height when its words take one line.
+const BAND_H: f32 = 34.0;
+/// The room the band leaves its keys at the right.
+const BAND_KEYS_W: f32 = 230.0;
+
+/// The band at the top of `r` asking for a yes to a fetch, pull or push:
+/// what it would do, `y` and `Esc`. Its height; 0 with no band.
+fn band(ui: &mut Ui, app: &mut App, r: Rect, live: bool) -> f32 {
+    let Some(b) = &app.band else { return 0.0 };
+    let c = ito_theme::colors();
+    let p = ui.painter().clone();
+    let left = r.left() + 18.0;
+    let wrap = (r.width() - 36.0 - 18.0 - BAND_KEYS_W).max(120.0);
+    let mut job =
+        LayoutJob::single_section(b.text.clone(), TextFormat { font_id: FontId::proportional(12.5), color: c.fg, ..Default::default() });
+    job.wrap.max_width = wrap;
+    let g = ui.fonts_mut(|f| f.layout_job(job));
+    let h = BAND_H.max(g.size().y + 16.0);
+    let band = Rect::from_min_size(r.min, vec2(r.width(), h));
+    p.rect_filled(band, 0.0, c.wait.gamma_multiply(0.14));
+    p.line_segment([band.left_bottom() - vec2(0.0, 0.5), band.right_bottom() - vec2(0.0, 0.5)], Stroke::new(1.0, c.border));
+    let mid = band.center().y;
+    let pointer = ui.ctx().pointer_latest_pos();
+    let mut right = band.right() - 18.0 - EDGE;
+    let mut key = None;
+    for (k, word, c_) in [("Esc", "changes.no", 'n'), ("y", "changes.yes", 'y')] {
+        let cap = kbd(ui, &p, pos2(right, mid), k);
+        let w = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, app.tr(word), FontId::proportional(12.5), c.fg);
+        let hit = w.union(cap).expand(3.0);
+        let resp = ui.interact(hit, Id::new(("net-band", k)), Sense::CLICK);
+        if live && pointer.is_some_and(|at| hit.contains(at)) {
+            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+        }
+        if live && resp.clicked() {
+            key = Some(c_);
+        }
+        right = hit.left() - 14.0;
+    }
+    p.text(pos2(left, mid), Align2::LEFT_CENTER, "●", FontId::proportional(12.0), c.wait);
+    p.galley(pos2(left + 18.0, mid - g.size().y / 2.0), g, c.fg);
+    if let Some(k) = key {
+        app.band_key(k);
+    }
+    h
+}
+
+/// What the keybar says of the network at its right: the job that runs and
+/// how far it has got, else how long ago the repository fetched.
+fn net_status(ui: &Ui, app: &App, p: &egui::Painter, right: f32, mid: f32) -> f32 {
+    let c = ito_theme::colors();
+    let font = FontId::proportional(12.0);
+    if let Some(n) = &app.net {
+        let hint = p.text(pos2(right, mid), Align2::RIGHT_CENTER, app.tr("net.stop_hint"), font.clone(), c.dim);
+        let mut s = n.kind.word().to_owned();
+        if let Some(pr) = &n.progress {
+            s.push_str(" · ");
+            s.push_str(&pr.step);
+            if let Some(pc) = pr.percent {
+                s.push_str(&format!(" {pc}%"));
+            }
+        }
+        if n.stopping() {
+            s.push_str(" …");
+        }
+        let t = p.text(pos2(hint.left() - 10.0, mid), Align2::RIGHT_CENTER, s, font, c.wait);
+        let icon = match n.kind {
+            Kind::Fetch => Icon::Fetch,
+            Kind::Pull => Icon::Pull,
+            Kind::Push => Icon::Push,
+        };
+        paint_icon(p, pos2(t.left() - 9.0, mid), icon, c.wait);
+        return t.left() - 18.0 - 14.0;
+    }
+    let Some(at) = app.last_fetch else { return right };
+    let s = app.tr("net.last").replace("{}", &work::ago(app, at, SystemTime::now()));
+    let t = p.text(pos2(right, mid), Align2::RIGHT_CENTER, s, font, c.dim);
+    paint_icon(p, pos2(t.left() - 9.0, mid), Icon::Fetch, c.dim);
+    ui.ctx().request_repaint_after(Duration::from_secs(30));
+    t.left() - 18.0 - 14.0
+}
+
 /// The keybar: the keys of the view at the left, the best one lit; git's
-/// state and the clock at the right.
+/// state, the network's and the clock at the right.
 fn key_bar(ui: &mut Ui, app: &App, r: Rect) {
     let c = ito_theme::colors();
     let p = ui.painter().clone();
@@ -435,6 +523,7 @@ fn key_bar(ui: &mut Ui, app: &App, r: Rect) {
         let t = p.text(pos2(right, mid), Align2::RIGHT_CENTER, text, FontId::proportional(12.0), color);
         right = t.left() - 14.0;
     }
+    right = net_status(ui, app, &p, right, mid);
     let keys: Vec<(&str, &'static str)> = match app.mode {
         Mode::Settings => vec![("Esc", "key.back"), ("Ctrl+Tab", "key.page")],
         Mode::Help => vec![("? Esc", "key.back")],

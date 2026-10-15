@@ -3,12 +3,14 @@
 //! Claude sessions tsumugi lists, the conflict prediction, the uncommitted
 //! changes. The window is the `michi` crate.
 
+pub mod backup;
 pub mod change;
 pub mod clash;
 pub mod claude;
 pub mod git;
 pub mod history;
 pub mod log;
+pub mod net;
 pub mod oid;
 pub mod paths;
 pub mod predict;

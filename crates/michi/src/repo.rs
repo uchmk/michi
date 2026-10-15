@@ -19,6 +19,9 @@
 //! unstaged files, one file's diff and the head's message, each only for the
 //! newest wish, and the stagings and commits, every one in turn.
 //!
+//! A sixth thread fetches, pulls and pushes, one job at a time, saying how
+//! far git has got, and has the worktrees read again when a job ends.
+//!
 //! A third thread keeps an eye on the worktrees: each one's uncommitted
 //! change, how it stands against the trunk and its upstream, which would
 //! conflict with which, the commits not seen yet, and the Claude sessions
@@ -33,7 +36,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use michi_core::change::{self, Places};
 use michi_core::clash::{self, Clashes};
@@ -41,6 +44,7 @@ use michi_core::claude::{self, Session};
 use michi_core::git::{self, Version};
 use michi_core::history::Setup;
 use michi_core::log::{self, Commit, Reader};
+use michi_core::net::{self, Progress};
 use michi_core::oid::Oid;
 use michi_core::review::{self, Checks, List};
 use michi_core::show::{self, Changes, Detail};
@@ -54,6 +58,7 @@ use michi_core::worktree::{self, Worktree};
 use crate::changes::{self as staging, Op};
 use crate::fswatch::{self, Fs};
 use crate::review::Wish;
+use crate::work::{Job, Order};
 
 /// What the reading thread sends back.
 #[derive(Debug)]
@@ -100,6 +105,12 @@ pub enum Answer {
     /// A write in the worktree `wt` is done (`commit` when it committed),
     /// with the commit it made.
     ChangesDone { wt: PathBuf, commit: bool, result: Result<Option<Oid>, git::Error> },
+    /// How far git has got with the fetch, pull or push that runs.
+    NetProgress(Progress),
+    /// The fetch, pull or push is over.
+    NetDone { job: Job, result: Result<net::Done, git::Error> },
+    /// When the repository last fetched, as it changed.
+    Fetched(Option<SystemTime>),
 }
 
 /// What the window asks of the reading thread.
@@ -134,6 +145,8 @@ pub struct Reading {
     /// numbers.
     stages: Sender<staging::Wish>,
     stage_latest: Arc<[AtomicU32; 3]>,
+    /// The fetches, pulls and pushes to run.
+    nets: Sender<Order>,
 }
 
 /// What the window, and the folders' watcher, tell the watching thread.
@@ -203,6 +216,11 @@ impl Reading {
         }
         let _ = self.stages.send(wish);
     }
+
+    /// Fetch, pull or push.
+    pub fn net(&self, order: Order) {
+        let _ = self.nets.send(order);
+    }
 }
 
 impl Drop for Reading {
@@ -270,6 +288,16 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         };
         stagings(&stage_rx, &latests, send);
     });
+    let (nets, net_rx) = mpsc::channel();
+    let (net_tx, net_dir, net_ctx, net_pokes) = (tx.clone(), dir.clone(), ctx.clone(), pokes.clone());
+    // No thread for the network: the job never ends.
+    let _ = std::thread::Builder::new().name("net".into()).spawn(move || {
+        let send = |a: Answer| {
+            let _ = net_tx.send(a);
+            net_ctx.request_repaint();
+        };
+        networks(&net_dir, &net_rx, &net_pokes, send);
+    });
     let thread_tx = tx.clone();
     let spawned = std::thread::Builder::new().name("repo".into()).spawn(move || {
         let send = |a: Answer| {
@@ -288,7 +316,29 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         // No thread: say so where the summary would have gone.
         let _ = tx.send(Answer::Summary(Err(git::Error::Io(e.to_string()))));
     }
-    Reading { answers, asks, wants, latest, pokes, looks, look_latest, stages, stage_latest }
+    Reading { answers, asks, wants, latest, pokes, looks, look_latest, stages, stage_latest, nets }
+}
+
+/// Runs each fetch, pull and push in turn, telling git's progress as it
+/// changes, until the window is gone; when one ends, the worktrees are read
+/// again.
+fn networks(dir: &Path, orders: &Receiver<Order>, pokes: &Sender<Poke>, send: impl Fn(Answer)) {
+    for Order { job, stop } in orders {
+        let mut last: Option<Progress> = None;
+        let mut tell = |p: Progress| {
+            if last.as_ref() != Some(&p) {
+                last = Some(p.clone());
+                send(Answer::NetProgress(p));
+            }
+        };
+        let result = match &job {
+            Job::Fetch => net::fetch(dir, &stop, &mut tell),
+            Job::Pull { wt } => net::pull(wt, &stop, &mut tell),
+            Job::Push { wt, lease } => net::push(wt, lease.as_ref(), &stop, &mut tell),
+        };
+        let _ = pokes.send(Poke::Now);
+        send(Answer::NetDone { job, result });
+    }
 }
 
 /// How long the folders must stay quiet after a change before it is read.
@@ -345,6 +395,7 @@ fn watch(dir: &Path, pokes: &Receiver<Poke>, asks: &Sender<Ask>, mut fs: Fs, sen
     let mut places: Option<Places> = None;
     let mut ignored = change::Ignored::default();
     let mut timeouts = 0u32;
+    let mut fetched: Option<Option<SystemTime>> = None;
     loop {
         let poll = if watching { ANYWAY } else { WIP_EVERY };
         let mut read_now = front && (force || read_at.is_none_or(|t| t.elapsed() >= poll));
@@ -382,6 +433,13 @@ fn watch(dir: &Path, pokes: &Receiver<Poke>, asks: &Sender<Ask>, mut fs: Fs, sen
         if claude_at.is_none_or(|t| t.elapsed() >= every) {
             claude_at = Some(Instant::now());
             ask_claude(&worktrees, &mut last, &mut timeouts, &send);
+        }
+        if let Some(common) = &common {
+            let at = net::last_fetch(common);
+            if fetched != Some(at) {
+                fetched = Some(at);
+                send(Answer::Fetched(at));
+            }
         }
         // Wait for the next thing due; a poke, or a change on disk, may cut
         // it short.

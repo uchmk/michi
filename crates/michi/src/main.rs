@@ -24,6 +24,7 @@ mod review_ui;
 mod settings;
 mod side_ui;
 mod ui;
+mod work;
 mod wt_ui;
 
 use std::ffi::OsString;

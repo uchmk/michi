@@ -435,23 +435,8 @@ mod tests {
     use super::*;
     use crate::testrepo::TempRepo;
 
-    /// A repository whose own settings beat the machine's: the calls here
-    /// run git as michi does, with the user's configuration.
     fn repo(name: &str) -> TempRepo {
-        let t = TempRepo::new(name);
-        for (k, v) in [
-            ("user.name", "michi"),
-            ("user.email", "michi@example.invalid"),
-            ("commit.gpgsign", "false"),
-            ("core.autocrlf", "false"),
-            ("core.safecrlf", "false"),
-            ("core.hooksPath", "no-hooks"),
-            ("core.excludesFile", "no-excludes"),
-            ("apply.whitespace", "nowarn"),
-        ] {
-            t.git(&t.repo, &["config", k, v]);
-        }
-        t
+        TempRepo::configured(name)
     }
 
     fn paths(files: &[File]) -> Vec<(char, &str)> {
