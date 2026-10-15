@@ -3,9 +3,9 @@
 前の会話から次の会話への引き継ぎ。新しいセッションは `C:\dev\michi` で始め、CLAUDE.md・TODO.md・この文書の順に読む。
 設計の正は [design.md](design.md) とモック。大きなファイル（design.md・graph.rs・wt_ui.rs など）は全部読まず、要るところだけ読む。
 
-## いまの版（v0.8.0、2026-10-15）
+## いまの版（v0.9.0、2026-10-15）
 
-段 1「見る」はほぼ終わり。入っているもの:
+段 1「見る」は終わり、段 2「変える」の最初（ブランチ全体の差分）まで。入っているもの:
 
 - 樹形図（`ito-graph`、main が左端、lane の PR を畳む `z`、`/` の絞り込み、スクロールバーの印）。10 万コミットで最初の画面 0.1 s、
   畳む 3.5 ms、絞る 1 文字 4〜7 ms。commit-graph が無ければ裏で書く（#2）。
@@ -13,17 +13,21 @@
 - WIP の行（worktree ごとの未コミットの変更）と、その worktree の Claude（`tsumugi ls --json`）。
 - worktree の表（`3`、960 幅より狭いとカード）と衝突の予測（worktree どうしと trunk の組、前にいるあいだ 5 秒ごと）。
 - ファイルの監視（`notify`）と未読の印（`%LOCALAPPDATA%\uchmk\michi\seen\`）。
+- worktree の無いローカルのブランチと main の衝突の予測（main が取り込んでいない新しい 30 本、樹形図の頭に ⚠）。
+- ブランチ全体の差分（worktree の表の `d`）: `main...<ブランチ>`、`u` 未コミット、`Space` 見た（パスと blob、
+  `%LOCALAPPDATA%\uchmk\michi\review\`）、`s` 前回から（`refs/michi/seen/<ブランチ>`）、`Enter` 横並び。
+  ロジックは `michi-core/src/review.rs`、状態は `michi/src/review.rs`、描画は `review_ui.rs`、読むのは `repo.rs` の 4 本目のスレッド。
 
-実機の確認は needs-pc の issue #1, #3〜#9 で PC のセッションに頼んである（まだ印は無い）。
+実機の確認は needs-pc の issue #1, #3〜#9, #11 で PC のセッションに頼んである（13.1 だけ `[~]`）。
+差分のレビューで推奨で決めたこと（キー・「前回」の動き・印の掃除・後回し）は `question` の #10。
 
 ## 次にやること
 
-1. 段 1 の残り: 衝突の予測を、worktree に出ていないローカルのブランチと main の組にも広げる（`michi-core/src/predict.rs`・`clash.rs`）。
-   マージ中の文言は段 3。
-2. モックの 2 回目はやらない（持ち主が 2026-10-15 に「実装を進めて」）。段 2 で決めることは `question` の issue に文字で書き、推奨で進める。
-3. 段 2: まずブランチ全体の差分（`d`。見た印・前回から・メモ）、次にステージとコミット、ブランチ、fetch / pull / push、日々の操作
-   （design.md の「日々の操作」）、`refs/michi/backup/<時刻>` への退避。
-4. 段 3〜6 は TODO.md のとおり。段 4 は tsumugi の `new --worktree` と `focus` が要る（tsumugi の TODO.md に書いてある）。
+1. モックの 2 回目はやらない（持ち主が 2026-10-15 に「実装を進めて」）。段 2 で決めることは `question` の issue に文字で書き、推奨で進める。
+2. 段 2 の続き: ステージとコミット（`2` の画面。行と hunk、Claude が書いている最中の確かめ、タブの未コミットの数）、ブランチ、
+   fetch / pull / push、日々の操作（design.md の「日々の操作」）、`refs/michi/backup/<時刻>` への退避。
+   差分のレビューのメモ・マージ・PR は後の段（#10）。
+3. 段 3〜6 は TODO.md のとおり。段 4 は tsumugi の `new --worktree` と `focus` が要る（tsumugi の TODO.md に書いてある）。
 
 ## 進め方（持ち主の希望）
 
