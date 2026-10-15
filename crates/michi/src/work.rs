@@ -22,8 +22,9 @@ pub enum Job {
     /// The branch of the worktree at `wt`, up to its upstream.
     Pull { wt: PathBuf },
     /// The branch of the worktree at `wt`; over the remote's commits with
-    /// `lease`.
-    Push { wt: PathBuf, lease: Option<Lease> },
+    /// `lease`. `over`: `F` asked for it, so commits the remote has and
+    /// this branch has not bring the band that asks before a push over them.
+    Push { wt: PathBuf, lease: Option<Lease>, over: bool },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -100,9 +101,9 @@ fn name(wt: &Path) -> String {
 }
 
 impl App {
-    /// `f`, `p`, `P`, in every view.
+    /// `f`, `p`, `P`, `F`, in every view.
     pub(crate) fn net_key(&mut self, c: char) -> bool {
-        if !matches!(c, 'f' | 'p' | 'P') {
+        if !matches!(c, 'f' | 'p' | 'P' | 'F') {
             return false;
         }
         if self.net.is_some() {
@@ -112,7 +113,7 @@ impl App {
         match (c, self.net_tree()) {
             ('f', _) => self.order(Job::Fetch),
             ('p', Some(wt)) => self.pull(wt),
-            (_, Some(wt)) => self.order(Job::Push { wt, lease: None }),
+            (c, Some(wt)) => self.order(Job::Push { wt, lease: None, over: c == 'F' }),
             (_, None) => self.say(self.tr("net.no_tree")),
         }
         true
@@ -238,10 +239,14 @@ impl App {
                     (self.tr("net.behind_only").replace("{to}", &lease.to).replace("{n}", &count.to_string()), 8)
                 }
                 Why::Behind { lease, count, .. } => {
-                    let Job::Push { wt, .. } = job else { return };
-                    let text = self.tr("net.lease").replace("{to}", &lease.to).replace("{n}", &count.to_string());
-                    self.band = Some(Band { text, job: Job::Push { wt, lease: Some(lease) } });
-                    return;
+                    let Job::Push { wt, over, .. } = job else { return };
+                    if !over {
+                        (self.tr("net.diverged_push").replace("{to}", &lease.to).replace("{n}", &count.to_string()), 10)
+                    } else {
+                        let text = self.tr("net.lease").replace("{to}", &lease.to).replace("{n}", &count.to_string());
+                        self.band = Some(Band { text, job: Job::Push { wt, lease: Some(lease), over: true } });
+                        return;
+                    }
                 }
                 Why::Rejected { to, reason } => {
                     let mut text = self.tr("net.rejected").replace("{to}", &to).replace("{why}", &reason);
@@ -318,7 +323,7 @@ mod tests {
     fn each_ending_is_said() {
         let mut a = app();
         let wt = PathBuf::from("/r/feat");
-        let push = Job::Push { wt: wt.clone(), lease: None };
+        let push = Job::Push { wt: wt.clone(), lease: None, over: false };
         let pull = Job::Pull { wt: wt.clone() };
         let mut said = |job: &Job, r: Result<Done, git::Error>| {
             a.net_done(job.clone(), r);
@@ -349,7 +354,7 @@ mod tests {
         );
         assert_eq!(
             said(&push, Ok(Done::Not(Why::Rejected { to: "origin/main".into(), reason: "[rejected] (fetch first)".into() }))),
-            "origin/main refused the push: [rejected] (fetch first). f fetches its commits; then P asks before pushing over them"
+            "origin/main refused the push: [rejected] (fetch first). f fetches its commits; then F pushes over them, asking first"
         );
         assert_eq!(
             said(&push, Ok(Done::Not(Why::Rejected { to: "origin/main".into(), reason: "pre-receive hook declined".into() }))),
@@ -371,9 +376,19 @@ mod tests {
     fn a_push_over_the_remote_s_commits_waits_for_a_yes() {
         let mut a = app();
         let wt = PathBuf::from("/r/feat");
-        a.net_done(Job::Push { wt: wt.clone(), lease: None }, Ok(Done::Not(Why::Behind { lease: lease(), count: 2, ahead: 1 })));
+        // P does not push over them: it says F does.
+        a.net_done(
+            Job::Push { wt: wt.clone(), lease: None, over: false },
+            Ok(Done::Not(Why::Behind { lease: lease(), count: 2, ahead: 1 })),
+        );
+        assert!(a.band.is_none());
+        assert_eq!(toast(&a), "origin/main has 2 commits this branch does not: F pushes over them, asking first");
+        a.net_done(
+            Job::Push { wt: wt.clone(), lease: None, over: true },
+            Ok(Done::Not(Why::Behind { lease: lease(), count: 2, ahead: 1 })),
+        );
         let band = a.band.as_ref().expect("a band");
-        assert_eq!(band.job, Job::Push { wt: wt.clone(), lease: Some(lease()) });
+        assert_eq!(band.job, Job::Push { wt: wt.clone(), lease: Some(lease()), over: true });
         assert!(band.text.contains("origin/main has 2 commits"), "{}", band.text);
         // Other keys wait; n drops it.
         assert!(a.feed('j'));

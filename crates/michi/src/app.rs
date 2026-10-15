@@ -105,12 +105,13 @@ impl View {
 }
 
 /// The keys that work in every view.
-pub const GLOBAL_KEYS: [(&str, &str); 8] = [
+pub const GLOBAL_KEYS: [(&str, &str); 9] = [
     ("1 2 3", "key.views"),
     ("N", "key.new_work"),
     ("f", "key.fetch"),
     ("p", "key.pull"),
     ("P", "key.push"),
+    ("F", "key.push_over"),
     (",", "key.settings"),
     ("Ctrl+Shift+P", "key.palette"),
     ("?", "key.help"),
