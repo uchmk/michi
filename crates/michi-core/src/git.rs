@@ -77,14 +77,14 @@ pub fn command() -> Command {
 
 /// No console window flashing up for each call from the windowed exe.
 #[cfg(windows)]
-fn hide_window(c: &mut Command) {
+pub(crate) fn hide_window(c: &mut Command) {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     c.creation_flags(CREATE_NO_WINDOW);
 }
 
 #[cfg(not(windows))]
-fn hide_window(_: &mut Command) {}
+pub(crate) fn hide_window(_: &mut Command) {}
 
 /// `git -C dir args…`: its standard output, or why there is none.
 pub fn read(dir: &Path, args: &[&str]) -> Result<Vec<u8>, Error> {
