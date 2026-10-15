@@ -1,11 +1,13 @@
 //! Which worktrees would conflict with which, for the graph's ⚠, the
 //! worktree table's column and its table of pairs: each two heads put through
 //! [`predict`], and, where those merge clean, the two with their uncommitted
-//! changes. The calls block; run them off the UI thread.
+//! changes. The local branches no worktree is on are put against the trunk
+//! alone. The calls block; run them off the UI thread.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use crate::git;
 use crate::oid::Oid;
 use crate::predict::{self, Conflict};
 use crate::wip::Wip;
@@ -46,12 +48,23 @@ impl Outcome {
     }
 }
 
+/// A local branch no worktree is on, and how it would merge with the trunk.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Branch {
+    pub name: String,
+    pub head: Oid,
+    /// Never [`Outcome::Uncommitted`]: a branch has no working folder.
+    pub outcome: Outcome,
+}
+
 /// The sides and how each two of them would merge.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Clashes {
     pub sides: Vec<Side>,
     /// Each pair `(i, j)`, `i < j`, in the order (0, 1), (0, 2), …, (1, 2), ….
     pub pairs: Vec<Outcome>,
+    /// The branches from [`branches`], each against the trunk.
+    pub branches: Vec<Branch>,
 }
 
 impl Clashes {
@@ -96,6 +109,32 @@ pub fn sides(worktrees: &[Worktree], wips: &[Wip], trunk: Option<(&str, Oid)>) -
     sides
 }
 
+/// The most branches [`branches`] gives: each is a merge to compute again
+/// whenever the trunk moves.
+pub const MOST_BRANCHES: usize = 30;
+
+/// The local branches to put against the trunk `(name, commit)`: those it
+/// has not taken in, other than itself and those a worktree is on (the
+/// worktrees are paired already), the latest committed first, at most
+/// [`MOST_BRANCHES`].
+pub fn branches(dir: &Path, worktrees: &[Worktree], trunk: (&str, Oid)) -> Result<Vec<(String, Oid)>, git::Error> {
+    let not_merged = format!("--no-merged={}", trunk.1);
+    // Room for those left out below.
+    let count = format!("--count={}", MOST_BRANCHES + worktrees.len() + 1);
+    let args = ["for-each-ref", "--format=%(refname)%00%(objectname)", "--sort=-committerdate", &not_merged, &count, "refs/heads"];
+    let out = git::read_text(dir, &args)?;
+    let taken = |name: &str| name == trunk.0 || worktrees.iter().any(|w| w.prunable.is_none() && w.branch.as_deref() == Some(name));
+    Ok(out
+        .lines()
+        .filter_map(|l| {
+            let (name, id) = l.split_once('\0')?;
+            Some((name.strip_prefix("refs/heads/")?.to_owned(), Oid::parse(id)?))
+        })
+        .filter(|(name, _)| !taken(name))
+        .take(MOST_BRANCHES)
+        .collect())
+}
+
 /// The predictions already made, by the two commits: a head or a WIP
 /// commit stays the same from one reading to the next until it moves.
 #[derive(Default)]
@@ -113,16 +152,20 @@ impl Cache {
 
 /// How each two of `sides` would merge, in the repository `dir`: their
 /// heads, and where those merge clean and either has an uncommitted change,
-/// their tips. A prediction git fails at gives [`Outcome::Unknown`] and is
-/// asked again next time.
-pub fn read(dir: &Path, sides: Vec<Side>, cache: &mut Cache) -> Clashes {
+/// their tips; and how each of `branches` would merge with the trunk's
+/// commit `trunk`. A prediction git fails at gives [`Outcome::Unknown`] and
+/// is asked again next time.
+pub fn read(dir: &Path, sides: Vec<Side>, trunk: Option<Oid>, branches: Vec<(String, Oid)>, cache: &mut Cache) -> Clashes {
     let n = sides.len();
     let key = |a: Oid, b: Oid| if a <= b { (a, b) } else { (b, a) };
     let pairs: Vec<(usize, usize)> = (0..n).flat_map(|i| (i + 1..n).map(move |j| (i, j))).collect();
+    let branches: Vec<(String, Oid, (Oid, Oid))> =
+        trunk.map(|t| branches.into_iter().map(|(name, head)| (name, head, key(t, head))).collect()).unwrap_or_default();
     // This reading's predictions; `None` where git failed.
     let mut found: HashMap<(Oid, Oid), Option<Option<Conflict>>> = HashMap::new();
     let heads: Vec<(Oid, Oid)> = pairs.iter().map(|&(i, j)| key(sides[i].head, sides[j].head)).collect();
-    look_up(dir, &heads, cache, &mut found);
+    // The branches' with the heads', so git runs on all of them at once.
+    look_up(dir, &[&heads[..], &branches.iter().map(|b| b.2).collect::<Vec<_>>()].concat(), cache, &mut found);
     let dirty = |i: usize| sides[i].tip != sides[i].head;
     let tips: Vec<(Oid, Oid)> = pairs
         .iter()
@@ -144,8 +187,19 @@ pub fn read(dir: &Path, sides: Vec<Side>, cache: &mut Cache) -> Clashes {
             _ => Outcome::Unknown,
         })
         .collect();
+    let branches = branches
+        .into_iter()
+        .map(|(name, head, k)| {
+            let outcome = match found.get(&k) {
+                Some(Some(Some(c))) => Outcome::Committed(c.clone()),
+                Some(Some(None)) => Outcome::Clean,
+                _ => Outcome::Unknown,
+            };
+            Branch { name, head, outcome }
+        })
+        .collect();
     cache.0 = found.into_iter().filter_map(|(k, v)| v.map(|v| (k, v))).collect();
-    Clashes { sides, pairs: outcomes }
+    Clashes { sides, pairs: outcomes, branches }
 }
 
 /// Fills `found` for each of `keys`: from `cache`, or from git (a few at a
@@ -205,6 +259,7 @@ mod tests {
                 Outcome::Uncommitted(conflict("bd")),
                 Outcome::Committed(conflict("cd")),
             ],
+            branches: vec![],
         };
         assert_eq!(c.between(0, 2), Some(&Outcome::Committed(conflict("ac"))));
         assert_eq!(c.between(2, 0), c.between(0, 2));
@@ -265,7 +320,7 @@ mod tests {
         let read_now = |cache: &mut Cache| {
             let wts = worktree::list(&r.repo).unwrap();
             let wips: Vec<Wip> = wip::read_all(&wts).into_iter().filter_map(|w| w.ok().flatten()).collect();
-            read(&r.repo, sides(&wts, &wips, None), cache)
+            read(&r.repo, sides(&wts, &wips, None), None, vec![], cache)
         };
         let mut cache = Cache::default();
         let c = read_now(&mut cache);
@@ -284,5 +339,40 @@ mod tests {
         let c = read_now(&mut cache);
         assert_eq!((c.between(0, 2), c.between(1, 2)), (Some(&Outcome::Clean), Some(&Outcome::Clean)));
         assert_eq!(c.of(0).len(), 1);
+    }
+
+    #[test]
+    fn branches_without_a_worktree_are_put_against_the_trunk() {
+        let r = TempRepo::new("clash-branches");
+        commit_in(&r, &r.repo, &lines("a", "j"));
+        let make = |name: &str, content: &str| {
+            r.git(&r.repo, &["switch", "-q", "-c", name, "main"]);
+            commit_in(&r, &r.repo, content);
+        };
+        make("topic", &lines("topic", "j"));
+        make("calm", &lines("a", "j").replace("\ne\n", "\ncalm\n"));
+        make("taken", &lines("taken", "j"));
+        r.git(&r.repo, &["switch", "-q", "main"]);
+        // Taken in by main: not worth asking.
+        r.git(&r.repo, &["branch", "old"]);
+        commit_in(&r, &r.repo, &lines("main", "j"));
+        r.git(&r.repo, &["worktree", "add", "-q", "../taken", "taken"]);
+        let wts = worktree::list(&r.repo).unwrap();
+        let main = Oid::parse(&r.out(&r.repo, &["rev-parse", "main"])).unwrap();
+        let found = branches(&r.repo, &wts, ("main", main)).unwrap();
+        let names: Vec<&str> = found.iter().map(|(n, _)| n.as_str()).collect();
+        // The latest committed first.
+        assert_eq!(names, ["calm", "topic"]);
+        let mut cache = Cache::default();
+        let c = read(&r.repo, sides(&wts, &[], Some(("main", main))), Some(main), found, &mut cache);
+        assert_eq!(c.branches.len(), 2);
+        assert_eq!((c.branches[0].name.as_str(), &c.branches[0].outcome), ("calm", &Outcome::Clean));
+        assert!(matches!(&c.branches[1].outcome, Outcome::Committed(x) if x.files[0].path == "f.txt"));
+        // The worktree on `taken` is paired with main as a side, not as a branch.
+        assert!(matches!(c.between(0, 1), Some(Outcome::Committed(_))));
+        // One pair of heads and two branches.
+        assert_eq!(cache.len(), 3);
+        // No trunk, no branches.
+        assert!(read(&r.repo, vec![], None, vec![("calm".into(), main)], &mut cache).branches.is_empty());
     }
 }

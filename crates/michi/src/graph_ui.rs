@@ -712,11 +712,12 @@ pub(crate) fn claude_look(app: &App, s: &Session) -> Option<(&'static str, &'sta
     })
 }
 
-/// What the worktrees whose head is `id` would conflict with, their
-/// commits alone, one line each; `None` when nothing.
+/// What the worktrees and the branches whose head is `id` would conflict
+/// with, their commits alone, one line each; `None` when nothing.
 fn head_clashes(app: &App, id: Oid) -> Option<String> {
     let cl = &app.clashes;
-    let lines: Vec<String> = (0..cl.sides.len())
+    let trunk = app.trees.trunk.as_deref().unwrap_or("main");
+    let mut lines: Vec<String> = (0..cl.sides.len())
         .filter(|&i| cl.sides[i].head == id)
         .flat_map(|i| cl.of(i))
         .filter_map(|(j, o)| match o {
@@ -724,6 +725,15 @@ fn head_clashes(app: &App, id: Oid) -> Option<String> {
             _ => None,
         })
         .collect();
+    for b in cl.branches.iter().filter(|b| b.head == id) {
+        if let Outcome::Committed(c) = &b.outcome {
+            let line = clash_line(app, "clash.head", trunk, c);
+            // A worktree on the same commit says it already.
+            if !lines.contains(&line) {
+                lines.push(line);
+            }
+        }
+    }
     (!lines.is_empty()).then(|| {
         lines.join(
             "
@@ -914,6 +924,21 @@ mod tests {
         assert_eq!(reveal(s, view, row, 12), 13.0 * row + 2.0 * row - view, "near the foot: two rows kept below");
         // A view of one row keeps no margin.
         assert_eq!(reveal(0.0, row, row, 0), 0.0);
+    }
+
+    #[test]
+    fn a_head_tells_what_it_would_conflict_with() {
+        use crate::graph::fixture::{self, id};
+        use crate::repo::Answer;
+        let mut app = App::new(crate::prefs::Prefs::empty(), "C:/r/repo".into());
+        app.lang = "en".into();
+        app.take(Answer::Trees(fixture::trees()));
+        app.take(Answer::Clashes(fixture::clashes()));
+        let main = head_clashes(&app, id(6)).unwrap();
+        assert!(main.starts_with("Would conflict with wip in 3 places"), "{main}");
+        // A branch no worktree is on, against the trunk.
+        assert_eq!(head_clashes(&app, id(3)).as_deref(), Some("Would conflict with main in 1 places (a.md)"));
+        assert_eq!(head_clashes(&app, id(4)), None);
     }
 
     /// The view draws without a window: before the history, with it, with

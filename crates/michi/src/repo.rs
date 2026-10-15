@@ -388,8 +388,17 @@ fn read_trees(
         }
         Err(e) => eprintln!("michi: {e}"),
     }
-    let sides = clash::sides(wts, &wips, trunk.as_ref().map(|(n, h)| (n.as_str(), *h)));
-    let clashes = clash::read(dir, sides, predictions);
+    let trunk = trunk.as_ref().map(|(n, h)| (n.as_str(), *h));
+    let sides = clash::sides(wts, &wips, trunk);
+    let branches = match trunk.map(|t| clash::branches(dir, wts, t)) {
+        Some(Ok(b)) => b,
+        Some(Err(e)) => {
+            eprintln!("michi: {e}");
+            Vec::new()
+        }
+        None => Vec::new(),
+    };
+    let clashes = clash::read(dir, sides, trunk.map(|t| t.1), branches, predictions);
     if last.clashes.as_ref() != Some(&clashes) {
         last.clashes = Some(clashes.clone());
         send(Answer::Clashes(clashes));

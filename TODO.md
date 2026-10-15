@@ -27,15 +27,15 @@
   - [x] The worktree table with the Claude column (`tsumugi ls --json`), its cards below 960 wide (v0.5.0)
   - [x] Conflict prediction in the UI (⚠ on heads, a dashed frame on WIP rows, the column and the pair table in the worktree table,
     v0.6.0): the worktrees and the trunk paired, every 5 s while in front
-  - [ ] Conflict prediction's leftovers: every local branch against main (not only the worktrees), and the text while a merge is
-    under way (stage 3)
+  - [x] Conflict prediction's leftovers: every local branch against main (not only the worktrees; v0.9.0, the latest 30 that main
+    has not taken in, ⚠ on their heads in the graph). The text while a merge is under way is in stage 3
   - [x] File watching (`notify` → `Ask::Reload`) and unseen marks (also the worktree table's unseen column) (v0.7.0)
-- [ ] Second mock round before stage 2: changes and staging, the diff of a whole branch (seen marks, since last time, notes), rebase;
-  ask the owner with a `question` issue
+- [x] ~~Second mock round before stage 2~~: dropped (the owner, 2026-10-15: go on with the implementation). What stage 2 has to
+  decide goes into `question` issues in words, and the work goes on with the recommendation
 - [ ] 2. Change: first the diff of a whole branch (`d`; seen marks, since last time, notes), then stage and commit (lines and hunks,
   the check while Claude is writing, the count of uncommitted files on the `2` tab), branches, fetch / pull / push with progress, the everyday operations in design.md (amend, revert, tags, stash, discard, clean-up), backups to `refs/michi/backup/<time>`
 - [ ] 3. Conflicts: the conflict screen (`4`), locks during a merge (and「· マージ中」in red on the chip), rerere asked once, cherry-pick; prediction moved to gix-merge and
-  checked against `git merge-tree --write-tree`
+  checked against `git merge-tree --write-tree`; the prediction's text while a merge is under way (「予測は衝突の解消（4）の実物に変わりました」)
 - [ ] 4. Worktrees: new work (`N`), remove (`x`), go to the tab (`o`), take in main (`m`), the PR button (`gh pr create`); needs tsumugi `new --worktree BRANCH --from REF`
   and `focus N|NAME` (in tsumugi's TODO.md)
 - [ ] 5. Rebase: reorder, squash, reword, the in-progress band

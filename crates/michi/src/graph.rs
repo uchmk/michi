@@ -941,9 +941,10 @@ pub(crate) mod fixture {
     }
 
     /// The three worktrees' sides: `main` and `wip` conflict in two files,
-    /// `wip`'s uncommitted change with the folder at v1 in one.
+    /// `wip`'s uncommitted change with the folder at v1 in one; a branch
+    /// `feat` on f2 with main in one.
     pub fn clashes() -> michi_core::clash::Clashes {
-        use michi_core::clash::{Clashes, Outcome, Side};
+        use michi_core::clash::{Branch, Clashes, Outcome, Side};
         use michi_core::predict::{Conflict, ConflictFile};
         let side = |name: &str, path: &str, head, tip| Side { name: name.into(), path: Some(path.into()), head: id(head), tip: id(tip) };
         let file = |path: &str, hunks| ConflictFile { path: path.into(), hunks };
@@ -954,6 +955,11 @@ pub(crate) mod fixture {
                 Outcome::Clean,
                 Outcome::Uncommitted(Conflict { files: vec![file("src/lib.rs", Some(1))] }),
             ],
+            branches: vec![Branch {
+                name: "feat".into(),
+                head: id(3),
+                outcome: Outcome::Committed(Conflict { files: vec![file("docs/a.md", Some(1))] }),
+            }],
         }
     }
 }
