@@ -552,7 +552,7 @@ fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32) {
     if f.not_utf8 {
         pieces.push(Piece::Note("detail.not_utf8"));
     }
-    if s.diff.patch.is_none() && !f.hunks.is_empty() {
+    if s.diff.patch.is_none() {
         pieces.push(Piece::Note("changes.whole_note"));
     }
     if f.is_binary() {
@@ -774,6 +774,12 @@ mod tests {
         whole.patch = None;
         take_file(&mut app, Some(whole));
         frame(&ctx, &mut app, 900.0, Vec::new());
+        let binary = stage::Diff { file: File { counts: None, ..crate::changes::tests::file("logo.png") }, patch: None };
+        take_file(&mut app, Some(binary));
+        let drawn = frame(&ctx, &mut app, 900.0, Vec::new());
+        for note in ["This file goes in whole: its lines cannot be picked", "A binary file: no diff to show"] {
+            assert!(drawn.iter().any(|t| t == note), "a binary file goes in whole: {drawn:?}");
+        }
         take_file(&mut app, None);
         frame(&ctx, &mut app, 900.0, Vec::new());
         let gen = app.changes.gens().1;
