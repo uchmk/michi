@@ -214,6 +214,34 @@ fn read_with(dir: &Path, id: &Oid, patch: bool, limits: &Limits, stop: &dyn Fn()
     }
 }
 
+/// What changed between two commits.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Changes {
+    pub files: Vec<File>,
+    /// The diff is cut short (see [`Detail::cut`]).
+    pub cut: bool,
+}
+
+/// What changed from the commit `from` to `to` in the repository at `dir`
+/// (a worktree's uncommitted changes: from its head to its WIP commit), as
+/// [`read`] gives a commit's.
+pub fn changes(dir: &Path, from: &Oid, to: &Oid, patch: bool, stop: &dyn Fn() -> bool) -> Result<Changes, git::Error> {
+    let mut c = git::command();
+    c.arg("-C").arg(dir).args(["-c", "core.quotePath=false", "diff", "-z", "--raw", "--numstat", "-M"]);
+    c.args(["--no-color", "--no-ext-diff", "--no-relative", "--src-prefix=a/", "--dst-prefix=b/"]);
+    if patch {
+        c.arg("--patch");
+    }
+    c.args([from.to_string(), to.to_string()]);
+    let mut run = git::Running::start(c, "diff")?;
+    let mut changes = Changes::default();
+    let ended = files(&mut run.out, &mut changes.files, &mut changes.cut, patch, &LIMITS, stop).map_err(|e| run.io(e))?;
+    if ended {
+        run.finish()?;
+    }
+    Ok(changes)
+}
+
 struct Parsed {
     detail: Detail,
     /// Everything git wrote was read.
@@ -236,6 +264,22 @@ fn parse(out: &mut impl BufRead, patch: bool, limits: &Limits, stop: &dyn Fn() -
         return Ok(None);
     }
     let Some(mut detail) = header(&String::from_utf8_lossy(&buf)) else { return Ok(None) };
+    let ended = files(out, &mut detail.files, &mut detail.cut, patch, limits, stop)?;
+    Ok(Some(Parsed { detail, ended }))
+}
+
+/// The records of the files (`--raw`, then `--numstat`) and, when `patch`,
+/// the patch after them, into `files`; `cut` when the patch is cut short.
+/// Whether everything git wrote was read.
+fn files(
+    out: &mut impl BufRead,
+    files: &mut Vec<File>,
+    cut: &mut bool,
+    patch: bool,
+    limits: &Limits,
+    stop: &dyn Fn() -> bool,
+) -> io::Result<bool> {
+    let mut buf = Vec::new();
     let mut first = true;
     let mut counted = 0;
     let more = loop {
@@ -256,7 +300,7 @@ fn parse(out: &mut impl BufRead, patch: bool, limits: &Limits, stop: &dyn Fn() -
                 Status::Renamed | Status::Copied => (field(out, &mut buf)?, Some(one)),
                 _ => (one, None),
             };
-            detail.files.push(File { status, path, from, counts: Some((0, 0)), hunks: Vec::new(), eol_only: false, cut: false });
+            files.push(File { status, path, from, counts: Some((0, 0)), hunks: Vec::new(), eol_only: false, cut: false });
         } else {
             let mut p = f.splitn(3, '\t');
             let (added, deleted) = (p.next().unwrap_or(""), p.next().unwrap_or(""));
@@ -272,17 +316,17 @@ fn parse(out: &mut impl BufRead, patch: bool, limits: &Limits, stop: &dyn Fn() -
                 _ => None,
             };
             // In the order of the raw records; a type change may come twice.
-            if let Some(k) = detail.files[counted..].iter().position(|f| f.path == path) {
-                detail.files[counted + k].counts = counts;
+            if let Some(k) = files[counted..].iter().position(|f| f.path == path) {
+                files[counted + k].counts = counts;
                 counted += k + 1;
             }
         }
     };
-    let ended = if patch && more { diff(out, &mut detail, limits, stop)? } else { !more || !patch };
-    for f in &mut detail.files {
+    let ended = if patch && more { diff(out, files, cut, limits, stop)? } else { !more || !patch };
+    for f in files.iter_mut() {
         polish(f);
     }
-    Ok(Some(Parsed { detail, ended }))
+    Ok(ended)
 }
 
 /// The message: the hash, the parents, the author's name, mail and time,
@@ -337,7 +381,7 @@ fn take(r: &mut impl BufRead, end: u8, cap: usize, buf: &mut Vec<u8>) -> io::Res
 /// The patch, a section (`diff --git …`) per file in the order of the raw
 /// records; a type change comes as two sections with the same first line.
 /// Whether everything git wrote was read.
-fn diff(out: &mut impl BufRead, detail: &mut Detail, limits: &Limits, stop: &dyn Fn() -> bool) -> io::Result<bool> {
+fn diff(out: &mut impl BufRead, files: &mut [File], cut: &mut bool, limits: &Limits, stop: &dyn Fn() -> bool) -> io::Result<bool> {
     let mut buf = Vec::new();
     let mut at: Option<usize> = None;
     let mut section = Vec::new();
@@ -382,7 +426,7 @@ fn diff(out: &mut impl BufRead, detail: &mut Detail, limits: &Limits, stop: &dyn
                 new += 1;
                 left_new = left_new.saturating_sub(1);
             }
-            let Some(file) = at.and_then(|k| detail.files.get_mut(k)) else { continue };
+            let Some(file) = at.and_then(|k| files.get_mut(k)) else { continue };
             if file_kept >= limits.file_lines {
                 file.cut = true;
                 continue;
@@ -404,7 +448,7 @@ fn diff(out: &mut impl BufRead, detail: &mut Detail, limits: &Limits, stop: &dyn
             let header = String::from_utf8_lossy(line).into_owned();
             let Some((o, lo, w, lw)) = hunk_range(&header) else { continue };
             (old, left_old, new, left_new) = (o, lo, w, lw);
-            if let Some(file) = at.and_then(|k| detail.files.get_mut(k)) {
+            if let Some(file) = at.and_then(|k| files.get_mut(k)) {
                 if file_kept < limits.file_lines {
                     file.hunks.push(Hunk { header, lines: Vec::new() });
                 }
@@ -413,9 +457,9 @@ fn diff(out: &mut impl BufRead, detail: &mut Detail, limits: &Limits, stop: &dyn
         // Anything else is a section's head: modes, index, names, binary.
     };
     if !ended {
-        detail.cut = true;
+        *cut = true;
         let from = at.unwrap_or(0);
-        for f in detail.files.iter_mut().skip(from) {
+        for f in files.iter_mut().skip(from) {
             f.cut = true;
         }
     }
@@ -637,6 +681,31 @@ mod tests {
         assert!(d.files[2].hunks.is_empty());
         assert_eq!(d.files[3].hunks[0].lines[1].text, "新しい");
         assert!(d.files.iter().all(|f| !f.cut && !f.eol_only));
+    }
+
+    #[test]
+    fn the_changes_between_two_commits_are_read() {
+        let r = TempRepo::new("show-changes");
+        let from = head(&r);
+        fs::write(
+            r.repo.join("n.txt"),
+            "one
+two
+",
+        )
+        .unwrap();
+        r.git(&r.repo, &["add", "n.txt"]);
+        r.git(&r.repo, &["commit", "-q", "-m", "n"]);
+        let to = head(&r);
+        let c = changes(&r.repo, &from, &to, true, &never).unwrap();
+        assert!(!c.cut);
+        assert_eq!(c.files.len(), 1);
+        let f = &c.files[0];
+        assert_eq!((f.status, f.path.as_str(), f.counts), (Status::Added, "n.txt", Some((2, 0))));
+        assert_eq!(kinds(&f.hunks[0]), "++");
+        let c = changes(&r.repo, &from, &to, false, &never).unwrap();
+        assert!(c.files[0].hunks.is_empty() && c.files[0].counts == Some((2, 0)));
+        assert!(changes(&r.repo, &to, &to, true, &never).unwrap().files.is_empty());
     }
 
     #[test]
