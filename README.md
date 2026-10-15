@@ -10,14 +10,17 @@ with macOS and Linux on x86_64 and ARM64. A sibling of
 [yagura](https://github.com/uchmk/yagura) and [minato](https://github.com/uchmk/minato),
 sharing their crates in [ito](https://github.com/uchmk/ito).
 
-**Status:** design. The screens are being agreed on an HTML mock first: open
+**Status:** the design was settled on 2026-10-15 and is written down in
+[docs/design.md](docs/design.md), with what v1 leaves out in
+[docs/v1-scope.md](docs/v1-scope.md). The screens are on an HTML mock: open
 [docs/mock/michi.html](docs/mock/michi.html) in a browser, click the window and
-press `?` for the keys. The first round draws the commit graph (with the
-commit detail and its diff), the worktree table and the conflict screen, using
-the real history of tsumugi with three made-up Claude sessions on top. The
-changes and staging screen, the diff of a whole branch and rebase come in the
-next rounds. The page is built from [docs/mock/src](docs/mock/src) with
-`python build.py`. No code yet.
+press `?` for the keys. It draws the commit graph (lane PRs folded into their
+merge on main, the commit detail and its diff), the worktree table with
+conflict prediction and the conflict screen, using the real history of
+tsumugi with three made-up Claude sessions on top. The page is built from
+[docs/mock/src](docs/mock/src) with `python build.py`. Development starts from
+[docs/dev-prompt.md](docs/dev-prompt.md), with the skeleton (v0.1.0) first.
+No code yet.
 
 ## License
 

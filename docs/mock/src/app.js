@@ -100,6 +100,8 @@ const S = {
   scene: 'graph', width: '1280', theme: store.get('theme', 'tsumugi Dark'), fit: 'fit',
   view: 'graph', merging: false, sel: 0, wide: false, filter: '', limit: 64, open: { feat: true, fix: true },
   wtSel: 1, k: 1, cf: null, mx: false,
+  // Fold the merges on main's first-parent line (remembered; the app keeps it per repository).
+  fold: store.get('fold', '1') !== '0', unfold: new Set(),
 };
 if (!THEMES[S.theme]) S.theme = 'tsumugi Dark';
 const narrow = () => S.width === '960';
@@ -119,6 +121,24 @@ for (const [k, v] of Object.entries(FAKE.predict)) {
   const n = v.reduce((s, x) => s + x[1], 0), files = v.map(x => leaf(x[0])).join('・');
   PREDICT_HEADS[wtByBranch[a].head] = `${b} と ${n} か所でぶつかる見込み（${files}）`;
   PREDICT_HEADS[wtByBranch[b].head] = `${a} と ${n} か所でぶつかる見込み（${files}）`;
+}
+/* Pairs that only collide once the changes not yet committed are counted:
+   michi writes a tree of each worktree's files (refs untouched) and merges
+   those. The first branch of the key is the one whose WIP does it. */
+const PREDICT_WIP = {
+  'fix/142-optional-locks|feat/new-worktree': [['CHANGELOG.md', 1], ['Cargo.toml', 1]],
+  'fix/142-optional-locks|feat/focus': [['CHANGELOG.md', 1], ['Cargo.toml', 1]],
+};
+const WIP_HITS = {};
+for (const [k, v] of Object.entries(PREDICT_WIP)) {
+  const [a, b] = k.split('|');
+  (WIP_HITS[a] ||= []).push(`${b} と ${v.reduce((s, x) => s + x[1], 0)} か所（${v.map(x => leaf(x[0])).join('・')}）`);
+}
+function predictPair(a, b) {
+  for (const [m, wip] of [[FAKE.predict, false], [PREDICT_WIP, true]]) {
+    for (const k of [a + '|' + b, b + '|' + a]) if (m[k]) return { k, v: m[k], wip };
+  }
+  return null;
 }
 
 /* Commits nobody has looked at yet: the newest ones of each worktree. */
@@ -218,14 +238,74 @@ function nameRows(rows, byId, main) {
   }
 }
 
+/* Folding: every commit that came into main through a merge on main's
+   first-parent line belongs to that merge. Worktree heads and refs that are
+   not in main yet stay out, with what they need down to main. */
+function foldInfo(rows, byId, main) {
+  const into = {}, groups = {};
+  const order = rows.filter(r => main.has(r.id)).reverse();
+  for (const m of order) {
+    if (m.kind !== 'commit' || m.parents.length < 2) continue;
+    const stack = m.parents.slice(1);
+    while (stack.length) {
+      const id = stack.pop();
+      if (!byId[id] || main.has(id) || into[id]) continue;
+      into[id] = m.id;
+      (groups[m.id] = groups[m.id] || []).push(id);
+      stack.push(...byId[id].parents);
+    }
+  }
+  const keep = new Set();
+  const walk = (h, far) => {
+    const stack = [h];
+    while (stack.length) {
+      const id = stack.pop();
+      if (!byId[id] || main.has(id) || keep.has(id) || (!far && into[id])) continue;
+      keep.add(id);
+      stack.push(...byId[id].parents);
+    }
+  };
+  for (const [b, h] of Object.entries(heads())) if (b !== 'main') walk(h, true);
+  for (const r of rows) {
+    if (r.kind !== 'commit' || into[r.id] || main.has(r.id)) continue;
+    const { locals, remotes } = refsOf(r.c);
+    if (locals.length || remotes.length) walk(r.id, false);
+  }
+  return { into, groups, keep };
+}
+
 function computeGraph() {
-  const rows = buildRows();
-  const byId = {};
-  rows.forEach(r => { byId[r.id] = r; });
+  const all = buildRows();
+  const byAll = {};
+  all.forEach(r => { byAll[r.id] = r; });
   // Lane 0 belongs to main's first-parent line, always.
   const main = new Set();
-  for (let id = S.merging ? 'merging' : heads().main; id && byId[id] && !main.has(id); id = byId[id].parents[0]) main.add(id);
-  nameRows(rows, byId, main);
+  for (let id = S.merging ? 'merging' : heads().main; id && byAll[id] && !main.has(id); id = byAll[id].parents[0]) main.add(id);
+  nameRows(all, byAll, main);
+  const { into, groups, keep } = foldInfo(all, byAll, main);
+  const shown = id => !S.fold || !into[id] || keep.has(id) || S.unfold.has(into[id]);
+  const rows = all.filter(r => shown(r.id));
+  const byId = {};
+  rows.forEach((r, i) => { r.i = i; byId[r.id] = r; });
+  for (const r of rows) {
+    r.merge = r.parents.length > 1;
+    const g = groups[r.id];
+    if (g && S.fold) {
+      // Count what the fold hides, so an open merge keeps its ▾ chip.
+      r.foldN = g.filter(id => !keep.has(id)).length;
+      r.open = S.unfold.has(r.id);
+      r.foldName = mergedName(r.c.s);
+    }
+    // A folded merge loses its hidden side; anything else that points into a
+    // folded merge goes down first parents to the nearest commit still shown.
+    r.parents = r.parents.flatMap((p, k) => {
+      if (!byAll[p] || byId[p]) return [p];
+      if (k > 0 && main.has(r.id)) return [];
+      let q = p;
+      while (byAll[q] && !byId[q]) q = byAll[q].parents[0];
+      return q ? [q] : [];
+    }).filter((p, k, a) => p !== r.id && a.indexOf(p) === k);
+  }
   const lanes = [], edges = [];
   const free = () => { let j = 1; while (lanes[j] != null) j++; return j; };
   for (const r of rows) {
@@ -243,7 +323,7 @@ function computeGraph() {
     lanes.forEach((x, j) => { if (x != null && j > w) w = j; });
     r.span = w;
   }
-  return { rows, byId, edges };
+  return { rows, byId, edges, into, groups, all: byAll };
 }
 
 const X = c => PAD + c * LW + LW / 2;
@@ -279,14 +359,37 @@ function svgHtml(lim, gw, nShown, more) {
     const cut = p.i >= lim;
     parts.push(`<path d="${edgePath(r.i, r.col, e.via, p.i, p.col, cut ? cutY : null)}" style="stroke:${col}"${dash}${cut ? ' stroke-opacity=".45"' : ''}/>`);
   }
+  // A folded merge keeps a short stub of the branch that joined it.
+  for (let i = 0; i < lim; i++) {
+    const r = G.rows[i];
+    if (!r.foldN || r.open) continue;
+    const x = X(r.col), y = Y(i);
+    parts.push(`<path d="M${x + LW * 0.8} ${y + ROW * 0.42}C${x + LW * 0.8} ${y + 2} ${x + 4} ${y} ${x} ${y}" style="stroke:${laneColor(r.foldName)}" stroke-opacity=".8"/>`);
+  }
   for (let i = 0; i < lim; i++) {
     const r = G.rows[i], x = X(r.col), y = Y(i), col = laneColor(r.name);
     if (r.kind === 'wip') parts.push(`<circle cx="${x}" cy="${y}" r="4.5" style="fill:var(--t-bg);stroke:${col}" stroke-width="1.6" stroke-dasharray="2.2 1.8"/>`);
     else if (r.kind === 'merging') parts.push(`<circle cx="${x}" cy="${y}" r="5.5" style="fill:var(--t-bg);stroke:var(--t-err)" stroke-width="2"/><circle cx="${x}" cy="${y}" r="2" style="fill:var(--t-err)"/>`);
-    else if (r.parents.length > 1) parts.push(`<circle cx="${x}" cy="${y}" r="5" style="fill:var(--t-bg);stroke:${col}" stroke-width="2"/><circle cx="${x}" cy="${y}" r="2" style="fill:${col}"/>`);
+    else if (r.merge) parts.push(`<circle cx="${x}" cy="${y}" r="5" style="fill:var(--t-bg);stroke:${col}" stroke-width="2"/><circle cx="${x}" cy="${y}" r="2" style="fill:${col}"/>`);
     else parts.push(`<circle cx="${x}" cy="${y}" r="4" style="fill:${col};stroke:var(--t-bg)" stroke-width="1.5"/>`);
   }
   return `<svg class="gsvg" width="${gw}" height="${nShown * ROW}" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true">${parts.join('')}</svg>`;
+}
+
+/* The branch names inside a merge's group (shown when it is folded). */
+function groupRefs(m) {
+  const out = [];
+  for (const id of G.groups[m] || []) {
+    const { locals, remotes } = refsOf(G.all[id].c);
+    for (const b of locals) out.push(b);
+    for (const b of remotes) if (!locals.includes(b)) out.push('origin/' + b);
+  }
+  return out;
+}
+function foldChip(r) {
+  const refs = r.open ? [] : groupRefs(r.id);
+  const tip = r.open ? 'h で畳む' : `${r.foldN} コミットを畳んでいます（l で開く）` + (refs.length ? `\n中のブランチ: ${refs.join(', ')}` : '');
+  return `<span class="fchip${r.open ? ' open' : ''}" data-act="unfold" data-h="${r.id}" style="--c:${laneColor(r.foldName)}" title="${esc(tip)}">${r.open ? '▾' : '▸'} ${r.foldN}</span>`;
 }
 
 function rowHtml(r) {
@@ -297,6 +400,7 @@ function rowHtml(r) {
     const w = wtByBranch[r.wt], f = r.w.f;
     sub = `<span class="s">未コミット ${f.length} ファイル（+${sum(f, 1)} −${sum(f, 2)}）</span>`;
     if (w.claude) sub += `<span class="${CL[w.claude.state][2]}" style="font-size:11.5px;flex:none">${CL[w.claude.state][0]} Claude ${CL[w.claude.state][1]}</span>`;
+    if (WIP_HITS[r.wt] && !S.merging) sub += `<span class="pill warn wip" title="${esc('まだコミットしていない変更を数えると、' + WIP_HITS[r.wt].join('、') + 'でぶつかる見込み')}">⚠ 衝突の予測</span>`;
     au = '<span class="dim">—</span>';
     hh = 'WIP';
   } else if (r.kind === 'merging') {
@@ -308,7 +412,7 @@ function rowHtml(r) {
   } else {
     const c = r.c;
     if (isUnseen(c.h)) { cls.push('new'); sub += '<span class="nw" title="まだ見ていないコミット"></span>'; }
-    sub += pillsHtml(c) + `<span class="s">${esc(c.s)}</span>`;
+    sub += pillsHtml(c) + (r.foldN ? foldChip(r) : '') + `<span class="s">${esc(c.s)}</span>`;
     au = c.a === 'github-actions[bot]' ? '<span class="bot" title="github-actions[bot]">⚙ actions</span>' : esc(c.a);
     hh = c.h;
   }
@@ -591,6 +695,7 @@ function renderDetail() {
       + (c.b ? `<div class="body">${esc(c.b)}</div>` : '')
       + `<div class="wide-hint">${S.wide ? 'Esc で樹形図に戻る' : 'Enter で差分を横並びに広げる'}</div></div>`;
     if (wt && wtByBranch[wt].claude) h += claudeBox(wtByBranch[wt], false);
+    if (G.groups[c.h]) h += groupHtml(c.h);
     files = c.f;
     diffs = c.d || null;
   }
@@ -600,6 +705,20 @@ function renderDetail() {
   else h += '<div class="dnote">この画面イメージには、上から 40 件のコミットの差分だけを入れています。</div>';
   el.innerHTML = h;
   el.scrollTop = 0;
+}
+
+/* What a merge on main brought in: its group, newest first. */
+function groupHtml(m) {
+  const g = G.groups[m].slice().sort((a, b) => G.all[b].t - G.all[a].t);
+  const state = !S.fold ? '' : S.unfold.has(m) ? '樹形図で開いています（<kbd>h</kbd> で畳む）' : '樹形図では畳んでいます（<kbd>l</kbd> で開く）';
+  const shown = g.length > 8 ? g.slice(0, 7) : g;
+  let h = `<div class="mgrp"><div class="mg-h">このマージで main に入った ${g.length} コミット<span class="dim">${state}</span></div>`;
+  for (const id of shown) {
+    const c = G.all[id].c;
+    h += `<div class="plink" data-h="${id}"><span class="mono">${id}</span><span class="s">${esc(c.s)}</span><span class="dim">${when(c.t)}</span></div>`;
+  }
+  if (shown.length < g.length) h += `<div class="dim mg-more">ほか ${g.length - shown.length} コミット</div>`;
+  return h + '</div>';
 }
 
 function mergingDetail() {
@@ -625,14 +744,12 @@ function setWide(on) {
 
 /* ── the sidebar ──────────────────────────────────────────── */
 function findRef(name) {
-  const lim = G.rows.length;
-  for (let i = 0; i < lim; i++) {
-    const r = G.rows[i];
+  for (const r of Object.values(G.all)) {
     if (r.kind !== 'commit') continue;
     const { locals, remotes, tags } = refsOf(r.c);
-    if (name.startsWith('origin/') ? remotes.includes(name.slice(7)) : locals.includes(name) || tags.includes(name)) return i;
+    if (name.startsWith('origin/') ? remotes.includes(name.slice(7)) : locals.includes(name) || tags.includes(name)) return r.id;
   }
-  return -1;
+  return null;
 }
 
 function renderSide() {
@@ -704,11 +821,13 @@ function predictCell(w) {
     if (w.branch === 'feat/focus') return `<span class="cf-bad">⚠ main にマージ中</span><div class="sub2">残り ${cfLeft()} か所</div>`;
     if (w.branch === 'feat/new-worktree') return '<span class="cf-ok">main に入った</span>';
   }
-  const pairs = Object.entries(FAKE.predict).filter(([k]) => k.split('|').includes(w.branch));
+  const pairs = [...Object.entries(FAKE.predict).map(e => [...e, false]), ...Object.entries(PREDICT_WIP).map(e => [...e, true])]
+    .filter(([k]) => k.split('|').includes(w.branch));
   if (!pairs.length) return '<span class="cf-ok">なし</span>';
-  return pairs.map(([k, v]) => {
+  return pairs.map(([k, v, wip]) => {
     const other = k.split('|').find(x => x !== w.branch);
-    return `<span class="cf-bad">⚠ ${esc(other)} と ${v.reduce((s, x) => s + x[1], 0)} か所</span><div class="sub2">${v.map(x => esc(leaf(x[0]))).join('・')}</div>`;
+    const tail = wip ? `${v.map(x => esc(leaf(x[0]))).join('・')}（未コミットの分）` : v.map(x => esc(leaf(x[0]))).join('・');
+    return `<div class="cf-one"><span class="cf-bad${wip ? ' wip' : ''}">⚠ ${esc(other)} と ${v.reduce((s, x) => s + x[1], 0)} か所</span><div class="sub2">${tail}</div></div>`;
   }).join('');
 }
 function actsHtml(w, k) {
@@ -742,25 +861,29 @@ function renderWt() {
     mx += `<tr><th class="r">${esc(short(a.branch))}</th>`;
     WT.forEach((b, j) => {
       if (i === j) { mx += '<td class="self">—</td>'; return; }
-      const v = FAKE.predict[a.branch + '|' + b.branch] || FAKE.predict[b.branch + '|' + a.branch];
-      const live = v && !S.merging;
-      mx += live ? `<td class="hit${S.mx ? ' on' : ''}" data-act="mx" title="${esc(v.map(x => x[0] + ' ' + x[1]).join('\n'))}">${v.reduce((s, x) => s + x[1], 0)}</td>` : '<td class="dim">·</td>';
+      const p = predictPair(a.branch, b.branch);
+      mx += p && !S.merging
+        ? `<td class="hit${p.wip ? ' wip' : ''}${S.mx === p.k ? ' on' : ''}" data-act="mx" data-p="${esc(p.k)}" title="${esc((p.wip ? '未コミットの分を数えると\n' : '') + p.v.map(x => x[0] + ' ' + x[1]).join('\n'))}">${p.v.reduce((s, x) => s + x[1], 0)}</td>`
+        : '<td class="dim">·</td>';
     });
     mx += '</tr>';
   });
   mx += '</table>';
-  const pair = Object.entries(FAKE.predict)[0];
+  const pair = S.mx && predictPair(...S.mx.split('|'));
   const note = S.merging
     ? 'feat/new-worktree を main に入れたので、予測は「衝突の解消」（4）の実物に変わりました。'
-    : S.mx
-      ? `<b>${esc(pair[0].replace('|', ' × '))}</b>: ${pair[1].map(x => `<span class="mono">${esc(x[0])}</span> ${x[1]} か所`).join('、')}。先に main に入れた方は何も起きず、後の方を入れるときに解くことになります。`
-      : '赤い数を押すと、ぶつかるファイルが出ます。';
+    : pair
+      ? `<b>${esc(pair.k.replace('|', ' × '))}</b>: ${pair.v.map(x => `<span class="mono">${esc(x[0])}</span> ${x[1]} か所`).join('、')}。`
+        + (pair.wip
+          ? 'fix/142 のまだコミットしていない変更（版の繰り上げと CHANGELOG の項目）がぶつかります。コミットすると実線の枠になります。'
+          : '先に main に入れた方は何も起きず、後の方を入れるときに解くことになります。')
+      : '数を押すと、ぶつかるファイルが出ます。点線の枠は、まだコミットしていない変更を数えてぶつかる組です。';
   const un = Object.keys(UNSEEN).filter(hh => !seen.has(hh));
   const wl = un.length
     ? '<div class="wl">' + un.map(hh => `<div data-h="${hh}"><span class="mono">${hh}</span><span class="s b"><span class="nw"></span>${esc(COMMIT[hh].s)}</span><span class="dim">${esc(short(UNSEEN[hh]))} · ${hm(COMMIT[hh].t)}</span></div>`).join('') + '</div>'
     : '<div class="dim" style="font-size:12px">全部見ました。</div>';
-  h += `<div class="wt-low"><div class="box"><h3>ぶつかりの予測（コミット済みの分どうし）</h3>${mx}<div class="mx-note">${note}</div>`
-    + '<div class="foot">2 本ずつ <code>git merge-tree --write-tree</code> で合わせてみます（fetch のあとと、どれかの HEAD が動いたとき）。未コミットの変更は数えません。fix/142 の CHANGELOG.md はまだ入っていません。</div></div>'
+  h += `<div class="wt-low"><div class="box"><h3>ぶつかりの予測（未コミットの変更も数える）</h3>${mx}<div class="mx-note">${note}</div>`
+    + '<div class="foot">2 本ずつ <code>git merge-tree --write-tree</code> で合わせてみます（fetch のあと、どれかの HEAD が動いたとき、作業フォルダが書き換わって 2 秒たったとき）。未コミットの変更は、作業フォルダの中身から一時の tree を作って数えます。ブランチも index も動かしません。</div></div>'
     + `<div class="box"><h3>見ていない変更（${un.length}）</h3>${wl}<div class="foot">この表を最後に開いたときから増えたコミット。樹形図で選ぶと消えます。</div></div></div>`;
   h += '<div class="foot">Claude の列は <code>tsumugi ls --json</code> を 2 秒ごと（窓が後ろにあるときは 10 秒）に読みます。tsumugi が動いていなければ列ごと消えます。「タブへ」は <code>tsumugi focus N</code>。</div>';
   $('#v-wt').innerHTML = h;
@@ -949,7 +1072,7 @@ function cfMove(dir) {
 
 /* ── chrome: tabs, title-bar chip, status bar ─────────────── */
 const SBKEYS = {
-  graph: [['j k', '動かす'], ['Enter', '横並び'], ['/', '絞る'], ['o', 'タブへ'], ['N', '新しい作業'], ['f', 'fetch'], ['?', 'キー']],
+  graph: [['j k', '動かす'], ['Enter', '横並び'], ['/', '絞る'], ['z', 'PR を畳む'], ['o', 'タブへ'], ['N', '新しい作業'], ['f', 'fetch'], ['?', 'キー']],
   changes: [['1', '樹形図'], ['3', 'worktree'], ['?', 'キー']],
   wt: [['j k', '選ぶ'], ['o', 'タブへ'], ['Enter', '樹形図で見る'], ['m', 'main を取り込む'], ['x', '消す'], ['N', '新しい作業'], ['?', 'キー']],
   cf: [[']  [', '次・前の箇所'], ['o', '自分'], ['t', '相手'], ['b B', '両方'], ['e', '結果を直す'], ['?', 'キー']],
@@ -1007,7 +1130,7 @@ function keysDlg() {
   const sec = (h, list) => `<h4>${h}</h4>` + list.map(([k, l]) => `<div><span>${l}</span><span>${k.split(' ').map(x => `<kbd>${esc(x)}</kbd>`).join(' ')}</span></div>`).join('');
   openOv('<div class="dlg" tabindex="-1" style="width:640px"><div class="dlg-h">キー<span class="dim">lazygit に寄せた既定。設定（,）で変えられます</span></div><div class="dlg-b"><div class="keys">'
     + sec('どこでも', [['1 2 3', '画面を切り替える'], ['N', '新しい作業（worktree + Claude）'], ['f', 'fetch'], ['p', 'pull'], ['P', 'push'], [',', '設定'], ['Ctrl+Shift+P', 'コマンドを探す'], ['?', 'この一覧']])
-    + sec('樹形図', [['j k', '上下に動かす'], ['Enter', '差分を横並びに広げる'], ['Esc', '戻る・絞りを消す'], ['/', '絞る（Enter で次）'], ['b', 'ブランチを作る・切り替える'], ['s', 'stash'], ['o', 'その worktree の Claude のタブへ']])
+    + sec('樹形図', [['j k', '上下に動かす'], ['Enter', '差分を横並びに広げる'], ['Esc', '戻る・絞りを消す'], ['/', '絞る（Enter で次）'], ['z', 'PR を畳む（main の first-parent だけ）・広げる'], ['l h', '選んだマージを開く・畳む'], ['b', 'ブランチを作る・切り替える'], ['s', 'stash'], ['o', 'その worktree の Claude のタブへ']])
     + sec('worktree', [['j k', '行を選ぶ'], ['Enter', '樹形図で見る'], ['o', 'Claude のタブへ（tsumugi focus）'], ['d', 'ブランチ全体の差分'], ['m', 'main を取り込む'], ['x', '消す']])
     + sec('衝突の解消（マージ中だけ 4）', [['] [', '次・前の箇所'], ['o', '自分を採用'], ['t', '相手を採用'], ['b', '両方（自分が先）'], ['B', '両方（相手が先）'], ['e', '結果を直す'], ['Enter', '当てた形を確かめた'], ['Ctrl+Enter', 'マージをコミット']])
     + '</div></div><div class="dlg-f"><button class="btn" data-act="ov-close">閉じる<span class="k">Esc</span></button></div></div>');
@@ -1050,10 +1173,53 @@ function rmDlg(k) {
 
 /* ── actions ──────────────────────────────────────────────── */
 function goCommit(h) {
+  if (!G.byId[h] && G.into[h]) { S.unfold.add(G.into[h]); regraph(); }
   const r = G.byId[h];
   if (!r) { toast(`<code>${esc(h)}</code> は、この画面イメージの 130 件より古いコミットです。`); return; }
   if (S.view !== 'graph') setView('graph');
   selectRow(r.i);
+}
+
+/* Recompute the graph after folding changed, keeping the selection (or the
+   merge it went into). */
+function regraph() {
+  const id = G.rows[S.sel] && G.rows[S.sel].id;
+  G = computeGraph();
+  let i = G.rows.findIndex(r => r.id === id);
+  if (i < 0 && G.into[id]) i = G.rows.findIndex(r => r.id === G.into[id]);
+  S.sel = Math.max(0, i);
+  if (S.sel >= S.limit) S.limit = G.rows.length;
+  drawGraph();
+  renderDetail();
+  syncFold();
+  requestAnimationFrame(() => ensureVisible(S.sel));
+}
+function syncFold() {
+  const b = $('#fold-btn');
+  if (b) b.setAttribute('aria-pressed', String(S.fold));
+}
+function setFold(on) {
+  S.fold = on;
+  store.set('fold', on ? '1' : '0');
+  S.unfold.clear();
+  regraph();
+  const n = Object.keys(G.groups).length, c = Object.keys(G.into).length;
+  toast(on ? `main に入った ${n} 本のマージを畳みました（${c} コミット）。worktree と、まだ main に入っていないブランチは出たままです。` : 'マージを全部広げました。');
+}
+/* l opens the selected folded merge; h folds it again, also from inside it. */
+function foldSel(open) {
+  const r = G.rows[S.sel];
+  if (!r || !S.fold) { toast('z で PR を畳むと使えます。'); return; }
+  const m = r.foldN != null ? r.id : G.into[r.id];
+  if (!m || !G.groups[m]) { toast('選んでいる行は、main に入ったマージではありません。'); return; }
+  if (open) {
+    if (m !== r.id || r.open) return;
+    S.unfold.add(m);
+  } else {
+    if (!S.unfold.has(m)) return;
+    S.unfold.delete(m);
+  }
+  regraph();
 }
 
 function act(name, el) {
@@ -1061,19 +1227,32 @@ function act(name, el) {
   const bi = el.dataset.bi != null ? +el.dataset.bi : S.cf && S.cf.cur;
   switch (name) {
     case 'fetch': toast('⟳ fetch しました。新しいコミットはありません（画面イメージ）。'); break;
-    case 'pull': case 'wt-pull': toast('↓ pull: 既定は <code>--ff-only</code>。進められないときは理由を出して止めます。' + MOCK); break;
+    case 'pull': case 'wt-pull':
+      if (S.merging && (name === 'pull' || WT[k].main)) { toast('↓ pull: ' + LOCKED); break; }
+      toast('↓ pull: 既定は <code>--ff-only</code>。進められないときは理由を出して止めます。' + MOCK); break;
     case 'push': toast('↑ push: 先に分かれていないかを確かめ、force は別のキーにします。' + MOCK); break;
-    case 'branch': toast('ブランチの作成・切り替えは小さなパレットで出します。' + MOCK); break;
-    case 'stash': case 'stash-show': toast('stash の中身は次の回（変更の画面）で描きます。'); break;
+    case 'branch':
+      toast(S.merging ? 'ブランチは作れます。切り替え（checkout）は、マージ中なのでこの worktree（main）では止めています。' : 'ブランチの作成・切り替えは小さなパレットで出します。' + MOCK); break;
+    case 'stash':
+      if (S.merging) { toast('stash: ' + LOCKED); break; }
+      toast('stash の中身は次の回（変更の画面）で描きます。'); break;
+    case 'stash-show': toast('stash の中身は次の回（変更の画面）で描きます。'); break;
     case 'pal': toast('コマンドを探す: ito のコマンドパレット（tsumugi・kura と同じ）。'); break;
     case 'new': newDlg(); break;
     case 'wide': setWide(!S.wide); break;
+    case 'fold': setFold(!S.fold); break;
+    case 'unfold': {
+      const m = el.dataset.h;
+      if (S.unfold.has(m)) S.unfold.delete(m); else S.unfold.add(m);
+      regraph();
+      break;
+    }
     case 'files-all': S.allFiles = true; renderDetail(); S.allFiles = false; break;
     case 'focus': toast(`<code>tsumugi focus ${el.dataset.tab}</code> を回しました。tsumugi の窓が前に出て、タブ ${el.dataset.tab} が選ばれます。`); break;
     case 'go-cf': setView('cf'); break;
     case 'go-changes': setView('changes'); break;
     case 'refresh': toast('⟳ worktree と Claude の様子を読み直しました。'); break;
-    case 'mx': S.mx = !S.mx; renderWt(); break;
+    case 'mx': S.mx = S.mx === el.dataset.p ? false : el.dataset.p; renderWt(); break;
     case 'wt-graph': setView('graph'); goCommit(heads()[WT[k].branch]); break;
     case 'wt-diff': toast(`ブランチ全体の差分（<code>main...${esc(WT[k].branch)}</code>）と「見た印」は次の回で描きます。`); break;
     case 'wt-merge': toast(`main を ${esc(WT[k].branch)} に取り込みます。既定は merge、設定で rebase。rebase の画面は次の回。`); break;
@@ -1140,8 +1319,8 @@ function onClick(e) {
     if (si.dataset.grp) { S.open[si.dataset.grp] = !S.open[si.dataset.grp]; renderSide(); return; }
     if (si.dataset.go) { goCommit(si.dataset.go); return; }
     if (si.dataset.branch) {
-      const i = findRef(si.dataset.branch);
-      if (i >= 0) selectRow(i); else toast(`${esc(si.dataset.branch)} の先頭は、この画面イメージの 130 件より古いところにあります。`);
+      const h = findRef(si.dataset.branch);
+      if (h) goCommit(h); else toast(`${esc(si.dataset.branch)} の先頭は、この画面イメージの 130 件より古いところにあります。`);
     }
     return;
   }
@@ -1220,6 +1399,9 @@ function onKey(e) {
     if (k === '/') { $('#filter').focus(); stop(); return; }
     if (k === 'b') { act('branch', win); stop(); return; }
     if (k === 's') { act('stash', win); stop(); return; }
+    if (k === 'z') { setFold(!S.fold); stop(); return; }
+    if (k === 'l' || k === 'ArrowRight') { foldSel(true); stop(); return; }
+    if (k === 'h' || k === 'ArrowLeft') { foldSel(false); stop(); return; }
     if (k === 'o') {
       const b = r.kind === 'wip' ? r.wt : r.kind === 'commit' ? wtOfHead(r.id) : null;
       const w = b && wtByBranch[b];
@@ -1309,18 +1491,20 @@ const NOTES = {
       <li>左端の線はいつも main（シアン）。ほかの線の色は名前で決まります（テーマの ANSI の 16 色から、赤と灰を除いたもの）。</li>
       <li><b>⧉</b> は worktree の先頭。横の印はそこにいる Claude の様子（<span style="color:var(--accent)">●</span> 実行中・◐ 待ち・✓ 済み）。</li>
       <li>点線の白丸は、まだコミットしていない変更（WIP）。worktree ごとに 1 行です。</li>
-      <li><b>⚠ 衝突の予測</b>は、コミット済みの分どうしを <code>git merge-tree</code> で合わせてみて、ぶつかると分かった先頭。</li>
+      <li><b>⚠ 衝突の予測</b>は、worktree どうしを <code>git merge-tree</code> で合わせてみて、ぶつかると分かった先頭。点線の枠は、まだコミットしていない変更を数えてぶつかるもの（WIP の行に付きます）。</li>
+      <li><b>PR を畳む</b>（既定で入、<kbd>z</kbd>）: main に入ったマージは、main の first-parent の 1 行だけにします。行の <span class="fchip" style="--c:var(--t-wait)">▸ 7</span> は畳んだコミットの数で、押すと開きます。左の短い線は、畳んだ枝が入ってきた印です。worktree と、まだ main に入っていないブランチはいつも出たままです。</li>
       <li>青い点と太字は、まだ見ていないコミット。選ぶと消え、worktree の表の数も減ります。</li></ul>`],
     ['動かしかた', `<ul>
       <li>窓を押してから <kbd>j</kbd> <kbd>k</kbd> で動かし、<kbd>Enter</kbd>（またはダブルクリック）で差分を横並びに広げます。<kbd>Esc</kbd> で戻ります。</li>
       <li><kbd>/</kbd> で絞ります。合わないコミットは薄くなり、右の細いバーに印が付きます（<kbd>Enter</kbd> で次）。</li>
       <li>右の細いバーが樹形図のただ 1 つのスクロールの印です。worktree の先頭・WIP・予測・タグ・選んでいる所が並び、押すとそこへ飛びます。</li>
       <li>下の「… さらに古い N 件」は押すと読み込みます。左の feat/・fix/ 以外の束も同じく畳んであります。</li>
+      <li>マージの行で <kbd>l</kbd> が開く・<kbd>h</kbd> が畳む。右の欄に「このマージで main に入った N コミット」が並び、押すとそのコミットへ飛びます（畳んだ中なら開きます）。左のブランチを押したときも同じです。</li>
       <li><kbd>N</kbd> で新しい作業、<kbd>?</kbd> でキーの一覧。</li></ul>`],
-    ['まだ決めていないこと', `<ul>
-      <li>本物の履歴は Merge pull request が多く、線が増えます。lane の PR を畳む（main の first-parent だけを見せる）切り替えを付けるか。</li>
-      <li>Claude が書いている途中（● 実行中）の WIP は、ここでは読むだけにしています。「変更」（2）でもステージを止めるか。</li>
-      <li>差分の中の行のステージは、樹形図ではなく「変更」（2）だけでやる形にしています。</li></ul>`],
+    ['決まったこと（2026-10-15）', `<ul>
+      <li>lane の PR を畳む切り替えを付ける。既定で入で、main の first-parent だけを見せます。</li>
+      <li>Claude が書いている途中（● 実行中）の WIP も、「変更」（2）でステージできます。止めずに、ステージとコミットの前に「Claude が書いている途中です」と出して確かめます。</li>
+      <li>差分の中の行のステージは「変更」（2）だけ。樹形図では読むだけです。</li></ul>`],
   ],
   wt: [
     ['この表で見るもの', `<ul>
@@ -1329,9 +1513,10 @@ const NOTES = {
       <li>「タブへ」（<kbd>o</kbd>）は <code>tsumugi focus N</code>。tsumugi の窓が前に出て、そのタブが選ばれます（TODO に足したもの）。</li>
       <li>幅 960 では表がカードになります。</li></ul>`],
     ['ぶつかりの予測', `<ul>
-      <li>コミット済みの分を 2 本ずつ <code>git merge-tree --write-tree</code> で合わせてみます。作業フォルダには触りません。</li>
+      <li>2 本ずつ <code>git merge-tree --write-tree</code> で合わせてみます。作業フォルダには触りません。</li>
       <li>new-worktree × focus が 4 か所。どちらかを main に入れると、もう片方を入れるときに「衝突の解消」になります（場面「衝突の解消」）。</li>
-      <li>未コミットの変更は数えていません。fix/142 の CHANGELOG.md もいずれぶつかります。数えるかどうかは決めたいこと。</li></ul>`],
+      <li>未コミットの変更も数えます（2026-10-15 に決定）。作業フォルダの中身から一時の tree を作り、ブランチも index も動かしません。
+        fix/142 の未コミットの版の繰り上げと CHANGELOG.md が、ほかの 2 本と 2 か所ずつぶつかります（黄の点線の枠）。</li></ul>`],
     ['新しい作業（N）', `<ul>
       <li>ブランチ・元・指示・本数を入れると、<code>tsumugi new --worktree … --from …</code> を回します（TODO に足したもの）。</li>
       <li>本数を 2 以上にすると、同じ指示で並べて始めます（tsumugi の「並べて始める」と同じ）。</li></ul>`],
@@ -1347,10 +1532,12 @@ const NOTES = {
       <li><kbd>e</kbd> で結果を直し、<kbd>Esc</kbd> で抜けます。全部解けると下にコミットの欄が出ます。</li>
       <li>「Claude に渡す」は <code>tsumugi send</code> で、残りの箇所を作者の Claude に頼みます。「マージ全体を中止」は確かめてから。</li>
       <li>幅 960 では base の列を隠し、各箇所の「base を見る」で出します。</li></ul>`],
-    ['まだ決めていないこと', `<ul>
-      <li>Claude に渡したあと、解き終わったことをどう知るか（<code>tsumugi wait</code> で待つか、ファイルの変化を見るか）。</li>
-      <li>マージ中に、ほかの画面（1・3）で何を止めるか（pull・push・新しい作業）。</li>
-      <li>rerere を既定で入れるか（<code>rerere.enabled</code> をこのリポジトリだけで有効にする）。</li></ul>`],
+    ['決まったこと（2026-10-15）', `<ul>
+      <li>Claude に渡したあとは、ファイルの見張り（300 ms）で衝突の印を読み直し、残りの数を減らしていきます。<code>tsumugi ls --json</code> で
+        その Claude が待ち・済みになったら知らせ、確かめるのは人です。<code>tsumugi wait</code> では止まりません。</li>
+      <li>マージ中は、その worktree で HEAD と index を動かす操作（pull・checkout・rebase・merge・cherry-pick・stash・reset、マージ以外のコミット）を止めます。
+        読むこと・fetch・push・ほかの worktree の操作（新しい作業など）はそのまま。タイトルバーに「マージ中」が出て、止めたボタンは薄くなります。</li>
+      <li>rerere は、最初に衝突したときに聞いて、このリポジトリの設定（<code>rerere.enabled</code>）に書きます。</li></ul>`],
   ],
   logo: [
     ['決まったこと', `<ul>
@@ -1365,6 +1552,15 @@ function renderNotes() {
   $('#notes').innerHTML = NOTES[S.scene].map(([h, b]) => `<div class="note"><h3>${h}</h3>${b}</div>`).join('');
 }
 
+/* While a merge is open, what moves HEAD or the index of that worktree waits. */
+const LOCKED = 'マージ中なので、この worktree（main）では止めています。解き終わるか、マージを中止すると使えます。';
+function syncLocks() {
+  for (const b of document.querySelectorAll('#v-graph .tool [data-act="pull"], #v-graph .tool [data-act="stash"]')) {
+    b.classList.toggle('locked', S.merging);
+    b.title = S.merging ? 'マージ中は止めています' : '';
+  }
+}
+
 function setScene(s) {
   S.scene = s;
   S.merging = s === 'cf';
@@ -1372,6 +1568,9 @@ function setScene(s) {
   S.filter = '';
   S.limit = 64;
   S.mx = false;
+  S.unfold.clear();
+  syncFold();
+  syncLocks();
   $('#filter').value = '';
   $('#v-graph').classList.remove('wide');
   cfInit();
