@@ -3,9 +3,9 @@
 前の会話から次の会話への引き継ぎ。新しいセッションは `C:\dev\michi` で始め、CLAUDE.md・TODO.md・この文書の順に読む。
 設計の正は [design.md](design.md) とモック。大きなファイル（design.md・graph.rs・wt_ui.rs など）は全部読まず、要るところだけ読む。
 
-## いまの版（v0.9.0、2026-10-15）
+## いまの版（v0.10.1、2026-10-16）
 
-段 1「見る」は終わり、段 2「変える」の最初（ブランチ全体の差分）まで。入っているもの:
+段 1「見る」は終わり、段 2「変える」のうち、ブランチ全体の差分（v0.9.0）とステージとコミット（v0.10.0）まで。入っているもの:
 
 - 樹形図（`ito-graph`、main が左端、lane の PR を畳む `z`、`/` の絞り込み、スクロールバーの印）。10 万コミットで最初の画面 0.1 s、
   畳む 3.5 ms、絞る 1 文字 4〜7 ms。commit-graph が無ければ裏で書く（#2）。
@@ -16,46 +16,29 @@
 - worktree の無いローカルのブランチと main の衝突の予測（main が取り込んでいない新しい 30 本、樹形図の頭に ⚠）。
 - ブランチ全体の差分（worktree の表の `d`）: `main...<ブランチ>`、`u` 未コミット、`Space` 見た（パスと blob、
   `%LOCALAPPDATA%\uchmk\michi\review\`）、`s` 前回から（`refs/michi/seen/<ブランチ>`）、`Enter` 横並び。
-  ロジックは `michi-core/src/review.rs`、状態は `michi/src/review.rs`、描画は `review_ui.rs`、読むのは `repo.rs` の 4 本目のスレッド。
+  ロジックは `michi-core/src/review.rs`、状態は `michi/src/review.rs`、描画は `review_ui.rs`。
+- ステージとコミット（`2`）: 上に worktree のチップ（`[` `]`、Claude が書いている途中なら ●）と amend のスイッチ（`A`）、
+  左にステージ済み・未ステージ（未追跡は `?` で最後、1000 まで）、その下にメッセージの欄、右に差分。
+  `Space` 入れる・出す、`a` 全部、`l` 行（`j` `k` は変わった行だけ、`v` 範囲、`a` ハンク、`h` 戻る）、`c` 欄へ、`Ctrl+Enter` コミット、`Enter` 横並び。
+  Esc は確かめの帯 → 行 → 横並びの順に戻る。パッチを作れないファイル（未追跡・バイナリ・名前の変更・モード）は丸ごと。
+  ロジックは `michi-core/src/stage.rs`（`lists`・`diff`・`Patch::pick`・`apply --cached --recount`・`commit -F -`・`is_pushed`）、
+  状態とテストは `michi/src/changes.rs`、描画は `changes_ui.rs`。
+- 読むスレッドは `repo.rs` に detail・watch・review・changes・repo（と commit-graph）。changes の書く頼み（ステージ・外す・apply・コミット）は
+  捨てずに順に実行し、終わったら一覧を読み直す。worktree を読み直すたびに `Answer::Reread` を送り、`2` を開いていれば一覧を読み直す。
 
-実機の確認は needs-pc の issue #1, #3〜#9, #11 で PC のセッションに頼んである（13.1 だけ `[~]`）。
-差分のレビューで推奨で決めたこと（キー・「前回」の動き・印の掃除・後回し）は `question` の #10。
-
-## 作業の途中（ステージとコミット、`2` の画面）
-
-v0.9.0 のあと、ロジックの側だけコミットした（版は上げていない。画面はまだ）。
-**このコミットとその次（引き継ぎ書）はまだ push していない。**次のセッションは最初に R: があるのを確かめ、
-`scripts/verify.sh` が `ALL OK` になってから main に push する（持ち主が 2026-10-15 に「再起動後に push」を選んだ）。
-
-- `michi-core/src/stage.rs`: `lists`（ステージ済み・未ステージ・未追跡を並べて読む。未追跡は 1000 まで）、`diff`（1 ファイルの差分。
-  未追跡は全部が追加の hunk）、`Patch::parse` と `pick`（選んだ行だけのパッチ。順は `git add -p` と同じで、消す行が足す行の前）、
-  `apply`（`apply --cached --recount`、`reverse` で戻す）、`stage`（`add -A`）・`unstage`（`reset -q`）、`commit`（`-F -`、`--amend`）、
-  `last_message`、`is_pushed`（HEAD を含むリモートのブランチがあるか）。テストは 10。
-- `git.rs` に `feed`（標準入力に書く）。`show.rs` の `Status` に `Unmerged`（U）と `Untracked`（?）を足し、`Other` の字を X にした
-  （版を上げるときの CHANGELOG に書く）。`parse_changes` を公開。
-- 画面の側の予定:
-  - `repo.rs` に 5 本目のスレッド "changes"。頼みは `List{gen, wt}`・`File{gen, wt, side, file}`。
-    書く操作（`Stage`・`Unstage`・`Apply`・`StageAll`・`UnstageAll`・`Commit`）は捨てずに順に実行し、終わりかエラーのあとに一覧を読み直す。
-    `Answer::Wips` のたびに一覧を読み直す。
-  - `michi/src/changes.rs`（egui に依らない状態とテスト。`review.rs` の gen の作りをまねる）と `changes_ui.rs`（`review_ui.rs` をまねる）。
-  - 行の選択は `detail_ui::diff` に選んだ行の印を足すか、`Wrap::tops` で上に重ねる。
-  - コミットの文の入力欄は `main.rs` の `keys()` で絞り込みの欄と同じ扱いにする（Esc で出る、Ctrl+Enter でコミット、字は `feed` に渡さない）。
-  - その worktree の Claude が実行中なら、最初のステージかコミットの前に y / Esc で確かめる（worktree を変えるか Claude が止まるまで覚える）。
-    push 済みの HEAD の amend も y で確かめる。エラーと index の lock はトースト。
-  - 決めたこと（キー・並び・Claude の確かめ）は `question` の issue に書き、TODO.md に（要確認: #N）。TESTING.md に 14 節。版は v0.10.0。
-
-## ビルドの場所（2026-10-15 の夜）
-
-ビルドは R:（RAM ディスク）だけ（`~/.claude/CLAUDE.md`）。C: に `CARGO_TARGET_DIR` を向けない。
-22:34 ごろ R: が消えた（システムのログに RamDisk の Ntfs のエラー 137）。持ち主が再起動する。
-R: が戻っていなければビルドせずに持ち主に知らせる。
+実機の確認は needs-pc の issue #1, #3〜#9, #11, #13 で PC のセッションに頼んである。この会話で付けた `[~]` は 13.1・14.3・14.4・14.11。
+推奨で決めたことの `question` は、差分のレビューが #10、`2` の画面（キー・配置・Claude の確かめ・amend・行を選べないファイル・タブの数・後回し）が #12。
+どちらもまだ回答は無い。
 
 ## 次にやること
 
 1. モックの 2 回目はやらない（持ち主が 2026-10-15 に「実装を進めて」）。段 2 で決めることは `question` の issue に文字で書き、推奨で進める。
-2. 段 2 の続き: ステージとコミットの画面（上の「作業の途中」。`2` の画面、行と hunk、Claude が書いている最中の確かめ、タブの未コミットの数）、ブランチ、
-   fetch / pull / push、日々の操作（design.md の「日々の操作」）、`refs/michi/backup/<時刻>` への退避。
-   差分のレビューのメモ・マージ・PR は後の段（#10）。
+2. 段 2 の続き（TODO.md の 2.）:
+   - ブランチ（作る・切り替える・消す。消す前に `refs/michi/backup/<時刻>` へ退避）と、fetch / pull / push の進み具合（`--progress` を読む）。
+   - 日々の操作（design.md の「日々の操作」）: stash、変更を捨てる、revert、タグ、片付け。壊す操作の前に `refs/michi/backup/<時刻>` へ退避し、
+     確かめの窓に何が失われるかを書く。作業中の Claude の worktree では `2` と同じ帯で確かめる。
+   - `2` の残り（#12）: ハンクの分割（`git add -p` の `s`）、コミットの hooks の出力を全部見せる（今はトーストに 1 行）。
+   - 差分のレビューのメモ・マージ・PR は後の段（#10）。
 3. 段 3〜6 は TODO.md のとおり。段 4 は tsumugi の `new --worktree` と `focus` が要る（tsumugi の TODO.md に書いてある）。
 
 ## 進め方（持ち主の希望）
@@ -72,11 +55,17 @@ R: が戻っていなければビルドせずに持ち主に知らせる。
   （`| tail` の後ろに push を繋げない。版を上げたら `cargo build` で Cargo.lock も合わせる）。
 - この PC の Bash は rtk のフックが通る。生の出力が要るときは `rtk proxy cargo …`。heredoc や sed の `\` は崩れることがあるので、
   込み入った書き換えは Edit か、`newline=''` の Python のスクリプトで。
-- 画面の確認は `scripts/shot.ps1`（PowerShell。先に `cargo build -p michi`。`-Keys` の書き方はファイルの頭）。撮ったあと
-  `tasklist` で `michi.exe`・`git.exe` が残っていないか見る（ほかのセッションの git は触らない）。
+- 画面の確認は `scripts/shot.ps1`（PowerShell。先に `cargo build -p michi`。`-Keys` の書き方はファイルの頭）。
+  - 例: `& .\scripts\shot.ps1 -Exe R:\cargo-target\michi\debug\michi.exe -Arg <リポ> -Out <scratchpad>\shots\x -Width 1100 -Keys "2;j|l;v|j| "`。
+  - `;` で区切った組ごとに 1 枚。最初の組の前が `x-a.png`、組 1〜5 が `x-b`〜`x-f`。キーは SendKeys の名前（`{ENTER}`・`{ESC}`・`^{ENTER}`・`^{END}`、
+    Space は ` ` そのもの）、`sleepN` で待つ、`@x,y` でクリック。1100 幅で撮ると画像は 1100×800 ほど。
+  - 書く操作を試すときは、使い捨てのリポ（scratchpad で `git init`、push を試すなら `git init --bare` をリモートに）で。
+  - 撮ったあと `michi.exe`・`git.exe` が残っていないか見る（閉じる途中の数秒は残って見える。ほかのセッションの git は触らない）。
 - 大きな履歴は `scripts/make-history.py` で作り、`MICHI_BENCH_REPO=<そのフォルダ> cargo test --release -p michi big_history -- --ignored --nocapture`。
 - 単体テストは本物のリポジトリに触らない（`michi-core/src/testrepo.rs` の `TempRepo`）。
 - ito の rev は a54872d2309c5a82df69c851cecf20e17e20a28c（ito v0.36.0）。
+- egui 0.36 の `TextEdit` は、`.frame()` を自分で付けると `margin` が効かない。余白は Frame の `inner_margin` に書く。
+- `scripts/verify.sh` は手元の clippy に加えて、もう一方の CI のターゲット（Windows では Linux）の clippy も回す（acd02a9 から）。
 - tsumugi・yagura・kura・lane の worktree のファイルは直さない。tsumugi で michi を開いて試さない（git の掃除が走って重くなった）。
 
 ## 決まっていること（会話でだけ決めたもの）
