@@ -14,7 +14,7 @@
     with its marks, batches of 2000 / 5000
   - [x] Measure the first screen on a 100k-commit repository (v0.2.1, `scripts/make-history.py` and the ignored test `big_history`):
     0.09–0.11 s with a commit-graph, 0.31 s without (git's `--date-order` walks everything first). Fully read in about 0.6 s
-  - [ ] Write a commit-graph in the background when the repository has none（要確認: #2）
+  - [x] Write a commit-graph in the background when the repository has none (#2, v0.7.2): 0.31 s → 0.12 s on the next opening
   - [ ] Folding and the filter cost 56 ms and 42 ms at 100k commits, on the UI thread at every key: lay out on the reading thread, or only
     the rows that changed
   - [x] The left column and the commit detail with its diff (v0.3.0)

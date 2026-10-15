@@ -482,13 +482,14 @@ pub(crate) fn first(dir: &Path) -> (Result<Version, git::Error>, Result<Summary,
 fn history(dir: &Path, first: Result<Setup, git::Error>, asks: &Receiver<Ask>, send: impl Fn(Answer)) {
     let mut first = Some(first);
     let mut gen = 0;
+    let mut graph_asked = false;
     loop {
         gen += 1;
         // A second wish to read again, or one for more of the last reading,
         // is met by this reading.
         while asks.try_recv().is_ok() {}
         let setup = first.take().unwrap_or_else(|| Setup::read(dir));
-        match read(dir, gen, setup, asks, &send) {
+        match read(dir, gen, setup, asks, &mut graph_asked, &send) {
             Next::Reload => {}
             Next::Stop => return,
         }
@@ -500,7 +501,14 @@ enum Next {
     Stop,
 }
 
-fn read(dir: &Path, gen: u32, setup: Result<Setup, git::Error>, asks: &Receiver<Ask>, send: &impl Fn(Answer)) -> Next {
+fn read(
+    dir: &Path,
+    gen: u32,
+    setup: Result<Setup, git::Error>,
+    asks: &Receiver<Ask>,
+    graph_asked: &mut bool,
+    send: &impl Fn(Answer),
+) -> Next {
     let failed = |error| {
         send(Answer::Failed { gen, error });
         wait_reload(asks)
@@ -531,6 +539,19 @@ fn read(dir: &Path, gen: u32, setup: Result<Setup, git::Error>, asks: &Receiver<
     if !log.done() {
         if let Ok(count) = log::count(dir, &heads) {
             send(Answer::Total { gen, count });
+        }
+        // A history longer than the first batch: once the first screen is
+        // up, write the commit-graph if there is none, so the next opening
+        // need not walk it all first.
+        if !std::mem::replace(graph_asked, true) {
+            let dir = dir.to_path_buf();
+            let _ = std::thread::Builder::new().name("commit-graph".into()).spawn(move || {
+                if log::lacks_graph(&dir) {
+                    if let Err(e) = log::write_graph(&dir) {
+                        eprintln!("michi: the commit-graph was not written: {e}");
+                    }
+                }
+            });
         }
     }
     loop {

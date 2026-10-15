@@ -2,6 +2,14 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.7.2] - 2026-10-15
+
+### 追加
+
+- 履歴が 2000 コミットより長く、commit-graph（`git gc` が書くコミットの索引）が無いリポジトリでは、最初の画面を出したあとに裏で 1 回
+  `git commit-graph write --reachable --split` を回す（#2 の推奨）。履歴は変わらず、トーストも出さない。浅い clone と `core.commitGraph=false` では書かない。
+  10 万コミットで、次に開いたときの最初の画面が 0.31 秒から 0.12 秒になった。
+
 ## [0.7.1] - 2026-10-15
 
 ### 修正

@@ -87,6 +87,7 @@ Open a repository with merges, tags, a remote and a second worktree (`C:\dev\tsu
 | 6.16 | Open a repository with more than 2000 commits | The first screen comes at once; scrolling near the foot reads on by itself; the last row says how many older commits are left and reads them when clicked; the thumb shrinks as the list grows |
 | 6.17 | Look at a second worktree's commits | They run on their own lane in the worktree's colour, from where they left main |
 | 6.18 | Narrow the window to 720 wide; switch to the light theme | The subject is cut with an ellipsis and the names drop before they crowd it; the filter field stays inside the band; every colour stays readable in light |
+| 6.19 | Open a repository with more than 2000 commits and no `.git\objects\info\commit-graph*` (a fresh `git clone` of a long history), wait a few seconds, close michi and open it again | `.git\objects\info\commit-graphs` appears while michi is open, with no toast; the history looks the same, and the second opening shows the first screen sooner. A repository with fewer commits gets none |
 
 ## 7. Side column
 

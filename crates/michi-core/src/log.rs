@@ -100,10 +100,60 @@ pub fn count(dir: &Path, tips: &[Oid]) -> Result<u64, git::Error> {
     text.trim().parse().map_err(|_| git::Error::Io(format!("unexpected `git rev-list --count`: {text}")))
 }
 
+/// Whether the repository lacks the commit-graph (the index of the commits
+/// `git gc` writes) and could have one: without it, `--date-order` walks
+/// the whole history before the first commit comes. Not when it is shallow
+/// or `core.commitGraph` is off, and not when git cannot say.
+pub fn lacks_graph(dir: &Path) -> bool {
+    let paths = ["objects/info/commit-graph", "objects/info/commit-graphs/commit-graph-chain"];
+    let Ok(out) = git::read_text(dir, &["rev-parse", "--is-shallow-repository", "--git-path", paths[0], "--git-path", paths[1]]) else {
+        return false;
+    };
+    let mut lines = out.lines();
+    if lines.next() != Some("false") {
+        return false;
+    }
+    if lines.any(|p| dir.join(p).exists()) {
+        return false;
+    }
+    // Unset is on.
+    git::read_text(dir, &["config", "--type=bool", "core.commitGraph"]).map_or(true, |v| v != "false")
+}
+
+/// Writes the commit-graph for every commit a ref reaches, as a chain git
+/// adds to rather than rewrites. The history stays as it is: this is the
+/// index `git gc` writes.
+pub fn write_graph(dir: &Path) -> Result<(), git::Error> {
+    git::read(dir, &["commit-graph", "write", "--reachable", "--split", "--no-progress"]).map(drop)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::testrepo::TempRepo;
+
+    #[test]
+    fn a_repository_without_a_commit_graph_gets_one() {
+        let r = TempRepo::new("log-graph");
+        r.git(&r.repo, &["commit", "-q", "--allow-empty", "-m", "second"]);
+        r.git(&r.repo, &["worktree", "add", "-q", "-b", "wt", "../wt"]);
+        let wt = r.root.join("wt");
+        assert!(lacks_graph(&r.repo));
+        assert!(lacks_graph(&wt));
+        r.git(&r.repo, &["config", "core.commitGraph", "false"]);
+        assert!(!lacks_graph(&r.repo));
+        r.git(&r.repo, &["config", "--unset", "core.commitGraph"]);
+
+        // From a worktree it goes in the common folder.
+        write_graph(&wt).unwrap();
+        assert!(!lacks_graph(&r.repo));
+        assert!(!lacks_graph(&wt));
+        assert!(r.repo.join(".git/objects/info/commit-graphs/commit-graph-chain").exists());
+        // The history reads the same.
+        let mut log = Reader::start(&r.repo, &[]).unwrap();
+        assert_eq!(log.next_batch(10).unwrap().iter().map(|c| c.subject.as_str()).collect::<Vec<_>>(), ["second", "first"]);
+        assert!(!lacks_graph(&r.root.join("nowhere")));
+    }
 
     #[test]
     fn records_are_read() {
