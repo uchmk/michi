@@ -15,6 +15,7 @@ pub mod predict;
 pub mod refs;
 pub mod review;
 pub mod show;
+pub mod stage;
 pub mod summary;
 pub mod track;
 pub mod unseen;

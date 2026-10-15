@@ -518,8 +518,8 @@ fn wip_header(ui: &Ui, app: &App, w: &Wip, at: Pos2, width: f32, paint: Option<&
 pub(crate) fn status_ink(s: Status) -> Color32 {
     let c = ito_theme::colors();
     match s {
-        Status::Added => c.done,
-        Status::Deleted => c.err,
+        Status::Added | Status::Untracked => c.done,
+        Status::Deleted | Status::Unmerged => c.err,
         Status::Modified => c.wait,
         Status::Renamed | Status::Copied => c.blue,
         Status::TypeChanged | Status::Other => c.dim,

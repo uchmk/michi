@@ -21,10 +21,37 @@
 実機の確認は needs-pc の issue #1, #3〜#9, #11 で PC のセッションに頼んである（13.1 だけ `[~]`）。
 差分のレビューで推奨で決めたこと（キー・「前回」の動き・印の掃除・後回し）は `question` の #10。
 
+## 作業の途中（ステージとコミット、`2` の画面）
+
+v0.9.0 のあと、ロジックの側だけコミットした（版は上げていない。画面はまだ）。
+
+- `michi-core/src/stage.rs`: `lists`（ステージ済み・未ステージ・未追跡を並べて読む。未追跡は 1000 まで）、`diff`（1 ファイルの差分。
+  未追跡は全部が追加の hunk）、`Patch::parse` と `pick`（選んだ行だけのパッチ。順は `git add -p` と同じで、消す行が足す行の前）、
+  `apply`（`apply --cached --recount`、`reverse` で戻す）、`stage`（`add -A`）・`unstage`（`reset -q`）、`commit`（`-F -`、`--amend`）、
+  `last_message`、`is_pushed`（HEAD を含むリモートのブランチがあるか）。テストは 10。
+- `git.rs` に `feed`（標準入力に書く）。`show.rs` の `Status` に `Unmerged`（U）と `Untracked`（?）を足し、`Other` の字を X にした
+  （版を上げるときの CHANGELOG に書く）。`parse_changes` を公開。
+- 画面の側の予定:
+  - `repo.rs` に 5 本目のスレッド "changes"。頼みは `List{gen, wt}`・`File{gen, wt, side, file}`。
+    書く操作（`Stage`・`Unstage`・`Apply`・`StageAll`・`UnstageAll`・`Commit`）は捨てずに順に実行し、終わりかエラーのあとに一覧を読み直す。
+    `Answer::Wips` のたびに一覧を読み直す。
+  - `michi/src/changes.rs`（egui に依らない状態とテスト。`review.rs` の gen の作りをまねる）と `changes_ui.rs`（`review_ui.rs` をまねる）。
+  - 行の選択は `detail_ui::diff` に選んだ行の印を足すか、`Wrap::tops` で上に重ねる。
+  - コミットの文の入力欄は `main.rs` の `keys()` で絞り込みの欄と同じ扱いにする（Esc で出る、Ctrl+Enter でコミット、字は `feed` に渡さない）。
+  - その worktree の Claude が実行中なら、最初のステージかコミットの前に y / Esc で確かめる（worktree を変えるか Claude が止まるまで覚える）。
+    push 済みの HEAD の amend も y で確かめる。エラーと index の lock はトースト。
+  - 決めたこと（キー・並び・Claude の確かめ）は `question` の issue に書き、TODO.md に（要確認: #N）。TESTING.md に 14 節。版は v0.10.0。
+
+## ビルドの場所（2026-10-15 の夜）
+
+ビルドは R:（RAM ディスク）だけ（`~/.claude/CLAUDE.md`）。C: に `CARGO_TARGET_DIR` を向けない。
+22:34 ごろ R: が消えた（システムのログに RamDisk の Ntfs のエラー 137）。持ち主が再起動する。
+R: が戻っていなければビルドせずに持ち主に知らせる。
+
 ## 次にやること
 
 1. モックの 2 回目はやらない（持ち主が 2026-10-15 に「実装を進めて」）。段 2 で決めることは `question` の issue に文字で書き、推奨で進める。
-2. 段 2 の続き: ステージとコミット（`2` の画面。行と hunk、Claude が書いている最中の確かめ、タブの未コミットの数）、ブランチ、
+2. 段 2 の続き: ステージとコミットの画面（上の「作業の途中」。`2` の画面、行と hunk、Claude が書いている最中の確かめ、タブの未コミットの数）、ブランチ、
    fetch / pull / push、日々の操作（design.md の「日々の操作」）、`refs/michi/backup/<時刻>` への退避。
    差分のレビューのメモ・マージ・PR は後の段（#10）。
 3. 段 3〜6 は TODO.md のとおり。段 4 は tsumugi の `new --worktree` と `focus` が要る（tsumugi の TODO.md に書いてある）。

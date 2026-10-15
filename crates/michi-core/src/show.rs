@@ -41,6 +41,10 @@ pub enum Status {
     Copied,
     /// A file became a link or the other way round.
     TypeChanged,
+    /// In a merge that stopped on it: not yet resolved.
+    Unmerged,
+    /// Not known to git (the `2` view's files that are not yet added).
+    Untracked,
     Other,
 }
 
@@ -54,6 +58,7 @@ impl Status {
             Some(b'R') => Status::Renamed,
             Some(b'C') => Status::Copied,
             Some(b'T') => Status::TypeChanged,
+            Some(b'U') => Status::Unmerged,
             _ => Status::Other,
         }
     }
@@ -67,7 +72,9 @@ impl Status {
             Status::Renamed => 'R',
             Status::Copied => 'C',
             Status::TypeChanged => 'T',
-            Status::Other => '?',
+            Status::Unmerged => 'U',
+            Status::Untracked => '?',
+            Status::Other => 'X',
         }
     }
 }
@@ -272,6 +279,23 @@ pub fn changes_in(dir: &Path, from: &Oid, to: &Oid, paths: &[&str], patch: bool,
     Ok(changes)
 }
 
+/// What `git diff -z --raw --numstat [--patch]` wrote, read whole: the
+/// changes, and the patch as it came (empty without one) for those that
+/// need its bytes.
+pub fn parse_changes(mut out: &[u8]) -> (Changes, &[u8]) {
+    let mut changes = Changes::default();
+    // Reading a slice fails in no way.
+    let more = records(&mut out, &mut changes.files).unwrap_or(false);
+    let patch = if more { out } else { &[] };
+    if more {
+        let _ = diff(&mut out, &mut changes.files, &mut changes.cut, &LIMITS, &|| false);
+    }
+    for f in &mut changes.files {
+        polish(f);
+    }
+    (changes, patch)
+}
+
 struct Parsed {
     detail: Detail,
     /// Everything git wrote was read.
@@ -309,6 +333,17 @@ fn files(
     limits: &Limits,
     stop: &dyn Fn() -> bool,
 ) -> io::Result<bool> {
+    let more = records(out, files)?;
+    let ended = if patch && more { diff(out, files, cut, limits, stop)? } else { !more || !patch };
+    for f in files.iter_mut() {
+        polish(f);
+    }
+    Ok(ended)
+}
+
+/// The records of the files, `--raw` then `--numstat`, into `files`, up to
+/// the empty field before a patch. Whether there is more after them.
+fn records(out: &mut impl BufRead, files: &mut Vec<File>) -> io::Result<bool> {
     let mut buf = Vec::new();
     let mut first = true;
     let mut counted = 0;
@@ -364,11 +399,7 @@ fn files(
             }
         }
     };
-    let ended = if patch && more { diff(out, files, cut, limits, stop)? } else { !more || !patch };
-    for f in files.iter_mut() {
-        polish(f);
-    }
-    Ok(ended)
+    Ok(more)
 }
 
 /// The message: the hash, the parents, the author's name, mail and time,
@@ -511,7 +542,7 @@ fn diff(out: &mut impl BufRead, files: &mut [File], cut: &mut bool, limits: &Lim
 
 /// `@@ -a,b +c,d @@`: where the old and the new lines start and how many
 /// there are (one when the count is left out).
-fn hunk_range(header: &str) -> Option<(u32, u32, u32, u32)> {
+pub(crate) fn hunk_range(header: &str) -> Option<(u32, u32, u32, u32)> {
     let rest = header.strip_prefix("@@ -")?;
     let (old, rest) = rest.split_once(" +")?;
     let (new, _) = rest.split_once(" @@")?;
@@ -528,12 +559,12 @@ fn hunk_range(header: &str) -> Option<(u32, u32, u32, u32)> {
 
 /// Whether `bytes` are UTF-8, but for a character cut short at the end
 /// of a long line that was `cut`.
-fn is_utf8(bytes: &[u8], cut: bool) -> bool {
+pub(crate) fn is_utf8(bytes: &[u8], cut: bool) -> bool {
     std::str::from_utf8(bytes).map_or_else(|e| cut && e.error_len().is_none(), |_| true)
 }
 
 /// A diff line's text, cut at [`Limits::line_chars`].
-fn text(bytes: &[u8], limits: &Limits) -> String {
+pub(crate) fn text(bytes: &[u8], limits: &Limits) -> String {
     let s = String::from_utf8_lossy(bytes);
     match s.char_indices().nth(limits.line_chars) {
         Some((i, _)) => format!("{}…", &s[..i]),

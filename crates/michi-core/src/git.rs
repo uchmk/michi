@@ -1,11 +1,12 @@
-//! Running git. Every call here only reads, and says so: `GIT_OPTIONAL_LOCKS=0`
-//! so a read never takes the index lock a Claude Code session in the same
-//! worktree may be about to want, and `GIT_TERMINAL_PROMPT=0` so nothing ever
-//! waits for a password nobody will type. The calls block; run them off the
+//! Running git. A read says so: `GIT_OPTIONAL_LOCKS=0` so it never takes the
+//! index lock a Claude Code session in the same worktree may be about to
+//! want, and `GIT_TERMINAL_PROMPT=0` so nothing ever waits for a password
+//! nobody will type. The few calls that write (the `2` view's, in
+//! `stage.rs`) take the lock as they must. The calls block; run them off the
 //! UI thread.
 
 use std::fmt;
-use std::io::{self, BufReader, Read};
+use std::io::{self, BufReader, Read, Write};
 use std::path::Path;
 use std::process::{Child, ChildStdout, Command, Stdio};
 use std::thread::JoinHandle;
@@ -124,6 +125,30 @@ pub fn read_text(dir: &Path, args: &[&str]) -> Result<String, Error> {
     let out = read(dir, args)?;
     let text = String::from_utf8(out).map_err(|e| Error::Io(format!("git {}: {e}", args.join(" "))))?;
     Ok(text.trim_end_matches(['\n', '\r']).to_owned())
+}
+
+/// `c` with `input` on its standard input (`apply -`, `commit -F -`): its
+/// standard output, or why there is none.
+pub fn feed(mut c: Command, input: &[u8]) -> Result<Vec<u8>, Error> {
+    c.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut child = c.spawn().map_err(started)?;
+    let stdin = child.stdin.take();
+    // Written from another thread: a git that answers as it reads would
+    // hold both up on a full pipe.
+    let out = std::thread::scope(|s| {
+        s.spawn(move || {
+            if let Some(mut w) = stdin {
+                let _ = w.write_all(input);
+            }
+        });
+        child.wait_with_output()
+    })
+    .map_err(|e| Error::Io(format!("git: {e}")))?;
+    if out.status.success() {
+        Ok(out.stdout)
+    } else {
+        Err(refused(&String::from_utf8_lossy(&out.stderr)))
+    }
 }
 
 /// `a` on another thread while `b` runs on this one. Most of what a git
