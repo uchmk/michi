@@ -838,4 +838,55 @@ mod tests {
         assert_eq!(when(at(2026, 1, 2, 3, 4), &now, "昨日"), "1/2 03:04");
         assert_eq!(when(at(2025, 12, 31, 9, 0), &now, "昨日"), "2025/12/31");
     }
+
+    /// How long a big history takes to the first screen (docs/dev-prompt.md:
+    /// 100k commits, 0.3 s), and what the window then does on the UI thread.
+    /// `scripts/make-history.py` makes such a repository; then
+    /// `MICHI_BENCH_REPO=<it> cargo test --release -p michi big_history -- --ignored --nocapture`.
+    #[test]
+    #[ignore = "measures the repository MICHI_BENCH_REPO names"]
+    fn big_history() {
+        use michi_core::log::Reader;
+        use std::time::Instant;
+
+        let Some(dir) = std::env::var_os("MICHI_BENCH_REPO").map(std::path::PathBuf::from) else {
+            eprintln!("MICHI_BENCH_REPO is not set");
+            return;
+        };
+        let t = Instant::now();
+        let lap = |what: &str| eprintln!("{:>8.1} ms  {what}", t.elapsed().as_secs_f64() * 1000.0);
+        let timed = |what: &str, f: &mut dyn FnMut()| {
+            let s = Instant::now();
+            f();
+            eprintln!("{:>8.1} ms  {what}", s.elapsed().as_secs_f64() * 1000.0);
+        };
+        let (version, summary, setup) = crate::repo::first(&dir);
+        let (_, _, setup) = (version.unwrap(), summary.unwrap(), setup.unwrap());
+        let heads = setup.heads();
+        lap("git's version, the summary and the setup");
+        let mut log = Reader::start(&dir, &heads).unwrap();
+        let batch = log.next_batch(crate::repo::FIRST).unwrap();
+        lap("the first batch");
+        let mut g = Graph::default();
+        g.start(1, setup);
+        g.commits(1, batch, log.done());
+        lap("the first screen laid out");
+
+        let mut worst = 0.0_f64;
+        while !log.done() {
+            let batch = log.next_batch(crate::repo::NEXT).unwrap();
+            let s = Instant::now();
+            g.commits(1, batch, log.done());
+            worst = worst.max(s.elapsed().as_secs_f64());
+        }
+        lap(&format!("all {} commits read; the slowest batch laid out in {:.1} ms", g.history.len(), worst * 1000.0));
+        timed("z (unfold)", &mut || {
+            g.toggle_fold();
+        });
+        timed("z (fold)", &mut || {
+            g.toggle_fold();
+        });
+        timed("filter `part 1234`", &mut || g.set_filter("part 1234"));
+        timed("End", &mut || g.end());
+    }
 }

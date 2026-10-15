@@ -28,10 +28,11 @@ pub enum Head {
 
 /// The summary of the repository `dir` is in.
 pub fn summary(dir: &Path) -> Result<Summary, git::Error> {
-    let all = worktree::list(dir)?;
+    let (all, top) = git::both(|| worktree::list(dir), || git::read_text(dir, &["rev-parse", "--show-toplevel"]));
+    let all = all?;
     let first = all.first().ok_or_else(|| git::Error::Git("git worktree list printed nothing".into()))?;
     // A bare repository has no top folder; it is the first entry then.
-    let here = match git::read_text(dir, &["rev-parse", "--show-toplevel"]) {
+    let here = match top {
         Ok(top) => all.iter().find(|w| same_path(&w.path, Path::new(&top))).unwrap_or(first),
         Err(_) => first,
     };

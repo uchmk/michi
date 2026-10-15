@@ -113,6 +113,17 @@ pub fn read_text(dir: &Path, args: &[&str]) -> Result<String, Error> {
     Ok(text.trim_end_matches(['\n', '\r']).to_owned())
 }
 
+/// `a` on another thread while `b` runs on this one. Most of what a git
+/// call costs is starting the process (some 20 ms on Windows), so two at
+/// once take the time of one.
+pub fn both<A: Send, B>(a: impl FnOnce() -> A + Send, b: impl FnOnce() -> B) -> (A, B) {
+    std::thread::scope(|s| {
+        let a = s.spawn(a);
+        let b = b();
+        (a.join().unwrap_or_else(|e| std::panic::resume_unwind(e)), b)
+    })
+}
+
 /// The version of the git on the PATH.
 pub fn version() -> Result<Version, Error> {
     let out = command().arg("--version").output().map_err(started)?;

@@ -39,8 +39,8 @@ impl Setup {
 
     /// The setup of the repository `dir` is in.
     pub fn read(dir: &Path) -> Result<Setup, git::Error> {
-        let refs = Refs::read(dir)?;
-        let worktrees = worktree::list(dir)?;
+        let (refs, worktrees) = git::both(|| Refs::read(dir), || worktree::list(dir));
+        let (refs, worktrees) = (refs?, worktrees?);
         let main_branch = worktrees.first().and_then(|w| w.branch.as_deref());
         let trunk = refs::trunk(dir, &refs, main_branch)?;
         Ok(Setup::new(refs, worktrees, trunk))

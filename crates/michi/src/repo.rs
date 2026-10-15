@@ -1,8 +1,8 @@
 //! Reading the repository off the UI thread: one thread per window asks git
 //! and sends the answers back, waking the frame after each.
 //!
-//! After git's version and the summary comes the history: the setup (refs
-//! and worktrees), then the commits a batch at a time — the first batch at
+//! git's version, the summary and the history's setup (refs and worktrees)
+//! are asked at once; then come the commits a batch at a time — the first batch at
 //! once, the next ones when the window asks for [`Ask::More`]. A
 //! [`Ask::Reload`] starts the reading over; its answers carry the next
 //! generation, so the window drops whatever was still on the way.
@@ -53,8 +53,7 @@ pub struct Reading {
     pub asks: Sender<Ask>,
 }
 
-/// Start reading `dir`: git's version first, then the summary, then the
-/// history.
+/// Start reading `dir`: git's version and the summary, then the history.
 pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
     let (tx, answers) = mpsc::channel();
     let (asks, ask_rx) = mpsc::channel();
@@ -64,12 +63,12 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
             let _ = thread_tx.send(a);
             ctx.request_repaint();
         };
-        send(Answer::Version(git::version()));
-        let summary = summary::summary(&dir);
+        let (version, summary, setup) = first(&dir);
+        send(Answer::Version(version));
         let ok = summary.is_ok();
         send(Answer::Summary(summary));
         if ok {
-            history(&dir, &ask_rx, send);
+            history(&dir, setup, &ask_rx, send);
         }
     });
     if let Err(e) = spawned {
@@ -79,13 +78,22 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
     Reading { answers, asks }
 }
 
+/// git's version, the summary and the history's setup. Each git call costs
+/// mostly the start of its process, so they are asked at once.
+pub(crate) fn first(dir: &Path) -> (Result<Version, git::Error>, Result<Summary, git::Error>, Result<Setup, git::Error>) {
+    let ((version, summary), setup) = git::both(|| git::both(git::version, || summary::summary(dir)), || Setup::read(dir));
+    (version, summary, setup)
+}
+
 /// Reads the history of `dir`, once per generation, until the window is
-/// gone.
-fn history(dir: &Path, asks: &Receiver<Ask>, send: impl Fn(Answer)) {
+/// gone; the first reading with the setup read already.
+fn history(dir: &Path, first: Result<Setup, git::Error>, asks: &Receiver<Ask>, send: impl Fn(Answer)) {
+    let mut first = Some(first);
     let mut gen = 0;
     loop {
         gen += 1;
-        match read(dir, gen, asks, &send) {
+        let setup = first.take().unwrap_or_else(|| Setup::read(dir));
+        match read(dir, gen, setup, asks, &send) {
             Next::Reload => {}
             Next::Stop => return,
         }
@@ -97,12 +105,12 @@ enum Next {
     Stop,
 }
 
-fn read(dir: &Path, gen: u32, asks: &Receiver<Ask>, send: &impl Fn(Answer)) -> Next {
+fn read(dir: &Path, gen: u32, setup: Result<Setup, git::Error>, asks: &Receiver<Ask>, send: &impl Fn(Answer)) -> Next {
     let failed = |error| {
         send(Answer::Failed { gen, error });
         wait_reload(asks)
     };
-    let setup = match Setup::read(dir) {
+    let setup = match setup {
         Ok(s) => s,
         Err(e) => return failed(e),
     };

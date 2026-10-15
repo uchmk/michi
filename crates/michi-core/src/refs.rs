@@ -59,9 +59,12 @@ const FORMAT: &str = "--format=%(refname)%00%(objectname)%00%(*objectname)%00%(s
 impl Refs {
     /// The refs of the repository `dir` is in.
     pub fn read(dir: &Path) -> Result<Refs, git::Error> {
-        let remotes = git::read_text(dir, &["remote"])?;
+        let (remotes, out) = git::both(
+            || git::read_text(dir, &["remote"]),
+            || git::read(dir, &["for-each-ref", FORMAT, "refs/heads", "refs/remotes", "refs/tags"]),
+        );
+        let (remotes, out) = (remotes?, out?);
         let remotes: Vec<&str> = remotes.lines().map(str::trim).filter(|r| !r.is_empty()).collect();
-        let out = git::read(dir, &["for-each-ref", FORMAT, "refs/heads", "refs/remotes", "refs/tags"])?;
         Ok(Refs::parse(&out, &remotes))
     }
 

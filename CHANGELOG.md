@@ -2,6 +2,16 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.2.1] - 2026-10-15
+
+### 変更
+
+- 窓を開いたときに git の版・リポジトリの要約・樹形図の土台（ref と worktree）を同時に聞くようにした。git の呼び出しはほとんどがプロセスを起こす時間なので、
+  順に聞いていた約 135 ms が約 40 ms になった。10 万コミット（PR 2 万本）のリポジトリで最初の画面までが、commit-graph のあるとき 0.19 秒から 0.09 秒、
+  無いとき 0.40 秒から 0.31 秒になった（無いときは `git log --date-order` が最初の 1 件の前に全部を歩くため。#2 で相談中）。
+- 速さを測る道具を足した。`scripts/make-history.py` が大きな履歴（既定で 100,001 コミット）を作り、無視されたテスト `big_history` が最初の画面・全部を読むまで・
+  畳む / 開く・絞り込みの時間を出す（`MICHI_BENCH_REPO=<repo> cargo test --release -p michi big_history -- --ignored --nocapture`）。
+
 ## [0.2.0] - 2026-10-15
 
 ### 追加
