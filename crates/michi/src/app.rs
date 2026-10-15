@@ -11,6 +11,7 @@ use michi_core::git::{self, Version};
 use michi_core::oid::Oid;
 use michi_core::summary::Summary;
 use michi_core::track::{Tree, Trees};
+use michi_core::unseen::Unseen;
 use michi_core::wip::Wip;
 
 use crate::detail::Pane;
@@ -134,7 +135,7 @@ pub struct App {
     pub detail: Pane,
     /// The Claude sessions in each worktree that has some; `None` when
     /// tsumugi is not there (or not asked yet).
-    pub claude: Option<Vec<(PathBuf, Vec<Session>)>>,
+    pub claude: Option<crate::repo::Sessions>,
     /// The worktrees and how they stand, for the worktree table.
     pub trees: Trees,
     /// Each worktree's uncommitted change, those with only files too big to
@@ -142,6 +143,8 @@ pub struct App {
     pub wips: Vec<Wip>,
     /// Which worktrees would conflict with which.
     pub clashes: Clashes,
+    /// The commits not seen yet, per worktree.
+    pub unseen: Unseen,
     /// The worktree table's selected row.
     pub wt_sel: usize,
     /// The side column's groups that are open (`b:feat`, `r:origin`).
@@ -175,6 +178,7 @@ impl App {
             trees: Trees::default(),
             wips: Vec::new(),
             clashes: Clashes::default(),
+            unseen: Unseen::default(),
             wt_sel: 0,
             side_open: HashSet::new(),
             seeking: None,
@@ -231,6 +235,14 @@ impl App {
         let wip = self.graph.selected_wip().map(|w| w.path.clone());
         let changed = if wip.is_some() && wip == self.detail_wip { self.detail.refresh(id) } else { self.detail.select(id) };
         self.detail_wip = wip;
+        // A commit picked by a key or the mouse is seen now.
+        if let (true, Some(id)) = (self.graph.take_picked(), id) {
+            if self.unseen.remove(&id) {
+                if let Some(r) = &self.reading {
+                    r.seen(id);
+                }
+            }
+        }
         if changed {
             if let (Some(id), Some(r)) = (id, &self.reading) {
                 // A merge's diff (the whole branch's) comes in stage 2.
@@ -318,6 +330,7 @@ impl App {
             }
             Answer::Claude(c) => self.claude = c,
             Answer::Clashes(c) => self.clashes = c,
+            Answer::Unseen(u) => self.unseen = u,
         }
     }
 
@@ -738,9 +751,10 @@ mod tests {
     #[test]
     fn answers_of_an_older_reading_are_dropped() {
         let mut a = read();
+        let rows = a.graph.len();
         a.take(Answer::Setup { gen: 2, setup: Box::new(fixture::setup()) });
-        a.take(Answer::Commits { gen: 1, batch: fixture::history(), done: true });
-        assert_eq!(a.graph.len(), 0, "the first reading's commits come too late");
+        a.take(Answer::Commits { gen: 1, batch: fixture::history()[..1].to_vec(), done: true });
+        assert_eq!(a.graph.len(), rows, "the first reading's commits come too late");
         a.take(Answer::Failed { gen: 2, error: git::Error::Git("bad".into()) });
         assert_eq!(toast(&a), "Could not read the history: bad");
     }
@@ -791,6 +805,21 @@ mod tests {
         a.named("ArrowDown");
         assert!(a.sync_detail());
         assert!(a.detail.got().is_none() && a.detail.to_top);
+    }
+
+    #[test]
+    fn a_commit_picked_is_seen() {
+        let mut a = read();
+        a.take(Answer::Unseen(fixture::unseen()));
+        a.sync_detail();
+        assert_eq!(a.unseen.ids().len(), 1, "the first selection is no one's pick");
+        assert!(a.graph.select_id(&fixture::id(4)));
+        a.sync_detail();
+        assert_eq!(a.unseen.ids().len(), 1, "another commit");
+        a.go_to(fixture::id(7));
+        a.sync_detail();
+        assert!(a.unseen.ids().is_empty());
+        assert_eq!(a.unseen.of(std::path::Path::new("C:/r/wt")), Some(&[][..]), "the worktree is still followed");
     }
 
     #[test]

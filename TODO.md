@@ -26,9 +26,9 @@
   - [x] The worktree table with the Claude column (`tsumugi ls --json`), its cards below 960 wide (v0.5.0)
   - [x] Conflict prediction in the UI (⚠ on heads, a dashed frame on WIP rows, the column and the pair table in the worktree table,
     v0.6.0): the worktrees and the trunk paired, every 5 s while in front
-  - [ ] Conflict prediction's leftovers: every local branch against main (not only the worktrees), reading again 2 s after a folder
-    changes (with the file watching), and the text while a merge is under way (stage 3)
-  - [ ] File watching (`notify` → `Ask::Reload`) and unseen marks (also the worktree table's unseen column)
+  - [ ] Conflict prediction's leftovers: every local branch against main (not only the worktrees), and the text while a merge is
+    under way (stage 3)
+  - [x] File watching (`notify` → `Ask::Reload`) and unseen marks (also the worktree table's unseen column) (v0.7.0)
 - [ ] Second mock round before stage 2: changes and staging, the diff of a whole branch (seen marks, since last time, notes), rebase;
   ask the owner with a `question` issue
 - [ ] 2. Change: first the diff of a whole branch (`d`; seen marks, since last time, notes), then stage and commit (lines and hunks,

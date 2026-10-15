@@ -95,6 +95,9 @@ pub enum Folded {
 pub struct Graph {
     gen: u32,
     started: bool,
+    /// A reading started again (the refs moved): its setup, kept until its
+    /// first batch comes, so the old history stays on screen till then.
+    next: Option<Setup>,
     history: History,
     fold: Fold,
     layout: Layout<Oid>,
@@ -110,6 +113,9 @@ pub struct Graph {
     total: Option<u64>,
     error: Option<git::Error>,
     selected: Option<Oid>,
+    /// The selection was moved by a key or the mouse (not by the history
+    /// coming in), and the window has not taken note yet.
+    picked: bool,
     /// A batch was asked for and has not come.
     asking: bool,
     filter: String,
@@ -131,6 +137,7 @@ impl Default for Graph {
         Graph {
             gen: 0,
             started: false,
+            next: None,
             history: History::default(),
             fold: Fold { on: true, open: HashSet::new() },
             layout: Layout::new(),
@@ -142,6 +149,7 @@ impl Default for Graph {
             total: None,
             error: None,
             selected: None,
+            picked: false,
             asking: false,
             filter: String::new(),
             query: String::new(),
@@ -156,13 +164,25 @@ impl Default for Graph {
 
 impl Graph {
     /// A reading of the history starts. The folding, the selection and the
-    /// filter stay; an answer of an older reading is dropped.
+    /// filter stay; an answer of an older reading is dropped. A reading
+    /// again keeps the history on screen until its first batch comes.
     pub fn start(&mut self, gen: u32, setup: Setup) {
         if gen < self.gen {
             return;
         }
         self.gen = gen;
+        self.asking = false;
+        if self.started && self.error.is_none() {
+            self.next = Some(setup);
+        } else {
+            self.begin(setup);
+        }
+    }
+
+    /// The history is now read against `setup`, from its first commit.
+    fn begin(&mut self, setup: Setup) {
         self.started = true;
+        self.next = None;
         if let Some(t) = &setup.trunk {
             if self.pinned.insert(t.name.clone()) {
                 self.colors.pin(&t.name, TRUNK_COLOR);
@@ -183,6 +203,9 @@ impl Graph {
         if gen != self.gen || !self.started {
             return;
         }
+        if let Some(setup) = self.next.take() {
+            self.begin(setup);
+        }
         let from = self.history.len();
         self.history.extend(batch);
         self.done = done;
@@ -200,6 +223,9 @@ impl Graph {
 
     pub fn failed(&mut self, gen: u32, error: git::Error) {
         if gen == self.gen {
+            if let Some(setup) = self.next.take() {
+                self.begin(setup);
+            }
             self.error = Some(error);
             self.asking = false;
         }
@@ -524,8 +550,15 @@ impl Graph {
     pub fn select(&mut self, k: u32) {
         if let Some(id) = self.wip(k).map(|w| w.commit).or_else(|| self.at(k).map(|r| r.commit.id)) {
             self.selected = Some(id);
+            self.picked = true;
             self.reveal = true;
         }
+    }
+
+    /// Whether the selection was moved by a key or the mouse since the last
+    /// call.
+    pub fn take_picked(&mut self) -> bool {
+        std::mem::take(&mut self.picked)
     }
 
     /// Moves the selection `by` rows, down for more than 0, stopping at the
@@ -588,6 +621,7 @@ impl Graph {
         let Some(m) = merge.filter(|m| self.fold.on && self.fold.open.contains(m)) else { return false };
         self.fold.open.remove(&m);
         self.selected = Some(m);
+        self.picked = true;
         self.relayout();
         self.reveal = true;
         true
@@ -651,6 +685,7 @@ impl Graph {
             self.fold.open.insert(m);
         }
         self.selected = Some(self.history.rows()[i as usize].commit.id);
+        self.picked = true;
         self.relayout();
         self.reveal = true;
     }
@@ -666,7 +701,7 @@ impl Graph {
 
     /// Whether to ask for the next batch now (the row at the end is clicked).
     pub fn ask_more(&mut self) -> bool {
-        if !self.started || self.done || self.asking || self.error.is_some() {
+        if !self.started || self.next.is_some() || self.done || self.asking || self.error.is_some() {
             return false;
         }
         self.asking = true;
@@ -809,6 +844,18 @@ pub(crate) mod fixture {
         }
     }
 
+    /// `wip` has its head commit not seen yet; the folder at v1 nothing.
+    pub fn unseen() -> michi_core::unseen::Unseen {
+        use michi_core::unseen::{New, Track, Unseen};
+        let track = |path: &str, name: &str, commits| Track { path: path.into(), name: name.into(), commits, key: name.into() };
+        Unseen {
+            tracks: vec![
+                track("C:/r/wt", "feature/wip", vec![New { id: id(7), time: 1_767_225_600, subject: "w1".into() }]),
+                track("C:/r/old", "old", Vec::new()),
+            ],
+        }
+    }
+
     /// The three worktrees' sides: `main` and `wip` conflict in two files,
     /// `wip`'s uncommitted change with the folder at v1 in one.
     pub fn clashes() -> michi_core::clash::Clashes {
@@ -846,6 +893,37 @@ mod tests {
 
     fn row_of(g: &Graph, subject: &str) -> u32 {
         (0..g.len()).find(|&k| g.commit(k).is_some_and(|c| c.subject == subject)).unwrap_or_else(|| panic!("no {subject}"))
+    }
+
+    #[test]
+    fn a_reading_again_keeps_the_history_until_its_first_batch() {
+        let mut g = read();
+        let rows = g.len();
+        g.start(2, setup());
+        assert_eq!(g.len(), rows, "still the old history");
+        assert!(!g.ask_more(), "no older batch of the old reading");
+        // An answer of the older reading is dropped.
+        g.commits(1, history(), true);
+        assert_eq!(g.len(), rows);
+        g.commits(2, history()[..2].to_vec(), false);
+        assert_eq!(g.len(), 2);
+        // A reading that fails shows the failure, not the old history.
+        g.start(3, setup());
+        g.failed(3, git::Error::NotRepo);
+        assert!(g.error().is_some());
+    }
+
+    #[test]
+    fn only_the_keys_and_the_mouse_pick_a_commit() {
+        let mut g = read();
+        assert!(!g.take_picked(), "the first selection is no one's pick");
+        g.select(2);
+        assert!(g.take_picked());
+        assert!(!g.take_picked(), "told once");
+        g.set_wips(vec![wip("C:/r/wt", Some("wip"), 7, 10, Some(100))]);
+        assert!(!g.take_picked(), "a selection that follows the rows is not a pick");
+        assert!(g.select_id(&id(4)));
+        assert!(g.take_picked());
     }
 
     #[test]
@@ -1087,8 +1165,9 @@ mod tests {
         g.select(row_of(&g, "f2"));
         g.set_filter("f2");
         g.start(2, setup());
+        let left = g.remaining();
         g.total(1, 99);
-        assert_eq!(g.remaining(), None, "an older reading's count is dropped");
+        assert_eq!(g.remaining(), left, "an older reading's count is dropped");
         g.commits(2, history(), true);
         assert_eq!(g.len(), 7);
         assert_eq!(g.commit(g.selected_row().unwrap()).unwrap().subject, "f2");

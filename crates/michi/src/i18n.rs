@@ -147,7 +147,12 @@ const EN: &[(&str, &str)] = &[
     ("wt.take", "Take in {}"),
     ("wt.pr", "Open a PR"),
     ("wt.foot_claude", "The Claude column reads tsumugi ls --json every 2 s (10 s while the window is behind). When tsumugi is not running, the column goes."),
-    ("wt.foot_later", "The unseen changes come in a later stage."),
+    ("wt.col.unseen", "Unseen"),
+    ("wt.unseen", "{} new"),
+    ("new.title", "Unseen changes ({})"),
+    ("new.none", "All seen."),
+    ("new.more", "… {} more"),
+    ("new.foot", "The commits the worktrees have gained since you last looked. Selecting one in the graph marks it seen."),
     ("wt.col.clash", "Conflicts ahead"),
     ("wt.clash", "⚠ {b}: {n} places"),
     ("wt.clash_wip", "{} (uncommitted)"),
@@ -168,7 +173,7 @@ const EN: &[(&str, &str)] = &[
     ("mx.tip_wip", "Counting the uncommitted changes"),
     (
         "mx.foot",
-        "Each two are merged with git merge-tree --write-tree, every 5 s while the window is in front, again only for pairs whose HEAD or uncommitted change moved. Uncommitted changes are counted from a temporary tree of the folder; no branch or index moves.",
+        "Each two are merged with git merge-tree --write-tree when a folder changes (every 5 s where it cannot be watched), again only for pairs whose HEAD or uncommitted change moved. Uncommitted changes are counted from a temporary tree of the folder; no branch or index moves.",
     ),
 ];
 
@@ -320,7 +325,12 @@ const JA: &[(&str, &str)] = &[
         "wt.foot_claude",
         "Claude の列は tsumugi ls --json を 2 秒ごと（窓が後ろにあるときは 10 秒）に読みます。tsumugi が動いていなければ列ごと消えます。",
     ),
-    ("wt.foot_later", "見ていない変更は後の段階で入ります。"),
+    ("wt.col.unseen", "見ていない"),
+    ("wt.unseen", "{} コミット"),
+    ("new.title", "見ていない変更（{}）"),
+    ("new.none", "全部見ました。"),
+    ("new.more", "… ほか {} コミット"),
+    ("new.foot", "この表を最後に開いたときから増えたコミット。樹形図で選ぶと消えます。"),
     ("wt.col.clash", "衝突の予測"),
     ("wt.clash", "⚠ {b} と {n} か所"),
     ("wt.clash_wip", "{}（未コミットの分）"),
@@ -341,7 +351,7 @@ const JA: &[(&str, &str)] = &[
     ("mx.tip_wip", "未コミットの分を数えると"),
     (
         "mx.foot",
-        "2 本ずつ git merge-tree --write-tree で合わせてみます（窓が前にある間 5 秒ごと。合わせ直すのは HEAD か未コミットの変更が動いた組だけ）。未コミットの変更は、作業フォルダの中身から一時の tree を作って数えます。ブランチも index も動かしません。",
+        "2 本ずつ git merge-tree --write-tree で合わせてみます（フォルダが変わったとき。監視できない場所では 5 秒ごと。合わせ直すのは HEAD か未コミットの変更が動いた組だけ）。未コミットの変更は、作業フォルダの中身から一時の tree を作って数えます。ブランチも index も動かしません。",
     ),
 ];
 

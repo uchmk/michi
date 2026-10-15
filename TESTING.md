@@ -121,11 +121,11 @@ Open a repository whose worktree has edits, a deleted file and a new file; run a
 | # | Do | Expect |
 | --- | --- | --- |
 | 9.1 | Look at the top of the graph | A row `Uncommitted: N files (+a −d)` in italics above the newest commit, with a dashed dot on the lane of the worktree's branch, author `—`, the time the change was last written and the hash `WIP`; the main worktree's change is on top when it was written last |
-| 9.2 | Edit a file in the worktree and wait a few seconds with michi in front | The row's counts and time follow without a key; the selection stays on the row it was on |
+| 9.2 | Edit a file in the worktree with michi in front | Within about a second the row's counts and time follow without a key; the selection stays on the row it was on |
 | 9.3 | Select the WIP row | The detail says `Uncommitted changes on <branch>`, the worktree's folder in mono, when it was last written, `Read only here. Stage and commit in Changes (2).`, then the files and the diff from the worktree's `HEAD`; the new file is listed as added |
 | 9.4 | With the WIP row selected, have the Claude there run, then stop or ask | A box under the hint: `Claude is writing.` or `Claude has stopped.` with its state (glyph and word), the tab, its title and since when; a question in amber |
 | 9.5 | Put a file over 10 MB (or a folder over 2000 files or 50 MB) in the worktree, not ignored | The WIP row and its counts leave it out; the detail says `Untracked, too big to count: <path>` (three at most, then `and N more`); `git count-objects -vH` in the repository does not grow by its size; no `git.exe` keeps running after michi is closed |
-| 9.6 | Make the worktree clean again | The WIP row goes within a few seconds; a worktree whose only change is a big untracked folder has no WIP row |
+| 9.6 | Make the worktree clean again | The WIP row goes within about a second; a worktree whose only change is a big untracked folder has no WIP row |
 | 9.7 | Look at `git status` and the index after michi read the change | Nothing was staged; `git status` shows the same as before |
 
 ## 10. Worktree table
@@ -134,7 +134,7 @@ Open a repository with a main worktree, a worktree on a branch that is pushed an
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 10.1 | Press `3` | `Reading the worktrees…`, then a title `<repo> · N worktrees` with `Read again` and `New work` (`N`) at the right, and a table: `Branch · folder`, `From main`, `Uncommitted`, `Conflicts ahead`, and buttons; the main worktree on top, each row with its branch in its lane colour and its folder under it |
+| 10.1 | Press `3` | `Reading the worktrees…`, then a title `<repo> · N worktrees` with `Read again` and `New work` (`N`) at the right, and a table: `Branch · folder`, `From main`, `Uncommitted`, `Unseen`, `Conflicts ahead`, and buttons; the main worktree on top, each row with its branch in its lane colour and its folder under it |
 | 10.2 | Run a Claude in a worktree from tsumugi, then quit tsumugi | The title adds ` · Claude N` and a `Claude (tsumugi)` column shows the state chip in bold, its note (two rows at most), `Tab N · <title>` with `o` and since when; rows with none say `No Claude running`; within a few seconds of quitting tsumugi the column goes |
 | 10.3 | Look at the `From main` column | `↑a ↓b` against main, and under it the branch against its upstream: `Same as origin/x`, `N not pushed to origin/x`, `origin/x is N ahead`, `Diverged from origin/x (↑a ↓b)`, `Not pushed yet`; the main row reads against `origin/main` |
 | 10.4 | Look at the `Uncommitted` column; then put a folder over 2000 files in a worktree, not ignored | `N files`, `+a −d` in green and red and `written at <time>`, or `None`; the big folder adds `Too big to count: <path>` and is not counted |
@@ -143,8 +143,8 @@ Open a repository with a main worktree, a worktree on a branch that is pushed an
 | 10.7 | Press Enter on a row with changes, and double-click a clean row | The graph opens with the row's `Uncommitted` row selected, or its branch's commit |
 | 10.8 | Press `d`, `m`, `x`, `o`, `p` and click `PR` | A toast at the foot names the work and says it comes in a later stage; `New work` gives the same toast as `N`; the main row shows `Pull` and `Show in the graph` instead, and has no `Remove` |
 | 10.9 | Click `Read again` | The toast `Reading the worktrees again…`, and the table follows a change made outside (a new commit, a new worktree) |
-| 10.10 | Narrow the window below 960 wide | Each worktree becomes a card: the branch and folder, then the Claude, `From main`, `Uncommitted` and `Conflicts ahead` lines, then the buttons, which wrap; still readable at the smallest width |
-| 10.11 | Look at the foot, and switch to the light theme | `The unseen changes come in a later stage.` and, when the Claude column shows, how often it reads tsumugi; colours stay readable in both themes |
+| 10.10 | Narrow the window below 960 wide | Each worktree becomes a card: the branch and folder, then the Claude, `From main`, `Uncommitted`, `Unseen` and `Conflicts ahead` lines, then the buttons, which wrap; still readable at the smallest width |
+| 10.11 | Look at the foot, and switch to the light theme | Only when the Claude column shows, a line on how often it reads tsumugi; colours stay readable in both themes |
 
 ## 11. Conflict prediction
 
@@ -157,6 +157,24 @@ Set up: two worktrees that change the same lines of a file, each committed; a th
 | 11.3 | Press `3` and look at the `Conflicts ahead` column | Red `⚠ <branch>: N places` with the files under it, one for each worktree it clashes with; yellow with `(uncommitted)` for the third; `None` for a worktree that clashes with nothing |
 | 11.4 | Look at the box under the table | `Conflicts ahead (uncommitted changes counted)`, a table of the worktrees' short names both ways: `—` against itself, `·` for a clean pair, the number of places in red, or in yellow with a dashed frame for the uncommitted one; the hint under it and the foot about `git merge-tree` |
 | 11.5 | Hover a number, then click it, then click it again | The tip lists each file with its places; the click frames the cell and the note reads `<a> × <b>: <file> N places. ` with what to expect when they go into main (or, for the yellow one, that committing turns the frame solid); the second click puts the hint back |
-| 11.6 | Commit the third worktree's change; then undo the conflicting edit in one of the first two and commit | Within about 5 s with michi in front, the yellow pill and cell turn red; then the red ones go, and the column says `None` |
+| 11.6 | Commit the third worktree's change; then undo the conflicting edit in one of the first two and commit | Within about a second with michi in front, the yellow pill and cell turn red; then the red ones go, and the column says `None` |
 | 11.7 | Narrow the window below 960 wide, then to 1000 wide; switch to the light theme | As cards, each has a `Conflicts ahead` line and the box takes the full width; at 1000 wide the table's columns shrink but nothing overlaps; red and yellow stay readable in light |
 | 11.8 | Open a repository with only one worktree, and look at `git status`, the branches and `git count-objects -vH` after a minute | The box says `Only one worktree: nothing to pair yet.`; nothing was staged, no branch moved, and the objects do not grow by more than the temporary trees; no `git.exe` keeps running after michi is closed |
+
+## 12. Watching and unseen commits
+
+Set up: the repository of section 10, with michi in front on the graph; commit from a terminal in the worktree on a branch. Where michi keeps what was seen: `%LOCALAPPDATA%\uchmk\michi\seen\<repo>-<hash>.json`.
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 12.1 | Commit in the worktree on a branch | Within about a second the history is read again without going blank: the new commit shows on its branch with a blue dot before its subject, which is bold; the selection stays on the commit it was on |
+| 12.2 | Press `3` | The worktree's `Unseen` column says `● 1 new` (the blue dot); the main worktree says `—` and the others `None`; beside the conflicts box, `Unseen changes (1)` lists the commit: short hash, blue dot, the subject in bold, `<short branch> · <time>` at the right, and the foot `The commits the worktrees have gained since you last looked. Selecting one in the graph marks it seen.` |
+| 12.3 | Hover the commit in the list, then click it | The line lights and the pointer becomes a hand; the click opens the graph with that commit selected and its dot and bold go; back in `3`, the column says `None` and the box `All seen.` |
+| 12.4 | Commit twice more; in the graph, move onto one of them with `j` / `k`, and click the other | Each loses its dot once selected; the commit selected when the graph first opens, or that the selection follows when rows come in, does not count as seen |
+| 12.5 | Make 13 commits in the worktree and press `3` | The box shows 12, newest first, and `… 1 more`; a long subject is cut with `…` before the branch and time |
+| 12.6 | Quit michi with commits unseen, commit once more, and start michi again | The commits still unseen keep their dot, and the one made while michi was closed has one too; the file above lists the branch with the commits seen |
+| 12.7 | Narrow the window below 960 wide | The `Unseen changes` box goes under the conflicts box at the full width; the cards have an `Unseen` line |
+| 12.8 | Put another window in front, commit in a worktree, wait, then bring michi back | Nothing is read while michi is behind (no `git.exe` in Task Manager); when it comes back the history and the table follow at once |
+| 12.9 | Run `cargo build` (or write many files) in an ignored folder of a worktree, and run `git status` there, with michi in front | michi reads nothing for them: no `git.exe` keeps coming up in Task Manager, and the table does not change; a `git status` does not start a read that starts another |
+| 12.10 | Open a repository on a network share (`\\server\share` or a mapped drive) | Changes there show within about 5 s while michi is in front; nothing is read while it is behind |
+| 12.11 | Switch to the light theme | The blue dots and bold subjects in the graph, the column and the box stay readable |

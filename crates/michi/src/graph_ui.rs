@@ -337,6 +337,7 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
 
     let now = chrono::Local::now();
     let yesterday = app.tr("time.yesterday");
+    let unseen = app.unseen.ids();
     for k in first..len.min(last) {
         if let Some(w) = g.wip(k) {
             let mid = row_rect(k).center().y;
@@ -357,9 +358,15 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
         let fg = c.fg.gamma_multiply(fade);
         let dim = c.dim.gamma_multiply(fade);
 
-        // The subject cell: the names, the chip, the subject.
+        // The subject cell: the dot of a commit not seen yet, the names, the
+        // chip, the subject (in bold when not seen).
         let mut x = subj_x;
         let cell_end = author_x - PAD;
+        let new = unseen.contains(&commit.id);
+        if new {
+            p.circle_filled(pos2(x + 3.0, mid), 3.0, c.run.gamma_multiply(fade));
+            x += 11.0;
+        }
         for pill in g.pills(k) {
             let Some(w) = pill_width(ui, &pill.text, pill.kind, !pill.also.is_empty()) else { continue };
             if x + w > cell_end - 60.0 {
@@ -421,6 +428,10 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
             }
         }
         clipped(ui, &p, pos2(x, mid), &commit.subject, FontId::proportional(13.0), fg, cell_end - x);
+        if new {
+            // No bold face: the subject is drawn twice, a hair apart.
+            clipped(ui, &p, pos2(x + 0.45, mid), &commit.subject, FontId::proportional(13.0), fg, cell_end - x);
+        }
 
         // The author (a bot by its short name), the date, the hash.
         if !compact {

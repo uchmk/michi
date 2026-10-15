@@ -10,6 +10,7 @@ mod app;
 mod detail;
 mod detail_ui;
 mod fonts;
+mod fswatch;
 mod graph;
 mod graph_ui;
 mod i18n;

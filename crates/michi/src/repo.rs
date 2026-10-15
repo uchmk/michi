@@ -13,16 +13,21 @@
 //!
 //! A third thread keeps an eye on the worktrees: each one's uncommitted
 //! change, how it stands against the trunk and its upstream, which would
-//! conflict with which, and the Claude
-//! sessions tsumugi runs in them, read again every few seconds while the
-//! window is in front and seldom behind it.
+//! conflict with which, the commits not seen yet, and the Claude sessions
+//! tsumugi runs in them. The worktrees are read again when a change on disk
+//! could show (once the folders are quiet for 300 ms), or every few seconds
+//! where the folders cannot be watched; the Claude sessions every few
+//! seconds while the window is in front and seldom behind it. When the refs
+//! moved, the history is read again.
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use michi_core::change::{self, Places};
 use michi_core::clash::{self, Clashes};
 use michi_core::claude::{self, Session};
 use michi_core::git::{self, Version};
@@ -32,8 +37,11 @@ use michi_core::oid::Oid;
 use michi_core::show::{self, Detail};
 use michi_core::summary::{self, Summary};
 use michi_core::track::{self, Trees};
+use michi_core::unseen::{self, Marks, Unseen};
 use michi_core::wip::{self, Wip};
-use michi_core::worktree;
+use michi_core::worktree::{self, Worktree};
+
+use crate::fswatch::{self, Fs};
 
 /// What the reading thread sends back.
 #[derive(Debug)]
@@ -59,9 +67,11 @@ pub enum Answer {
     Trees(Trees),
     /// Which worktrees would conflict with which.
     Clashes(Clashes),
+    /// The commits not seen yet, per worktree.
+    Unseen(Unseen),
     /// The Claude sessions in each worktree (by its folder; only those with
     /// some); `None` when tsumugi is not there to ask.
-    Claude(Option<Vec<(PathBuf, Vec<Session>)>>),
+    Claude(Option<Sessions>),
 }
 
 /// What the window asks of the reading thread.
@@ -70,7 +80,6 @@ pub enum Ask {
     /// The next batch.
     More,
     /// Read the history again from the top.
-    #[expect(dead_code, reason = "sent once the watcher and the commands come in (stage 2 on)")]
     Reload,
 }
 
@@ -91,10 +100,16 @@ pub struct Reading {
     pokes: Sender<Poke>,
 }
 
-/// What the window tells the watching thread.
+/// What the window, and the folders' watcher, tell the watching thread.
 enum Poke {
     Front(bool),
     Now,
+    /// The commit was selected: it is seen now.
+    Seen(Oid),
+    /// A change on disk.
+    Fs(fswatch::Event),
+    /// The window is gone.
+    Stop,
 }
 
 impl Reading {
@@ -114,6 +129,19 @@ impl Reading {
     /// Read the worktrees again now, not at the next turn.
     pub fn reread(&self) {
         let _ = self.pokes.send(Poke::Now);
+    }
+
+    /// The commit `id` was selected in the graph: it is seen now.
+    pub fn seen(&self, id: Oid) {
+        let _ = self.pokes.send(Poke::Seen(id));
+    }
+}
+
+impl Drop for Reading {
+    fn drop(&mut self) {
+        // The folders' watcher holds a sender too: the watching thread would
+        // wait on for ever.
+        let _ = self.pokes.send(Poke::Stop);
     }
 }
 
@@ -140,14 +168,17 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         details(&detail_dir, &want_rx, &detail_latest, send);
     });
     let (pokes, poke_rx) = mpsc::channel();
-    let (watch_tx, watch_dir, watch_ctx) = (tx.clone(), dir.clone(), ctx.clone());
+    let (watch_tx, watch_dir, watch_ctx, watch_asks, fs_pokes) = (tx.clone(), dir.clone(), ctx.clone(), asks.clone(), pokes.clone());
     // No thread for the worktrees: no WIP rows and no Claude.
     let _ = std::thread::Builder::new().name("watch".into()).spawn(move || {
         let send = |a: Answer| {
             let _ = watch_tx.send(a);
             watch_ctx.request_repaint();
         };
-        watch(&watch_dir, &poke_rx, send);
+        let fs = Fs::start(move |e| {
+            let _ = fs_pokes.send(Poke::Fs(e));
+        });
+        watch(&watch_dir, &poke_rx, &watch_asks, fs, send);
     });
     let thread_tx = tx.clone();
     let spawned = std::thread::Builder::new().name("repo".into()).spawn(move || {
@@ -170,98 +201,253 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
     Reading { answers, asks, wants, latest, pokes }
 }
 
+/// How long the folders must stay quiet after a change before it is read.
+const QUIET: Duration = Duration::from_millis(300);
+/// … but no longer than this after the first change, while they keep changing.
+const BUSY: Duration = Duration::from_secs(2);
+/// How often the worktrees are read anyway while the folders are watched,
+/// for a change the watcher missed.
+const ANYWAY: Duration = Duration::from_secs(30);
+/// How often the worktrees are read while the window is in front and the
+/// folders are not watched. Behind, they are not read, and they are read at
+/// once when it comes back.
+const WIP_EVERY: Duration = Duration::from_secs(5);
 /// How often tsumugi is asked while the window is in front.
 const CLAUDE_FRONT: Duration = Duration::from_secs(2);
 /// … and while it is behind.
 const CLAUDE_BEHIND: Duration = Duration::from_secs(10);
-/// How often the uncommitted changes and how the worktrees stand are read
-/// while the window is in front; behind, they are not, and they are read at
-/// once when it comes back.
-const WIP_EVERY: Duration = Duration::from_secs(5);
 
-/// Reads the worktrees' uncommitted changes and how they stand, and asks
-/// tsumugi for its sessions, again and again, until the window is gone. An
-/// answer is sent only when it differs from the last.
-fn watch(dir: &Path, pokes: &Receiver<Poke>, send: impl Fn(Answer)) {
-    let mut front = true;
-    let mut wips_read: Option<Instant> = None;
-    let (mut last_wips, mut last_trees, mut last_clashes, mut last_claude) = (None, None, None, None);
-    let mut counts = track::Cache::default();
-    let mut predictions = clash::Cache::default();
+/// tsumugi's Claude sessions, by the folder each runs in.
+pub type Sessions = Vec<(PathBuf, Vec<Session>)>;
+
+/// What the watching thread sent last, to send only what changed.
+#[derive(Default)]
+struct Last {
+    wips: Option<Vec<Wip>>,
+    trees: Option<Trees>,
+    clashes: Option<Clashes>,
+    unseen: Option<Unseen>,
+    claude: Option<Option<Sessions>>,
+    /// Every ref and every worktree's `HEAD`: when it changes, the history
+    /// is read again.
+    refs: Option<String>,
+}
+
+/// Reads the worktrees' uncommitted changes, how they stand, which would
+/// conflict and what is not seen yet, when a change on disk could show (or
+/// every few seconds where the folders are not watched), and asks tsumugi
+/// for its sessions every few seconds, until the window is gone. An answer
+/// is sent only when it differs from the last.
+fn watch(dir: &Path, pokes: &Receiver<Poke>, asks: &Sender<Ask>, mut fs: Fs, send: impl Fn(Answer)) {
+    let common = unseen::common_dir(dir).ok();
+    let marks_file = common.as_deref().and_then(marks_path);
+    let mut marks = marks_file.as_deref().and_then(|f| std::fs::read_to_string(f).ok()).map(|t| Marks::parse(&t)).unwrap_or_default();
+    let mut last = Last::default();
+    let mut caches = (track::Cache::default(), clash::Cache::default(), unseen::Cache::default());
+    let mut worktrees: Vec<Worktree> = Vec::new();
+    let (mut front, mut force, mut watching) = (true, true, false);
+    let (mut read_at, mut claude_at): (Option<Instant>, Option<Instant>) = (None, None);
+    // The changes on disk not read yet: where (`lost` when it is not known),
+    // and when the first and the last came.
+    let mut changed: HashSet<PathBuf> = HashSet::new();
+    let mut lost = false;
+    let mut pending: Option<(Instant, Instant)> = None;
+    let mut places: Option<Places> = None;
+    let mut ignored = change::Ignored::default();
     let mut timeouts = 0u32;
     loop {
-        let tick = Instant::now();
-        let worktrees = worktree::list(dir).ok();
-        if let Some(wts) = worktrees.as_ref().filter(|_| front && wips_read.is_none_or(|t| t.elapsed() >= WIP_EVERY)) {
-            wips_read = Some(Instant::now());
-            // A worktree that cannot be read has no row; the next read tries again.
-            let wips: Vec<Wip> = wip::read_all(wts).into_iter().filter_map(|r| r.ok().flatten()).collect();
-            if last_wips.as_ref() != Some(&wips) {
-                last_wips = Some(wips.clone());
-                send(Answer::Wips(wips.clone()));
-            }
-            let mut trunk = None;
-            match track::read(dir, wts, &mut counts) {
-                Ok(trees) => {
-                    trunk = trees.trunk.clone().zip(trees.trunk_head);
-                    if last_trees.as_ref() != Some(&trees) {
-                        last_trees = Some(trees.clone());
-                        send(Answer::Trees(trees));
+        let poll = if watching { ANYWAY } else { WIP_EVERY };
+        let mut read_now = front && (force || read_at.is_none_or(|t| t.elapsed() >= poll));
+        let settled = pending.is_some_and(|(first, last)| last.elapsed() >= QUIET || first.elapsed() >= BUSY);
+        if !read_now && front && settled {
+            let paths: Vec<PathBuf> = changed.drain().collect();
+            read_now = std::mem::take(&mut lost) || places.as_ref().is_none_or(|p| change::matters(p, &paths, &mut ignored));
+            pending = None;
+        }
+        if read_now {
+            (force, lost, pending) = (false, false, None);
+            changed.clear();
+            read_at = Some(Instant::now());
+            if let Ok(wts) = worktree::list(dir) {
+                worktrees = wts;
+                read_trees(dir, &worktrees, &mut marks, marks_file.as_deref(), &mut caches, &mut last, &send);
+                let refs = refs_print(dir, &worktrees);
+                if refs.is_some() && last.refs.is_some() && refs != last.refs {
+                    let _ = asks.send(Ask::Reload);
+                }
+                last.refs = refs.or(last.refs.take());
+                if let Some(common) = &common {
+                    let trees: Vec<PathBuf> =
+                        worktrees.iter().filter(|w| !w.bare && w.prunable.is_none()).map(|w| w.path.clone()).collect();
+                    let p = Places::new(common, &trees);
+                    if fs.watch(p.roots(common)) {
+                        watching = false;
                     }
+                    places = Some(p);
                 }
-                Err(e) => eprintln!("michi: {e}"),
-            }
-            let sides = clash::sides(wts, &wips, trunk.as_ref().map(|(n, h)| (n.as_str(), *h)));
-            let clashes = clash::read(dir, sides, &mut predictions);
-            if last_clashes.as_ref() != Some(&clashes) {
-                last_clashes = Some(clashes.clone());
-                send(Answer::Clashes(clashes));
             }
         }
-        let claude = match claude::fetch() {
-            Ok(None) => Some(None),
-            Ok(Some(sessions)) => {
-                let wts = worktrees.as_deref().unwrap_or_default();
-                let per = claude::assign(wts.iter().map(|w| &w.path), &sessions);
-                Some(Some(wts.iter().zip(per).filter(|(_, s)| !s.is_empty()).map(|(w, s)| (w.path.clone(), s)).collect()))
-            }
-            // Worth a line, not every 2 s: the first and every 30th.
-            Err(e) => {
-                if !matches!(e, claude::Error::Timeout) || timeouts.is_multiple_of(30) {
-                    eprintln!("michi: {e}");
-                }
-                timeouts += u32::from(matches!(e, claude::Error::Timeout));
-                None
-            }
-        };
-        if let Some(c) = claude {
-            if last_claude.as_ref() != Some(&c) {
-                last_claude = Some(c.clone());
-                send(Answer::Claude(c));
-            }
-        }
-        // Wait out the tick; coming in front, or a wish to read now, cuts it
-        // short.
         let every = if front { CLAUDE_FRONT } else { CLAUDE_BEHIND };
-        loop {
-            let left = every.saturating_sub(tick.elapsed());
-            match pokes.recv_timeout(left) {
-                Ok(Poke::Front(f)) => {
-                    let came = f && !front;
-                    front = f;
-                    if came {
-                        wips_read = None;
-                        break;
-                    }
-                }
-                Ok(Poke::Now) => {
-                    wips_read = None;
-                    break;
-                }
-                Err(mpsc::RecvTimeoutError::Timeout) => break,
-                Err(mpsc::RecvTimeoutError::Disconnected) => return,
+        if claude_at.is_none_or(|t| t.elapsed() >= every) {
+            claude_at = Some(Instant::now());
+            ask_claude(&worktrees, &mut last, &mut timeouts, &send);
+        }
+        // Wait for the next thing due; a poke, or a change on disk, may cut
+        // it short.
+        let now = Instant::now();
+        let mut due = claude_at.map_or(now, |t| t + every);
+        if front {
+            due = due.min(read_at.map_or(now, |t| t + poll));
+            if let Some((first, last)) = pending {
+                due = due.min((last + QUIET).min(first + BUSY));
             }
         }
+        match pokes.recv_timeout(due.saturating_duration_since(now)) {
+            Ok(Poke::Front(f)) => {
+                force |= f && !front;
+                front = f;
+            }
+            Ok(Poke::Now) => force = true,
+            Ok(Poke::Seen(id)) => {
+                if let Some(u) = last.unseen.as_mut() {
+                    if marks.see(u, &id) {
+                        save_marks(&marks, marks_file.as_deref());
+                    }
+                    if u.remove(&id) {
+                        send(Answer::Unseen(u.clone()));
+                    }
+                }
+            }
+            Ok(Poke::Fs(fswatch::Event::Paths(paths))) if front => {
+                let before = changed.len();
+                if !lost {
+                    changed.extend(paths.into_iter().filter(|p| !places.as_ref().is_some_and(|pl| change::needless(pl, &ignored, p))));
+                    if changed.len() > change::MOST {
+                        changed.clear();
+                        lost = true;
+                    }
+                }
+                if lost || changed.len() > before {
+                    pending = Some(bump(pending));
+                }
+            }
+            Ok(Poke::Fs(fswatch::Event::Lost)) if front => {
+                changed.clear();
+                lost = true;
+                pending = Some(bump(pending));
+            }
+            // Behind, a change is not kept: everything is read when the
+            // window comes back.
+            Ok(Poke::Fs(fswatch::Event::Paths(_) | fswatch::Event::Lost)) => {}
+            Ok(Poke::Fs(fswatch::Event::Watching(ok))) => watching = ok,
+            Ok(Poke::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => return,
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+        }
+    }
+}
+
+/// When the first change not read yet came, and now.
+fn bump(pending: Option<(Instant, Instant)>) -> (Instant, Instant) {
+    let now = Instant::now();
+    (pending.map_or(now, |(first, _)| first), now)
+}
+
+/// Reads each worktree's uncommitted change, how it stands, which would
+/// conflict and what is not seen yet, sending what changed.
+fn read_trees(
+    dir: &Path,
+    wts: &[Worktree],
+    marks: &mut Marks,
+    marks_file: Option<&Path>,
+    (counts, predictions, news): &mut (track::Cache, clash::Cache, unseen::Cache),
+    last: &mut Last,
+    send: &impl Fn(Answer),
+) {
+    // A worktree that cannot be read has no row; the next read tries again.
+    let wips: Vec<Wip> = wip::read_all(wts).into_iter().filter_map(|r| r.ok().flatten()).collect();
+    if last.wips.as_ref() != Some(&wips) {
+        last.wips = Some(wips.clone());
+        send(Answer::Wips(wips.clone()));
+    }
+    let mut trunk = None;
+    match track::read(dir, wts, counts) {
+        Ok(trees) => {
+            trunk = trees.trunk.clone().zip(trees.trunk_head);
+            let (unseen, marked) = unseen::read(dir, &trees, marks, news);
+            if marked {
+                save_marks(marks, marks_file);
+            }
+            if last.unseen.as_ref() != Some(&unseen) {
+                last.unseen = Some(unseen.clone());
+                send(Answer::Unseen(unseen));
+            }
+            if last.trees.as_ref() != Some(&trees) {
+                last.trees = Some(trees.clone());
+                send(Answer::Trees(trees));
+            }
+        }
+        Err(e) => eprintln!("michi: {e}"),
+    }
+    let sides = clash::sides(wts, &wips, trunk.as_ref().map(|(n, h)| (n.as_str(), *h)));
+    let clashes = clash::read(dir, sides, predictions);
+    if last.clashes.as_ref() != Some(&clashes) {
+        last.clashes = Some(clashes.clone());
+        send(Answer::Clashes(clashes));
+    }
+}
+
+/// Asks tsumugi for its sessions, sending them by worktree when they changed.
+fn ask_claude(wts: &[Worktree], last: &mut Last, timeouts: &mut u32, send: &impl Fn(Answer)) {
+    let claude = match claude::fetch() {
+        Ok(None) => Some(None),
+        Ok(Some(sessions)) => {
+            let per = claude::assign(wts.iter().map(|w| &w.path), &sessions);
+            Some(Some(wts.iter().zip(per).filter(|(_, s)| !s.is_empty()).map(|(w, s)| (w.path.clone(), s)).collect()))
+        }
+        // Worth a line, not every 2 s: the first and every 30th.
+        Err(e) => {
+            if !matches!(e, claude::Error::Timeout) || timeouts.is_multiple_of(30) {
+                eprintln!("michi: {e}");
+            }
+            *timeouts += u32::from(matches!(e, claude::Error::Timeout));
+            None
+        }
+    };
+    if let Some(c) = claude {
+        if last.claude.as_ref() != Some(&c) {
+            last.claude = Some(c.clone());
+            send(Answer::Claude(c));
+        }
+    }
+}
+
+/// Every ref and every worktree's `HEAD` and branch, in one text; `None`
+/// when git could not say.
+fn refs_print(dir: &Path, wts: &[Worktree]) -> Option<String> {
+    let mut out = git::read_text(dir, &["for-each-ref", "--format=%(objectname) %(refname)"]).ok()?;
+    for w in wts {
+        out.push_str(&format!("\n{} {} {:?}", w.head, w.path.display(), w.branch));
+    }
+    Some(out)
+}
+
+/// The state file of what has been seen in the repository whose common git
+/// folder is `common`.
+fn marks_path(common: &Path) -> Option<PathBuf> {
+    let own = common.file_name()?.to_string_lossy().into_owned();
+    // `repo/.git` goes by `repo`; a bare `repo.git` by `repo`.
+    let name = if own.eq_ignore_ascii_case(".git") {
+        common.parent().and_then(|p| p.file_name()).map_or(own.clone(), |n| n.to_string_lossy().into_owned())
+    } else {
+        own.strip_suffix(".git").unwrap_or(&own).to_owned()
+    };
+    Some(ito_common::state_dir("michi")?.join("seen").join(unseen::file_name(&name, common)))
+}
+
+fn save_marks(marks: &Marks, file: Option<&Path>) {
+    let Some(file) = file else { return };
+    if let Err(e) = ito_common::write_atomic(file, marks.to_json()) {
+        eprintln!("michi: {e}");
     }
 }
 
@@ -298,6 +484,9 @@ fn history(dir: &Path, first: Result<Setup, git::Error>, asks: &Receiver<Ask>, s
     let mut gen = 0;
     loop {
         gen += 1;
+        // A second wish to read again, or one for more of the last reading,
+        // is met by this reading.
+        while asks.try_recv().is_ok() {}
         let setup = first.take().unwrap_or_else(|| Setup::read(dir));
         match read(dir, gen, setup, asks, &send) {
             Next::Reload => {}

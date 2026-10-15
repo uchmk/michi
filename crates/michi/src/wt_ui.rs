@@ -1,7 +1,8 @@
 //! The worktree view (`3`): a row per worktree with its branch and folder,
 //! the Claude working in it, how far it is from the trunk and from where it
-//! pushes, what is not committed and what it would conflict with; under
-//! them, the table of the pairs that would conflict. Drawn with the painter;
+//! pushes, what is not committed, what is not seen yet and what it would
+//! conflict with; under them, the table of the pairs that would conflict and
+//! the list of the commits not seen yet. Drawn with the painter;
 //! it scrolls by the wheel with no scrollbar (docs/design.md: the graph's is
 //! the one). In a narrow window the rows become cards (docs/mock).
 
@@ -14,6 +15,7 @@ use egui::{
 };
 use michi_core::clash::Outcome;
 use michi_core::claude::{Session, State};
+use michi_core::oid::Oid;
 use michi_core::track::Tree;
 
 use crate::app::{failed_word, App, Repo};
@@ -28,6 +30,7 @@ const CELL_X: f32 = 10.0;
 const CELL_Y: f32 = 9.0;
 const TRUNK_W: f32 = 230.0;
 const WIP_W: f32 = 180.0;
+const UNSEEN_W: f32 = 130.0;
 const CLASH_W: f32 = 200.0;
 const ACTS_W: f32 = 250.0;
 /// The narrowest the name and Claude columns get before the others give.
@@ -36,6 +39,13 @@ const REST_MIN_CLAUDE: f32 = 340.0;
 /// The table of pairs' box: its padding and a cell's height.
 const BOX_PAD: f32 = 12.0;
 const MX_H: f32 = 26.0;
+/// A line of the list of unseen commits, and the most lines it shows.
+const NEW_H: f32 = 24.0;
+const NEW_MOST: usize = 12;
+/// The gap between the two boxes side by side, and the narrowest the list
+/// gets beside the table of pairs before it goes under it.
+const BOX_GAP: f32 = 18.0;
+const NEW_MIN: f32 = 320.0;
 /// Below this width the rows are cards.
 pub const CARDS: f32 = 960.0;
 /// The label column of a card's lines.
@@ -119,13 +129,17 @@ enum Piece {
         gap: f32,
         buttons: Vec<Button>,
     },
+    /// A line of text after the blue dot of what is not seen yet.
+    Dot {
+        g: Arc<Galley>,
+    },
 }
 
 impl Piece {
     fn height(&self, width: f32) -> f32 {
         match self {
             Piece::Text { g, gap, .. } => gap + g.size().y,
-            Piece::Name { g, .. } => g.size().y,
+            Piece::Name { g, .. } | Piece::Dot { g } => g.size().y,
             Piece::Buttons { gap, buttons } => gap + flow(buttons, width).last().map_or(0.0, |r| r.bottom()),
         }
     }
@@ -332,6 +346,21 @@ fn wip_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
     out
 }
 
+/// How many commits the worktree has gained that are not seen yet; `—` for
+/// one not followed (the trunk's).
+fn unseen_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
+    let c = ito_theme::colors();
+    let font = FontId::proportional(12.5);
+    match app.unseen.of(&t.wt.path) {
+        None => vec![text(layout(ui, "—", font, c.dim, w), 0.0)],
+        Some([]) => vec![text(layout(ui, app.tr("wt.none"), font, c.dim, w), 0.0)],
+        Some(news) => {
+            let words = layout(ui, app.tr("wt.unseen").replace("{}", &news.len().to_string()), font, c.fg, w - 11.0);
+            vec![Piece::Dot { g: words }]
+        }
+    }
+}
+
 /// What the worktree would conflict with: each side, in how many places,
 /// in which files; yellow where only its uncommitted change does.
 fn clash_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
@@ -400,7 +429,7 @@ struct Block {
 /// The table's columns: `(left, width)` of each, from the content's left,
 /// with no Claude column when tsumugi is not running.
 fn columns(width: f32, claude: bool) -> Vec<(f32, f32)> {
-    let fixed = [TRUNK_W, WIP_W, CLASH_W, ACTS_W];
+    let fixed = [TRUNK_W, WIP_W, UNSEEN_W, CLASH_W, ACTS_W];
     let sum: f32 = fixed.iter().sum();
     let least = if claude { REST_MIN_CLAUDE } else { REST_MIN };
     // In a window just over the cards' width, the fixed columns give too.
@@ -435,8 +464,10 @@ fn row_block(ui: &Ui, app: &App, t: &Tree, k: usize, trunk: &str, cols: &[(f32, 
     let (x, w) = cell(n + 1);
     out.push(Col { x, w, pieces: wip_cell(ui, app, t, w) });
     let (x, w) = cell(n + 2);
-    out.push(Col { x, w, pieces: clash_cell(ui, app, t, w) });
+    out.push(Col { x, w, pieces: unseen_cell(ui, app, t, w) });
     let (x, w) = cell(n + 3);
+    out.push(Col { x, w, pieces: clash_cell(ui, app, t, w) });
+    let (x, w) = cell(n + 4);
     out.push(Col { x, w, pieces: vec![Piece::Buttons { gap: 0.0, buttons: buttons(ui, app, t, k, trunk) }] });
     let height = line_h(&out) + 2.0 * CELL_Y;
     Block { lines: vec![(CELL_Y, out)], height, card: false }
@@ -473,6 +504,7 @@ fn card_block(ui: &Ui, app: &App, t: &Tree, k: usize, trunk: &str, width: f32, c
     };
     push(kv(app.tr("wt.col.trunk").replace("{}", trunk), trunk_cell(ui, app, t, value_w)), &mut y);
     push(kv(app.tr("wt.col.wip").to_owned(), wip_cell(ui, app, t, value_w)), &mut y);
+    push(kv(app.tr("wt.col.unseen").to_owned(), unseen_cell(ui, app, t, value_w)), &mut y);
     push(kv(app.tr("wt.col.clash").to_owned(), clash_cell(ui, app, t, value_w)), &mut y);
     push(vec![Col { x: pad_x, w: inner, pieces: vec![Piece::Buttons { gap: 0.0, buttons: buttons(ui, app, t, k, trunk) }] }], &mut y);
     Block { lines, height: y - gap + pad_y, card: true }
@@ -498,6 +530,11 @@ fn draw_col(ui: &Ui, p: &Painter, col: &Col, at: Pos2, id: Id, live: bool, act: 
                 for dx in [0.0, 0.45] {
                     p.galley(pos2(x + INDENT + dx, y), g.clone(), c.fg);
                 }
+                y += g.size().y;
+            }
+            Piece::Dot { g } => {
+                p.circle_filled(pos2(x + 3.0, y + g.size().y / 2.0), 3.0, c.run);
+                p.galley(pos2(x + 11.0, y), g.clone(), c.fg);
                 y += g.size().y;
             }
             Piece::Buttons { gap, buttons } => {
@@ -703,6 +740,105 @@ fn draw_pairs(ui: &Ui, p: &Painter, app: &App, b: &Pairs, at: Pos2, live: bool) 
     clicked
 }
 
+/// A line of the list of unseen commits: the commit, its short hash, its
+/// subject and where and when.
+type NewLine = (Oid, Arc<Galley>, Arc<Galley>, Arc<Galley>);
+
+/// The list of the commits not seen yet, laid out from its box's top left.
+struct News {
+    w: f32,
+    h: f32,
+    title: Arc<Galley>,
+    /// Each line: the commit, its short hash, its subject and where and when.
+    lines: Vec<NewLine>,
+    /// `全部見ました。`, or how many more there are than shown.
+    rest: Option<Arc<Galley>>,
+    foot: Arc<Galley>,
+}
+
+impl News {
+    fn lines_top(&self) -> f32 {
+        BOX_PAD + self.title.size().y + 8.0
+    }
+}
+
+fn news_box(ui: &Ui, app: &App, w: f32) -> News {
+    let c = ito_theme::colors();
+    let inner = w - 2.0 * BOX_PAD;
+    let all = app.unseen.all();
+    let title = layout(ui, app.tr("new.title").replace("{}", &all.len().to_string()), FontId::proportional(12.5), c.fg, inner);
+    let now = chrono::Local::now();
+    let lines: Vec<_> = all
+        .iter()
+        .take(NEW_MOST)
+        .map(|(name, n)| {
+            let hash = layout(ui, n.id.short(), FontId::monospace(11.5), c.dim, f32::INFINITY);
+            let at = crate::graph::when(n.time, &now, app.tr("time.yesterday"));
+            let meta = format!("{} · {at}", short(name));
+            let meta =
+                layout(ui, cut_end(ui, &meta, FontId::proportional(11.5), inner * 0.4), FontId::proportional(11.5), c.dim, f32::INFINITY);
+            let room = inner - 12.0 - 62.0 - 8.0 - 11.0 - 8.0 - meta.size().x;
+            let subject =
+                layout(ui, cut_end(ui, &n.subject, FontId::proportional(12.5), room), FontId::proportional(12.5), c.fg, f32::INFINITY);
+            (n.id, hash, subject, meta)
+        })
+        .collect();
+    let rest = match all.len() {
+        0 => Some(app.tr("new.none").to_owned()),
+        n if n > NEW_MOST => Some(app.tr("new.more").replace("{}", &(n - NEW_MOST).to_string())),
+        _ => None,
+    }
+    .map(|words| layout(ui, words, FontId::proportional(12.0), c.dim, inner));
+    let foot = layout(ui, app.tr("new.foot"), FontId::proportional(11.0), c.dim, inner);
+    let mut b = News { w, h: 0.0, title, lines, rest, foot };
+    b.h =
+        b.lines_top() + b.lines.len() as f32 * NEW_H + b.rest.as_ref().map_or(0.0, |g| g.size().y + 4.0) + 8.0 + b.foot.size().y + BOX_PAD;
+    b
+}
+
+/// The list of unseen commits in its box from `at`; the commit clicked, if
+/// one was.
+fn draw_news(ui: &Ui, p: &Painter, b: &News, at: Pos2, live: bool) -> Option<Oid> {
+    let c = ito_theme::colors();
+    let frame = Rect::from_min_size(at, vec2(b.w, b.h));
+    p.rect_stroke(frame, CornerRadius::same(8), Stroke::new(1.0, c.border), StrokeKind::Inside);
+    let x0 = at.x + BOX_PAD;
+    for dx in [0.0, 0.45] {
+        p.galley(pos2(x0 + dx, at.y + BOX_PAD), b.title.clone(), c.fg);
+    }
+    let mut clicked = None;
+    let mut y = at.y + b.lines_top();
+    for (id, hash, subject, meta) in &b.lines {
+        let r = Rect::from_min_size(pos2(x0, y), vec2(b.w - 2.0 * BOX_PAD, NEW_H));
+        let resp = ui.interact(r.intersect(p.clip_rect()), Id::new(("wt-new", *id)), Sense::CLICK);
+        if live && resp.hovered() {
+            p.rect_filled(r, CornerRadius::same(4), c.fg.gamma_multiply(0.04));
+            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+        }
+        if live && resp.clicked() {
+            clicked = Some(*id);
+        }
+        let mid = r.center().y;
+        let mut x = r.left() + 6.0;
+        p.galley(pos2(x, mid - hash.size().y / 2.0), hash.clone(), c.dim);
+        x += 62.0 + 8.0;
+        p.circle_filled(pos2(x + 3.0, mid), 3.0, c.run);
+        x += 11.0;
+        for dx in [0.0, 0.45] {
+            p.galley(pos2(x + dx, mid - subject.size().y / 2.0), subject.clone(), c.fg);
+        }
+        p.galley(pos2(r.right() - 6.0 - meta.size().x, mid - meta.size().y / 2.0), meta.clone(), c.dim);
+        y += NEW_H;
+    }
+    if let Some(g) = &b.rest {
+        y += 4.0;
+        p.galley(pos2(x0, y), g.clone(), c.dim);
+        y += g.size().y;
+    }
+    p.galley(pos2(x0, y + 8.0), b.foot.clone(), c.dim);
+    clicked
+}
+
 /// A button of the top bar, its right edge at `right`; its left edge, and
 /// whether it was clicked.
 #[expect(clippy::too_many_arguments, reason = "the painter, the place and the look are the frame's")]
@@ -773,14 +909,18 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         y += b.height + gap;
     }
     let pairs_top = y + 14.0;
-    let pairs = pairs_box(ui, app, if cards { width } else { ((width - 18.0) / 2.0).max(420.0).min(width) });
+    // The table of pairs on the left, the unseen commits beside it; in a
+    // narrow window, one under the other.
+    let pairs_w = if cards { width } else { ((width - BOX_GAP) / 2.0).max(420.0).min(width) };
+    let pairs = pairs_box(ui, app, pairs_w);
+    let beside = !cards && width - pairs_w - BOX_GAP >= NEW_MIN;
+    let news = news_box(ui, app, if beside { width - pairs_w - BOX_GAP } else { width });
+    let news_at = if beside { (pairs_w + BOX_GAP, pairs_top) } else { (0.0, pairs_top + pairs.h + 14.0) };
+    let boxes_bottom = (pairs_top + pairs.h).max(news_at.1 + news.h);
     let foot_w = width.min(900.0);
-    let feet: Vec<Arc<Galley>> = ["wt.foot_later", if claude { "wt.foot_claude" } else { "" }]
-        .into_iter()
-        .filter(|w| !w.is_empty())
-        .map(|w| layout(ui, app.tr(w), FontId::proportional(11.5), c.dim, foot_w))
-        .collect();
-    let foot_top = pairs_top + pairs.h + 14.0;
+    let feet: Vec<Arc<Galley>> =
+        if claude { vec![layout(ui, app.tr("wt.foot_claude"), FontId::proportional(11.5), c.dim, foot_w)] } else { Vec::new() };
+    let foot_top = boxes_bottom + 14.0;
     let total = foot_top + feet.iter().map(|g| g.size().y + 4.0).sum::<f32>() + 16.0;
 
     let mut scroll = ctx.data(|d| d.get_temp::<f32>(scroll_id())).unwrap_or(0.0);
@@ -833,6 +973,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         }
         words.push(app.tr("wt.col.trunk").replace("{}", &trunk));
         words.push(app.tr("wt.col.wip").to_owned());
+        words.push(app.tr("wt.col.unseen").to_owned());
         words.push(app.tr("wt.col.clash").to_owned());
         for (word, (x, w)) in words.into_iter().zip(&cols) {
             let word = cut_end(ui, &word, FontId::proportional(11.0), w - 2.0 * CELL_X);
@@ -879,6 +1020,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     }
 
     let pair = draw_pairs(ui, &p, app, &pairs, pos2(left, at(pairs_top)), live);
+    let picked_new = draw_news(ui, &p, &news, pos2(left + news_at.0, at(news_at.1)), live);
     let mut y = at(foot_top);
     for g in feet {
         let h = g.size().y;
@@ -896,6 +1038,11 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
                 d.insert_temp(picked_id(), names);
             }
         });
+        ctx.request_repaint();
+    }
+    if let Some(id) = picked_new {
+        app.view = crate::app::View::Graph;
+        app.go_to(id);
         ctx.request_repaint();
     }
     if again {
@@ -1028,6 +1175,20 @@ mod tests {
         one.pairs.clear();
         app.take(Answer::Clashes(one));
         frame(&mut app, 1200.0);
+        // Commits not seen yet: in the column, the cards and the list, beside
+        // the table of pairs or under it; then more than the list shows.
+        app.take(Answer::Unseen(fixture::unseen()));
+        for width in [1600.0, 1200.0, 980.0, 600.0, 200.0] {
+            frame(&mut app, width);
+        }
+        let mut many = fixture::unseen();
+        let one = many.tracks[0].commits[0].clone();
+        many.tracks[0].commits = (1..16u32)
+            .map(|n| michi_core::unseen::New { id: fixture::id(n), subject: "a subject ".repeat(n as usize), ..one.clone() })
+            .collect();
+        app.take(Answer::Unseen(many));
+        frame(&mut app, 1600.0);
+        frame(&mut app, 600.0);
     }
 
     #[test]
@@ -1038,7 +1199,7 @@ mod tests {
             assert!((x + w - width).abs() < 0.5, "{width} {claude}: {cols:?}");
             assert!(cols[0].1 >= 120.0, "{width} {claude}: {cols:?}");
         }
-        assert_eq!(columns(1600.0, false)[3].1, CLASH_W);
+        assert_eq!(columns(1600.0, false)[4].1, CLASH_W);
     }
 
     #[test]
