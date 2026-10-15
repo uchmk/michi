@@ -41,7 +41,7 @@ pub enum Wish {
 /// A number for the next wish to read, never the same twice in the
 /// process (0 is none's): an answer to a review closed since is not taken
 /// for one to the review open now.
-fn next_gen() -> u32 {
+pub(crate) fn next_gen() -> u32 {
     static GEN: AtomicU32 = AtomicU32::new(0);
     GEN.fetch_add(1, Ordering::Relaxed).wrapping_add(1)
 }

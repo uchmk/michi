@@ -23,10 +23,10 @@
 
 ## 2. Views and keys
 
-- [ ] **2.1** Press `1`, `2`, `3` → The tab in force moves and opens into the view; the graph shows the history (section 6), the worktrees show their table (section 10), the changes say what will be there and "Coming in a later stage"
+- [ ] **2.1** Press `1`, `2`, `3` → The tab in force moves and opens into the view; the graph shows the history (section 6), the worktrees show their table (section 10), the changes show the files to stage (section 14)
 - [ ] **2.2** Click each tab → Same as the digit
 - [ ] **2.3** Press `?` → A card with the keys: "Everywhere" first, then the view's; the tab stays lit under it; `?` or Esc closes it
-- [ ] **2.4** Press `N`, `f`, `p`, `P` in any view, `b` and `s` in the graph (Enter spreads the diff: 8.5), Space and `c` in the changes → A toast at the foot names the key's work and says it comes in a later stage; it goes after 4 seconds
+- [ ] **2.4** Press `N`, `f`, `p`, `P` in any view, `b` and `s` in the graph (Enter spreads the diff: 8.5) → A toast at the foot names the key's work and says it comes in a later stage; it goes after 4 seconds
 - [ ] **2.5** Press Ctrl+Shift+P, or click the palette field → The same toast for the command search; the field lights under the pointer with a text cursor
 - [ ] **2.6** Press a key with no work (`q`, `4`) → Nothing happens
 
@@ -163,3 +163,21 @@
 - [ ] **13.9** Press `d` on a worktree with a detached HEAD; on a branch with nothing from main → The toast `This worktree is on no branch`; the review reads `No file changed from main`
 - [ ] **13.10** Commit in the worktree while the review is open; switch the worktree to another branch from a terminal → The list follows the new commit within about a second, keeping the ticks; on another branch the list stays as it was and nothing is read
 - [ ] **13.11** Narrow the window to its smallest; switch to the light theme → The branch name is cut with `…`, the files keep their counts and the key bar folds what does not fit; the colours stay readable in both themes
+
+## 14. Changes: stage and commit
+
+- [ ] **14.1** Press `2` in the set-up worktree → The top bar: the worktrees as chips (the window's own lit, a green ● on one where a Claude is writing), `[ ]` after them, `Amend A` on the right; the files on the left under `Staged` and `Not staged`, each with its letter (M A D R `?` in their colours), the path and `+n −n`, the new file last with `?`; under the list the message box with `What changed, and why` and `Commit`; the selected file's diff on the right; the `2` tab reads `2 Changes` and the number of files listed (a file both staged and changed counted once); the key bar lists `Space`, `c`, `l h`, `a`, `j k`, `v`, `A`, `[ ]`, `Enter`, `Esc`
+- [ ] **14.2** Press `j` / `k`; Space on a file not staged, then on a staged one; `a`, then `a` again; click a file, double-click another → Space moves the file to `Staged` (and back out on a staged one) and the selection stays on that file; the first `a` stages everything, the second unstages everything; a click selects, a double-click stages or unstages; `git status` in a terminal agrees each time
+- [~] **14.3** On a changed file with two hunks press `l`, `j`, `v`, `j`, Space; then `a`; then `h` → `l` puts an accent strip on the first changed line and the title reads `Space in or out · v range · a hunk · h back`; `j` walks the changed lines only; `v` picks a range (tinted blue); Space stages just those lines (`git diff --cached` shows them, `git diff` the rest); `a` stages the hunk under the cursor; `h` goes back to the files
+- [ ] **14.4** Press `l` on the new file, on a binary file and on a renamed file → The toast `This file goes in whole: its lines cannot be picked`; the diff says the same; Space stages the whole file
+- [ ] **14.5** Press `c`, write a two-line message (`j`, `k`, Space type as text), press Ctrl+Enter → The box takes the keys; the commit is made (toast `Committed <hash>`), the box and the staged list empty, the graph (`1`) shows the commit with the message; Esc in the box only leaves it
+- [ ] **14.6** Press Ctrl+Enter with nothing staged; then stage a file and press Ctrl+Enter with an empty box → The toasts `Nothing staged to commit` and `Write a commit message first (c)`; nothing is written
+- [ ] **14.7** On a commit not pushed press `A`, change the message, Ctrl+Enter → The switch lights and the box fills with the head's message (the title reads `Message of the commit amended`, the button `Amend`); the head is replaced: one commit, not two; `A` again before writing empties the box
+- [ ] **14.8** On a pushed commit press `A`, then Ctrl+Enter; Esc; Ctrl+Enter and `y` → A band under the top bar: `The last commit is pushed: amending it rewrites history others may have.` with `Go ahead y` and `Not now Esc`; Esc leaves the commit as it was; `y` amends it
+- [ ] **14.9** Start a Claude in a worktree from tsumugi; in michi open that worktree in `2` and press Space; press `x`, Esc, Space, `y`, then Space on another file → The band `A Claude is writing in this worktree. Write beside it?`; `x` does nothing while it waits; Esc says no and nothing is staged; `y` stages; the next Space does not ask again until that Claude stops or another worktree is shown
+- [ ] **14.10** Write a message, press `]` and `[`; click another worktree's chip; open a repository with one worktree and press `]` → Each worktree's files are read anew and the chip lights; the message written stays with its worktree; with one worktree, the toast `There is only one worktree`
+- [~] **14.11** Press Enter, then Esc; pick lines and press Enter again → The diff spreads side by side, old on the left and new on the right; the picked lines are tinted on their side only; Esc goes back to one column (on the lines, the first Esc leaves the lines)
+- [ ] **14.12** With `2` open, save a file in the worktree from an editor; let a Claude commit there → The list follows within about a second and keeps the selection on the same file; staged lines stay staged
+- [ ] **14.13** Leave `2` for `1`; then make the worktree clean → The `2` tab still counts the uncommitted files of the worktree last shown; with none, no number
+- [ ] **14.14** Add a pre-commit hook that prints a line and exits 1, then commit → The toast `Could not write: …` with the hook's words for 8 seconds; the staged list and the message stay
+- [ ] **14.15** Narrow the window to its smallest; switch to the light theme → The list keeps at least 240 px, the chips end in `…`, the key bar folds what does not fit; the tints, the band and the letters stay readable in both themes

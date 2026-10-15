@@ -38,7 +38,10 @@
     main on top, side by side (`Enter`) （要確認: #10）
   - [ ] The branch review's leftovers: notes on lines sent to the branch's Claude (stage 6), merge from the review (with `m`, stages 3–4),
     `Open PR` (with the PR button, stage 4) （要確認: #10）
-  - [ ] Stage and commit (lines and hunks, the check while Claude is writing, the count of uncommitted files on the `2` tab)
+  - [x] Stage and commit (`2`, v0.10.0): files, lines and hunks (`git apply --cached`), the message per worktree, amend (asked first
+    when the head is pushed), the check while Claude is writing, the count of uncommitted files on the `2` tab （要確認: #12）
+  - [ ] Stage and commit's leftovers: splitting a hunk (`s` of `git add -p`), the commit hooks' output shown whole (now one line in a
+    toast); discard and stash are in the everyday operations below （要確認: #12）
   - [ ] Branches, fetch / pull / push with progress
   - [ ] The everyday operations in design.md (amend, revert, tags, stash, discard, clean-up), backups to `refs/michi/backup/<time>`
 - [ ] 3. Conflicts: the conflict screen (`4`), locks during a merge (and「· マージ中」in red on the chip), rerere asked once, cherry-pick; prediction moved to gix-merge and

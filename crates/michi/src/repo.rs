@@ -15,6 +15,10 @@
 //! it left the trunk, and one file's diff, each only for the newest wish,
 //! and keeps the files checked as looked at.
 //!
+//! A fifth thread reads and writes for the `2` view: a worktree's staged and
+//! unstaged files, one file's diff and the head's message, each only for the
+//! newest wish, and the stagings and commits, every one in turn.
+//!
 //! A third thread keeps an eye on the worktrees: each one's uncommitted
 //! change, how it stands against the trunk and its upstream, which would
 //! conflict with which, the commits not seen yet, and the Claude sessions
@@ -24,7 +28,7 @@
 //! seconds while the window is in front and seldom behind it. When the refs
 //! moved, the history is read again.
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -40,12 +44,14 @@ use michi_core::log::{self, Commit, Reader};
 use michi_core::oid::Oid;
 use michi_core::review::{self, Checks, List};
 use michi_core::show::{self, Changes, Detail};
+use michi_core::stage::{self, Lists};
 use michi_core::summary::{self, Summary};
 use michi_core::track::{self, Trees};
 use michi_core::unseen::{self, Marks, Unseen};
 use michi_core::wip::{self, Wip};
 use michi_core::worktree::{self, Worktree};
 
+use crate::changes::{self as staging, Op};
 use crate::fswatch::{self, Fs};
 use crate::review::Wish;
 
@@ -83,6 +89,17 @@ pub enum Answer {
     ReviewList { gen: u32, result: Result<Box<List>, git::Error>, checks: BTreeSet<review::Key> },
     /// One file's diff in a branch review.
     ReviewFile { gen: u32, result: Result<Box<Changes>, git::Error> },
+    /// The worktrees were read again: what the `2` view shows may have moved.
+    Reread,
+    /// A worktree's staged and unstaged files, as [`Reading::changes`] asked.
+    ChangesList { gen: u32, result: Result<Box<Lists>, git::Error> },
+    /// One file's diff on one side; `None` when it is gone.
+    ChangesFile { gen: u32, result: Result<Option<Box<stage::Diff>>, git::Error> },
+    /// The head's message and whether a remote has the head.
+    ChangesLast { gen: u32, result: Result<(String, bool), git::Error> },
+    /// A write in the worktree `wt` is done (`commit` when it committed),
+    /// with the commit it made.
+    ChangesDone { wt: PathBuf, commit: bool, result: Result<Option<Oid>, git::Error> },
 }
 
 /// What the window asks of the reading thread.
@@ -113,6 +130,10 @@ pub struct Reading {
     /// numbers.
     looks: Sender<Wish>,
     look_latest: Arc<[AtomicU32; 2]>,
+    /// What the `2` view wants, and the newest list's, diff's and message's
+    /// numbers.
+    stages: Sender<staging::Wish>,
+    stage_latest: Arc<[AtomicU32; 3]>,
 }
 
 /// What the window, and the folders' watcher, tell the watching thread.
@@ -170,6 +191,18 @@ impl Reading {
             l.store(0, Ordering::SeqCst);
         }
     }
+
+    /// What the `2` view wants read or done; an older read of the same kind
+    /// not yet answered is dropped, a write never.
+    pub fn changes(&self, wish: staging::Wish) {
+        match &wish {
+            staging::Wish::List { gen, .. } => self.stage_latest[0].store(*gen, Ordering::SeqCst),
+            staging::Wish::File { gen, .. } => self.stage_latest[1].store(*gen, Ordering::SeqCst),
+            staging::Wish::Last { gen, .. } => self.stage_latest[2].store(*gen, Ordering::SeqCst),
+            staging::Wish::Do { .. } => {}
+        }
+        let _ = self.stages.send(wish);
+    }
 }
 
 impl Drop for Reading {
@@ -226,6 +259,17 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         };
         reviews(&look_dir, &look_rx, &latests, send);
     });
+    let (stages, stage_rx) = mpsc::channel();
+    let stage_latest = Arc::new([AtomicU32::new(0), AtomicU32::new(0), AtomicU32::new(0)]);
+    let (stage_tx, stage_ctx, latests) = (tx.clone(), ctx.clone(), stage_latest.clone());
+    // No thread for the `2` view: it stays empty.
+    let _ = std::thread::Builder::new().name("changes".into()).spawn(move || {
+        let send = |a: Answer| {
+            let _ = stage_tx.send(a);
+            stage_ctx.request_repaint();
+        };
+        stagings(&stage_rx, &latests, send);
+    });
     let thread_tx = tx.clone();
     let spawned = std::thread::Builder::new().name("repo".into()).spawn(move || {
         let send = |a: Answer| {
@@ -244,7 +288,7 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         // No thread: say so where the summary would have gone.
         let _ = tx.send(Answer::Summary(Err(git::Error::Io(e.to_string()))));
     }
-    Reading { answers, asks, wants, latest, pokes, looks, look_latest }
+    Reading { answers, asks, wants, latest, pokes, looks, look_latest, stages, stage_latest }
 }
 
 /// How long the folders must stay quiet after a change before it is read.
@@ -317,6 +361,7 @@ fn watch(dir: &Path, pokes: &Receiver<Poke>, asks: &Sender<Ask>, mut fs: Fs, sen
             if let Ok(wts) = worktree::list(dir) {
                 worktrees = wts;
                 read_trees(dir, &worktrees, &mut marks, marks_file.as_deref(), &mut caches, &mut last, &send);
+                send(Answer::Reread);
                 let refs = refs_print(dir, &worktrees);
                 if refs.is_some() && last.refs.is_some() && refs != last.refs {
                     let _ = asks.send(Ask::Reload);
@@ -567,6 +612,66 @@ fn reviews(dir: &Path, wishes: &Receiver<Wish>, latest: &[AtomicU32; 2], send: i
                 if !stale() {
                     send(Answer::ReviewFile { gen, result: result.map(Box::new) });
                 }
+            }
+        }
+    }
+}
+
+/// Does and reads what the `2` view wants, until the window is gone: every
+/// write in turn first, then of the reads that came meanwhile the newest
+/// list, diff and message.
+fn stagings(wishes: &Receiver<staging::Wish>, latest: &[AtomicU32; 3], send: impl Fn(Answer)) {
+    use staging::Wish as W;
+    let mut writes = VecDeque::new();
+    let mut reads: [Option<W>; 3] = [None, None, None];
+    let take = |w: W, writes: &mut VecDeque<(PathBuf, Op)>, reads: &mut [Option<W>; 3]| match w {
+        W::List { .. } => reads[0] = Some(w),
+        W::File { .. } => reads[1] = Some(w),
+        W::Last { .. } => reads[2] = Some(w),
+        W::Do { wt, op } => writes.push_back((wt, op)),
+    };
+    loop {
+        if writes.is_empty() && reads.iter().all(Option::is_none) {
+            match wishes.recv() {
+                Ok(w) => take(w, &mut writes, &mut reads),
+                Err(_) => return,
+            }
+        }
+        while let Ok(w) = wishes.try_recv() {
+            take(w, &mut writes, &mut reads);
+        }
+        if let Some((wt, op)) = writes.pop_front() {
+            let commit = matches!(op, Op::Commit { .. });
+            fn strs(paths: &[String]) -> Vec<&str> {
+                paths.iter().map(String::as_str).collect()
+            }
+            let result = match op {
+                Op::Stage(paths) => stage::stage(&wt, &strs(&paths)).map(|()| None),
+                Op::Unstage(paths) => stage::unstage(&wt, &strs(&paths)).map(|()| None),
+                Op::Apply { patch, reverse } => stage::apply(&wt, &patch, reverse).map(|()| None),
+                Op::Commit { message, amend } => stage::commit(&wt, &message, amend).map(Some),
+            };
+            send(Answer::ChangesDone { wt, commit, result });
+            // The reads wait for the writes: what they read would be stale.
+            continue;
+        }
+        let fresh = |k: usize, gen: u32| latest[k].load(Ordering::SeqCst) == gen;
+        if let Some(W::List { gen, wt }) = reads[0].take() {
+            if fresh(0, gen) {
+                let result = stage::lists(&wt).map(Box::new);
+                send(Answer::ChangesList { gen, result });
+            }
+        }
+        if let Some(W::File { gen, wt, side, file }) = reads[1].take() {
+            if fresh(1, gen) {
+                let result = stage::diff(&wt, side, &file).map(|d| d.map(Box::new));
+                send(Answer::ChangesFile { gen, result });
+            }
+        }
+        if let Some(W::Last { gen, wt }) = reads[2].take() {
+            if fresh(2, gen) {
+                let result = stage::last_message(&wt).and_then(|m| Ok((m, stage::is_pushed(&wt)?)));
+                send(Answer::ChangesLast { gen, result });
             }
         }
     }

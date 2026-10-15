@@ -1,0 +1,858 @@
+//! The `2` view (docs/design.md: 変更): the worktrees to switch between on
+//! top, with ● where a Claude is writing; the staged and the unstaged files
+//! on the left over the commit message; the selected file's diff on the
+//! right, in one column or side by side, with the lines picked and the
+//! cursor over it while the keys are on its lines. A write that waits for a
+//! yes shows what it would do under the top bar. Both sides scroll by the
+//! wheel, with no scrollbar; only the rows in sight are drawn.
+
+use egui::text::{LayoutJob, TextFormat, TextWrapping};
+use egui::{pos2, vec2, Align2, CornerRadius, CursorIcon, FontId, Id, Painter, Pos2, Rect, Sense, Stroke, StrokeKind, Ui};
+use michi_core::paths;
+use michi_core::show::File;
+use michi_core::stage::{Lists, Side};
+
+use crate::app::App;
+use crate::changes::{Changes, Focus, Shown};
+use crate::detail::{Paired, Unified};
+use crate::detail_ui::{diff, left_cut, status_ink, Wrap, DIFF_H, FILE_H, NOTE_H, TITLE_H, X};
+use crate::ui::{accent, kbd};
+
+const PAD_X: f32 = 18.0;
+const PAD_TOP: f32 = 14.0;
+const TOP_H: f32 = 30.0;
+/// The line under the top bar that asks for a yes.
+const CONFIRM_H: f32 = 34.0;
+/// The left column's width, at least and at most.
+const LIST_MIN: f32 = 240.0;
+const LIST_MAX: f32 = 380.0;
+/// A list's heading.
+const HEAD_H: f32 = 26.0;
+/// The commit message's box under the files.
+const BOX_H: f32 = 168.0;
+/// The room the path keeps in the title over the diff before the hint.
+const PATH_MIN: f32 = 80.0;
+
+fn list_scroll_id() -> Id {
+    Id::new("changes-list-scroll")
+}
+
+/// The selection the list last brought into sight.
+fn list_seen_id() -> Id {
+    Id::new("changes-list-seen")
+}
+
+fn scroll_id() -> Id {
+    Id::new("changes-scroll")
+}
+
+/// The cursor the diff last brought into sight.
+fn cursor_seen_id() -> Id {
+    Id::new("changes-cursor-seen")
+}
+
+/// The commit message's box: while it has the keys, they are its.
+pub fn message_id() -> Id {
+    Id::new("changes-message")
+}
+
+/// What a click does, once everything is drawn.
+enum Act {
+    Key(char),
+    Open(std::path::PathBuf),
+    Select(usize),
+    /// A file double-clicked: staged or unstaged.
+    Toggle(usize),
+    Wide(bool),
+    Commit,
+    No,
+}
+
+/// The `2` view in `r`.
+pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
+    let c = ito_theme::colors();
+    let ctx = ui.ctx().clone();
+    let p = ui.painter_at(r);
+    p.rect_filled(r, 0.0, c.bg);
+    let ch = &mut app.changes;
+    let (to_top, pages) = (std::mem::take(&mut ch.to_top), std::mem::take(&mut ch.pages));
+    if to_top {
+        // Also while the new file's diff is read.
+        ctx.data_mut(|d| d.insert_temp(scroll_id(), 0.0_f32));
+    }
+    let pointer = if live { ui.input(|i| i.pointer.hover_pos()).filter(|at| r.contains(*at)) } else { None };
+    let mut act = None;
+
+    // The top bar: the worktrees, the amend switch.
+    let mid = r.top() + PAD_TOP + TOP_H / 2.0;
+    let (l, hit) = switch(ui, &p, r.right() - PAD_X, mid, app.tr("changes.amend"), 'A', app.changes.amend, live);
+    if hit {
+        act = Some(Act::Key('A'));
+    }
+    if let Some(a) = worktrees(ui, app, &p, r.left() + PAD_X, l - 16.0, mid, live, pointer) {
+        act = Some(a);
+    }
+    let mut top = r.top() + PAD_TOP + TOP_H + 8.0;
+    if app.changes.confirm.is_some() {
+        let band = Rect::from_min_max(pos2(r.left(), top), pos2(r.right(), top + CONFIRM_H));
+        if let Some(a) = confirm(ui, app, &p, band, live, pointer) {
+            act = Some(a);
+        }
+        top = band.bottom();
+    }
+
+    // The files over the message on the left, the selected one's diff on
+    // the right.
+    p.line_segment([pos2(r.left(), top), pos2(r.right(), top)], Stroke::new(1.0, c.border));
+    let lw = (r.width() * 0.3).clamp(LIST_MIN, LIST_MAX).min(r.width() / 2.0);
+    let left = Rect::from_min_max(pos2(r.left(), top + 1.0), pos2(r.left() + lw, r.bottom()));
+    let dr = Rect::from_min_max(pos2(left.right() + 1.0, top + 1.0), r.max);
+    p.line_segment([pos2(left.right() + 0.5, top), pos2(left.right() + 0.5, r.bottom())], Stroke::new(1.0, c.border));
+    let box_h = BOX_H.min(left.height() * 0.5);
+    let lr = Rect::from_min_max(left.min, pos2(left.right(), left.bottom() - box_h));
+    let br = Rect::from_min_max(pos2(left.left(), lr.bottom()), left.max);
+    list(ui, app, lr, live, pointer, &mut act);
+    if let Some(a) = message(ui, app, br, live, pointer) {
+        act = Some(a);
+    }
+    let ch = &app.changes;
+    if let Some((side, f)) = ch.selected() {
+        if let Some(a) = title_row(ui, app, side, f, Rect::from_min_size(dr.min, vec2(dr.width(), TITLE_H)), live, pointer) {
+            act = Some(a);
+        }
+        let body = Rect::from_min_max(pos2(dr.left(), dr.top() + TITLE_H), dr.max);
+        body_of(ui, app, body, live, pages);
+    } else if ch.lists().is_some() {
+        note(ui, &ui.painter_at(dr), dr, app.tr("changes.pick"));
+    }
+
+    let Some(a) = act else { return };
+    match a {
+        Act::Key(k) => {
+            app.feed(k);
+        }
+        Act::Open(wt) => app.changes_open(wt),
+        Act::Select(k) => {
+            if app.changes.focus == Focus::Lines {
+                app.changes.leave_lines();
+            }
+            app.changes_select(k);
+        }
+        Act::Toggle(k) => {
+            app.changes_select(k);
+            app.feed(' ');
+        }
+        Act::Wide(w) => app.changes.wide = w,
+        Act::Commit => app.changes_commit(),
+        Act::No => {
+            app.escape();
+        }
+    }
+    ctx.request_repaint();
+}
+
+/// Whether `hit` was clicked; a hand over it.
+fn clicked(ui: &Ui, p: &Painter, hit: Rect, id: impl std::hash::Hash + std::fmt::Debug, live: bool, pointer: Option<Pos2>) -> bool {
+    let resp = ui.interact(hit.intersect(p.clip_rect()), Id::new(id), Sense::CLICK);
+    if live && pointer.is_some_and(|at| hit.contains(at)) {
+        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+    }
+    live && resp.clicked()
+}
+
+/// A switch of the top bar, its right edge at `right`, lit while `on`; its
+/// left edge, and whether it was clicked.
+#[expect(clippy::too_many_arguments, reason = "the painter, the place and the look are the frame's")]
+fn switch(ui: &Ui, p: &Painter, right: f32, mid: f32, label: &str, key: char, on: bool, live: bool) -> (f32, bool) {
+    let c = ito_theme::colors();
+    let ink = if on { c.wait } else { c.dim };
+    let g = ui.fonts_mut(|f| f.layout_no_wrap(label.to_owned(), FontId::proportional(12.5), ink));
+    let k = ui.fonts_mut(|f| f.layout_no_wrap(key.to_string(), FontId::monospace(10.5), c.dim));
+    let w = 9.0 + g.size().x + 6.0 + k.size().x + 9.0;
+    let b = Rect::from_min_max(pos2(right - w, mid - 12.0), pos2(right, mid + 12.0));
+    let resp = ui.interact(b.intersect(p.clip_rect()), Id::new(("changes-switch", key)), Sense::CLICK);
+    if on {
+        p.rect_filled(b, CornerRadius::same(5), c.wait.gamma_multiply(0.12));
+    } else if live && resp.hovered() {
+        p.rect_filled(b, CornerRadius::same(5), c.panel);
+    }
+    if live && resp.hovered() {
+        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+    }
+    let edge = if on { c.wait.gamma_multiply(0.45) } else { c.border };
+    p.rect_stroke(b, CornerRadius::same(5), Stroke::new(1.0, edge), StrokeKind::Inside);
+    p.galley(pos2(b.left() + 9.0, mid - g.size().y / 2.0), g.clone(), ink);
+    p.galley(pos2(b.right() - 9.0 - k.size().x, mid - k.size().y / 2.0), k, c.dim);
+    (b.left(), live && resp.clicked())
+}
+
+/// The worktrees as chips from `left`, the shown one lit, ● where a Claude
+/// is writing; `[ ]` after them while there is room before `right`.
+#[expect(clippy::too_many_arguments, reason = "the painter, the place and the look are the frame's")]
+fn worktrees(ui: &Ui, app: &App, p: &Painter, left: f32, right: f32, mid: f32, live: bool, pointer: Option<Pos2>) -> Option<Act> {
+    let c = ito_theme::colors();
+    let shown = app.changes.wt.as_deref().map(paths::key);
+    let mut x = left;
+    let mut out = None;
+    let trees: Vec<_> = app.change_trees().collect();
+    for (k, t) in trees.iter().enumerate() {
+        let on = shown.as_ref() == Some(&paths::key(&t.wt.path));
+        let running = app.claude_in(&t.wt.path).iter().any(|s| s.is_agent() && s.state == michi_core::claude::State::Running);
+        let g = ui.fonts_mut(|f| f.layout_no_wrap(crate::wt_ui::name_of(t), FontId::proportional(12.5), c.fg));
+        let dot = if running { 12.0 } else { 0.0 };
+        let w = 10.0 + dot + g.size().x + 10.0;
+        if x + w > right {
+            // The rest by `[ ]`.
+            p.text(pos2(x, mid), Align2::LEFT_CENTER, "…", FontId::proportional(13.0), c.dim);
+            break;
+        }
+        let b = Rect::from_min_max(pos2(x, mid - 12.0), pos2(x + w, mid + 12.0));
+        let hot = live && pointer.is_some_and(|at| b.contains(at));
+        if on {
+            p.rect_filled(b, CornerRadius::same(5), c.selection());
+            p.rect_stroke(b, CornerRadius::same(5), Stroke::new(1.0, accent().gamma_multiply(0.6)), StrokeKind::Inside);
+        } else {
+            if hot {
+                p.rect_filled(b, CornerRadius::same(5), c.panel);
+            }
+            p.rect_stroke(b, CornerRadius::same(5), Stroke::new(1.0, c.border), StrokeKind::Inside);
+        }
+        if running {
+            p.circle_filled(pos2(b.left() + 10.0 + 3.5, mid), 3.5, c.run);
+        }
+        p.galley(pos2(b.left() + 10.0 + dot, mid - g.size().y / 2.0), g, if on { c.fg } else { c.dim });
+        if clicked(ui, p, b, ("changes-wt", k), live, pointer) && !on {
+            out = Some(Act::Open(t.wt.path.clone()));
+        }
+        x = b.right() + 6.0;
+    }
+    if trees.len() > 1 && x + 30.0 < right {
+        kbd(ui, p, pos2(x + 30.0, mid), "[ ]");
+    }
+    out
+}
+
+/// The band asking for a yes: what the write would do, `y` and `Esc`.
+fn confirm(ui: &Ui, app: &App, p: &Painter, band: Rect, live: bool, pointer: Option<Pos2>) -> Option<Act> {
+    let c = ito_theme::colors();
+    let Some(cf) = &app.changes.confirm else { return None };
+    p.rect_filled(band, 0.0, c.wait.gamma_multiply(0.14));
+    let mid = band.center().y;
+    let mut right = band.right() - PAD_X;
+    let mut out = None;
+    for (key, word, a) in [("Esc", "changes.no", Act::No), ("y", "changes.yes", Act::Key('y'))] {
+        let cap = kbd(ui, p, pos2(right, mid), key);
+        let w = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, app.tr(word), FontId::proportional(12.5), c.fg);
+        let hit = w.union(cap).expand(3.0);
+        if clicked(ui, p, hit, ("changes-confirm", key), live, pointer) {
+            out = Some(a);
+        }
+        right = hit.left() - 14.0;
+    }
+    let mut text = Vec::new();
+    if cf.claude {
+        text.push(app.tr("changes.claude_writing"));
+    }
+    if cf.pushed {
+        text.push(app.tr("changes.rewrites"));
+    }
+    let left = band.left() + PAD_X;
+    p.text(pos2(left, mid), Align2::LEFT_CENTER, "●", FontId::proportional(12.0), if cf.claude { c.run } else { c.wait });
+    let mut job =
+        LayoutJob::single_section(text.join(" "), TextFormat { font_id: FontId::proportional(12.5), color: c.fg, ..Default::default() });
+    job.wrap = TextWrapping::truncate_at_width((right - left - 18.0).max(0.0));
+    let g = ui.fonts_mut(|f| f.layout_job(job));
+    p.galley(pos2(left + 18.0, mid - g.size().y / 2.0), g, c.fg);
+    out
+}
+
+/// A note at the top of `r`, wrapped to its width.
+fn note(ui: &Ui, p: &Painter, r: Rect, text: &str) {
+    let c = ito_theme::colors();
+    let g = ui.fonts_mut(|f| f.layout(text.to_owned(), FontId::proportional(12.0), c.dim, (r.width() - 2.0 * X).max(40.0)));
+    p.galley(pos2(r.left() + X, r.top() + 10.0), g, c.dim);
+}
+
+/// A piece of the file list, top to bottom.
+#[derive(Clone, Copy)]
+enum Item {
+    Head(Side, usize),
+    /// The `k`th file, counted over the staged ones then the unstaged.
+    File(usize),
+    /// A side with no files.
+    Empty(Side),
+    Cut,
+}
+
+impl Item {
+    fn height(self) -> f32 {
+        match self {
+            Item::Head(..) => HEAD_H,
+            Item::File(_) | Item::Empty(_) => FILE_H,
+            Item::Cut => NOTE_H,
+        }
+    }
+}
+
+fn items(l: &Lists) -> Vec<Item> {
+    let mut out = Vec::new();
+    let mut k = 0;
+    for side in [Side::Staged, Side::Unstaged] {
+        let files = l.of(side);
+        out.push(Item::Head(side, files.len()));
+        if files.is_empty() {
+            out.push(Item::Empty(side));
+        }
+        for _ in files {
+            out.push(Item::File(k));
+            k += 1;
+        }
+    }
+    if l.cut {
+        out.push(Item::Cut);
+    }
+    out
+}
+
+/// The staged and the unstaged files in `lr`.
+fn list(ui: &Ui, app: &App, lr: Rect, live: bool, pointer: Option<Pos2>, act: &mut Option<Act>) {
+    let c = ito_theme::colors();
+    let ctx = ui.ctx();
+    let p = ui.painter_at(lr);
+    let ch = &app.changes;
+    let l = match &ch.lists {
+        None => return note(ui, &p, lr, app.tr("changes.reading")),
+        Some(Err(e)) => return note(ui, &p, lr, &app.tr("changes.failed_list").replace("{}", &e.to_string())),
+        Some(Ok(l)) => l,
+    };
+    let items = items(l);
+    let pad = 4.0;
+    let tops: Vec<f32> = items
+        .iter()
+        .scan(pad, |y, it| {
+            let top = *y;
+            *y += it.height();
+            Some(top)
+        })
+        .collect();
+    let total = tops.last().copied().unwrap_or(pad) + items.last().map_or(0.0, |it| it.height()) + 12.0;
+    let mut scroll = ctx.data(|d| d.get_temp::<f32>(list_scroll_id())).unwrap_or(0.0);
+    if live && pointer.is_some_and(|at| lr.contains(at)) {
+        scroll -= ui.input(|i| i.smooth_scroll_delta.y);
+    }
+    // A selection moved by the keys comes into sight.
+    if ctx.data(|d| d.get_temp::<usize>(list_seen_id())) != Some(ch.sel) {
+        let at = items.iter().position(|it| matches!(it, Item::File(k) if *k == ch.sel));
+        if let Some(top) = at.map(|i| tops[i]) {
+            if top < scroll + pad {
+                // The heading over the first file comes along.
+                scroll = top - pad - if at == Some(1) || at == Some(items.len()) { HEAD_H } else { 0.0 };
+            } else if top + FILE_H > scroll + lr.height() - pad {
+                scroll = top + FILE_H - lr.height() + pad;
+            }
+        }
+        ctx.data_mut(|d| d.insert_temp(list_seen_id(), ch.sel));
+    }
+    scroll = scroll.clamp(0.0, (total - lr.height()).max(0.0));
+    ctx.data_mut(|d| d.insert_temp(list_scroll_id(), scroll));
+
+    let y0 = lr.top() - scroll;
+    for (it, top) in items.iter().zip(&tops) {
+        let rr = Rect::from_min_size(pos2(lr.left(), y0 + top), vec2(lr.width(), it.height()));
+        if rr.bottom() < lr.top() {
+            continue;
+        }
+        if rr.top() > lr.bottom() {
+            break;
+        }
+        match *it {
+            Item::Head(side, n) => {
+                let word = if side == Side::Staged { "changes.staged" } else { "changes.unstaged" };
+                let text = format!("{} · {n}", app.tr(word));
+                p.text(pos2(rr.left() + X, rr.bottom() - 8.0), Align2::LEFT_BOTTOM, text, FontId::proportional(11.5), c.dim);
+            }
+            Item::Empty(side) => {
+                let word = if side == Side::Staged { "changes.none_staged" } else { "changes.none_unstaged" };
+                p.text(pos2(rr.left() + X + 14.0, rr.center().y), Align2::LEFT_CENTER, app.tr(word), FontId::proportional(12.0), c.dim);
+            }
+            Item::Cut => note(ui, &p, rr, app.tr("changes.cut")),
+            Item::File(k) => {
+                let Some((_, f)) = ch.at(k) else { continue };
+                let hot = pointer.is_some_and(|at| rr.contains(at));
+                if k == ch.sel {
+                    p.rect_filled(rr, 0.0, c.selection());
+                    if ch.focus == Focus::Files {
+                        p.rect_filled(Rect::from_min_size(rr.min, vec2(2.0, rr.height())), 0.0, accent());
+                    }
+                } else if hot {
+                    p.rect_filled(rr, 0.0, c.fg.gamma_multiply(0.03));
+                }
+                list_row(ui, &p, app, f, rr);
+                let resp = ui.interact(rr.intersect(lr), Id::new(("changes-row", k)), Sense::CLICK);
+                if live && hot {
+                    ctx.set_cursor_icon(CursorIcon::PointingHand);
+                }
+                if live && resp.double_clicked() {
+                    *act = Some(Act::Toggle(k));
+                } else if live && resp.clicked() {
+                    *act = Some(Act::Select(k));
+                }
+            }
+        }
+    }
+}
+
+/// A row of the file list: the status, the path (cut from the left) and the
+/// counts.
+fn list_row(ui: &Ui, p: &Painter, app: &App, f: &File, rr: Rect) {
+    let c = ito_theme::colors();
+    let mid = rr.center().y;
+    let x = rr.left() + X;
+    p.text(pos2(x + 4.0, mid), Align2::CENTER_CENTER, f.status.letter(), FontId::monospace(11.0), status_ink(f.status));
+    let right = rr.right() - X;
+    let counts_left = match f.counts {
+        Some((a, d)) => {
+            let dr = p.text(pos2(right, mid), Align2::RIGHT_CENTER, format!("−{d}"), FontId::monospace(11.0), c.err);
+            p.text(pos2(dr.left() - 5.0, mid), Align2::RIGHT_CENTER, format!("+{a}"), FontId::monospace(11.0), c.done).left()
+        }
+        None => p.text(pos2(right, mid), Align2::RIGHT_CENTER, app.tr("detail.binary"), FontId::proportional(11.5), c.dim).left(),
+    };
+    let px = x + 16.0;
+    let path = left_cut(ui, &f.path, FontId::proportional(12.5), counts_left - 8.0 - px);
+    p.text(pos2(px, mid), Align2::LEFT_CENTER, path, FontId::proportional(12.5), c.fg);
+}
+
+/// The commit message in `br`: its box, and under it the amend and the way
+/// to commit.
+fn message(ui: &mut Ui, app: &mut App, br: Rect, live: bool, pointer: Option<Pos2>) -> Option<Act> {
+    let c = ito_theme::colors();
+    let p = ui.painter_at(br);
+    p.rect_filled(br, 0.0, c.side);
+    p.line_segment([br.left_top() + vec2(0.0, 0.5), br.right_top() + vec2(0.0, 0.5)], Stroke::new(1.0, c.border));
+    let head = br.top() + 16.0;
+    let cap = kbd(ui, &p, pos2(br.right() - X, head), "c");
+    let w = p.text(pos2(cap.left() - 6.0, head), Align2::RIGHT_CENTER, app.tr("changes.write"), FontId::proportional(11.5), c.dim);
+    let word = if app.changes.amend { "changes.amend_message" } else { "changes.message" };
+    let mut job = LayoutJob::simple_singleline(app.tr(word).to_owned(), FontId::proportional(11.5), c.dim);
+    job.wrap = TextWrapping::truncate_at_width((w.left() - 8.0 - br.left() - X).max(0.0));
+    let g = ui.fonts_mut(|fo| fo.layout_job(job));
+    p.galley(pos2(br.left() + X, head - g.size().y / 2.0), g, c.dim);
+
+    let foot = br.bottom() - 18.0;
+    let field = Rect::from_min_max(pos2(br.left() + X - 4.0, head + 12.0), pos2(br.right() - X + 4.0, foot - 16.0));
+    let focused = ui.memory(|m| m.has_focus(message_id()));
+    p.rect_filled(field, CornerRadius::same(5), c.bg);
+    let border = if focused { c.border_strong() } else { c.border };
+    p.rect_stroke(field, CornerRadius::same(5), Stroke::new(1.0, border), StrokeKind::Inside);
+    let hint = app.tr("changes.hint");
+    let edit = egui::TextEdit::multiline(&mut app.changes.message)
+        .id(message_id())
+        .frame(egui::Frame::NONE.inner_margin(egui::Margin::symmetric(8, 6)))
+        .hint_text(hint)
+        .font(FontId::monospace(12.0))
+        .text_color(c.fg)
+        .desired_width(field.width())
+        .interactive(live);
+    let resp = ui.put(field, edit);
+    app.changes.typing = resp.has_focus();
+    if std::mem::take(&mut app.changes.focus_message) {
+        resp.request_focus();
+    }
+
+    // Commit: Ctrl+Enter, or a click.
+    let cap = kbd(ui, &p, pos2(br.right() - X, foot), "Ctrl+Enter");
+    let staged = app.changes.lists().map_or(0, |l| l.staged.len());
+    let word = if app.changes.amend { "changes.do_amend" } else { "changes.do_commit" };
+    let ready = (staged > 0 || app.changes.amend) && !app.changes.message.trim().is_empty();
+    let ink = if ready { accent() } else { c.dim };
+    let w = p.text(pos2(cap.left() - 6.0, foot), Align2::RIGHT_CENTER, app.tr(word), FontId::proportional(12.5), ink);
+    let hit = w.union(cap).expand(3.0);
+    let out = clicked(ui, &p, hit, "changes-commit", live, pointer).then_some(Act::Commit);
+    let text = app.tr("changes.staged_n").replace("{}", &staged.to_string());
+    let mut job = LayoutJob::single_section(text, TextFormat { font_id: FontId::proportional(11.5), color: c.dim, ..Default::default() });
+    job.wrap = TextWrapping::truncate_at_width((hit.left() - 10.0 - br.left() - X).max(0.0));
+    let g = ui.fonts_mut(|f| f.layout_job(job));
+    p.galley(pos2(br.left() + X, foot - g.size().y / 2.0), g, c.dim);
+    out
+}
+
+/// The selected file's title over its diff: its side, and the switch
+/// between one column and side by side.
+fn title_row(ui: &Ui, app: &App, side: Side, f: &File, rr: Rect, live: bool, pointer: Option<Pos2>) -> Option<Act> {
+    let c = ito_theme::colors();
+    let ch = &app.changes;
+    let p = ui.painter_at(rr);
+    p.rect_filled(rr, 0.0, c.side);
+    p.line_segment([rr.left_bottom() - vec2(0.0, 0.5), rr.right_bottom() - vec2(0.0, 0.5)], Stroke::new(1.0, c.border));
+    let mid = rr.center().y;
+    let (word, key) = if ch.wide { ("detail.narrow", "Esc") } else { ("detail.wide", "Enter") };
+    let cap = kbd(ui, &p, pos2(rr.right() - X, mid), key);
+    let w = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, app.tr(word), FontId::proportional(12.0), c.dim);
+    let hit = w.union(cap).expand(3.0);
+    let out = clicked(ui, &p, hit, "changes-wide", live, pointer).then_some(Act::Wide(!ch.wide));
+    let x = rr.left() + X;
+    let side_word = if side == Side::Staged { "changes.staged" } else { "changes.unstaged" };
+    let tag = p.text(pos2(x, mid), Align2::LEFT_CENTER, app.tr(side_word), FontId::proportional(11.5), c.dim);
+    let letter =
+        p.text(pos2(tag.right() + 10.0, mid), Align2::LEFT_CENTER, f.status.letter(), FontId::monospace(12.0), status_ink(f.status));
+    let px = letter.right() + 8.0;
+    let mut job = LayoutJob::default();
+    let font = FontId::monospace(12.0);
+    job.append(&f.path, 0.0, TextFormat { font_id: font.clone(), color: c.fg, ..Default::default() });
+    if let Some(from) = &f.from {
+        let text = format!("  {}", app.tr("detail.from").replace("{}", from));
+        job.append(&text, 0.0, TextFormat { font_id: font, color: c.dim, ..Default::default() });
+    }
+    let path_w = ui.fonts_mut(|fo| fo.layout_job(job.clone())).size().x;
+    let mut end = hit.left() - 10.0;
+    // How the lines are picked, or that they can be, while the path keeps
+    // its room or some of it.
+    let hint = match ch.focus {
+        Focus::Lines => Some((app.tr("changes.lines_hint"), accent())),
+        Focus::Files if ch.can_pick() => Some((app.tr("changes.lines_enter"), c.dim)),
+        Focus::Files => None,
+    };
+    if let Some((text, ink)) = hint {
+        let t = ui.fonts_mut(|fo| fo.layout_no_wrap(text.to_owned(), FontId::proportional(12.0), ink));
+        if end - t.size().x - 12.0 >= px + path_w.min(PATH_MIN) {
+            p.galley(pos2(end - t.size().x, mid - t.size().y / 2.0), t.clone(), ink);
+            end -= t.size().x + 12.0;
+        }
+    }
+    job.wrap = TextWrapping::truncate_at_width((end - px).max(0.0));
+    let g = ui.fonts_mut(|fo| fo.layout_job(job));
+    p.galley(pos2(px, mid - g.size().y / 2.0), g, c.fg);
+    out
+}
+
+/// A piece of the diff's side, top to bottom.
+#[derive(Clone, Copy)]
+enum Piece {
+    Note(&'static str),
+    Diff,
+    /// The diff stops short.
+    Cut,
+}
+
+/// The selected file's diff in `body`, scrolled by the wheel and by the
+/// `pages` the keys asked for; the cursor is brought into sight.
+fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32) {
+    let c = ito_theme::colors();
+    let ctx = ui.ctx();
+    let p = ui.painter_at(body);
+    let ch = &app.changes;
+    let s = match ch.diff() {
+        None => return note(ui, &p, body, app.tr("changes.diff_reading")),
+        Some(Err(e)) => return note(ui, &p, body, &app.tr("changes.diff_failed").replace("{}", &e.to_string())),
+        Some(Ok(None)) => return note(ui, &p, body, app.tr("changes.gone")),
+        Some(Ok(Some(s))) => s,
+    };
+    let (f, rows) = (&s.diff.file, &s.rows);
+    let mut pieces = Vec::new();
+    if f.not_utf8 {
+        pieces.push(Piece::Note("detail.not_utf8"));
+    }
+    if s.diff.patch.is_none() && !f.hunks.is_empty() {
+        pieces.push(Piece::Note("changes.whole_note"));
+    }
+    if f.is_binary() {
+        pieces.push(Piece::Note("detail.binary_note"));
+    } else if f.eol_only {
+        pieces.push(Piece::Note("detail.eol_only"));
+    } else if f.hunks.is_empty() && !f.cut {
+        pieces.push(Piece::Note("detail.no_diff"));
+    } else if !f.hunks.is_empty() {
+        pieces.push(Piece::Diff);
+    }
+    if f.cut {
+        pieces.push(Piece::Cut);
+    }
+    let wrap = Wrap::new(ui, body.width(), ch.wide);
+    let tops = wrap.tops(rows);
+    let heights: Vec<f32> = pieces
+        .iter()
+        .map(|piece| match piece {
+            Piece::Note(_) => NOTE_H,
+            Piece::Diff => tops.last().copied().unwrap_or(0.0) + 6.0,
+            Piece::Cut => DIFF_H + 6.0,
+        })
+        .collect();
+    let total: f32 = heights.iter().sum::<f32>() + 24.0;
+    let diff_top: f32 = pieces.iter().zip(&heights).take_while(|(piece, _)| !matches!(piece, Piece::Diff)).map(|(_, h)| h).sum();
+
+    let mut scroll = ctx.data(|dt| dt.get_temp::<f32>(scroll_id())).unwrap_or(0.0);
+    scroll += pages as f32 * (body.height() - 40.0).max(40.0);
+    if live && ui.rect_contains_pointer(body) {
+        scroll -= ui.input(|i| i.smooth_scroll_delta.y);
+    }
+    // The cursor moved by the keys comes into sight.
+    let cursor = ch.cursor_line();
+    if ctx.data(|dt| dt.get_temp::<Option<(usize, usize)>>(cursor_seen_id())) != Some(cursor) {
+        if let Some(k) = cursor.and_then(|at| row_of(ch, s, at)) {
+            let (top, bottom) = (diff_top + tops[k], diff_top + tops[k + 1]);
+            let room = body.height() - 3.0 * DIFF_H;
+            if top < scroll + DIFF_H {
+                scroll = top - DIFF_H;
+            } else if bottom > scroll + room {
+                scroll = bottom - room;
+            }
+        }
+        ctx.data_mut(|dt| dt.insert_temp(cursor_seen_id(), cursor));
+    }
+    scroll = scroll.clamp(0.0, (total - body.height()).max(0.0));
+    ctx.data_mut(|dt| dt.insert_temp(scroll_id(), scroll));
+
+    let mut y = body.top() - scroll;
+    for (piece, h) in pieces.iter().zip(heights) {
+        let rr = Rect::from_min_size(pos2(body.left(), y), vec2(body.width(), h));
+        y += h;
+        if rr.bottom() < body.top() || rr.top() > body.bottom() {
+            continue;
+        }
+        match *piece {
+            Piece::Note(key) => {
+                p.text(pos2(rr.left() + X, rr.top() + 10.0), Align2::LEFT_TOP, app.tr(key), FontId::proportional(12.0), c.dim);
+            }
+            Piece::Diff => {
+                let dr = Rect::from_min_size(rr.min, vec2(rr.width(), rr.height() - 6.0));
+                diff(ui, &p, f, rows, dr, body, &wrap);
+                marks(&p, ch, s, dr, body, &tops);
+            }
+            Piece::Cut => {
+                let mut job = LayoutJob::default();
+                job.append(
+                    app.tr("detail.cut"),
+                    0.0,
+                    TextFormat { font_id: FontId::proportional(12.0), color: c.dim, italics: true, ..Default::default() },
+                );
+                let g = ui.fonts_mut(|fo| fo.layout_job(job));
+                p.galley(pos2(rr.left() + X, rr.top() + (DIFF_H - g.size().y) / 2.0), g, c.dim);
+            }
+        }
+    }
+}
+
+/// The row that shows the line `at`, in the way the diff is shown.
+fn row_of(ch: &Changes, s: &Shown, (h, l): (usize, usize)) -> Option<usize> {
+    let at = (h as u32, l as u32);
+    if ch.wide {
+        s.rows.paired.iter().position(|r| matches!(*r, Paired::Pair(old, new) if old == Some(at) || new == Some(at)))
+    } else {
+        s.rows.unified.iter().position(|r| *r == Unified::Line(at))
+    }
+}
+
+/// Over the diff in `dr`, while the keys are on its lines: the lines picked
+/// tinted, the cursor's line with a strip on its left.
+fn marks(p: &Painter, ch: &Changes, s: &Shown, dr: Rect, view: Rect, tops: &[f32]) {
+    if ch.focus != Focus::Lines {
+        return;
+    }
+    let c = ito_theme::colors();
+    let picked = ch.picked();
+    let cursor = ch.cursor_line();
+    let first = tops.partition_point(|&t| dr.top() + t <= view.top()).saturating_sub(1);
+    let last = tops.partition_point(|&t| dr.top() + t < view.bottom()).min(tops.len() - 1);
+    let half = ((dr.width() - 1.0) / 2.0).floor();
+    for k in first..last {
+        let rr = Rect::from_min_max(pos2(dr.left(), dr.top() + tops[k]), pos2(dr.right(), dr.top() + tops[k + 1]));
+        // The parts of the row, each with its line.
+        let parts: Vec<(Rect, (u32, u32))> = if ch.wide {
+            match s.rows.paired[k] {
+                Paired::Hunk(_) => Vec::new(),
+                Paired::Pair(old, new) => {
+                    let left = Rect::from_min_max(rr.min, pos2(rr.left() + half, rr.bottom()));
+                    let right = Rect::from_min_max(pos2(left.right() + 1.0, rr.top()), rr.max);
+                    // A line on both sides is unchanged: nothing to pick.
+                    if old == new {
+                        Vec::new()
+                    } else {
+                        old.map(|at| (left, at)).into_iter().chain(new.map(|at| (right, at))).collect()
+                    }
+                }
+            }
+        } else {
+            match s.rows.unified[k] {
+                Unified::Hunk(_) => Vec::new(),
+                Unified::Line(at) => vec![(rr, at)],
+            }
+        };
+        for (part, (h, l)) in parts {
+            let at = (h as usize, l as usize);
+            if picked.contains(&at) {
+                p.rect_filled(part, 0.0, c.blue.gamma_multiply(0.16));
+            }
+            if cursor == Some(at) {
+                p.rect_stroke(part, 0.0, Stroke::new(1.0, accent().gamma_multiply(0.7)), StrokeKind::Inside);
+                p.rect_filled(Rect::from_min_size(part.min, vec2(3.0, part.height())), 0.0, accent());
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::View;
+    use crate::changes::tests::{lists, two_hunks};
+    use crate::graph::fixture;
+    use crate::repo::Answer;
+    use michi_core::claude::{Session, State};
+    use michi_core::stage;
+    use michi_core::summary::{Head, Summary};
+    use std::path::PathBuf;
+
+    /// The `2` view on the worktree `wip`, its files not read yet.
+    fn opened() -> App {
+        let mut app = App::new(crate::prefs::Prefs::empty(), "C:/r/wt".into());
+        app.lang = "en".into();
+        let top = PathBuf::from("C:/r/wt");
+        app.take(Answer::Summary(Ok(Summary { name: "r".into(), head: Head::Branch("wip".into()), worktrees: 3, top })));
+        app.take(Answer::Trees(fixture::trees()));
+        assert!(app.feed('2'));
+        app.changes_sync();
+        assert_eq!(app.view, View::Changes);
+        app
+    }
+
+    fn take_list(app: &mut App, l: Lists) {
+        let gen = app.changes.gens().0;
+        app.take(Answer::ChangesList { gen, result: Ok(Box::new(l)) });
+    }
+
+    fn take_file(app: &mut App, d: Option<stage::Diff>) {
+        let gen = app.changes.gens().1;
+        app.take(Answer::ChangesFile { gen, result: Ok(d.map(Box::new)) });
+    }
+
+    /// One frame of the view `width` wide; the texts drawn.
+    fn frame(ctx: &egui::Context, app: &mut App, width: f32, events: Vec<egui::Event>) -> Vec<String> {
+        let input = egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(width, 560.0))), events, ..Default::default() };
+        let mut out = ctx.run_ui(input, |ui| {
+            let r = ui.max_rect();
+            show(ui, app, r, true);
+        });
+        out.textures_delta.clear();
+        let text = |s: &egui::Shape| match s {
+            egui::Shape::Text(t) => Some(t.galley.text().to_owned()),
+            _ => None,
+        };
+        out.shapes.iter().filter_map(|c| text(&c.shape)).collect()
+    }
+
+    #[test]
+    fn the_view_draws_in_every_state() {
+        let ctx = egui::Context::default();
+        let mut app = opened();
+        assert_eq!(app.changes.wt.as_deref(), Some(std::path::Path::new("C:/r/wt")), "the window's own worktree first");
+        frame(&ctx, &mut app, 900.0, Vec::new());
+        take_list(&mut app, lists(&["s.txt"], &["a.txt", "b.txt"]));
+        frame(&ctx, &mut app, 900.0, Vec::new());
+        take_file(&mut app, Some(two_hunks("s.txt")));
+        for width in [1400.0, 900.0, 420.0] {
+            frame(&ctx, &mut app, width, Vec::new());
+        }
+        // The lines, picked by a range, one column and side by side.
+        assert!(app.feed('j'));
+        take_file(&mut app, Some(two_hunks("a.txt")));
+        assert!(app.feed('l'));
+        assert_eq!(app.changes.focus, Focus::Lines);
+        assert!(app.feed('v'));
+        assert!(app.feed('j'));
+        assert!(app.feed('j'));
+        assert_eq!(app.changes.picked().len(), 3);
+        let drawn = frame(&ctx, &mut app, 900.0, Vec::new());
+        assert!(drawn.iter().any(|t| t == "Space in or out · v range · a hunk · h back"), "how lines are picked: {drawn:?}");
+        assert!(app.named("Enter"));
+        frame(&ctx, &mut app, 1400.0, Vec::new());
+        assert!(app.escape(), "Esc leaves the lines first");
+        assert_eq!(app.changes.focus, Focus::Files);
+        assert!(app.escape(), "then the side by side");
+        assert!(!app.changes.wide);
+        // A whole file, a file gone, a diff not read, nothing to show.
+        let mut whole = two_hunks("a.txt");
+        whole.patch = None;
+        take_file(&mut app, Some(whole));
+        frame(&ctx, &mut app, 900.0, Vec::new());
+        take_file(&mut app, None);
+        frame(&ctx, &mut app, 900.0, Vec::new());
+        let gen = app.changes.gens().1;
+        app.take(Answer::ChangesFile { gen, result: Err(michi_core::git::Error::Git("bad".into())) });
+        frame(&ctx, &mut app, 900.0, Vec::new());
+        let mut l = lists(&[], &[]);
+        l.cut = true;
+        take_list(&mut app, l);
+        frame(&ctx, &mut app, 900.0, Vec::new());
+        let gen = app.changes.gens().0;
+        app.take(Answer::ChangesList { gen, result: Err(michi_core::git::Error::Git("not a repo".into())) });
+        frame(&ctx, &mut app, 900.0, Vec::new());
+        // A long list scrolls to the selection.
+        let many: Vec<String> = (0..60).map(|k| format!("f{k}.txt")).collect();
+        let many: Vec<&str> = many.iter().map(String::as_str).collect();
+        take_list(&mut app, lists(&many[..30], &many[30..]));
+        assert!(app.named("End"));
+        frame(&ctx, &mut app, 900.0, Vec::new());
+        assert!(ctx.data(|d| d.get_temp::<f32>(list_scroll_id())).unwrap() > 500.0);
+    }
+
+    #[test]
+    fn a_claude_writing_asks_for_a_yes_under_the_top_bar() {
+        let ctx = egui::Context::default();
+        let mut app = opened();
+        let s = Session {
+            id: 3,
+            state: State::Running,
+            command: "claude".into(),
+            agent: "claude".into(),
+            cwd: "C:/r/wt".into(),
+            branch: "wip".into(),
+            title: "fix".into(),
+            note: String::new(),
+            since_ms: 0,
+            read_only: false,
+        };
+        app.take(Answer::Claude(Some(vec![(PathBuf::from("C:/r/wt"), vec![s])])));
+        take_list(&mut app, lists(&[], &["a.txt"]));
+        assert!(app.feed(' '));
+        assert!(app.changes.confirm.as_ref().is_some_and(|c| c.claude));
+        frame(&ctx, &mut app, 900.0, Vec::new());
+        assert!(app.feed('x'), "the other keys wait for the answer");
+        assert!(app.changes.confirm.is_some());
+        assert!(app.escape());
+        assert!(app.changes.confirm.is_none(), "Esc says no");
+        assert!(app.feed(' '));
+        assert!(app.feed('y'));
+        assert!(app.changes.confirm.is_none() && app.changes.claude_ok, "y says yes, and it holds");
+        frame(&ctx, &mut app, 900.0, Vec::new());
+    }
+
+    #[test]
+    fn a_click_selects_a_file_and_a_chip_switches_the_worktree() {
+        let ctx = egui::Context::default();
+        let mut app = opened();
+        take_list(&mut app, lists(&["s.txt"], &["a.txt", "b.txt"]));
+        frame(&ctx, &mut app, 900.0, Vec::new());
+        let click = |app: &mut App, at: Pos2| {
+            let button = |pressed| egui::Event::PointerButton {
+                pos: at,
+                button: egui::PointerButton::Primary,
+                pressed,
+                modifiers: Default::default(),
+            };
+            frame(&ctx, app, 900.0, vec![egui::Event::PointerMoved(at), button(true)]);
+            frame(&ctx, app, 900.0, vec![button(false)]);
+            frame(&ctx, app, 900.0, Vec::new());
+        };
+        // Under the top bar: the staged heading and file, the unstaged
+        // heading, then a.txt and b.txt.
+        let top = PAD_TOP + TOP_H + 8.0 + 1.0 + 4.0;
+        let row = top + HEAD_H + FILE_H + HEAD_H + FILE_H + FILE_H / 2.0;
+        click(&mut app, pos2(120.0, row));
+        assert_eq!(app.changes.sel, 2, "b.txt");
+        // The chips: repo, then wip, which is shown.
+        click(&mut app, pos2(PAD_X + 5.0, PAD_TOP + TOP_H / 2.0));
+        assert_eq!(app.changes.wt.as_deref(), Some(std::path::Path::new("C:/r/repo")), "another worktree");
+        assert!(app.changes.lists.is_none(), "its files are read anew");
+        assert!(app.feed(']'));
+    }
+}

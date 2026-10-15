@@ -6,14 +6,16 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use michi_core::clash::{Clashes, Outcome, Side};
-use michi_core::claude::Session;
+use michi_core::claude::{Session, State};
 use michi_core::git::{self, Version};
 use michi_core::oid::Oid;
+use michi_core::paths;
 use michi_core::summary::Summary;
 use michi_core::track::{Tree, Trees};
 use michi_core::unseen::Unseen;
 use michi_core::wip::Wip;
 
+use crate::changes::{Changes, Focus, Wish as StageWish};
 use crate::detail::Pane;
 use crate::graph::{Folded, Graph};
 use crate::prefs::Prefs;
@@ -77,7 +79,18 @@ impl View {
                 ("s", "key.stash"),
                 ("Esc", "key.back"),
             ],
-            View::Changes => &[("Space", "key.stage"), ("c", "key.commit")],
+            View::Changes => &[
+                ("Space", "key.stage"),
+                ("c", "key.commit"),
+                ("l h", "key.lines"),
+                ("a", "key.stage_all"),
+                ("j k", "key.select"),
+                ("v", "key.range"),
+                ("A", "key.amend"),
+                ("[ ]", "key.worktree"),
+                ("Enter", "key.side"),
+                ("Esc", "key.back"),
+            ],
             View::Worktree => &[
                 ("j k", "key.select"),
                 ("o", "key.tab"),
@@ -161,6 +174,11 @@ pub struct App {
     pub wt_sel: usize,
     /// The branch review (`d`), over the worktree table.
     pub review: Option<Review>,
+    /// The `2` view: one worktree's files to stage and commit.
+    pub changes: Changes,
+    /// The view of the frame before: the `2` view reads its files again
+    /// when it comes in sight.
+    last_view: View,
     /// The side column's groups that are open (`b:feat`, `r:origin`).
     pub side_open: HashSet<String>,
     /// A commit clicked in the side column that is not read yet: read on
@@ -195,6 +213,8 @@ impl App {
             unseen: Unseen::default(),
             wt_sel: 0,
             review: None,
+            changes: Changes::default(),
+            last_view: View::Graph,
             side_open: HashSet::new(),
             seeking: None,
             detail_wip: None,
@@ -240,6 +260,7 @@ impl App {
             self.take(a);
         }
         self.seek();
+        self.changes_sync();
     }
 
     /// Asks for the selected commit in full when the selection has changed,
@@ -357,7 +378,252 @@ impl App {
                     r.take_file(gen, result.map(|c| *c));
                 }
             }
+            Answer::Reread => {
+                if self.view == View::Changes {
+                    let wish = self.changes.refresh();
+                    self.stage_wish(wish);
+                }
+            }
+            Answer::ChangesList { gen, result } => {
+                let wishes = self.changes.take_list(gen, result.map(|l| *l));
+                self.stage_wish(wishes);
+            }
+            Answer::ChangesFile { gen, result } => self.changes.take_file(gen, result.map(|d| d.map(|d| *d))),
+            Answer::ChangesLast { gen, result } => self.changes.take_last(gen, result),
+            Answer::ChangesDone { wt, commit, result } => {
+                match &result {
+                    Ok(Some(id)) => {
+                        let text = self.tr("changes.committed").replace("{}", &id.short());
+                        self.say(text);
+                    }
+                    Ok(None) => {}
+                    Err(e) => {
+                        let text = self.tr("changes.failed").replace("{}", &e.to_string());
+                        self.say_for(text, 8);
+                    }
+                }
+                let wish = self.changes.take_done(&wt, commit, result.is_ok());
+                self.stage_wish(wish);
+            }
         }
+    }
+
+    /// Sends what the `2` view wants to the reading thread.
+    fn stage_wish(&self, wishes: impl IntoIterator<Item = StageWish>) {
+        if let Some(r) = &self.reading {
+            for w in wishes {
+                r.changes(w);
+            }
+        }
+    }
+
+    /// The worktrees the `2` view can show: those with a folder.
+    pub fn change_trees(&self) -> impl Iterator<Item = &Tree> {
+        self.trees.trees.iter().filter(|t| !t.wt.bare && t.wt.prunable.is_none())
+    }
+
+    /// Whether a Claude is writing in the worktree the `2` view shows.
+    pub fn claude_writing(&self) -> bool {
+        let Some(key) = self.changes.wt.as_deref().map(paths::key) else { return false };
+        let sessions = self.claude.iter().flatten().find(|(p, _)| paths::key(p) == key);
+        sessions.is_some_and(|(_, s)| s.iter().any(|s| s.is_agent() && s.state == State::Running))
+    }
+
+    /// Each frame: while the `2` view is in sight it has a worktree (the
+    /// window's own, else the first), whose files are read again when the
+    /// view comes in sight; a yes to write beside a Claude goes once it
+    /// stops.
+    pub fn changes_sync(&mut self) {
+        let entering = self.view == View::Changes && self.last_view != View::Changes;
+        self.last_view = self.view;
+        if self.view != View::Changes {
+            return;
+        }
+        let top = match &self.repo {
+            Repo::Ready(s) => Some(s.top.clone()),
+            _ => None,
+        };
+        let shown = self.changes.wt.as_deref().map(paths::key);
+        let trees: Vec<_> = self.change_trees().map(|t| (paths::key(&t.wt.path), t.wt.path.clone())).collect();
+        let gone = match &shown {
+            None => true,
+            Some(key) => !trees.is_empty() && !trees.iter().any(|(k, _)| k == key),
+        };
+        if gone {
+            let top_key = top.as_deref().map(paths::key);
+            let pick = trees.iter().find(|(k, _)| Some(k) == top_key.as_ref()).or(trees.first()).map(|(_, p)| p.clone()).or(top);
+            if let Some(wt) = pick {
+                let wish = self.changes.open(wt);
+                self.stage_wish(wish);
+            }
+        } else if entering {
+            let wish = self.changes.refresh();
+            self.stage_wish(wish);
+        }
+        if self.changes.claude_ok && !self.claude_writing() {
+            self.changes.claude_stopped();
+        }
+    }
+
+    /// `[` `]`: the `2` view shows the worktree before or after.
+    fn changes_step(&mut self, by: i64) {
+        let trees: Vec<PathBuf> = self.change_trees().map(|t| t.wt.path.clone()).collect();
+        if trees.len() < 2 {
+            let text = self.tr("changes.one_worktree");
+            self.say(text);
+            return;
+        }
+        let key = self.changes.wt.as_deref().map(paths::key);
+        let at = trees.iter().position(|p| Some(paths::key(p)) == key).unwrap_or(0) as i64;
+        let next = (at + by).rem_euclid(trees.len() as i64) as usize;
+        let wish = self.changes.open(trees[next].clone());
+        self.stage_wish(wish);
+    }
+
+    /// The `2` view shows the worktree at `wt` (a click on its name).
+    pub fn changes_open(&mut self, wt: PathBuf) {
+        if self.changes.wt.as_deref().map(paths::key) != Some(paths::key(&wt)) {
+            let wish = self.changes.open(wt);
+            self.stage_wish(wish);
+        }
+    }
+
+    /// The `2` view selects its `k`th file (a click).
+    pub fn changes_select(&mut self, k: usize) {
+        let wish = self.changes.select(k);
+        self.stage_wish(wish);
+    }
+
+    /// The files the `2` tab counts: the shown worktree's as read, else its
+    /// uncommitted change's (the window's own worktree's before one is
+    /// shown).
+    pub fn changes_count(&self) -> usize {
+        if let (View::Changes, Some(l)) = (self.view, self.changes.lists()) {
+            let paths: HashSet<&str> = l.staged.iter().chain(&l.unstaged).map(|f| f.path.as_str()).collect();
+            return paths.len();
+        }
+        let wt = self.changes.wt.clone().or_else(|| match &self.repo {
+            Repo::Ready(s) => Some(s.top.clone()),
+            _ => None,
+        });
+        let Some(key) = wt.as_deref().map(paths::key) else { return 0 };
+        self.wips.iter().find(|w| paths::key(&w.path) == key).map_or(0, |w| w.files.len())
+    }
+
+    /// Ctrl+Enter: commit what is staged in the `2` view.
+    pub fn changes_commit(&mut self) {
+        let claude = self.claude_writing();
+        let done = self.changes.commit(claude);
+        self.changes_did(done);
+    }
+
+    /// Sends what the `2` view wants, or says why it could not.
+    fn changes_did(&mut self, done: Result<impl IntoIterator<Item = StageWish>, &'static str>) {
+        match done {
+            Ok(wishes) => self.stage_wish(wishes),
+            Err(word) => {
+                let text = self.tr(word);
+                self.say(text);
+            }
+        }
+    }
+
+    /// The `2` view's own keys. While a write waits for a yes, `y` gives it
+    /// and `n` takes it back; the other keys do nothing.
+    fn changes_key(&mut self, c: char) -> bool {
+        let claude = self.claude_writing();
+        let ch = &mut self.changes;
+        if ch.confirm.is_some() {
+            match c {
+                'y' => {
+                    let wish = ch.yes();
+                    self.stage_wish(wish);
+                }
+                'n' => ch.confirm = None,
+                _ => {}
+            }
+            return true;
+        }
+        let lines = ch.focus == Focus::Lines;
+        let none = || Ok(None);
+        let done = match c {
+            'j' | 'k' if lines => {
+                ch.move_cursor(if c == 'j' { 1 } else { -1 });
+                none()
+            }
+            'j' => Ok(ch.move_by(1)),
+            'k' => Ok(ch.move_by(-1)),
+            ' ' if lines => ch.apply_lines(claude),
+            ' ' => ch.toggle_file(claude),
+            'a' if lines => {
+                ch.pick_hunk();
+                none()
+            }
+            'a' => ch.toggle_all(claude),
+            'v' if lines => {
+                ch.toggle_range();
+                none()
+            }
+            'v' | 'l' if !lines => ch.enter_lines().map(|()| None),
+            'h' if lines => {
+                ch.leave_lines();
+                none()
+            }
+            // `v` and `l` in the lines, `h` in the files: nothing to do.
+            'v' | 'l' | 'h' => none(),
+            'c' => {
+                ch.focus_message = true;
+                none()
+            }
+            'A' => Ok(ch.toggle_amend()),
+            '[' | ']' => {
+                self.changes_step(if c == ']' { 1 } else { -1 });
+                return true;
+            }
+            _ => return false,
+        };
+        self.changes_did(done);
+        true
+    }
+
+    /// The `2` view's keys with a name.
+    fn changes_named(&mut self, name: &str) -> bool {
+        let ch = &mut self.changes;
+        if ch.confirm.is_some() {
+            return true;
+        }
+        let lines = ch.focus == Focus::Lines;
+        let wish = match name {
+            "ArrowDown" | "ArrowUp" if lines => {
+                ch.move_cursor(if name == "ArrowDown" { 1 } else { -1 });
+                None
+            }
+            "Home" | "End" if lines => {
+                ch.move_cursor(if name == "End" { i64::MAX / 2 } else { i64::MIN / 2 });
+                None
+            }
+            "ArrowDown" => ch.move_by(1),
+            "ArrowUp" => ch.move_by(-1),
+            "Home" => ch.select(0),
+            "End" => ch.select(usize::MAX),
+            "ArrowRight" => return self.changes_key('l'),
+            "ArrowLeft" => return self.changes_key('h'),
+            "PageDown" => {
+                ch.pages += 1;
+                None
+            }
+            "PageUp" => {
+                ch.pages -= 1;
+                None
+            }
+            "Enter" => {
+                ch.wide = !ch.wide;
+                None
+            }
+            _ => return false,
+        };
+        self.stage_wish(wish);
+        true
     }
 
     /// `d`: the selected worktree's branch as a whole, from where it left
@@ -585,6 +851,7 @@ impl App {
                     }
                 }
                 None if self.view == View::Worktree && self.wt_key(c) => {}
+                None if self.view == View::Changes && self.changes_key(c) => {}
                 None => return self.later(|token| token.chars().eq([c])),
             },
         }
@@ -656,6 +923,9 @@ impl App {
         if self.view == View::Worktree && self.review.is_some() {
             return self.review_named(name) || self.later(|token| token == name);
         }
+        if self.view == View::Changes {
+            return self.changes_named(name) || self.later(|token| token == name);
+        }
         if self.view == View::Worktree {
             let n = self.trees.trees.len() as i32;
             match name {
@@ -710,6 +980,20 @@ impl App {
         if self.view == View::Graph && !self.graph.filter().is_empty() {
             self.graph.set_filter("");
             return true;
+        }
+        if self.view == View::Changes {
+            let ch = &mut self.changes;
+            if ch.confirm.take().is_some() {
+                return true;
+            }
+            if ch.focus == Focus::Lines {
+                ch.leave_lines();
+                return true;
+            }
+            if ch.wide {
+                ch.wide = false;
+                return true;
+            }
         }
         if self.view == View::Worktree {
             if let Some(r) = self.review.as_mut().filter(|r| r.wide) {
@@ -905,13 +1189,13 @@ mod tests {
         assert!(a.named("Enter"), "the diff side by side, no longer a later stage");
         assert!(a.detail.wide);
         a.feed('2');
-        assert!(a.feed(' '));
-        assert!(toast(&a).starts_with("Stage"));
+        assert!(a.feed('c'));
+        assert!(a.changes.focus_message, "c goes to the message");
         assert!(!a.feed('z'), "not a key of the changes");
         assert!(!a.feed('q'));
         a.lang = "ja".into();
-        assert!(a.feed('c'));
-        assert_eq!(toast(&a), "コミット — 後の段階で入ります");
+        assert!(a.feed('N'));
+        assert_eq!(toast(&a), "新しい作業（worktree + Claude） — 後の段階で入ります");
     }
 
     #[test]

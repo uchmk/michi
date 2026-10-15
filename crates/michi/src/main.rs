@@ -7,6 +7,8 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod app;
+mod changes;
+mod changes_ui;
 mod detail;
 mod detail_ui;
 mod fonts;
@@ -27,7 +29,7 @@ mod wt_ui;
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use app::{App, Mode};
+use app::{App, Mode, View};
 
 /// The named keys that move in a view, by the names `App::named` takes.
 const MOVES: [(egui::Key, &str); 8] = [
@@ -61,7 +63,9 @@ struct Michi {
 impl Michi {
     /// The characters typed and the named keys. While the graph's filter has
     /// the keys, only Enter (the next hit) and the arrows (the selection)
-    /// are taken from it; Escape has already let go of it.
+    /// are taken from it; Escape has already let go of it. While the commit
+    /// message has them, only Ctrl+Enter (commit) is taken; the Escape that
+    /// let go of it goes no further.
     fn keys(&mut self, ctx: &egui::Context) {
         let (events, palette) = ctx.input_mut(|i| {
             let palette = i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, egui::Key::P);
@@ -70,6 +74,16 @@ impl Michi {
         if palette {
             self.palette();
         }
+        let typing = ctx.memory(|m| m.has_focus(changes_ui::message_id()));
+        let commit =
+            (typing || self.app.view == View::Changes) && ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter));
+        if commit {
+            self.app.changes_commit();
+        }
+        if typing {
+            return;
+        }
+        let let_go = std::mem::take(&mut self.app.changes.typing);
         if ctx.memory(|m| m.has_focus(graph_ui::filter_id())) {
             let (next, back, down, up) = ctx.input_mut(|i| {
                 (
@@ -92,7 +106,7 @@ impl Michi {
         }
         for e in events {
             match e {
-                egui::Event::Key { key: egui::Key::Escape, pressed: true, .. } => {
+                egui::Event::Key { key: egui::Key::Escape, pressed: true, .. } if !let_go => {
                     self.app.escape();
                 }
                 egui::Event::Key { key: egui::Key::Enter, pressed: true, modifiers, .. } if modifiers.is_none() => {
@@ -158,6 +172,7 @@ impl eframe::App for Michi {
             self.app.view = v;
             self.app.mode = Mode::Main;
         }
+        self.app.changes_sync();
         if out.settings {
             self.app.mode = if self.app.mode == Mode::Settings { Mode::Main } else { Mode::Settings };
         }

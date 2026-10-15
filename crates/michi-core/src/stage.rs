@@ -259,7 +259,7 @@ impl Patch {
     /// From one file's section of a patch, read as show.rs reads it so the
     /// hunks and lines are those of [`File::hunks`]. The modes are left
     /// out: a line taken in does not take a mode change with it.
-    fn parse(patch: &[u8]) -> Patch {
+    pub fn parse(patch: &[u8]) -> Patch {
         let mut p = Patch::default();
         let (mut left_old, mut left_new) = (0u32, 0u32);
         let mut sections = 0;

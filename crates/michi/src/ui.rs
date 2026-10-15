@@ -59,6 +59,8 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
             } else {
                 graph_view(ui, app, r, live);
             }
+        } else if app.view == View::Changes {
+            crate::changes_ui::show(ui, app, r, live);
         } else {
             empty_view(ui, app, body);
         }
@@ -165,12 +167,15 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
     let name = p.text(pos2(x, mid), Align2::LEFT_CENTER, "michi", FontId::proportional(14.0), c.fg);
     x = name.right() + 16.0;
     // The view tabs, each with its digit, hanging from the bar's foot like
-    // folder tabs; the one in force opens into the view.
+    // folder tabs; the one in force opens into the view. Changes counts the
+    // files not committed.
     for v in View::ALL {
         let on = app.is_on(v);
         let digit = ui.fonts_mut(|f| f.layout_no_wrap(v.digit().to_string(), FontId::monospace(11.0), c.dim));
         let text = ui.fonts_mut(|f| f.layout_no_wrap(app.tr(v.label()).to_owned(), FontId::proportional(13.0), c.fg));
-        let w = 12.0 + digit.size().x + 6.0 + text.size().x + 12.0;
+        let n = if v == View::Changes { app.changes_count() } else { 0 };
+        let count = (n > 0).then(|| ui.fonts_mut(|f| f.layout_no_wrap(n.to_string(), FontId::monospace(10.5), c.dim)));
+        let w = 12.0 + digit.size().x + 6.0 + text.size().x + count.as_ref().map_or(0.0, |g| 6.0 + g.size().x) + 12.0;
         let tab = Rect::from_min_max(pos2(x, r.bottom() - 30.0), pos2(x + w, r.bottom()));
         let resp = ui.interact(tab, ui.id().with(("tab", v.digit())), Sense::CLICK);
         let round = CornerRadius { nw: 6, ne: 6, sw: 0, se: 0 };
@@ -190,7 +195,12 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
         };
         let ty = tab.center().y;
         p.galley(pos2(tab.left() + 12.0, ty - digit.size().y / 2.0), digit.clone(), dc);
-        p.galley(pos2(tab.left() + 12.0 + digit.size().x + 6.0, ty - text.size().y / 2.0), text, tc);
+        let tx = tab.left() + 12.0 + digit.size().x + 6.0;
+        let tw = text.size().x;
+        p.galley(pos2(tx, ty - text.size().y / 2.0), text, tc);
+        if let Some(g) = count {
+            p.galley(pos2(tx + tw + 6.0, ty - g.size().y / 2.0), g, c.dim);
+        }
         if resp.clicked() {
             out.view = Some(v);
         }
