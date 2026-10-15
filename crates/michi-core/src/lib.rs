@@ -8,6 +8,7 @@ pub mod log;
 pub mod oid;
 pub mod paths;
 pub mod refs;
+pub mod show;
 pub mod summary;
 pub mod worktree;
 

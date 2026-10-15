@@ -65,6 +65,17 @@ pub struct Chip<'a> {
     pub color: Option<u8>,
 }
 
+/// How the graph shows a trunk merge's commits.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FoldState {
+    /// Folded away; `l` opens them.
+    Folded,
+    /// Opened by hand; `h` folds them again.
+    Open,
+    /// Shown, folding being off (or nothing of it folded).
+    Off,
+}
+
 /// What `z` did, for the toast.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Folded {
@@ -345,8 +356,49 @@ impl Graph {
         &self.marks
     }
 
+    /// The commit selected, wherever it is.
+    pub fn selected(&self) -> Option<Oid> {
+        self.selected
+    }
+
+    /// The commit `id`, once it is read.
+    pub fn find_commit(&self, id: &Oid) -> Option<&Commit> {
+        self.history.find(id).map(|i| &self.history.rows()[i as usize].commit)
+    }
+
+    /// What the history is read against: the refs, the worktrees, the trunk.
+    pub fn setup(&self) -> &Setup {
+        self.history.setup()
+    }
+
+    /// How many commits are read.
+    pub fn read(&self) -> usize {
+        self.history.len()
+    }
+
+    /// The commits the trunk merge `id` brought into the trunk, newest first,
+    /// as far as they are read; empty when `id` is no such merge. It goes
+    /// through the whole history: keep what it gives.
+    pub fn merged_by(&self, id: &Oid) -> Vec<Oid> {
+        let Some(i) = self.history.find(id) else { return Vec::new() };
+        let r = &self.history.rows()[i as usize];
+        if !r.main || r.commit.parents.len() < 2 {
+            return Vec::new();
+        }
+        self.history.rows().iter().filter(|c| c.into == Some(i)).map(|c| c.commit.id).collect()
+    }
+
+    /// How the graph shows the commits the trunk merge `id` brought in.
+    pub fn fold_state(&self, id: &Oid) -> FoldState {
+        let folds = self.history.find(id).and_then(|i| self.history.group(i)).is_some_and(|g| g.hidden > 0);
+        match (self.fold.on && folds, self.fold.open.contains(id)) {
+            (false, _) => FoldState::Off,
+            (true, true) => FoldState::Open,
+            (true, false) => FoldState::Folded,
+        }
+    }
+
     /// The colour a branch's rows take.
-    #[cfg(test)]
     pub fn color_of(&self, name: &str) -> u8 {
         self.colors.of(name)
     }
@@ -512,13 +564,26 @@ impl Graph {
             (Some(a), false) => self.hits.iter().copied().find(|&h| h > a).unwrap_or(first),
             (Some(a), true) => self.hits.iter().rev().copied().find(|&h| h < a).unwrap_or(last),
         };
+        self.select_at(i);
+        true
+    }
+
+    /// Selects the commit `id` (a branch's, from the side column), opening
+    /// the merge that folds it away; false while it is not read.
+    pub fn select_id(&mut self, id: &Oid) -> bool {
+        let Some(i) = self.history.find(id) else { return false };
+        self.select_at(i);
+        true
+    }
+
+    /// Selects the history's row `i`, opening the merge that folds it away.
+    fn select_at(&mut self, i: u32) {
         if let Some(m) = self.history.hidden_by(i, &self.fold) {
             self.fold.open.insert(m);
         }
         self.selected = Some(self.history.rows()[i as usize].commit.id);
         self.relayout();
         self.reveal = true;
-        true
     }
 
     /// The rows in sight now reach `last`: whether to ask for the next
@@ -670,6 +735,33 @@ mod tests {
         assert!(g.chip(row_of(&g, FEAT)).is_none(), "no chip with folding off");
         assert_eq!(g.toggle_fold(), Folded::On { merges: 1, commits: 2 });
         assert_eq!(g.len(), 5);
+    }
+
+    #[test]
+    fn a_trunk_merge_knows_what_it_brought_in() {
+        let mut g = read();
+        assert_eq!(g.merged_by(&id(5)), [id(3), id(2)]);
+        assert!(g.merged_by(&id(6)).is_empty(), "not a merge");
+        assert!(g.merged_by(&id(9)).is_empty(), "not read");
+        assert_eq!(g.fold_state(&id(5)), FoldState::Folded);
+        assert_eq!(g.fold_state(&id(4)), FoldState::Off, "nothing folded under it");
+        g.select(row_of(&g, FEAT));
+        assert!(g.open_fold());
+        assert_eq!(g.fold_state(&id(5)), FoldState::Open);
+        g.toggle_fold();
+        assert_eq!(g.fold_state(&id(5)), FoldState::Off);
+    }
+
+    #[test]
+    fn selecting_a_folded_commit_opens_its_merge() {
+        let mut g = read();
+        assert!(!subjects(&g).contains(&"f1"));
+        assert!(g.select_id(&id(2)));
+        assert_eq!(g.selected(), Some(id(2)));
+        assert_eq!(g.commit(g.selected_row().unwrap()).unwrap().subject, "f1");
+        assert_eq!(g.fold_state(&id(5)), FoldState::Open);
+        assert!(!g.select_id(&id(9)), "not read yet");
+        assert_eq!(g.selected(), Some(id(2)));
     }
 
     #[test]

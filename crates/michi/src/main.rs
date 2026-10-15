@@ -7,6 +7,8 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod app;
+mod detail;
+mod detail_ui;
 mod fonts;
 mod graph;
 mod graph_ui;
@@ -15,6 +17,7 @@ mod icon;
 mod prefs;
 mod repo;
 mod settings;
+mod side_ui;
 mod ui;
 
 use std::ffi::OsString;
@@ -126,6 +129,7 @@ impl eframe::App for Michi {
             self.app.say(e);
         }
         self.app.pump();
+        self.app.sync_detail();
         if let Some(title) = self.app.new_title.take() {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
         }
@@ -145,6 +149,11 @@ impl eframe::App for Michi {
         }
         if out.palette {
             self.palette();
+        }
+        // A click in the frame may have moved the selection: ask for it now,
+        // not a frame late.
+        if self.app.sync_detail() {
+            ctx.request_repaint();
         }
         ui::toast(ui, &self.app, out.body);
         if self.app.quit {

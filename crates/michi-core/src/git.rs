@@ -5,9 +5,10 @@
 //! UI thread.
 
 use std::fmt;
-use std::io;
+use std::io::{self, BufReader, Read};
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::{Child, ChildStdout, Command, Stdio};
+use std::thread::JoinHandle;
 
 /// The oldest git michi works with: `git merge-tree --write-tree`, which the
 /// conflict prediction runs, came in 2.38.
@@ -129,6 +130,62 @@ pub fn version() -> Result<Version, Error> {
     let out = command().arg("--version").output().map_err(started)?;
     let text = String::from_utf8_lossy(&out.stdout);
     Version::parse(&text).ok_or_else(|| Error::Io(format!("unexpected `git --version`: {}", text.trim())))
+}
+
+/// A git whose standard output is read as it comes. Its standard error is
+/// read on the side, so a git with much to say never blocks on it. Dropped
+/// before [`finish`](Self::finish), it stops git.
+pub(crate) struct Running {
+    child: Child,
+    pub(crate) out: BufReader<ChildStdout>,
+    err: Option<JoinHandle<String>>,
+    what: &'static str,
+    over: bool,
+}
+
+impl Running {
+    /// Starts `c`; `what` (`"log"`) names it in errors and its thread.
+    pub(crate) fn start(mut c: Command, what: &'static str) -> Result<Running, Error> {
+        c.stdout(Stdio::piped()).stderr(Stdio::piped());
+        let mut child = c.spawn().map_err(started)?;
+        let out = BufReader::with_capacity(1 << 16, child.stdout.take().expect("piped"));
+        let mut stderr = child.stderr.take().expect("piped");
+        let err = std::thread::Builder::new()
+            .name(format!("git-{what}-stderr"))
+            .spawn(move || {
+                let mut s = String::new();
+                let _ = stderr.read_to_string(&mut s);
+                s
+            })
+            .ok();
+        Ok(Running { child, out, err, what, over: false })
+    }
+
+    /// An error reading what git wrote.
+    pub(crate) fn io(&self, e: io::Error) -> Error {
+        Error::Io(format!("git {}: {e}", self.what))
+    }
+
+    /// git has written everything: whether it was happy.
+    pub(crate) fn finish(&mut self) -> Result<(), Error> {
+        self.over = true;
+        let status = self.child.wait().map_err(|e| self.io(e))?;
+        let err = self.err.take().and_then(|h| h.join().ok()).unwrap_or_default();
+        if status.success() {
+            Ok(())
+        } else {
+            Err(refused(&err))
+        }
+    }
+}
+
+impl Drop for Running {
+    fn drop(&mut self) {
+        if !self.over {
+            let _ = self.child.kill();
+            let _ = self.child.wait();
+        }
+    }
 }
 
 pub(crate) fn started(e: io::Error) -> Error {

@@ -1,12 +1,15 @@
 //! The app's state and what the keys do to it. Nothing here draws or runs
 //! git, so the keys can be tested without a window or a repository.
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use michi_core::git::{self, Version};
+use michi_core::oid::Oid;
 use michi_core::summary::Summary;
 
+use crate::detail::Pane;
 use crate::graph::{Folded, Graph};
 use crate::prefs::Prefs;
 use crate::repo::{Answer, Ask, Reading};
@@ -123,6 +126,13 @@ pub struct App {
     /// The two ends of the reading thread.
     pub reading: Option<Reading>,
     pub graph: Graph,
+    /// The selected commit in full, on the right.
+    pub detail: Pane,
+    /// The side column's groups that are open (`b:feat`, `r:origin`).
+    pub side_open: HashSet<String>,
+    /// A commit clicked in the side column that is not read yet: read on
+    /// until it is, then select it.
+    seeking: Option<Oid>,
     /// A new window title, for the frame to send once.
     pub new_title: Option<String>,
     /// One line at the foot, until its instant.
@@ -142,6 +152,9 @@ impl App {
             git: None,
             reading: None,
             graph: Graph::default(),
+            detail: Pane::default(),
+            side_open: HashSet::new(),
+            seeking: None,
             new_title: None,
             toast: None,
             quit: false,
@@ -183,6 +196,53 @@ impl App {
         for a in got {
             self.take(a);
         }
+        self.seek();
+    }
+
+    /// Asks for the selected commit in full when the selection has changed,
+    /// and counts a trunk merge's commits; whether it had changed.
+    pub fn sync_detail(&mut self) -> bool {
+        let id = self.graph.selected();
+        let changed = self.detail.select(id);
+        if changed {
+            if let (Some(id), Some(r)) = (id, &self.reading) {
+                // A merge's diff (the whole branch's) comes in stage 2.
+                let patch = self.graph.find_commit(&id).is_none_or(|c| c.parents.len() < 2);
+                r.detail(id, patch);
+            }
+        }
+        if let Some(id) = id {
+            let read = self.graph.read();
+            if self.detail.merged(id, read).is_none() {
+                let commits = self.graph.merged_by(&id);
+                self.detail.set_merged(id, read, commits);
+            }
+        }
+        changed
+    }
+
+    /// A row of the side column is clicked: select its commit, reading on
+    /// to it when it is further down than read.
+    pub fn go_to(&mut self, id: Oid) {
+        self.seeking = None;
+        if !self.graph.select_id(&id) {
+            self.seeking = Some(id);
+            self.seek();
+        }
+    }
+
+    /// Reads on towards the commit the side column wants.
+    fn seek(&mut self) {
+        let Some(id) = self.seeking else { return };
+        if self.graph.select_id(&id) {
+            self.seeking = None;
+        } else if self.graph.done() || self.graph.error().is_some() {
+            self.seeking = None;
+            let text = self.tr("side.missing").replace("{}", &id.short());
+            self.say(text);
+        } else if self.graph.ask_more() {
+            self.ask(Ask::More);
+        }
     }
 
     pub fn take(&mut self, answer: Answer) {
@@ -218,6 +278,7 @@ impl App {
                 self.say_for(text, 10);
                 self.graph.failed(gen, error);
             }
+            Answer::Detail { id, result } => self.detail.take(id, result),
         }
     }
 
@@ -310,6 +371,7 @@ impl App {
                 "End" => g.end(),
                 "ArrowRight" => _ = g.open_fold(),
                 "ArrowLeft" => _ = g.close_fold(),
+                "Enter" => self.detail.wide = !self.detail.wide,
                 _ => return self.later(|token| token == name),
             }
             return true;
@@ -332,11 +394,15 @@ impl App {
         true
     }
 
-    /// Escape: close the help or the settings, else clear the graph's
-    /// filter.
+    /// Escape: close the help or the settings, else bring the graph back
+    /// from beside a wide diff, else clear the graph's filter.
     pub fn escape(&mut self) -> bool {
         if self.mode != Mode::Main {
             self.mode = Mode::Main;
+            return true;
+        }
+        if self.view == View::Graph && self.detail.wide {
+            self.detail.wide = false;
             return true;
         }
         if self.view == View::Graph && !self.graph.filter().is_empty() {
@@ -458,8 +524,8 @@ mod tests {
         assert!(toast(&a).starts_with("Fetch"));
         assert!(a.feed('b'), "the graph's own key");
         assert!(toast(&a).starts_with("Branch"));
-        assert!(a.named("Enter"));
-        assert!(toast(&a).starts_with("Side by side"));
+        assert!(a.named("Enter"), "the diff side by side, no longer a later stage");
+        assert!(a.detail.wide);
         a.feed('2');
         assert!(a.feed(' '));
         assert!(toast(&a).starts_with("Stage"));
@@ -582,5 +648,60 @@ mod tests {
         assert!(b.new_title.is_none());
         b.take(Answer::Summary(Err(git::Error::Git("bad object".into()))));
         assert_eq!(toast(&b), "git failed: bad object — C:/dev/x");
+    }
+
+    #[test]
+    fn the_detail_follows_the_selection() {
+        use crate::detail::fixture::detail;
+        let mut a = read();
+        assert!(a.sync_detail(), "the first selection is asked for");
+        let m2 = a.graph.selected().unwrap();
+        assert_eq!(a.detail.asked(), Some(m2));
+        assert!(!a.sync_detail());
+        assert!(a.detail.got().is_none());
+        // An answer for a commit no longer selected is dropped.
+        a.take(Answer::Detail { id: fixture::id(1), result: Ok(Box::new(detail(fixture::id(1), vec![], 1))) });
+        assert!(a.detail.got().is_none());
+        a.take(Answer::Detail { id: m2, result: Ok(Box::new(detail(m2, vec![fixture::id(5)], 2))) });
+        assert!(a.detail.rows(1).is_some());
+        a.named("ArrowDown");
+        assert!(a.sync_detail());
+        assert!(a.detail.got().is_none() && a.detail.to_top);
+    }
+
+    #[test]
+    fn a_trunk_merge_counts_its_commits() {
+        let mut a = read();
+        assert!(a.graph.select_id(&fixture::id(5)));
+        a.sync_detail();
+        let read = a.graph.read();
+        assert_eq!(a.detail.merged(fixture::id(5), read), Some(&[fixture::id(3), fixture::id(2)][..]));
+        assert_eq!(selected(&a), FEAT);
+    }
+
+    #[test]
+    fn enter_spreads_the_diff_and_escape_takes_it_back_first() {
+        let mut a = read();
+        a.graph.set_filter("f");
+        assert!(a.named("Enter"));
+        assert!(a.detail.wide);
+        assert!(a.escape());
+        assert!(!a.detail.wide);
+        assert_eq!(a.graph.filter(), "f", "the filter goes on the next Escape");
+        assert!(a.escape());
+        assert_eq!(a.graph.filter(), "");
+        assert!(!a.escape());
+    }
+
+    #[test]
+    fn the_side_column_goes_to_a_commit_or_says_it_is_not_there() {
+        let mut a = read();
+        a.go_to(fixture::id(3));
+        assert_eq!(selected(&a), "f2");
+        assert!(a.seeking.is_none());
+        a.go_to(fixture::id(9));
+        assert!(a.seeking.is_none(), "all is read: nothing more to read on to");
+        assert!(toast(&a).starts_with("Not in the history: "), "{}", toast(&a));
+        assert_eq!(selected(&a), "f2");
     }
 }

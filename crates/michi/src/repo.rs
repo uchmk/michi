@@ -6,13 +6,21 @@
 //! once, the next ones when the window asks for [`Ask::More`]. A
 //! [`Ask::Reload`] starts the reading over; its answers carry the next
 //! generation, so the window drops whatever was still on the way.
+//!
+//! The selected commit in full comes from a second thread, so a long diff
+//! never holds up the history: only the newest wish is read, and one read
+//! halfway stops when another comes.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Arc;
 
 use michi_core::git::{self, Version};
 use michi_core::history::Setup;
 use michi_core::log::{self, Commit, Reader};
+use michi_core::oid::Oid;
+use michi_core::show::{self, Detail};
 use michi_core::summary::{self, Summary};
 
 /// What the reading thread sends back.
@@ -30,6 +38,8 @@ pub enum Answer {
     Total { gen: u32, count: u64 },
     /// The history could not be read.
     Failed { gen: u32, error: git::Error },
+    /// The commit `id` in full, as [`Reading::detail`] asked.
+    Detail { id: Oid, result: Result<Box<Detail>, git::Error> },
 }
 
 /// What the window asks of the reading thread.
@@ -47,16 +57,46 @@ pub const FIRST: usize = 2000;
 /// Each batch after it.
 pub const NEXT: usize = 5000;
 
-/// The two ends the window holds.
+/// The ends the window holds.
 pub struct Reading {
     pub answers: Receiver<Answer>,
     pub asks: Sender<Ask>,
+    wants: Sender<Want>,
+    /// The newest wish's number: a read for any other is stale.
+    latest: Arc<AtomicU32>,
+}
+
+impl Reading {
+    /// Read the commit `id` in full, with its diff when `patch`. A wish not
+    /// yet answered is dropped.
+    pub fn detail(&self, id: Oid, patch: bool) {
+        let gen = self.latest.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
+        let _ = self.wants.send(Want { gen, id, patch });
+    }
+}
+
+/// A commit the window wants in full.
+struct Want {
+    gen: u32,
+    id: Oid,
+    patch: bool,
 }
 
 /// Start reading `dir`: git's version and the summary, then the history.
 pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
     let (tx, answers) = mpsc::channel();
     let (asks, ask_rx) = mpsc::channel();
+    let (wants, want_rx) = mpsc::channel();
+    let latest = Arc::new(AtomicU32::new(0));
+    let (detail_tx, detail_dir, detail_ctx, detail_latest) = (tx.clone(), dir.clone(), ctx.clone(), latest.clone());
+    // No thread for the details: the detail stays without its files.
+    let _ = std::thread::Builder::new().name("detail".into()).spawn(move || {
+        let send = |a: Answer| {
+            let _ = detail_tx.send(a);
+            detail_ctx.request_repaint();
+        };
+        details(&detail_dir, &want_rx, &detail_latest, send);
+    });
     let thread_tx = tx.clone();
     let spawned = std::thread::Builder::new().name("repo".into()).spawn(move || {
         let send = |a: Answer| {
@@ -75,7 +115,26 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         // No thread: say so where the summary would have gone.
         let _ = tx.send(Answer::Summary(Err(git::Error::Io(e.to_string()))));
     }
-    Reading { answers, asks }
+    Reading { answers, asks, wants, latest }
+}
+
+/// Reads each commit the window wants in full, until the window is gone.
+/// Wishes that came while one was read are dropped but the newest, and a
+/// read is stopped (and dropped) once a newer wish comes.
+fn details(dir: &Path, wants: &Receiver<Want>, latest: &AtomicU32, send: impl Fn(Answer)) {
+    while let Ok(mut want) = wants.recv() {
+        while let Ok(newer) = wants.try_recv() {
+            want = newer;
+        }
+        let stale = || latest.load(Ordering::SeqCst) != want.gen;
+        if stale() {
+            continue;
+        }
+        let result = show::read(dir, &want.id, want.patch, &stale).map(Box::new);
+        if !stale() {
+            send(Answer::Detail { id: want.id, result });
+        }
+    }
 }
 
 /// git's version, the summary and the history's setup. Each git call costs

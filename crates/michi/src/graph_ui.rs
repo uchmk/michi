@@ -27,6 +27,8 @@ const PAD: f32 = 8.0;
 const BAR_W: f32 = 7.0;
 /// Below this width the filter is shorter.
 const NARROW: f32 = 900.0;
+/// Below this width the rows leave out the author and the date.
+const COMPACT: f32 = 560.0;
 
 /// The filter's field, for the keys to know when it has them.
 pub fn filter_id() -> Id {
@@ -87,6 +89,12 @@ fn tool_band(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let p = ui.painter().clone();
     p.line_segment([r.left_bottom() - vec2(0.0, 0.5), r.right_bottom() - vec2(0.0, 0.5)], Stroke::new(1.0, c.border));
     let mid = r.center().y;
+    // Beside a wide diff the filter takes the band, the buttons gone.
+    if app.detail.wide {
+        let field = Rect::from_min_max(pos2(r.left() + PAD, mid - 13.0), pos2(r.right() - PAD, mid + 13.0));
+        filter(ui, app, field, live);
+        return;
+    }
     let fw = if r.width() < NARROW { 170.0 } else { 210.0 };
     let mut right = r.right() - PAD;
     if r.width() >= fw + 2.0 * PAD + 100.0 {
@@ -280,13 +288,14 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
     let last = (((scroll + view) / row_h).ceil() as u32).min(len);
     app.reach(last.saturating_sub(1));
 
+    // Beside a wide diff, or narrow, the hash is the one column left.
+    let compact = app.detail.wide || list.width() < COMPACT;
     let g = &app.graph;
     let lanes = g.layout().width_in(first..last).max(2);
     let gw = m.width(lanes);
     let right = list.right() - BAR_W - 4.0;
     let hash_x = right - HASH_W;
-    let date_x = hash_x - DATE_W;
-    let author_x = date_x - AUTHOR_W;
+    let (date_x, author_x) = if compact { (hash_x, hash_x) } else { (hash_x - DATE_W, hash_x - DATE_W - AUTHOR_W) };
     let subj_x = list.left() + gw;
     let top = list.top() - scroll;
     let row_rect = |k: u32| Rect::from_min_size(pos2(list.left(), top + k as f32 * row_h), vec2(list.width(), row_h));
@@ -387,15 +396,17 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
         clipped(ui, &p, pos2(x, mid), &commit.subject, FontId::proportional(13.0), fg, cell_end - x);
 
         // The author (a bot by its short name), the date, the hash.
-        let author = bot(&commit.author);
-        let shown = author.as_deref().unwrap_or(&commit.author);
-        clipped(ui, &p, pos2(author_x, mid), shown, FontId::proportional(12.0), dim, AUTHOR_W - PAD);
-        if author.is_some() {
-            let ar = Rect::from_min_max(pos2(author_x, rr.top()), pos2(date_x - PAD, rr.bottom()));
-            ui.interact(ar, Id::new(("graph-bot", k)), Sense::hover()).on_hover_text(&commit.author);
+        if !compact {
+            let author = bot(&commit.author);
+            let shown = author.as_deref().unwrap_or(&commit.author);
+            clipped(ui, &p, pos2(author_x, mid), shown, FontId::proportional(12.0), dim, AUTHOR_W - PAD);
+            if author.is_some() {
+                let ar = Rect::from_min_max(pos2(author_x, rr.top()), pos2(date_x - PAD, rr.bottom()));
+                ui.interact(ar, Id::new(("graph-bot", k)), Sense::hover()).on_hover_text(&commit.author);
+            }
+            let date = when(commit.time, &now, yesterday);
+            clipped(ui, &p, pos2(date_x, mid), &date, FontId::proportional(12.0), dim, DATE_W - PAD);
         }
-        let date = when(commit.time, &now, yesterday);
-        clipped(ui, &p, pos2(date_x, mid), &date, FontId::proportional(12.0), dim, DATE_W - PAD);
         clipped(ui, &p, pos2(hash_x, mid), &commit.id.short(), FontId::monospace(11.5), dim, HASH_W);
     }
     // The row at the foot: older commits to read.
@@ -428,8 +439,10 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
     let hm = head.center().y;
     let font = FontId::proportional(11.0);
     hp.text(pos2(subj_x, hm), Align2::LEFT_CENTER, app.tr("col.subject"), font.clone(), c.dim);
-    hp.text(pos2(author_x, hm), Align2::LEFT_CENTER, app.tr("col.author"), font.clone(), c.dim);
-    hp.text(pos2(date_x, hm), Align2::LEFT_CENTER, app.tr("col.date"), font.clone(), c.dim);
+    if !compact {
+        hp.text(pos2(author_x, hm), Align2::LEFT_CENTER, app.tr("col.author"), font.clone(), c.dim);
+        hp.text(pos2(date_x, hm), Align2::LEFT_CENTER, app.tr("col.date"), font.clone(), c.dim);
+    }
     hp.text(pos2(hash_x, hm), Align2::LEFT_CENTER, app.tr("col.commit"), font, c.dim);
     if let Some(resp) = fold_toggle(ui, app, pos2(author_x - PAD, hm), subj_x + 80.0, live) {
         if live && resp.clicked() {
@@ -643,7 +656,7 @@ fn mark_tip(app: &App, k: u32, mark: Option<Mark>) -> String {
 // ── pieces ────────────────────────────────────────────────────
 
 /// How wide a name's pill is; `None` for an empty name.
-fn pill_width(ui: &Ui, text: &str, kind: PillKind, also: bool) -> Option<f32> {
+pub(crate) fn pill_width(ui: &Ui, text: &str, kind: PillKind, also: bool) -> Option<f32> {
     if text.is_empty() {
         return None;
     }
@@ -660,7 +673,7 @@ fn pill_width(ui: &Ui, text: &str, kind: PillKind, also: bool) -> Option<f32> {
 
 /// A name's pill: a branch outlined, a worktree's branch filled, a remote
 /// branch dashed, a tag round with a diamond.
-fn paint_pill(ui: &Ui, p: &egui::Painter, r: Rect, pill: &crate::graph::Pill, fade: f32) {
+pub(crate) fn paint_pill(ui: &Ui, p: &egui::Painter, r: Rect, pill: &crate::graph::Pill, fade: f32) {
     let c = ito_theme::colors();
     let ansi = c.ansi();
     let color = match pill.kind {
@@ -707,14 +720,14 @@ fn paint_pill(ui: &Ui, p: &egui::Painter, r: Rect, pill: &crate::graph::Pill, fa
 }
 
 /// Two overlapping squares (⧉), centred on `at`.
-fn worktree_mark(p: &egui::Painter, at: Pos2, ink: Color32) {
+pub(crate) fn worktree_mark(p: &egui::Painter, at: Pos2, ink: Color32) {
     let s = Stroke::new(1.0, ink);
     p.rect_stroke(Rect::from_min_size(at + vec2(-4.0, -4.0), vec2(5.5, 5.5)), 0.0, s, StrokeKind::Middle);
     p.rect_stroke(Rect::from_min_size(at + vec2(-1.5, -1.5), vec2(5.5, 5.5)), 0.0, s, StrokeKind::Middle);
 }
 
 /// ▸ (folded) or ▾ (open), centred on `at`.
-fn caret(p: &egui::Painter, at: Pos2, open: bool, ink: Color32) {
+pub(crate) fn caret(p: &egui::Painter, at: Pos2, open: bool, ink: Color32) {
     let points = if open {
         vec![at + vec2(-3.5, -2.0), at + vec2(3.5, -2.0), at + vec2(0.0, 2.5)]
     } else {
@@ -724,7 +737,7 @@ fn caret(p: &egui::Painter, at: Pos2, open: bool, ink: Color32) {
 }
 
 /// `text` from `left_center`, cut with … to `width`.
-fn clipped(ui: &Ui, p: &egui::Painter, left_center: Pos2, text: &str, font: FontId, color: Color32, width: f32) {
+pub(crate) fn clipped(ui: &Ui, p: &egui::Painter, left_center: Pos2, text: &str, font: FontId, color: Color32, width: f32) {
     if width < 8.0 || text.is_empty() {
         return;
     }
@@ -778,6 +791,9 @@ mod tests {
         app.graph.toggle_fold();
         frame(&mut app, 1280.0);
         frame(&mut app, 720.0);
+        app.detail.wide = true;
+        frame(&mut app, 360.0);
+        app.detail.wide = false;
         app.repo = Repo::Failed(michi_core::git::Error::NotRepo);
         frame(&mut app, 1280.0);
     }

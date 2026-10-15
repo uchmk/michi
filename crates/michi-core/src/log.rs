@@ -5,10 +5,8 @@
 //! The order is `--date-order`: never a parent before all of its children,
 //! which the graph and the folding need.
 
-use std::io::{BufRead, BufReader, Read};
+use std::io::BufRead;
 use std::path::Path;
-use std::process::{Child, ChildStdout, Stdio};
-use std::thread::JoinHandle;
 
 use crate::git;
 use crate::oid::Oid;
@@ -36,9 +34,7 @@ fn args(tips: &[Oid]) -> Vec<String> {
 
 /// A `git log` read a batch at a time. Dropping it stops git.
 pub struct Reader {
-    child: Child,
-    out: BufReader<ChildStdout>,
-    err: Option<JoinHandle<String>>,
+    run: git::Running,
     done: bool,
 }
 
@@ -47,20 +43,7 @@ impl Reader {
         let mut c = git::command();
         c.arg("-C").arg(dir);
         c.args(["log", "-z", "--date-order", "--no-show-signature", "--encoding=UTF-8", FORMAT]).args(args(tips));
-        c.stdout(Stdio::piped()).stderr(Stdio::piped());
-        let mut child = c.spawn().map_err(git::started)?;
-        let out = BufReader::with_capacity(1 << 16, child.stdout.take().expect("piped"));
-        // Read on the side so a git with much to say never blocks on it.
-        let mut stderr = child.stderr.take().expect("piped");
-        let err = std::thread::Builder::new()
-            .name("git-log-stderr".into())
-            .spawn(move || {
-                let mut s = String::new();
-                let _ = stderr.read_to_string(&mut s);
-                s
-            })
-            .ok();
-        Ok(Reader { child, out, err, done: false })
+        Ok(Reader { run: git::Running::start(c, "log")?, done: false })
     }
 
     /// Up to `n` more commits; fewer, and [`done`](Self::done) then, at the
@@ -70,10 +53,10 @@ impl Reader {
         let mut buf = Vec::new();
         while batch.len() < n && !self.done {
             buf.clear();
-            let got = self.out.read_until(0, &mut buf).map_err(|e| git::Error::Io(format!("git log: {e}")))?;
+            let got = self.run.out.read_until(0, &mut buf).map_err(|e| self.run.io(e))?;
             if got == 0 {
                 self.done = true;
-                self.finish()?;
+                self.run.finish()?;
                 break;
             }
             if buf.last() == Some(&0) {
@@ -88,26 +71,6 @@ impl Reader {
 
     pub fn done(&self) -> bool {
         self.done
-    }
-
-    /// git has written everything: whether it was happy.
-    fn finish(&mut self) -> Result<(), git::Error> {
-        let status = self.child.wait().map_err(|e| git::Error::Io(format!("git log: {e}")))?;
-        let err = self.err.take().and_then(|h| h.join().ok()).unwrap_or_default();
-        if status.success() {
-            Ok(())
-        } else {
-            Err(git::refused(&err))
-        }
-    }
-}
-
-impl Drop for Reader {
-    fn drop(&mut self) {
-        if !self.done {
-            let _ = self.child.kill();
-            let _ = self.child.wait();
-        }
     }
 }
 

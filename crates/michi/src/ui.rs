@@ -47,10 +47,14 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     if app.mode != Mode::Settings {
         if app.view == View::Graph {
             // The key list goes over the graph; the mouse is the list's then.
-            // Its scrollbar stays clear of the window's resize edge.
+            // The columns stay clear of the window's resize edge.
             let live = app.mode == Mode::Main;
             let r = Rect::from_min_max(body.min, pos2(body.right() - EDGE, body.bottom()));
-            crate::graph_ui::show(ui, app, r, live);
+            if matches!(app.repo, Repo::Failed(_)) {
+                crate::graph_ui::show(ui, app, r, live);
+            } else {
+                graph_view(ui, app, r, live);
+            }
         } else {
             empty_view(ui, app, body);
         }
@@ -61,6 +65,72 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     title_bar(ui, app, title, &mut out);
     key_bar(ui, app, keybar);
     out
+}
+
+/// The side column's width.
+const SIDE_W: f32 = 220.0;
+/// The detail's width beside the graph.
+const DETAIL_W: f32 = 440.0;
+/// The graph's width beside a wide diff.
+const WIDE_GRAPH_W: f32 = 360.0;
+/// Below this width the side column goes and the detail goes under the
+/// graph.
+const STACK: f32 = 900.0;
+/// The detail's height under the graph.
+const STACKED_DETAIL_H: f32 = 330.0;
+
+/// Where the graph view's columns go, and the lines between them.
+#[derive(Debug, PartialEq)]
+struct Columns {
+    side: Option<Rect>,
+    graph: Option<Rect>,
+    detail: Rect,
+    /// 1-point lines.
+    lines: Vec<Rect>,
+}
+
+/// The side column, the graph and the detail in `r`: side by side, the
+/// graph narrowed beside a wide diff, or one over the other in a narrow
+/// window (docs/mock).
+fn columns(r: Rect, wide: bool) -> Columns {
+    let v_line = |x: f32| Rect::from_min_max(pos2(x, r.top()), pos2(x + 1.0, r.bottom()));
+    match (r.width() < STACK, wide) {
+        (false, false) => {
+            let side = Rect::from_min_max(r.min, pos2(r.left() + SIDE_W, r.bottom()));
+            let detail = Rect::from_min_max(pos2(r.right() - DETAIL_W, r.top()), r.max);
+            let graph = Rect::from_min_max(pos2(side.right() + 1.0, r.top()), pos2(detail.left() - 1.0, r.bottom()));
+            Columns { side: Some(side), graph: Some(graph), detail, lines: vec![v_line(side.right()), v_line(graph.right())] }
+        }
+        (false, true) => {
+            let graph = Rect::from_min_max(r.min, pos2(r.left() + WIDE_GRAPH_W, r.bottom()));
+            let detail = Rect::from_min_max(pos2(graph.right() + 1.0, r.top()), r.max);
+            Columns { side: None, graph: Some(graph), detail, lines: vec![v_line(graph.right())] }
+        }
+        (true, false) => {
+            let h = STACKED_DETAIL_H.min(r.height() * 0.55);
+            let detail = Rect::from_min_max(pos2(r.left(), r.bottom() - h), r.max);
+            let graph = Rect::from_min_max(r.min, pos2(r.right(), detail.top() - 1.0));
+            let line = Rect::from_min_max(graph.left_bottom(), pos2(r.right(), detail.top()));
+            Columns { side: None, graph: Some(graph), detail, lines: vec![line] }
+        }
+        (true, true) => Columns { side: None, graph: None, detail: r, lines: Vec::new() },
+    }
+}
+
+/// The graph view: the side column, the graph and the selected commit.
+fn graph_view(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
+    let c = ito_theme::colors();
+    let cols = columns(r, app.detail.wide);
+    if let Some(side) = cols.side {
+        crate::side_ui::show(ui, app, side, live);
+    }
+    if let Some(graph) = cols.graph {
+        crate::graph_ui::show(ui, app, graph, live);
+    }
+    crate::detail_ui::show(ui, app, cols.detail, live);
+    for line in cols.lines {
+        ui.painter().rect_filled(line, 0.0, c.border);
+    }
 }
 
 fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
@@ -262,7 +332,7 @@ fn branch_mark(p: &egui::Painter, at: Pos2, ink: Color32) {
 }
 
 /// A key drawn as a key cap, right-aligned to `right_center`; its rect.
-fn kbd(ui: &Ui, p: &egui::Painter, right_center: Pos2, key: &str) -> Rect {
+pub(crate) fn kbd(ui: &Ui, p: &egui::Painter, right_center: Pos2, key: &str) -> Rect {
     let c = ito_theme::colors();
     let g = ui.fonts_mut(|f| f.layout_no_wrap(key.to_owned(), FontId::monospace(10.5), c.dim));
     let r = Rect::from_min_max(right_center - vec2(g.size().x + 8.0, 8.0), right_center + vec2(0.0, 8.0));
@@ -479,5 +549,24 @@ mod tests {
         // Under the thin top edge is the title bar.
         assert_eq!(edge_at(r, pos2(400.0, 5.0)), None);
         assert_eq!(edge_at(r, pos2(900.0, 5.0)), None);
+    }
+
+    #[test]
+    fn the_columns_follow_the_width_and_the_wide_diff() {
+        let r = |w: f32| Rect::from_min_size(pos2(0.0, 36.0), vec2(w, 600.0));
+        let three = columns(r(1280.0), false);
+        assert_eq!(three.side.unwrap().width(), SIDE_W);
+        assert_eq!(three.detail.width(), DETAIL_W);
+        assert_eq!(three.graph.unwrap().width(), 1280.0 - SIDE_W - DETAIL_W - 2.0);
+        assert_eq!(three.lines.len(), 2);
+        let wide = columns(r(1280.0), true);
+        assert_eq!((wide.side, wide.graph.unwrap().width()), (None, WIDE_GRAPH_W));
+        assert_eq!(wide.detail.left(), WIDE_GRAPH_W + 1.0);
+        let stacked = columns(r(800.0), false);
+        assert_eq!(stacked.side, None);
+        assert_eq!(stacked.detail.height(), STACKED_DETAIL_H);
+        assert_eq!(stacked.graph.unwrap().bottom() + 1.0, stacked.detail.top());
+        let alone = columns(r(800.0), true);
+        assert_eq!((alone.graph, alone.detail), (None, r(800.0)));
     }
 }
