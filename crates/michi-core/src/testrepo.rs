@@ -1,8 +1,10 @@
 //! A throwaway repository for the tests: `<temp>/michi-test-<pid>-<name>/repo`
 //! with one empty commit on `main`, worktrees made beside it. git runs with no
-//! user or system configuration and fixed names and dates, so the tests do
-//! not depend on the machine.
+//! user or system configuration and fixed names, and each call a minute after
+//! the one before from 2026-01-01 00:00 UTC, so the tests do not depend on
+//! the machine and the commits come in the order they were made.
 
+use std::cell::Cell;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -14,7 +16,12 @@ pub struct TempRepo {
     /// The main worktree.
     pub repo: PathBuf,
     config: PathBuf,
+    /// Minutes past the start for the next call.
+    clock: Cell<i64>,
 }
+
+/// 2026-01-01 00:00 UTC.
+pub const START: i64 = 1_767_225_600;
 
 impl TempRepo {
     pub fn new(name: &str) -> TempRepo {
@@ -28,7 +35,7 @@ impl TempRepo {
         fs::create_dir_all(&repo).unwrap();
         let config = root.join("gitconfig");
         fs::write(&config, "").unwrap();
-        let r = TempRepo { root, repo, config };
+        let r = TempRepo { root, repo, config, clock: Cell::new(0) };
         r.git(&r.repo, &["init", "-q", "-b", "main"]);
         r.git(&r.repo, &["commit", "-q", "--allow-empty", "-m", "first"]);
         r
@@ -36,6 +43,9 @@ impl TempRepo {
 
     /// Runs git in `dir` and panics when it fails.
     pub fn git(&self, dir: &Path, args: &[&str]) {
+        let minute = self.clock.get();
+        self.clock.set(minute + 1);
+        let date = format!("@{} +0000", START + minute * 60);
         let out = git::command()
             .arg("-C")
             .arg(dir)
@@ -44,10 +54,10 @@ impl TempRepo {
             .env("GIT_CONFIG_NOSYSTEM", "1")
             .env("GIT_AUTHOR_NAME", "michi")
             .env("GIT_AUTHOR_EMAIL", "michi@example.invalid")
-            .env("GIT_AUTHOR_DATE", "2026-01-01T00:00:00Z")
+            .env("GIT_AUTHOR_DATE", &date)
             .env("GIT_COMMITTER_NAME", "michi")
             .env("GIT_COMMITTER_EMAIL", "michi@example.invalid")
-            .env("GIT_COMMITTER_DATE", "2026-01-01T00:00:00Z")
+            .env("GIT_COMMITTER_DATE", &date)
             .output()
             .expect("git on the PATH");
         assert!(out.status.success(), "git {}: {}", args.join(" "), String::from_utf8_lossy(&out.stderr));

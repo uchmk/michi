@@ -95,6 +95,17 @@ pub fn read(dir: &Path, args: &[&str]) -> Result<Vec<u8>, Error> {
     }
 }
 
+/// `git -C dir args…` for a yes or a no: exit 0 is yes, exit 1 no
+/// (`merge-base --is-ancestor`), anything else a refusal.
+pub fn check(dir: &Path, args: &[&str]) -> Result<bool, Error> {
+    let out = command().arg("-C").arg(dir).args(args).output().map_err(started)?;
+    match out.status.code() {
+        Some(0) => Ok(true),
+        Some(1) => Ok(false),
+        _ => Err(refused(&String::from_utf8_lossy(&out.stderr))),
+    }
+}
+
 /// [`read`] as text, the last line break taken off.
 pub fn read_text(dir: &Path, args: &[&str]) -> Result<String, Error> {
     let out = read(dir, args)?;
@@ -109,7 +120,7 @@ pub fn version() -> Result<Version, Error> {
     Version::parse(&text).ok_or_else(|| Error::Io(format!("unexpected `git --version`: {}", text.trim())))
 }
 
-fn started(e: io::Error) -> Error {
+pub(crate) fn started(e: io::Error) -> Error {
     match e.kind() {
         io::ErrorKind::NotFound => Error::NoGit,
         _ => Error::Io(format!("git: {e}")),
@@ -117,7 +128,7 @@ fn started(e: io::Error) -> Error {
 }
 
 /// What git's standard error says, as an [`Error`].
-fn refused(stderr: &str) -> Error {
+pub(crate) fn refused(stderr: &str) -> Error {
     if stderr.contains("not a git repository") {
         return Error::NotRepo;
     }

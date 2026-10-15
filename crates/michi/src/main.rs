@@ -8,6 +8,8 @@
 
 mod app;
 mod fonts;
+mod graph;
+mod graph_ui;
 mod i18n;
 mod icon;
 mod prefs;
@@ -19,6 +21,18 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use app::{App, Mode};
+
+/// The named keys that move in a view, by the names `App::named` takes.
+const MOVES: [(egui::Key, &str); 8] = [
+    (egui::Key::ArrowDown, "ArrowDown"),
+    (egui::Key::ArrowUp, "ArrowUp"),
+    (egui::Key::ArrowLeft, "ArrowLeft"),
+    (egui::Key::ArrowRight, "ArrowRight"),
+    (egui::Key::PageDown, "PageDown"),
+    (egui::Key::PageUp, "PageUp"),
+    (egui::Key::Home, "Home"),
+    (egui::Key::End, "End"),
+];
 
 /// The window's icon, in pixels square.
 const ICON_PX: u32 = 128;
@@ -36,8 +50,9 @@ struct Michi {
 }
 
 impl Michi {
-    /// The characters typed, Escape and Enter, when no text field has the
-    /// keys.
+    /// The characters typed and the named keys. While the graph's filter has
+    /// the keys, only Enter (the next hit) and the arrows (the selection)
+    /// are taken from it; Escape has already let go of it.
     fn keys(&mut self, ctx: &egui::Context) {
         let (events, palette) = ctx.input_mut(|i| {
             let palette = i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, egui::Key::P);
@@ -46,6 +61,26 @@ impl Michi {
         if palette {
             self.palette();
         }
+        if ctx.memory(|m| m.has_focus(graph_ui::filter_id())) {
+            let (next, back, down, up) = ctx.input_mut(|i| {
+                (
+                    i.consume_key(egui::Modifiers::NONE, egui::Key::Enter),
+                    i.consume_key(egui::Modifiers::SHIFT, egui::Key::Enter),
+                    i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown),
+                    i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp),
+                )
+            });
+            if next || back {
+                self.app.graph.next_hit(back);
+            }
+            if down {
+                self.app.graph.move_by(1);
+            }
+            if up {
+                self.app.graph.move_by(-1);
+            }
+            return;
+        }
         for e in events {
             match e {
                 egui::Event::Key { key: egui::Key::Escape, pressed: true, .. } => {
@@ -53,6 +88,11 @@ impl Michi {
                 }
                 egui::Event::Key { key: egui::Key::Enter, pressed: true, modifiers, .. } if modifiers.is_none() => {
                     self.app.named("Enter");
+                }
+                egui::Event::Key { key, pressed: true, modifiers, .. } if modifiers.is_none() => {
+                    if let Some((_, name)) = MOVES.iter().find(|(k, _)| *k == key) {
+                        self.app.named(name);
+                    }
                 }
                 egui::Event::Text(t) => {
                     for c in t.chars() {
@@ -89,7 +129,7 @@ impl eframe::App for Michi {
         if let Some(title) = self.app.new_title.take() {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
         }
-        let out = ui::frame(ui, &self.app);
+        let out = ui::frame(ui, &mut self.app);
         if self.app.mode == Mode::Settings {
             let mut body = ui.new_child(egui::UiBuilder::new().max_rect(out.body));
             settings::show(&mut body, &mut self.app);
@@ -219,7 +259,7 @@ fn main() -> eframe::Result {
             cc.egui_ctx.options_mut(|o| o.zoom_with_keyboard = false);
             cc.egui_ctx.set_zoom_factor(prefs.common.scale_or_one());
             let mut app = App::new(prefs, dir.clone());
-            app.answers = Some(repo::start(dir, cc.egui_ctx.clone()));
+            app.reading = Some(repo::start(dir, cc.egui_ctx.clone()));
             Ok(Box::new(Michi { app }))
         }),
     )

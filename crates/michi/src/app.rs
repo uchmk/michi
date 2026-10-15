@@ -2,14 +2,14 @@
 //! git, so the keys can be tested without a window or a repository.
 
 use std::path::PathBuf;
-use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
 use michi_core::git::{self, Version};
 use michi_core::summary::Summary;
 
+use crate::graph::{Folded, Graph};
 use crate::prefs::Prefs;
-use crate::repo::Answer;
+use crate::repo::{Answer, Ask, Reading};
 
 /// The three views, opened by `1` to `3` (docs/design.md).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -120,8 +120,9 @@ pub struct App {
     pub repo: Repo,
     /// The git on the PATH; `None` until it has answered.
     pub git: Option<Version>,
-    /// What the reading thread sends back.
-    pub answers: Option<Receiver<Answer>>,
+    /// The two ends of the reading thread.
+    pub reading: Option<Reading>,
+    pub graph: Graph,
     /// A new window title, for the frame to send once.
     pub new_title: Option<String>,
     /// One line at the foot, until its instant.
@@ -139,7 +140,8 @@ impl App {
             dir,
             repo: Repo::Loading,
             git: None,
-            answers: None,
+            reading: None,
+            graph: Graph::default(),
             new_title: None,
             toast: None,
             quit: false,
@@ -174,8 +176,8 @@ impl App {
 
     /// Fold in what the reading thread has sent since the last frame.
     pub fn pump(&mut self) {
-        let got: Vec<Answer> = match &self.answers {
-            Some(rx) => rx.try_iter().collect(),
+        let got: Vec<Answer> = match &self.reading {
+            Some(r) => r.answers.try_iter().collect(),
             None => return,
         };
         for a in got {
@@ -208,6 +210,35 @@ impl App {
                 self.say_for(text, 10);
                 self.repo = Repo::Failed(e);
             }
+            Answer::Setup { gen, setup } => self.graph.start(gen, *setup),
+            Answer::Commits { gen, batch, done } => self.graph.commits(gen, batch, done),
+            Answer::Total { gen, count } => self.graph.total(gen, count),
+            Answer::Failed { gen, error } => {
+                let text = self.tr("history.failed").replace("{}", &error.to_string());
+                self.say_for(text, 10);
+                self.graph.failed(gen, error);
+            }
+        }
+    }
+
+    /// The graph's rows in sight reach row `last`: read on before they run
+    /// out.
+    pub fn reach(&mut self, last: u32) {
+        if self.graph.wants_more(last) {
+            self.ask(Ask::More);
+        }
+    }
+
+    /// The row at the graph's foot is clicked: read the next batch.
+    pub fn more(&mut self) {
+        if self.graph.ask_more() {
+            self.ask(Ask::More);
+        }
+    }
+
+    fn ask(&self, a: Ask) {
+        if let Some(r) = &self.reading {
+            let _ = r.asks.send(a);
         }
     }
 
@@ -226,15 +257,64 @@ impl App {
             (Mode::Main, ',') => self.mode = Mode::Settings,
             (Mode::Main, c) => match View::from_digit(c) {
                 Some(v) => self.view = v,
+                None if self.view == View::Graph && self.graph_key(c) => {}
                 None => return self.later(|token| token.chars().eq([c])),
             },
         }
         true
     }
 
-    /// A key with a name (`Enter`), outside the help and the settings.
+    /// The graph's own keys that work already.
+    fn graph_key(&mut self, c: char) -> bool {
+        let g = &mut self.graph;
+        match c {
+            'j' => g.move_by(1),
+            'k' => g.move_by(-1),
+            'l' => _ = g.open_fold(),
+            'h' => _ = g.close_fold(),
+            '/' => g.focus_filter = true,
+            'z' => self.fold(),
+            _ => return false,
+        }
+        true
+    }
+
+    /// `z`, or the header's toggle: fold the trunk's merges or show them all.
+    pub fn fold(&mut self) {
+        let text = match self.graph.toggle_fold() {
+            Folded::On { merges, commits } => self
+                .tr("fold.on")
+                .replace("{trunk}", self.graph.trunk_name().unwrap_or("main"))
+                .replace("{n}", &merges.to_string())
+                .replace("{m}", &commits.to_string()),
+            Folded::Nothing => self.tr("fold.nothing").to_owned(),
+            Folded::Off => self.tr("fold.off").to_owned(),
+        };
+        self.say(text);
+    }
+
+    /// A key with a name (`Enter`, `ArrowDown`), outside the help and the
+    /// settings.
     pub fn named(&mut self, name: &str) -> bool {
-        self.mode == Mode::Main && self.later(|token| token == name)
+        if self.mode != Mode::Main {
+            return false;
+        }
+        if self.view == View::Graph {
+            let g = &mut self.graph;
+            match name {
+                "ArrowDown" => g.move_by(1),
+                "ArrowUp" => g.move_by(-1),
+                "PageDown" => g.page_by(false),
+                "PageUp" => g.page_by(true),
+                "Home" => g.home(),
+                "End" => g.end(),
+                "ArrowRight" => _ = g.open_fold(),
+                "ArrowLeft" => _ = g.close_fold(),
+                _ => return self.later(|token| token == name),
+            }
+            return true;
+        }
+        self.later(|token| token == name)
     }
 
     /// A key of the view or of every view whose work comes in a later stage:
@@ -252,11 +332,18 @@ impl App {
         true
     }
 
-    /// Escape: close the help or the settings.
+    /// Escape: close the help or the settings, else clear the graph's
+    /// filter.
     pub fn escape(&mut self) -> bool {
-        let was = self.mode;
-        self.mode = Mode::Main;
-        was != Mode::Main
+        if self.mode != Mode::Main {
+            self.mode = Mode::Main;
+            return true;
+        }
+        if self.view == View::Graph && !self.graph.filter().is_empty() {
+            self.graph.set_filter("");
+            return true;
+        }
+        false
     }
 
     /// Whether the bar's tab for `v` is the one in force: the view's, under
@@ -278,6 +365,7 @@ pub fn failed_word(e: &git::Error) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::graph::fixture::{self, FEAT};
     use michi_core::summary::Head;
 
     fn app() -> App {
@@ -288,6 +376,20 @@ mod tests {
 
     fn toast(a: &App) -> &str {
         a.toast.as_ref().map_or("", |(t, _)| t)
+    }
+
+    /// The app with graph.rs's small history read in, as the reading
+    /// thread sends it.
+    fn read() -> App {
+        let mut a = app();
+        a.take(Answer::Setup { gen: 1, setup: Box::new(fixture::setup()) });
+        a.take(Answer::Commits { gen: 1, batch: fixture::history(), done: true });
+        a
+    }
+
+    fn selected(a: &App) -> &str {
+        let g = &a.graph;
+        g.selected_row().and_then(|k| g.commit(k)).map_or("", |c| c.subject.as_str())
     }
 
     #[test]
@@ -354,8 +456,8 @@ mod tests {
         assert_eq!(toast(&a), "New work (worktree + Claude) — coming in a later stage");
         assert!(a.feed('f'));
         assert!(toast(&a).starts_with("Fetch"));
-        assert!(a.feed('z'), "the graph's own key");
-        assert!(toast(&a).starts_with("Fold"));
+        assert!(a.feed('b'), "the graph's own key");
+        assert!(toast(&a).starts_with("Branch"));
         assert!(a.named("Enter"));
         assert!(toast(&a).starts_with("Side by side"));
         a.feed('2');
@@ -366,6 +468,91 @@ mod tests {
         a.lang = "ja".into();
         assert!(a.feed('c'));
         assert_eq!(toast(&a), "コミット — 後の段階で入ります");
+    }
+
+    #[test]
+    fn the_graph_s_keys_move_the_selection() {
+        let mut a = read();
+        assert_eq!(selected(&a), "m2");
+        assert!(a.feed('j'));
+        assert_eq!(selected(&a), "w1");
+        assert!(a.named("ArrowDown"));
+        assert_eq!(selected(&a), FEAT);
+        assert!(a.feed('k'));
+        assert_eq!(selected(&a), "w1");
+        assert!(a.named("End"));
+        assert_eq!(selected(&a), "first");
+        assert!(a.named("PageUp"));
+        assert_eq!(selected(&a), "m2");
+        assert!(a.named("PageDown"));
+        assert_eq!(selected(&a), "first");
+        assert!(a.named("Home"));
+        assert_eq!(selected(&a), "m2");
+        assert!(a.toast.is_none(), "nothing to say");
+    }
+
+    #[test]
+    fn l_h_and_the_arrows_open_and_fold_a_merge() {
+        let mut a = read();
+        a.feed('j');
+        a.feed('j');
+        assert_eq!(selected(&a), FEAT);
+        assert!(a.named("ArrowRight"));
+        assert_eq!(a.graph.len(), 7);
+        a.feed('j');
+        a.feed('j');
+        assert_eq!(selected(&a), "f2");
+        assert!(a.named("ArrowLeft"));
+        assert_eq!((a.graph.len(), selected(&a)), (5, FEAT), "the merge takes the selection");
+        assert!(a.feed('l'));
+        assert_eq!(a.graph.len(), 7);
+        assert!(a.feed('h'));
+        assert_eq!(a.graph.len(), 5);
+    }
+
+    #[test]
+    fn z_folds_and_says_so() {
+        let mut a = read();
+        assert!(a.feed('z'));
+        assert_eq!(toast(&a), "Unfolded all the merges.");
+        assert_eq!(a.graph.len(), 7);
+        assert!(a.feed('z'));
+        assert_eq!(toast(&a), "Folded the merges into main: 1 (2 commits).");
+        assert_eq!(a.graph.len(), 5);
+        a.lang = "ja".into();
+        a.feed('z');
+        a.feed('z');
+        assert!(toast(&a).contains("main"), "{}", toast(&a));
+
+        let mut b = app();
+        b.feed('z');
+        b.feed('z');
+        assert_eq!(toast(&b), "No merges to fold yet.");
+    }
+
+    #[test]
+    fn slash_asks_for_the_filter_and_escape_clears_it() {
+        let mut a = read();
+        assert!(a.feed('/'));
+        assert!(a.graph.focus_filter);
+        a.graph.set_filter("f2");
+        assert_eq!(a.graph.hit_count(), Some(1));
+        assert!(a.escape());
+        assert!(a.graph.filter().is_empty());
+        assert!(!a.escape(), "nothing left to clear");
+        a.graph.set_filter("f2");
+        a.feed('2');
+        assert!(!a.escape(), "the filter is the graph's");
+    }
+
+    #[test]
+    fn answers_of_an_older_reading_are_dropped() {
+        let mut a = read();
+        a.take(Answer::Setup { gen: 2, setup: Box::new(fixture::setup()) });
+        a.take(Answer::Commits { gen: 1, batch: fixture::history(), done: true });
+        assert_eq!(a.graph.len(), 0, "the first reading's commits come too late");
+        a.take(Answer::Failed { gen: 2, error: git::Error::Git("bad".into()) });
+        assert_eq!(toast(&a), "Could not read the history: bad");
     }
 
     #[test]

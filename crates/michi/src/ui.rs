@@ -1,6 +1,7 @@
 //! The window: the title bar, the view, the keybar and the key list. Drawn
 //! with the painter on the rects it lays out itself, so nothing here scrolls
-//! (docs/design.md: no scrollbar anywhere). The look follows docs/mock.
+//! (docs/design.md: the graph's is the one scrollbar, in `graph_ui.rs`). The
+//! look follows docs/mock.
 
 use egui::{pos2, vec2, Align2, Color32, CornerRadius, CursorIcon, FontId, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, ViewportCommand};
 use ito_common::Clock;
@@ -21,6 +22,8 @@ const KEYBAR_H: f32 = 24.0;
 const KEYBAR_KEYS: usize = 5;
 /// Below this width the palette field is shorter.
 const NARROW: f32 = 1100.0;
+/// How far in from the window's sides and foot the pointer resizes it.
+const EDGE: f32 = 6.0;
 
 /// What the frame asks of the app.
 pub struct Out {
@@ -33,7 +36,7 @@ pub struct Out {
 
 /// The title bar, the keybar and the view between them; under the settings,
 /// the body is left to them.
-pub fn frame(ui: &mut Ui, app: &App) -> Out {
+pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     let c = ito_theme::colors();
     let rect = ui.max_rect();
     ui.painter().rect_filled(rect, 0.0, c.bg);
@@ -41,10 +44,19 @@ pub fn frame(ui: &mut Ui, app: &App) -> Out {
     let keybar = Rect::from_min_max(pos2(rect.left(), rect.bottom() - KEYBAR_H), rect.max);
     let body = Rect::from_min_max(title.left_bottom(), keybar.right_top());
     let mut out = Out { view: None, settings: false, palette: false, body };
-    match app.mode {
-        Mode::Help => help(ui, app, body),
-        Mode::Main => empty_view(ui, app, body),
-        Mode::Settings => {}
+    if app.mode != Mode::Settings {
+        if app.view == View::Graph {
+            // The key list goes over the graph; the mouse is the list's then.
+            // Its scrollbar stays clear of the window's resize edge.
+            let live = app.mode == Mode::Main;
+            let r = Rect::from_min_max(body.min, pos2(body.right() - EDGE, body.bottom()));
+            crate::graph_ui::show(ui, app, r, live);
+        } else {
+            empty_view(ui, app, body);
+        }
+        if app.mode == Mode::Help {
+            help(ui, app, body);
+        }
     }
     title_bar(ui, app, title, &mut out);
     key_bar(ui, app, keybar);
@@ -86,7 +98,7 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
         let text = ui.fonts_mut(|f| f.layout_no_wrap(app.tr(v.label()).to_owned(), FontId::proportional(13.0), c.fg));
         let w = 12.0 + digit.size().x + 6.0 + text.size().x + 12.0;
         let tab = Rect::from_min_max(pos2(x, r.bottom() - 30.0), pos2(x + w, r.bottom()));
-        let resp = ui.interact(tab, ui.id().with(("tab", v.digit())), Sense::click());
+        let resp = ui.interact(tab, ui.id().with(("tab", v.digit())), Sense::CLICK);
         let round = CornerRadius { nw: 6, ne: 6, sw: 0, se: 0 };
         if on {
             p.rect_filled(tab, round, c.bg);
@@ -119,7 +131,7 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
     let maximized = ctx.input(|i| i.viewport().maximized.unwrap_or(false));
     for (k, kind) in [Caption::Close, Caption::Maximize, Caption::Minimize].into_iter().enumerate() {
         let b = Rect::from_min_max(pos2(right - 44.0, r.top()), pos2(right, r.bottom() - 1.0));
-        let resp = ui.interact(b, ui.id().with(("caption", k)), Sense::click());
+        let resp = ui.interact(b, ui.id().with(("caption", k)), Sense::CLICK);
         if resp.hovered() {
             let fill = if kind == Caption::Close { Color32::from_rgb(0xC4, 0x2B, 0x1C) } else { c.panel };
             p.rect_filled(b, 0.0, fill);
@@ -142,7 +154,7 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
     right -= 6.0;
     // The comma opens the settings.
     let gear = Rect::from_center_size(pos2(right - 12.0, mid), vec2(24.0, 24.0));
-    let resp = ui.interact(gear, ui.id().with("gear"), Sense::click());
+    let resp = ui.interact(gear, ui.id().with("gear"), Sense::CLICK);
     if resp.hovered() || app.mode == Mode::Settings {
         p.rect_filled(gear, CornerRadius::same(5), c.panel);
     }
@@ -156,7 +168,7 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
     let w = if r.width() < NARROW { 150.0 } else { 230.0 };
     if right - w > left_end + 12.0 {
         let field = Rect::from_min_max(pos2(right - w, mid - 12.0), pos2(right, mid + 12.0));
-        let resp = ui.interact(field, ui.id().with("palette"), Sense::click());
+        let resp = ui.interact(field, ui.id().with("palette"), Sense::CLICK);
         p.rect_filled(field, CornerRadius::same(5), if resp.hovered() { c.panel } else { c.bg });
         p.rect_stroke(field, CornerRadius::same(5), Stroke::new(1.0, c.border), StrokeKind::Inside);
         let k = kbd(ui, &p, field.right_center() - vec2(6.0, 0.0), "Ctrl+Shift+P");
@@ -429,7 +441,6 @@ pub fn resize_edges(ctx: &egui::Context) {
 /// thinner: the band under it is the title bar to drag by.
 fn edge_at(r: Rect, p: Pos2) -> Option<egui::ResizeDirection> {
     use egui::ResizeDirection as D;
-    const EDGE: f32 = 6.0;
     const CORNER: f32 = 12.0;
     if !r.contains(p) {
         return None;

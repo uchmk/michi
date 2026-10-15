@@ -26,10 +26,10 @@ What text can check (reading the repository, the git version, the command line) 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 2.1 | Press `1`, `2`, `3` | The tab in force moves and opens into the view; each view says what will be there and "Coming in a later stage" |
+| 2.1 | Press `1`, `2`, `3` | The tab in force moves and opens into the view; the graph shows the history (section 6), the other two say what will be there and "Coming in a later stage" |
 | 2.2 | Click each tab | Same as the digit |
 | 2.3 | Press `?` | A card with the keys: "Everywhere" first, then the view's; the tab stays lit under it; `?` or Esc closes it |
-| 2.4 | Press `N`, `f`, `p`, `P` in any view, `z` and Enter in the graph, Space and `c` in the changes | A toast at the foot names the key's work and says it comes in a later stage; it goes after 4 seconds |
+| 2.4 | Press `N`, `f`, `p`, `P` in any view, Enter, `b` and `s` in the graph, Space and `c` in the changes | A toast at the foot names the key's work and says it comes in a later stage; it goes after 4 seconds |
 | 2.5 | Press Ctrl+Shift+P, or click the palette field | The same toast for the command search; the field lights under the pointer with a text cursor |
 | 2.6 | Press a key with no work (`q`, `4`) | Nothing happens |
 
@@ -62,3 +62,28 @@ What text can check (reading the repository, the git version, the command line) 
 | 5.4 | Start michi with no git on the PATH | The chip shows `✗ git was not found`; the keybar shows `⚠ git` in red |
 | 5.5 | Start michi with a git older than 2.38 on the PATH | A toast for 10 seconds names the version and asks to update; the keybar keeps `⚠ git 2.x.y` in amber |
 | 5.6 | Start `michi` in a worktree other than the main one | The chip names the repository (not the worktree's folder) and its branch; the count is the whole repository's |
+
+## 6. Graph
+
+Open a repository with merges, tags, a remote and a second worktree (`C:\dev\tsumugi` has them all).
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 6.1 | Open the repository | Within a second, the newest commits first: the graph, the subject with its names, the author, the date (the time today, `Yesterday` and the time, `M/D HH:MM` this year, `Y/M/D` before), the short hash; the trunk (main) runs down the leftmost lane; the header names the columns; only the graph has a scrollbar |
+| 6.2 | Look at the names before the subjects | A worktree's branch as a filled pill with a worktree mark (main in the trunk's colour, others in their lane's); a remote branch as a dashed outline (`origin/main`); a tag in amber with a diamond; hovering a worktree pill shows its folder |
+| 6.3 | Look at the merges into main | Each is folded: a ring on the trunk, a chip `▸N` (the commits inside) before the subject in the merged lane's colour; hovering the chip says how many it folds and names the branches still inside; the header's `Fold PRs z` toggle is lit |
+| 6.4 | Press `z`, then `z` again | The merges open (side lanes appear) with the toast "Unfolded all the merges."; again, they fold with a toast giving how many merges and commits; the header toggle follows (lit or grey) |
+| 6.5 | Click the header toggle | The same as `z` |
+| 6.6 | Select a folded merge with `j`, press `l` (or →), then `h` (or ←) | `l` opens it: the chip becomes `▾N` with a dashed outline and its commits show on their own lane; `h` folds it again |
+| 6.7 | Click a chip | Its merge opens or folds; the selection stays where it was |
+| 6.8 | Press `j` `k`, ↓ ↑, PageDown PageUp, Home End | The selected row (lit across) moves and the list scrolls to keep it in sight; End goes to the oldest row read so far |
+| 6.9 | Click a row; scroll with the wheel | The row is selected; the wheel scrolls the list without moving the selection |
+| 6.10 | Press `/` and type part of a subject, a hash or an author's name | The field at the right of the tool band takes the keys, with the count (`3 hits`) at its right; the text sits in the middle of the field; the other rows dim; the hits get marks on the scrollbar |
+| 6.11 | In the field, press Enter, Shift+Enter, ↓, ↑ | Enter selects the next hit (round to the first after the last), Shift+Enter the one before; the arrows move the selection; the field keeps the keys |
+| 6.12 | Press Esc in the field | The filter clears and every row is bright again |
+| 6.13 | Look at the scrollbar | Marks for the worktrees' heads (in their lanes' colours), the tags (amber) and the selected row (the accent); hovering a mark tells what it is |
+| 6.14 | Drag the thumb; click the track; click a mark | The thumb stays under the pointer to the release; a click on the track brings that part into the middle; a click on a mark selects its row |
+| 6.15 | Look at commits by dependabot[bot] and github-actions[bot] | The author reads `⚙ dependabot` and `⚙ actions`; hovering shows the full name |
+| 6.16 | Open a repository with more than 2000 commits | The first screen comes at once; scrolling near the foot reads on by itself; the last row says how many older commits are left and reads them when clicked; the thumb shrinks as the list grows |
+| 6.17 | Look at a second worktree's commits | They run on their own lane in the worktree's colour, from where they left main |
+| 6.18 | Narrow the window to 720 wide; switch to the light theme | The subject is cut with an ellipsis and the names drop before they crowd it; the filter field stays inside the band; every colour stays readable in light |

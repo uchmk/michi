@@ -13,15 +13,16 @@ name = "make-testcheck"
 test = true
 
 [build-dependencies]
-ito-winres = { git = "https://github.com/uchmk/ito", rev = "a0d3a550f6df584a7a3bbe97c842721806ed8bd7" }
+ito-winres = { git = "https://github.com/uchmk/ito", rev = "a54872d2309c5a82df69c851cecf20e17e20a28c" }
 
 [dependencies]
 michi-core = { path = "../michi-core" }
-# Every ito crate at the same rev as tsumugi and kura.
-ito-i18n = { git = "https://github.com/uchmk/ito", rev = "a0d3a550f6df584a7a3bbe97c842721806ed8bd7", features = ["edit"] }
-ito-common = { git = "https://github.com/uchmk/ito", rev = "a0d3a550f6df584a7a3bbe97c842721806ed8bd7", features = ["clock"] }
-ito-theme = { git = "https://github.com/uchmk/ito", rev = "a0d3a550f6df584a7a3bbe97c842721806ed8bd7" }
-ito-prefs = { git = "https://github.com/uchmk/ito", rev = "a0d3a550f6df584a7a3bbe97c842721806ed8bd7" }
+# Every ito crate at the same rev.
+ito-i18n = { git = "https://github.com/uchmk/ito", rev = "a54872d2309c5a82df69c851cecf20e17e20a28c", features = ["edit"] }
+ito-common = { git = "https://github.com/uchmk/ito", rev = "a54872d2309c5a82df69c851cecf20e17e20a28c", features = ["clock"] }
+ito-theme = { git = "https://github.com/uchmk/ito", rev = "a54872d2309c5a82df69c851cecf20e17e20a28c" }
+ito-prefs = { git = "https://github.com/uchmk/ito", rev = "a54872d2309c5a82df69c851cecf20e17e20a28c" }
+ito-graph = { git = "https://github.com/uchmk/ito", rev = "a54872d2309c5a82df69c851cecf20e17e20a28c", features = ["egui"] }
 # eframe's own defaults, but for `winit/default` (see tsumugi): the Wayland
 # frame is drawn without the title's text, which brings an unmaintained crate.
 eframe = { version = "0.36", default-features = false, features = ["accesskit", "default_fonts", "links", "wayland", "web_screen_reader", "wgpu", "x11"] }
