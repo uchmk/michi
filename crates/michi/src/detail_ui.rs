@@ -26,7 +26,8 @@ const MERGED_H: f32 = 22.0;
 const MERGED_HEAD_H: f32 = 44.0;
 /// A file's title over its diff.
 const TITLE_H: f32 = 32.0;
-/// A row of a diff.
+/// A row of a diff; a long line wraps, each more line of text taking the
+/// font's row height.
 const DIFF_H: f32 = 18.0;
 /// A line of a note.
 const NOTE_H: f32 = 34.0;
@@ -103,6 +104,9 @@ fn blocks(d: &Detail, merged: usize, all_files: bool) -> Vec<Block> {
     }
     for (k, f) in files.iter().enumerate() {
         out.push(Block::Title(k));
+        if f.not_utf8 {
+            out.push(Block::Note("detail.not_utf8"));
+        }
         if f.is_binary() {
             out.push(Block::Note("detail.binary_note"));
         } else if f.eol_only {
@@ -144,6 +148,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let wide = app.detail.wide;
     let mut none = None;
     let header_h = header(ui, app, d, pos2(r.left(), 0.0), r.width(), None, &mut none);
+    let wrap = Wrap::new(ui, r.width(), wide);
     let height = |b: &Block| -> f32 {
         match *b {
             Block::Header => header_h,
@@ -152,7 +157,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             Block::Gap => 6.0,
             Block::File(_) | Block::FilesMore(_) => FILE_H,
             Block::Title(_) => TITLE_H,
-            Block::Diff(k) => app.detail.rows(k).map_or(0.0, |rows| rows.len(wide) as f32 * DIFF_H) + 6.0,
+            Block::Diff(k) => app.detail.rows(k).map_or(0.0, |rows| wrap.tops(rows).last().copied().unwrap_or(0.0)) + 6.0,
             Block::Cut => DIFF_H + 6.0,
             Block::Note(_) => NOTE_H,
         }
@@ -266,7 +271,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             Block::Diff(f) => {
                 if let Some(rows) = app.detail.rows(f) {
                     let body = Rect::from_min_size(rr.min, vec2(rr.width(), rr.height() - 6.0));
-                    diff(ui, &p, &d.files[f], rows, body, r, wide);
+                    diff(ui, &p, &d.files[f], rows, body, r, &wrap);
                 }
             }
             Block::Cut => {
@@ -609,12 +614,58 @@ fn title(ui: &Ui, p: &Painter, app: &App, f: &File, rr: Rect, first: bool, live:
     out
 }
 
+/// How long lines wrap at the detail's width.
+struct Wrap {
+    wide: bool,
+    /// The text's width in a row, a narrow character's and a wide one's.
+    text_w: f32,
+    char_w: f32,
+    wide_w: f32,
+    /// The height of each more line of a wrapped one.
+    more_h: f32,
+}
+
+impl Wrap {
+    fn new(ui: &Ui, width: f32, wide: bool) -> Wrap {
+        let font = FontId::monospace(12.0);
+        let (char_w, wide_w, more_h) = ui.fonts_mut(|f| (f.glyph_width(&font, '0'), f.glyph_width(&font, '日'), f.row_height(&font)));
+        // The text's width as `unified_row` and `half_row` lay it out.
+        let text_w = if wide { ((width - 1.0) / 2.0).floor() - 4.0 - LN_W - SG_W } else { width - 6.0 - 2.0 * LN_W - SG_W };
+        Wrap { wide, text_w, char_w: char_w.max(1.0), wide_w: wide_w.max(1.0), more_h }
+    }
+
+    /// How many lines a line's text takes. Narrow characters alone fill a
+    /// line exactly; with wide ones each line may end short of the width by
+    /// less than one, so that much is kept off.
+    fn lines(&self, (narrow, wide): crate::detail::Cols) -> u32 {
+        if wide == 0 {
+            let per = (self.text_w / self.char_w).floor().max(1.0) as u32;
+            return narrow.div_ceil(per);
+        }
+        let text = narrow as f32 * self.char_w + wide as f32 * self.wide_w;
+        (text / (self.text_w - self.wide_w).max(self.wide_w)).ceil() as u32
+    }
+
+    /// Where each row of `rows` starts, from 0, and where the last ends.
+    fn tops(&self, rows: &crate::detail::Rows) -> Vec<f32> {
+        let mut y = 0.0;
+        let mut out = vec![0.0];
+        for n in rows.wraps(self.wide, |c| self.lines(c)) {
+            y += DIFF_H + (n - 1) as f32 * self.more_h;
+            out.push(y);
+        }
+        out
+    }
+}
+
 /// A file's diff in `body`, only the rows inside `view`.
-fn diff(ui: &Ui, p: &Painter, f: &File, rows: &crate::detail::Rows, body: Rect, view: Rect, wide: bool) {
-    let n = rows.len(wide);
-    let first = (((view.top() - body.top()) / DIFF_H).floor().max(0.0)) as usize;
-    let last = ((((view.bottom() - body.top()) / DIFF_H).ceil().max(0.0)) as usize).min(n);
-    let row = |k: usize| Rect::from_min_size(pos2(body.left(), body.top() + k as f32 * DIFF_H), vec2(body.width(), DIFF_H));
+fn diff(ui: &Ui, p: &Painter, f: &File, rows: &crate::detail::Rows, body: Rect, view: Rect, wrap: &Wrap) {
+    let wide = wrap.wide;
+    let tops = wrap.tops(rows);
+    let n = tops.len() - 1;
+    let first = tops.partition_point(|&t| body.top() + t <= view.top()).saturating_sub(1);
+    let last = tops.partition_point(|&t| body.top() + t < view.bottom()).min(n);
+    let row = |k: usize| Rect::from_min_max(pos2(body.left(), body.top() + tops[k]), pos2(body.right(), body.top() + tops[k + 1]));
     let line = |(h, l): At| &f.hunks[h as usize].lines[l as usize];
     for k in first..last {
         let rr = row(k);
@@ -647,7 +698,7 @@ fn hunk_row(p: &Painter, rr: Rect, header: &str) {
     let c = ito_theme::colors();
     p.rect_filled(rr, 0.0, c.blue.gamma_multiply(0.09));
     let p = p.with_clip_rect(rr.intersect(p.clip_rect()));
-    p.text(pos2(rr.left() + 8.0, rr.center().y), Align2::LEFT_CENTER, header, FontId::monospace(12.0), c.blue);
+    p.text(pos2(rr.left() + 8.0, rr.top() + DIFF_H / 2.0), Align2::LEFT_CENTER, header, FontId::monospace(12.0), c.blue);
 }
 
 /// A line's background, sign and its colour.
@@ -666,7 +717,7 @@ fn number(p: &Painter, cell: Rect, n: u32) {
     }
     let c = ito_theme::colors();
     p.text(
-        pos2(cell.right() - 6.0, cell.center().y),
+        pos2(cell.right() - 6.0, cell.top() + DIFF_H / 2.0),
         Align2::RIGHT_CENTER,
         n.to_string(),
         FontId::monospace(11.0),
@@ -674,8 +725,10 @@ fn number(p: &Painter, cell: Rect, n: u32) {
     );
 }
 
-/// The text of a line, its changed words marked, cut at `width`.
-fn line_text(ui: &Ui, p: &Painter, at: Pos2, l: &Line, mark: Option<Color32>, width: f32) {
+/// The text of a line, its changed words marked, wrapped at `width` in as
+/// many lines as `rows` has room for: `at` is the left of the first line's
+/// middle.
+fn line_text(ui: &Ui, p: &Painter, at: Pos2, l: &Line, mark: Option<Color32>, width: f32, rows: Rect) {
     if width < 8.0 {
         return;
     }
@@ -689,9 +742,11 @@ fn line_text(ui: &Ui, p: &Painter, at: Pos2, l: &Line, mark: Option<Color32>, wi
         };
         job.append(&text, 0.0, TextFormat { font_id: font.clone(), color: c.fg, background, ..Default::default() });
     }
-    job.wrap = TextWrapping::truncate_at_width(width);
+    let first_h = ui.fonts_mut(|f| f.row_height(&font));
+    let more = ((rows.bottom() - at.y - first_h / 2.0) / first_h).round().max(0.0) as usize;
+    job.wrap = TextWrapping { max_width: width, max_rows: 1 + more, break_anywhere: true, overflow_character: Some('…') };
     let g = ui.fonts_mut(|f| f.layout_job(job));
-    p.galley(pos2(at.x, at.y - g.size().y / 2.0), g, c.fg);
+    p.galley(pos2(at.x, at.y - first_h / 2.0), g, c.fg);
 }
 
 fn unified_row(ui: &Ui, p: &Painter, rr: Rect, l: &Line) {
@@ -704,9 +759,10 @@ fn unified_row(ui: &Ui, p: &Painter, rr: Rect, l: &Line) {
     number(p, old, l.old);
     number(p, new, l.new);
     let sx = new.right();
-    p.text(pos2(sx + SG_W / 2.0, rr.center().y), Align2::CENTER_CENTER, sign, FontId::monospace(12.0), ink);
+    let mid = rr.top() + DIFF_H / 2.0;
+    p.text(pos2(sx + SG_W / 2.0, mid), Align2::CENTER_CENTER, sign, FontId::monospace(12.0), ink);
     let tx = sx + SG_W;
-    line_text(ui, p, pos2(tx, rr.center().y), l, bg, rr.right() - 6.0 - tx);
+    line_text(ui, p, pos2(tx, mid), l, bg, rr.right() - 6.0 - tx, rr);
 }
 
 /// One side of a row side by side; nothing on this side is hatched.
@@ -729,9 +785,10 @@ fn half_row(ui: &Ui, p: &Painter, rr: Rect, l: Option<&Line>, old: bool) {
     }
     let ln = Rect::from_min_size(rr.min, vec2(LN_W, DIFF_H));
     number(p, ln, if old { l.old } else { l.new });
-    p.text(pos2(ln.right() + SG_W / 2.0, rr.center().y), Align2::CENTER_CENTER, sign, FontId::monospace(12.0), ink);
+    let mid = rr.top() + DIFF_H / 2.0;
+    p.text(pos2(ln.right() + SG_W / 2.0, mid), Align2::CENTER_CENTER, sign, FontId::monospace(12.0), ink);
     let tx = ln.right() + SG_W;
-    line_text(ui, p, pos2(tx, rr.center().y), l, bg, rr.right() - 4.0 - tx);
+    line_text(ui, p, pos2(tx, mid), l, bg, rr.right() - 4.0 - tx, rr);
 }
 
 #[cfg(test)]
@@ -750,6 +807,7 @@ mod tests {
             got[7..],
             [
                 Block::Title(0),
+                Block::Note("detail.not_utf8"),
                 Block::Diff(0),
                 Block::Title(1),
                 Block::Diff(1),

@@ -86,6 +86,8 @@ pub struct File {
     pub eol_only: bool,
     /// Its diff stops short, or was not reached.
     pub cut: bool,
+    /// A line of its diff is not UTF-8 (shown with U+FFFD in its place).
+    pub not_utf8: bool,
 }
 
 impl File {
@@ -126,6 +128,22 @@ pub struct Line {
 pub const TAB: usize = 4;
 
 impl Line {
+    /// How wide its text is: `(narrow, wide)`, the columns of its narrow
+    /// characters (tabs turned into spaces, a wide character taking two
+    /// columns for the tab stops) and how many wide characters (CJK) it has,
+    /// which a font may draw at other than two columns.
+    pub fn columns(&self) -> (usize, usize) {
+        let (mut col, mut wide) = (0, 0);
+        for ch in self.text.chars() {
+            let w = if ch == '\t' { TAB - col % TAB } else { unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0) };
+            if w == 2 && ch != '\t' {
+                wide += 1;
+            }
+            col += w;
+        }
+        (col - 2 * wide, wide)
+    }
+
     /// The text in pieces, each marked or not, tabs turned into spaces.
     pub fn pieces(&self) -> Vec<(String, bool)> {
         let mut cuts = Vec::new();
@@ -300,7 +318,7 @@ fn files(
                 Status::Renamed | Status::Copied => (field(out, &mut buf)?, Some(one)),
                 _ => (one, None),
             };
-            files.push(File { status, path, from, counts: Some((0, 0)), hunks: Vec::new(), eol_only: false, cut: false });
+            files.push(File { status, path, from, counts: Some((0, 0)), hunks: Vec::new(), eol_only: false, cut: false, not_utf8: false });
         } else {
             let mut p = f.splitn(3, '\t');
             let (added, deleted) = (p.next().unwrap_or(""), p.next().unwrap_or(""));
@@ -435,6 +453,7 @@ fn diff(out: &mut impl BufRead, files: &mut [File], cut: &mut bool, limits: &Lim
                 break false;
             }
             let Some(hunk) = file.hunks.last_mut() else { continue };
+            file.not_utf8 |= !is_utf8(line, n > buf.len() + 1);
             hunk.lines.push(Line { kind, old: o, new: w, text: text(line.get(1..).unwrap_or(b""), limits), marks: Vec::new() });
             kept += 1;
             file_kept += 1;
@@ -481,6 +500,12 @@ fn hunk_range(header: &str) -> Option<(u32, u32, u32, u32)> {
     let (a, b) = range(old)?;
     let (c, d) = range(new)?;
     Some((a, b, c, d))
+}
+
+/// Whether `bytes` are UTF-8, but for a character cut short at the end
+/// of a long line that was `cut`.
+fn is_utf8(bytes: &[u8], cut: bool) -> bool {
+    std::str::from_utf8(bytes).map_or_else(|e| cut && e.error_len().is_none(), |_| true)
 }
 
 /// A diff line's text, cut at [`Limits::line_chars`].
@@ -835,10 +860,35 @@ two
     }
 
     #[test]
+    fn columns_count_tabs_and_wide_characters() {
+        assert_eq!(line(Kind::Add, "").columns(), (0, 0));
+        assert_eq!(line(Kind::Add, "ab\tc").columns(), (5, 0));
+        assert_eq!(line(Kind::Add, "日本\tx").columns(), (5, 2));
+        assert_eq!(line(Kind::Add, "café").columns(), (4, 0));
+    }
+
+    #[test]
     fn hunk_ranges_are_read() {
         assert_eq!(hunk_range("@@ -1,3 +1,4 @@ fn x"), Some((1, 3, 1, 4)));
         assert_eq!(hunk_range("@@ -1 +0,0 @@"), Some((1, 1, 0, 0)));
         assert_eq!(hunk_range("@@@ -1 +1 @@@"), None);
+    }
+
+    #[test]
+    fn a_file_that_is_not_utf8_is_told() {
+        let r = TempRepo::new("show-latin1");
+        fs::write(r.repo.join("latin1.txt"), b"caf\xe9\n").unwrap();
+        fs::write(r.repo.join("utf8.txt"), "café\n").unwrap();
+        r.git(&r.repo, &["add", "-A"]);
+        r.git(&r.repo, &["commit", "-q", "-m", "two encodings"]);
+        let d = read(&r.repo, &head(&r), true, &never).unwrap();
+        let told: Vec<_> = d.files.iter().map(|f| (f.path.as_str(), f.not_utf8)).collect();
+        assert_eq!(told, [("latin1.txt", true), ("utf8.txt", false)]);
+        assert_eq!(d.files[0].hunks[0].lines[0].text, "caf\u{fffd}");
+        // A character cut short where a long line was cut is not counted.
+        assert!(is_utf8(&"é".as_bytes()[..1], true));
+        assert!(!is_utf8(&"é".as_bytes()[..1], false));
+        assert!(!is_utf8(b"\xe9 ", true));
     }
 
     #[test]

@@ -1906,7 +1906,7 @@ dependencies = [
 
 [[package]]
 name = "michi"
-version = "0.7.2"
+version = "0.8.0"
 dependencies = [
  "chrono",
  "eframe",
@@ -1924,11 +1924,12 @@ dependencies = [
 
 [[package]]
 name = "michi-core"
-version = "0.7.2"
+version = "0.8.0"
 dependencies = [
  "serde",
  "serde_json",
  "similar",
+ "unicode-width",
 ]
 
 [[package]]

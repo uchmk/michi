@@ -1,5 +1,5 @@
 //! The branches, the remote branches and the tags, from `git for-each-ref`,
-//! and the trunk: the branch the graph keeps on its left edge.
+//! the stashes, and the trunk: the branch the graph keeps on its left edge.
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -22,15 +22,27 @@ pub struct RemoteRef {
     pub id: Oid,
 }
 
+/// A stash: its commit and what `git stash list` says of it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Stash {
+    pub id: Oid,
+    pub subject: String,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Refs {
     pub locals: Vec<Ref>,
+    /// How far each local branch with an upstream is ahead of it and
+    /// behind it: name to `(ahead, behind)`.
+    pub track: HashMap<String, (u32, u32)>,
     pub remotes: Vec<RemoteRef>,
     /// Peeled: an annotated tag's commit, not the tag object.
     pub tags: Vec<Ref>,
     /// Each remote's default branch, from `refs/remotes/<remote>/HEAD`:
     /// `(remote, branch)`.
     pub defaults: Vec<(String, String)>,
+    /// Newest first.
+    pub stashes: Vec<Stash>,
 }
 
 /// What points at one commit, for the pills on its row.
@@ -54,18 +66,23 @@ pub struct Trunk {
     pub remote: Option<String>,
 }
 
-const FORMAT: &str = "--format=%(refname)%00%(objectname)%00%(*objectname)%00%(symref)";
+const FORMAT: &str = "--format=%(refname)%00%(objectname)%00%(*objectname)%00%(symref)%00%(upstream:track,nobracket)";
 
 impl Refs {
     /// The refs of the repository `dir` is in.
     pub fn read(dir: &Path) -> Result<Refs, git::Error> {
-        let (remotes, out) = git::both(
-            || git::read_text(dir, &["remote"]),
+        let ((remotes, stashes), out) = git::both(
+            || {
+                // No stash list (a bare repository) is no stashes.
+                git::both(|| git::read_text(dir, &["remote"]), || git::read_text(dir, &["stash", "list", "--format=%H%x00%gs"]))
+            },
             || git::read(dir, &["for-each-ref", FORMAT, "refs/heads", "refs/remotes", "refs/tags"]),
         );
         let (remotes, out) = (remotes?, out?);
         let remotes: Vec<&str> = remotes.lines().map(str::trim).filter(|r| !r.is_empty()).collect();
-        Ok(Refs::parse(&out, &remotes))
+        let mut refs = Refs::parse(&out, &remotes);
+        refs.stashes = parse_stashes(&stashes.unwrap_or_default());
+        Ok(refs)
     }
 
     /// `for-each-ref`'s lines, NUL between the fields. A remote branch is
@@ -77,6 +94,7 @@ impl Refs {
         for line in text.lines() {
             let mut f = line.split('\0');
             let (Some(name), Some(id), peeled, symref) = (f.next(), f.next(), f.next(), f.next().unwrap_or("")) else { continue };
+            let track = f.next().unwrap_or("");
             if let Some(rest) = name.strip_prefix("refs/remotes/") {
                 let (remote, branch) = split_remote(rest, remotes);
                 if !symref.is_empty() {
@@ -94,6 +112,9 @@ impl Refs {
             } else if let Some(branch) = name.strip_prefix("refs/heads/") {
                 let Some(id) = Oid::parse(id) else { continue };
                 if symref.is_empty() {
+                    if let Some(t) = parse_track(track) {
+                        refs.track.insert(branch.to_owned(), t);
+                    }
                     refs.locals.push(Ref { name: branch.to_owned(), id });
                 }
             } else if let Some(tag) = name.strip_prefix("refs/tags/") {
@@ -158,6 +179,33 @@ impl Refs {
     }
 }
 
+/// `%(upstream:track,nobracket)`: `ahead 2, behind 1`, `ahead 2`, `behind 1`,
+/// empty when even with it, or `gone`. `None` for no upstream or a gone one.
+fn parse_track(text: &str) -> Option<(u32, u32)> {
+    if text == "gone" {
+        return None;
+    }
+    let mut t = (0, 0);
+    for part in text.split(", ").filter(|p| !p.is_empty()) {
+        match part.split_once(' ') {
+            Some(("ahead", n)) => t.0 = n.parse().ok()?,
+            Some(("behind", n)) => t.1 = n.parse().ok()?,
+            _ => return None,
+        }
+    }
+    Some(t)
+}
+
+/// `git stash list --format=%H%x00%gs`.
+fn parse_stashes(text: &str) -> Vec<Stash> {
+    text.lines()
+        .filter_map(|l| {
+            let (id, subject) = l.split_once('\0')?;
+            Some(Stash { id: Oid::parse(id)?, subject: subject.to_owned() })
+        })
+        .collect()
+}
+
 fn split_remote<'a>(rest: &'a str, remotes: &[&str]) -> (&'a str, &'a str) {
     let known = remotes
         .iter()
@@ -200,8 +248,8 @@ mod tests {
     #[test]
     fn for_each_ref_lines_are_sorted_out() {
         let lines = [
-            format!("refs/heads/main\0{}\0\0", id('1')),
-            format!("refs/heads/feat/x\0{}\0\0", id('2')),
+            format!("refs/heads/main\0{}\0\0\0ahead 2, behind 1", id('1')),
+            format!("refs/heads/feat/x\0{}\0\0\0", id('2')),
             format!("refs/remotes/origin/HEAD\0{}\0\0refs/remotes/origin/main", id('1')),
             format!("refs/remotes/origin/main\0{}\0\0", id('3')),
             format!("refs/remotes/my/fork/feat/x\0{}\0\0", id('2')),
@@ -211,6 +259,8 @@ mod tests {
         ];
         let r = Refs::parse(lines.join("\n").as_bytes(), &["origin", "my/fork"]);
         assert_eq!(r.locals.iter().map(|x| x.name.as_str()).collect::<Vec<_>>(), ["main", "feat/x"]);
+        assert_eq!(r.track.get("main"), Some(&(2, 1)));
+        assert_eq!(r.track.get("feat/x"), Some(&(0, 0)), "an empty track is even with its upstream");
         let remotes: Vec<_> = r.remotes.iter().map(|x| (x.remote.as_str(), x.name.as_str())).collect();
         assert_eq!(remotes, [("origin", "main"), ("my/fork", "feat/x"), ("stray", "y")]);
         assert_eq!(r.defaults, [("origin".to_owned(), "main".to_owned())]);
@@ -223,6 +273,32 @@ mod tests {
         let two = &labels[&Oid::parse(&id('2')).unwrap()];
         assert_eq!(two.remotes, [("my/fork".to_owned(), "feat/x".to_owned())]);
         assert_eq!(r.remote_names(), ["my/fork", "origin", "stray"]);
+    }
+
+    #[test]
+    fn tracks_are_read() {
+        assert_eq!(parse_track("ahead 3"), Some((3, 0)));
+        assert_eq!(parse_track("behind 12"), Some((0, 12)));
+        assert_eq!(parse_track("gone"), None);
+        assert_eq!(parse_track("odd"), None);
+    }
+
+    #[test]
+    fn upstreams_and_stashes_are_read() {
+        let r = TempRepo::new("refs-track");
+        std::fs::write(r.repo.join("a.txt"), "one\n").unwrap();
+        r.git(&r.repo, &["add", "a.txt"]);
+        r.git(&r.repo, &["commit", "-q", "-m", "a"]);
+        r.git(&r.repo, &["remote", "add", "origin", "https://example.invalid/r.git"]);
+        r.git(&r.repo, &["update-ref", "refs/remotes/origin/main", "HEAD"]);
+        r.git(&r.repo, &["branch", "-q", "-u", "origin/main", "main"]);
+        r.git(&r.repo, &["commit", "-q", "--allow-empty", "-m", "b"]);
+        std::fs::write(r.repo.join("a.txt"), "two\n").unwrap();
+        r.git(&r.repo, &["stash", "push", "-q", "-m", "half done"]);
+        let refs = Refs::read(&r.repo).unwrap();
+        assert_eq!(refs.track.get("main"), Some(&(1, 0)));
+        let stashes: Vec<_> = refs.stashes.iter().map(|s| s.subject.as_str()).collect();
+        assert_eq!(stashes, ["On main: half done"]);
     }
 
     #[test]

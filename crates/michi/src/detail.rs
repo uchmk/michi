@@ -35,11 +35,18 @@ pub enum Paired {
     Pair(Option<At>, Option<At>),
 }
 
+/// A line's text's width: narrow columns and wide characters.
+pub type Cols = (u32, u32);
+
 /// A file's diff, cut into rows both ways.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Rows {
     pub unified: Vec<Unified>,
     pub paired: Vec<Paired>,
+    /// The columns each row's text takes (0 for a hunk's line, which is
+    /// cut, not wrapped), in one column and side by side (the wider half).
+    unified_cols: Vec<Cols>,
+    paired_cols: Vec<[Cols; 2]>,
 }
 
 impl Rows {
@@ -78,14 +85,37 @@ impl Rows {
             }
             flush(&mut dels, &mut adds, &mut paired);
         }
-        Rows { unified, paired }
+        let cols = |at: Option<At>| {
+            at.map_or((0, 0), |(h, l)| {
+                let (n, w) = file.hunks[h as usize].lines[l as usize].columns();
+                (n as u32, w as u32)
+            })
+        };
+        let unified_cols = unified
+            .iter()
+            .map(|r| match *r {
+                Unified::Hunk(_) => (0, 0),
+                Unified::Line(at) => cols(Some(at)),
+            })
+            .collect();
+        let paired_cols = paired
+            .iter()
+            .map(|r| match *r {
+                Paired::Hunk(_) => [(0, 0); 2],
+                Paired::Pair(old, new) => [cols(old), cols(new)],
+            })
+            .collect();
+        Rows { unified, paired, unified_cols, paired_cols }
     }
 
-    pub fn len(&self, wide: bool) -> usize {
+    /// How many lines of text each row takes, `lines` telling it for a
+    /// line's text (from its `Line::columns`); side by side, a row takes its
+    /// wider half's.
+    pub fn wraps<'a>(&'a self, wide: bool, lines: impl Fn(Cols) -> u32 + 'a) -> Box<dyn Iterator<Item = u32> + 'a> {
         if wide {
-            self.paired.len()
+            Box::new(self.paired_cols.iter().map(move |&[a, b]| lines(a).max(lines(b)).max(1)))
         } else {
-            self.unified.len()
+            Box::new(self.unified_cols.iter().map(move |&c| lines(c).max(1)))
         }
     }
 }
@@ -214,6 +244,7 @@ pub mod fixture {
                 hunks: if k == 2 { Vec::new() } else { vec![Hunk { header: "@@ -1,3 +1,4 @@ fn main".into(), lines }] },
                 eol_only: false,
                 cut: k == 3,
+                not_utf8: k == 0,
             }
         };
         Detail {
@@ -249,6 +280,7 @@ mod tests {
             hunks: vec![hunk],
             eol_only: false,
             cut: false,
+            not_utf8: false,
         }
     }
 
@@ -274,8 +306,23 @@ mod tests {
                 p(Some(6), None),
             ]
         );
-        assert_eq!(r.len(true), 7);
-        assert_eq!(r.len(false), 8);
+        assert_eq!(r.wraps(true, |_| 1).count(), 7);
+        assert_eq!(r.wraps(false, |_| 1).count(), 8);
+    }
+
+    #[test]
+    fn long_lines_wrap_at_the_width() {
+        use Kind::*;
+        let long = "x".repeat(25);
+        let f = file(&[(Del, "short"), (Add, &long), (Context, "日本語の行")]);
+        let r = Rows::of(&f);
+        // A wide character two columns here: 25 columns in 10 is 3 lines.
+        let per = |n: u32| move |(c, w): Cols| (c + 2 * w).div_ceil(n);
+        assert_eq!(r.wraps(false, per(10)).collect::<Vec<_>>(), [1, 1, 3, 1]);
+        assert_eq!(r.wraps(false, per(4)).collect::<Vec<_>>(), [1, 2, 7, 3]);
+        // Side by side, a pair takes the wider half's lines.
+        assert_eq!(r.wraps(true, per(10)).collect::<Vec<_>>(), [1, 3, 1]);
+        assert_eq!(r.wraps(true, per(1)).collect::<Vec<_>>(), [1, 25, 10]);
     }
 
     #[test]

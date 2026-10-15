@@ -107,8 +107,13 @@ pub struct Graph {
     /// The worktrees with uncommitted changes, the last written first: the
     /// rows at the top.
     wips: Vec<Wip>,
-    /// The history's row for each row laid out under the WIP rows, in order.
+    /// The history's row for each row shown under the WIP rows, in order.
     shown: Vec<u32>,
+    /// How many of `shown` the layout should hold at least: the rows down
+    /// to the lowest one in sight so far. The rest is laid out when it
+    /// comes in sight, so folding or a hit near the top does not lay out
+    /// a long history to its end.
+    want: usize,
     done: bool,
     total: Option<u64>,
     error: Option<git::Error>,
@@ -123,6 +128,9 @@ pub struct Graph {
     query: String,
     /// The history's rows the filter hits, in order.
     hits: Vec<u32>,
+    /// What the filter looks in, for each of the history's rows read so
+    /// far: made as they are read, so the filter's first key is quick.
+    hay: Vec<Hay>,
     marks: Vec<(u32, Mark)>,
     /// How many rows are in sight (the window sets it), for Page Up/Down.
     pub page: u32,
@@ -145,6 +153,7 @@ impl Default for Graph {
             pinned: HashSet::new(),
             wips: Vec::new(),
             shown: Vec::new(),
+            want: WANT,
             done: false,
             total: None,
             error: None,
@@ -154,6 +163,7 @@ impl Default for Graph {
             filter: String::new(),
             query: String::new(),
             hits: Vec::new(),
+            hay: Vec::new(),
             marks: Vec::new(),
             page: 20,
             reveal: false,
@@ -195,6 +205,7 @@ impl Graph {
         self.error = None;
         self.asking = false;
         self.hits.clear();
+        self.hay.clear();
         self.relayout();
     }
 
@@ -208,6 +219,7 @@ impl Graph {
         }
         let from = self.history.len();
         self.history.extend(batch);
+        self.fill_hay();
         self.done = done;
         self.asking = false;
         self.hit_from(from);
@@ -233,7 +245,8 @@ impl Graph {
 
     /// Lays the history out again from the top: a row read later can change
     /// the edges of those above it (a parent folded away), so nothing laid
-    /// out is kept.
+    /// out is kept. Only the rows down to `want` are laid out now;
+    /// [`lay_out_to`](Self::lay_out_to) does the rest as they come in sight.
     fn relayout(&mut self) {
         let trunk = self.history.setup().trunk.as_ref().map(|t| t.name.as_str());
         let mut layout = if trunk.is_some() { Layout::new() } else { Layout::without_trunk() };
@@ -246,21 +259,9 @@ impl Graph {
             let row = ito_graph::Row { id: w.commit, parents: &[head], name, trunk: name.is_some() && name == trunk, dot: Dot::Wip };
             layout.push(row, &mut self.colors);
         }
-        for (i, r) in self.history.rows().iter().enumerate() {
-            let i = i as u32;
-            if !self.history.shown(i, &self.fold) {
-                continue;
-            }
-            let parents = self.history.parents_shown(i, &self.fold);
-            let dot = if r.commit.parents.len() > 1 { Dot::Merge } else { Dot::Commit };
-            let row = ito_graph::Row { id: r.commit.id, parents: &parents, name: r.name.as_deref(), trunk: r.main, dot };
-            layout.push(row, &mut self.colors);
-            self.shown.push(i);
-        }
-        if self.done {
-            layout.finish();
-        }
+        self.shown.extend((0..self.history.len() as u32).filter(|&i| self.history.shown(i, &self.fold)));
         self.layout = layout;
+        self.extend_layout(self.want);
         // A commit folded away gives the selection to its merge; one gone
         // (read again after a rebase) to the top.
         // A WIP row selected stays as it is.
@@ -281,16 +282,53 @@ impl Graph {
         self.mark();
     }
 
+    /// Lays out the shown rows down to the `n`th (or all of them), and
+    /// finishes the layout when the whole history is in it.
+    fn extend_layout(&mut self, n: usize) {
+        let top = self.wips.len();
+        let n = n.min(self.shown.len());
+        let from = self.layout.len().saturating_sub(top).min(n);
+        for &i in &self.shown[from..n] {
+            let r = &self.history.rows()[i as usize];
+            let parents = self.history.parents_shown(i, &self.fold);
+            let dot = if r.commit.parents.len() > 1 { Dot::Merge } else { Dot::Commit };
+            let row = ito_graph::Row { id: r.commit.id, parents: &parents, name: r.name.as_deref(), trunk: r.main, dot };
+            self.layout.push(row, &mut self.colors);
+        }
+        if self.done && self.layout.len() == top + self.shown.len() && !self.layout.finished() {
+            self.layout.finish();
+        }
+    }
+
+    /// Row `k` is in sight: lays out down to there and a screen or so
+    /// below.
+    pub fn lay_out_to(&mut self, k: u32) {
+        let n = (k as usize).saturating_sub(self.wips.len()) + WANT;
+        if n > self.want {
+            self.want = n;
+        }
+        if self.layout.len() < self.wips.len() + self.want.min(self.shown.len()) {
+            self.extend_layout(self.want);
+        }
+    }
+
     /// The filter's hits among the history's rows from `from` on.
     fn hit_from(&mut self, from: usize) {
         if self.query.is_empty() {
             return;
         }
-        for (i, r) in self.history.rows().iter().enumerate().skip(from) {
-            if hits(&self.query, &r.commit, &self.history) {
+        self.fill_hay();
+        for (i, h) in self.hay.iter().enumerate().skip(from) {
+            if h.hits(&self.query) {
                 self.hits.push(i as u32);
             }
         }
+    }
+
+    /// Makes what the filter looks in for the rows read since the last time.
+    fn fill_hay(&mut self) {
+        let rows = &self.history.rows()[self.hay.len()..];
+        self.hay.extend(rows.iter().map(|r| Hay::of(&r.commit, &self.history)));
     }
 
     /// The scrollbar's marks: a hit, else a tag; a worktree's head over both.
@@ -312,7 +350,8 @@ impl Graph {
             if let Some(branch) = heads.get(&c.id) {
                 let color = match branch {
                     Some(b) => self.colors.of(b),
-                    None => self.layout.rows()[k].color,
+                    // Not laid out yet: the trunk's colour till it is.
+                    None => self.layout.row(k as u32).map_or(TRUNK_COLOR, |p| p.color),
                 };
                 mark = Some(Mark::Head(color));
             }
@@ -395,9 +434,14 @@ impl Graph {
         self.layout.row(k)
     }
 
-    /// The row the selected commit is on.
+    /// The row the selected commit is on (laid out or not).
     pub fn selected_row(&self) -> Option<u32> {
-        self.selected.and_then(|id| self.layout.find(&id))
+        let id = self.selected?;
+        if let Some(k) = self.wips.iter().position(|w| w.commit == id) {
+            return Some(k as u32);
+        }
+        let i = self.history.find(&id)?;
+        self.shown.binary_search(&i).ok().map(|k| (k + self.wips.len()) as u32)
     }
 
     /// A reading has started (the refs are in).
@@ -648,12 +692,22 @@ impl Graph {
         }
         self.filter = text.to_owned();
         let query = text.trim().to_lowercase();
-        if query != self.query {
-            self.query = query;
+        if query == self.query {
+            return;
+        }
+        // A longer query hits only what the shorter one did: typing on
+        // looks only among the hits.
+        let narrower = !self.query.is_empty() && query.starts_with(&self.query);
+        self.query = query;
+        if narrower {
+            self.fill_hay();
+            let (hay, query) = (&self.hay, &self.query);
+            self.hits.retain(|&i| hay[i as usize].hits(query));
+        } else {
             self.hits.clear();
             self.hit_from(0);
-            self.mark();
         }
+        self.mark();
     }
 
     /// Selects the next hit below the selection (`back`: above), going round
@@ -709,15 +763,44 @@ impl Graph {
     }
 }
 
-/// Whether the filter's `query` (lower case) hits `c`.
-fn hits(query: &str, c: &Commit, history: &History) -> bool {
-    let has = |s: &str| s.to_lowercase().contains(query);
-    if c.id.starts_with(query) || has(&c.subject) || has(&c.author) {
-        return true;
+/// How many rows below the lowest one in sight are laid out ahead.
+const WANT: usize = 300;
+
+/// What the filter looks in for one commit.
+struct Hay {
+    /// The hash, then the subject, the author and the names in lower case,
+    /// each after a NUL (which a query cannot hold).
+    text: Box<str>,
+    /// Where the hash ends.
+    hash: usize,
+}
+
+impl Hay {
+    fn of(c: &Commit, history: &History) -> Hay {
+        let mut text = c.id.to_string();
+        let hash = text.len();
+        let mut add = |s: &str| {
+            text.push('\0');
+            text.push_str(&s.to_lowercase());
+        };
+        add(&c.subject);
+        add(&c.author);
+        if let Some(l) = history.labels(&c.id) {
+            for n in l.locals.iter().chain(&l.tags) {
+                add(n);
+            }
+            for (r, n) in &l.remotes {
+                add(&format!("{r}/{n}"));
+            }
+        }
+        Hay { text: text.into_boxed_str(), hash }
     }
-    history
-        .labels(&c.id)
-        .is_some_and(|l| l.locals.iter().chain(&l.tags).any(|n| has(n)) || l.remotes.iter().any(|(r, n)| has(&format!("{r}/{n}"))))
+
+    /// Whether the filter's `query` (lower case) hits it: its hash starts
+    /// with it, or its subject, author or one of its names holds it.
+    fn hits(&self, query: &str) -> bool {
+        self.text[..self.hash].starts_with(query) || self.text[self.hash..].contains(query)
+    }
 }
 
 /// A bot's name as the graph shows it: `github-actions[bot]` is `⚙ actions`.
@@ -778,6 +861,7 @@ pub(crate) mod fixture {
             hunks: Vec::new(),
             eol_only: false,
             cut: false,
+            not_utf8: false,
         };
         Wip {
             path: path.into(),
@@ -812,7 +896,7 @@ pub(crate) mod fixture {
                 RemoteRef { remote: "origin".into(), name: "feat".into(), id: id(3) },
             ],
             tags: vec![Ref { name: "v1".into(), id: id(4) }],
-            defaults: vec![],
+            ..Refs::default()
         };
         let wt = |path: &str, head: u32, branch: Option<&str>| Worktree {
             path: path.into(),
@@ -1106,9 +1190,40 @@ mod tests {
         assert!(g.next_hit(true), "and back round to the foot");
         assert_eq!(at(&g), "first");
 
+        // Typing on looks among the hits; taking a letter off, afresh.
+        g.set_filter("f2");
+        assert_eq!(g.hit_count(), Some(1));
+        g.set_filter("f");
+        assert_eq!(g.hit_count(), Some(4));
+
         g.set_filter("");
         assert!(!g.next_hit(false));
         assert!(!g.dimmed(1));
+    }
+
+    #[test]
+    fn a_long_history_is_laid_out_as_it_comes_in_sight() {
+        let mut g = Graph::default();
+        g.start(1, setup());
+        let at = |n: u32| Oid::parse(&format!("{:040x}", n + 0x1000)).unwrap();
+        let chain: Vec<Commit> = (1..=1000)
+            .rev()
+            .map(|n| Commit { id: at(n), parents: (n > 1).then(|| at(n - 1)).into_iter().collect(), ..commit(1, &[], "c") })
+            .collect();
+        g.commits(1, chain, true);
+        assert_eq!(g.len(), 1000);
+        assert_eq!(g.layout().len(), WANT, "the first screens only");
+        assert!(!g.layout().finished());
+        // The selection's row is known before it is laid out.
+        g.end();
+        assert_eq!(g.selected_row(), Some(999));
+        g.lay_out_to(999);
+        assert_eq!(g.layout().len(), 1000);
+        assert!(g.layout().finished());
+        assert!(g.placed(999).is_some());
+        // Laid out again (folding), it keeps what was in sight.
+        g.toggle_fold();
+        assert_eq!(g.layout().len(), 1000);
     }
 
     #[test]
@@ -1241,7 +1356,16 @@ mod tests {
         timed("z (fold)", &mut || {
             g.toggle_fold();
         });
-        timed("filter `part 1234`", &mut || g.set_filter("part 1234"));
-        timed("End", &mut || g.end());
+        timed("filter `p`", &mut || g.set_filter("p"));
+        timed("filter `part 1234` typed on", &mut || g.set_filter("part 1234"));
+        timed("filter `1234` afresh", &mut || g.set_filter("1234"));
+        timed("End, laid out to the end", &mut || {
+            g.end();
+            g.lay_out_to(g.len());
+        });
+        timed("z (unfold) at the end", &mut || {
+            g.toggle_fold();
+            g.lay_out_to(g.len());
+        });
     }
 }

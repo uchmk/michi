@@ -88,6 +88,7 @@ Open a repository with merges, tags, a remote and a second worktree (`C:\dev\tsu
 | 6.17 | Look at a second worktree's commits | They run on their own lane in the worktree's colour, from where they left main |
 | 6.18 | Narrow the window to 720 wide; switch to the light theme | The subject is cut with an ellipsis and the names drop before they crowd it; the filter field stays inside the band; every colour stays readable in light |
 | 6.19 | Open a repository with more than 2000 commits and no `.git\objects\info\commit-graph*` (a fresh `git clone` of a long history), wait a few seconds, close michi and open it again | `.git\objects\info\commit-graphs` appears while michi is open, with no toast; the history looks the same, and the second opening shows the first screen sooner. A repository with fewer commits gets none |
+| 6.20 | In a history of 100,000 commits, press `z` to fold and unfold, and type in the filter (`/`) | Each answers at once, with no stall while typing; scrolling far down lays the rows out as they come in sight. After `End` has read the whole history, `z` there may take a moment |
 
 ## 7. Side column
 
@@ -95,10 +96,11 @@ The same repository as section 6.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 7.1 | Look at the column left of the graph | Headings with counts: worktree, Branches, Remotes, Tags; the worktree the window is on is lit; each worktree and branch has a dot in its lane's colour; there is no scrollbar, the wheel scrolls it |
+| 7.1 | Look at the column left of the graph | Headings with counts: worktree, Branches, Remotes, Tags and Stash (when there is one); the worktree the window is on is lit; each worktree and branch has a dot in its lane's colour; there is no scrollbar, the wheel scrolls it |
 | 7.2 | Click a worktree, a branch and a tag | The graph selects that commit and scrolls it into sight; the detail follows |
 | 7.3 | Click a group (`test/`, `origin`) | It opens to list its branches further in, with the count at its right; again, it closes; hovering a branch inside shows its full name |
 | 7.4 | Click a branch whose commit is older than what is read | The graph reads on until it gets there and selects it; one that is not in the history gives the toast `Not in the history: <hash>` |
+| 7.5 | Have a branch ahead of its upstream and one behind (commit without pushing; `git fetch` after a push from elsewhere), and a stash (`git stash`) | The branch and its worktree show `↑N`, `↓N` or both in dim at the right; no number when even or with no upstream. A `Stash` section comes last with each stash's message and a hollow square; hovering shows its hash; a click does nothing yet |
 
 ## 8. Detail and diff
 
@@ -114,6 +116,8 @@ The same repository as section 6.
 | 8.8 | Select a commit with a binary file, and a big one | The binary file says it has no diff to show; a very long diff ends with `… the rest is left out` |
 | 8.9 | Narrow the window below 900 wide | The side column goes and the detail stacks under the graph, still readable; Enter still spreads the diff |
 | 8.10 | Switch to the light theme | The diff's greens, reds and blues and the hatching stay readable |
+| 8.11 | Look at a commit adding a file that is not UTF-8 (Latin-1 `café`) | Under the file's name: `Not UTF-8: bytes that are not are shown as �`; the bytes show as that mark (a box in this font) in the diff |
+| 8.12 | Look at the diff of a long line, in one column and side by side (`Enter`), in a narrow and a wide window; also a long Japanese line | It wraps at the pane's edge with the next part under it, the line number only on the first line; the row is as tall as its text, with no empty lines under a Japanese one and nothing cut off with `…` |
 
 ## 9. Uncommitted changes
 

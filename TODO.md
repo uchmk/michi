@@ -15,11 +15,12 @@
   - [x] Measure the first screen on a 100k-commit repository (v0.2.1, `scripts/make-history.py` and the ignored test `big_history`):
     0.09–0.11 s with a commit-graph, 0.31 s without (git's `--date-order` walks everything first). Fully read in about 0.6 s
   - [x] Write a commit-graph in the background when the repository has none (#2, v0.7.2): 0.31 s → 0.12 s on the next opening
-  - [ ] Folding and the filter cost 56 ms and 42 ms at 100k commits, on the UI thread at every key: lay out on the reading thread, or only
-    the rows that changed
+  - [x] Folding and the filter cost 56 ms and 42 ms at 100k commits, on the UI thread at every key: lay out on the reading thread, or only
+    the rows that changed (v0.8.0: rows are laid out as they come in sight, the filter keeps each commit's text; `z` 3.5 ms, a filter key
+    4–7 ms. `z` at the end of a fully read history still takes 72 ms)
   - [x] The left column and the commit detail with its diff (v0.3.0)
-  - [ ] The detail's leftovers: tell a file that is not UTF-8 (now read lossily), wrap long diff lines (now cut at the pane's edge),
-    the stash section and the `↑N` / `↓N` counts in the left column
+  - [x] The detail's leftovers: tell a file that is not UTF-8 (now read lossily), wrap long diff lines (now cut at the pane's edge),
+    the stash section and the `↑N` / `↓N` counts in the left column (v0.8.0; a click on a stash does nothing until the stash stage)
   - [x] The WIP rows (uncommitted changes of each worktree) and the Claude in that worktree in their detail (v0.4.0); untracked files
     over 10 MB, or past 2000 files or 50 MB in all, are left out and named
   - [x] A worktree whose only change is a big untracked folder has no WIP row: say so somewhere (the worktree table, v0.5.0)

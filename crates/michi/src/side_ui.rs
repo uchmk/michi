@@ -1,8 +1,9 @@
-//! The side column: the worktrees, the branches, the remote branches and
-//! the tags, each a click away from its commit in the graph. It scrolls by
-//! the wheel, with no scrollbar (docs/design.md: the graph's is the one).
+//! The side column: the worktrees, the branches, the remote branches,
+//! the tags and the stashes, each a click away from its commit in the graph
+//! (a stash not yet). It scrolls by the wheel, with no scrollbar
+//! (docs/design.md: the graph's is the one).
 
-use egui::{pos2, vec2, Align2, CornerRadius, CursorIcon, FontId, Id, Rect, Sense, Shape, Stroke, Ui};
+use egui::{pos2, vec2, Align2, CornerRadius, CursorIcon, FontId, Id, Rect, Sense, Shape, Stroke, StrokeKind, Ui};
 use michi_core::oid::Oid;
 use michi_core::paths;
 
@@ -31,6 +32,9 @@ pub struct Row {
     /// The commit a click selects.
     pub id: Option<Oid>,
     pub tip: Option<String>,
+    /// On the right: how far a branch is ahead of its upstream and behind
+    /// it (`↑2 ↓1`).
+    pub note: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -53,6 +57,7 @@ pub enum Kind {
         color: u8,
     },
     Tag,
+    Stash,
 }
 
 impl Row {
@@ -69,9 +74,28 @@ pub fn rows(app: &App) -> Vec<Row> {
     let setup = app.graph.setup();
     let g = &app.graph;
     let mut out = Vec::new();
-    let item = |kind, text: String, sub, id, tip| Row { kind, text, sub, id, tip };
-    let heading =
-        |key: &'static str, n: usize| Row { kind: Kind::Heading(n), text: app.tr(key).to_owned(), sub: false, id: None, tip: None };
+    let note = |branch: Option<&str>| match branch.and_then(|b| setup.refs.track.get(b)) {
+        Some(&(ahead, behind)) => {
+            let mut s = String::new();
+            if ahead > 0 {
+                s = format!("↑{ahead}");
+            }
+            if behind > 0 {
+                s = format!("{s} ↓{behind}").trim_start().to_owned();
+            }
+            s
+        }
+        None => String::new(),
+    };
+    let item = |kind, text: String, sub, id, tip| Row { kind, text, sub, id, tip, note: String::new() };
+    let heading = |key: &'static str, n: usize| Row {
+        kind: Kind::Heading(n),
+        text: app.tr(key).to_owned(),
+        sub: false,
+        id: None,
+        tip: None,
+        note: String::new(),
+    };
 
     // The worktrees; the one the window is on lit.
     let top = match &app.repo {
@@ -86,7 +110,9 @@ pub fn rows(app: &App) -> Vec<Row> {
             let folder = path.trim_end_matches('/').rsplit('/').next().unwrap_or(&path).to_owned();
             let text = w.branch.clone().unwrap_or(folder);
             let cur = top.as_deref() == Some(paths::key(&w.path).as_str());
-            out.push(item(Kind::Worktree { color: g.color_of(&text), cur }, text, false, Oid::parse(&w.head), Some(path.into_owned())));
+            let note = note(w.branch.as_deref());
+            let row = item(Kind::Worktree { color: g.color_of(&text), cur }, text, false, Oid::parse(&w.head), Some(path.into_owned()));
+            out.push(Row { note, ..row });
         }
     }
 
@@ -96,7 +122,8 @@ pub fn rows(app: &App) -> Vec<Row> {
     if !locals.is_empty() {
         out.push(heading("side.branches", locals.len()));
         for r in locals.iter().filter(|r| !r.name.contains('/')) {
-            out.push(item(Kind::Branch { color: g.color_of(&r.name) }, r.name.clone(), false, Some(r.id), None));
+            let row = item(Kind::Branch { color: g.color_of(&r.name) }, r.name.clone(), false, Some(r.id), None);
+            out.push(Row { note: note(Some(&r.name)), ..row });
         }
         let mut groups: Vec<&str> = locals.iter().filter_map(|r| r.name.split_once('/').map(|(p, _)| p)).collect();
         groups.sort_unstable();
@@ -109,7 +136,8 @@ pub fn rows(app: &App) -> Vec<Row> {
             if open {
                 for r in members {
                     let rest = r.name[prefix.len() + 1..].to_owned();
-                    out.push(item(Kind::Branch { color: g.color_of(&r.name) }, rest, true, Some(r.id), Some(r.name.clone())));
+                    let row = item(Kind::Branch { color: g.color_of(&r.name) }, rest, true, Some(r.id), Some(r.name.clone()));
+                    out.push(Row { note: note(Some(&r.name)), ..row });
                 }
             }
         }
@@ -141,6 +169,17 @@ pub fn rows(app: &App) -> Vec<Row> {
         out.push(heading("side.tags", tags.len()));
         for t in tags {
             out.push(item(Kind::Tag, t.name.clone(), false, Some(t.id), None));
+        }
+    }
+
+    // The stashes. Their commits are not in the graph, so a click does
+    // nothing yet.
+    let stashes = &setup.refs.stashes;
+    if !stashes.is_empty() {
+        out.push(heading("side.stash", stashes.len()));
+        for s in stashes {
+            let tip = format!("{} {}", s.id.short(), s.subject);
+            out.push(item(Kind::Stash, s.subject.clone(), false, None, Some(tip)));
         }
     }
     out
@@ -235,10 +274,19 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
                 p.add(Shape::convex_polygon(diamond, c.wait, Stroke::NONE));
                 ink = c.wait;
             }
+            Kind::Stash => {
+                p.rect_stroke(Rect::from_center_size(pos2(x + 4.0, mid), vec2(8.0, 8.0)), 1.0, Stroke::new(1.0, c.dim), StrokeKind::Inside);
+                ink = c.dim;
+            }
             Kind::Heading(_) => {}
         }
         x += 14.0;
-        clipped(ui, &p, pos2(x, mid), &row.text, FontId::proportional(12.5), ink, right - x);
+        let mut end = right;
+        if !row.note.is_empty() {
+            let n = p.text(pos2(right, mid), Align2::RIGHT_CENTER, &row.note, FontId::monospace(11.0), c.dim);
+            end = n.left() - 6.0;
+        }
+        clipped(ui, &p, pos2(x, mid), &row.text, FontId::proportional(12.5), ink, end - x);
         if hot && row.id.is_some() {
             ctx.set_cursor_icon(CursorIcon::PointingHand);
         }
@@ -297,6 +345,22 @@ mod tests {
         assert_eq!(texts(&rows)[8..11], ["origin", "main", "feat"]);
         assert!(rows[10].sub);
         assert_eq!((rows[10].id, rows[10].tip.as_deref()), (Some(id(3)), Some("origin/feat")));
+    }
+
+    #[test]
+    fn branches_tell_their_upstream_and_stashes_follow() {
+        let mut setup = fixture::setup();
+        setup.refs.track.insert("wip".into(), (2, 1));
+        setup.refs.track.insert("main".into(), (0, 3));
+        setup.refs.stashes.push(michi_core::refs::Stash { id: id(5), subject: "On wip: half done".into() });
+        let mut a = App::new(crate::prefs::Prefs::empty(), "C:/r/repo".into());
+        a.lang = "en".into();
+        a.take(Answer::Setup { gen: 1, setup: Box::new(setup) });
+        let rows = rows(&a);
+        let notes: Vec<_> = rows.iter().map(|r| (r.text.as_str(), r.note.as_str())).filter(|(_, n)| !n.is_empty()).collect();
+        assert_eq!(notes, [("main", "↓3"), ("wip", "↑2 ↓1"), ("main", "↓3"), ("wip", "↑2 ↓1")]);
+        assert_eq!(texts(&rows)[rows.len() - 2..], ["Stash", "On wip: half done"]);
+        assert_eq!(rows.last().unwrap().id, None);
     }
 
     #[test]

@@ -292,6 +292,7 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
     let first = (scroll / row_h).floor() as u32;
     let last = (((scroll + view) / row_h).ceil() as u32).min(len);
     app.reach(last.saturating_sub(1));
+    app.graph.lay_out_to(last);
 
     // Beside a wide diff, or narrow, the hash is the one column left.
     let compact = app.detail.wide || list.width() < COMPACT;
