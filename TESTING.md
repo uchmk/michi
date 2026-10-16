@@ -202,6 +202,7 @@ Set up: a worktree on a branch with two commits from main (a renamed file, a cha
 | 13.9 | Press `d` on a worktree with a detached HEAD; on a branch with nothing from main | The toast `This worktree is on no branch`; the review reads `No file changed from main` |
 | 13.10 | Commit in the worktree while the review is open; switch the worktree to another branch from a terminal | The list follows the new commit within about a second, keeping the ticks; on another branch the list stays as it was and nothing is read |
 | 13.11 | Narrow the window to its smallest; switch to the light theme | The branch name is cut with `…`, the files keep their counts and the key bar folds what does not fit; the colours stay readable in both themes |
+| 13.12 | In the review of a branch behind main press `m`; Esc; once more and `y`; on `main`'s own review | A band `Merge main into <branch> in <worktree>?`; Esc merges nothing; yes merges (a toast; a clash opens the `4` view); on main a toast says it is main itself | [ ] |
 
 ## 14. Changes: stage and commit
 

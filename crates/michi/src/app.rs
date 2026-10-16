@@ -145,11 +145,12 @@ pub const GLOBAL_KEYS: [(&str, &str); 9] = [
 ];
 
 /// The keys of the branch review, drawn over the worktree table.
-pub const REVIEW_KEYS: [(&str, &str); 7] = [
+pub const REVIEW_KEYS: [(&str, &str); 8] = [
     ("j k", "key.file"),
     ("Space", "key.seen"),
     ("u", "key.uncommitted"),
     ("s", "key.since_last"),
+    ("m", "key.take_main"),
     ("Enter", "key.side"),
     ("PageDown PageUp", "key.scroll"),
     ("Esc", "key.back"),
@@ -847,6 +848,10 @@ impl App {
 
     /// The branch review's own keys.
     fn review_key(&mut self, c: char) -> bool {
+        if c == 'm' && self.review.is_some() {
+            self.ask_merge();
+            return true;
+        }
         let Some(r) = self.review.as_mut() else { return false };
         let mut said = None;
         let wishes = match c {
@@ -1368,6 +1373,9 @@ pub(crate) mod tests {
         a.wt_sel = 1;
         assert!(a.feed('d'));
         assert_eq!(a.keys(), &REVIEW_KEYS[..]);
+        assert!(a.feed('m'), "m works in the review");
+        assert!(a.band.is_some() || a.toast.is_some(), "m asks or says why not");
+        a.band = None;
         let wip = Ends { trunk: fixture::id(6), head: fixture::id(7), wip: Some(fixture::id(11)) };
         assert_eq!(a.review_ends(), Some(wip), "to the uncommitted changes");
         let gen = |a: &App| a.review.as_ref().unwrap().gens().0;

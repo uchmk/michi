@@ -36,7 +36,7 @@
   - [x] The diff of a whole branch (`d` in the worktree table, v0.9.0): `main...<branch>` with the uncommitted changes in or out (`u`),
     files checked as seen by path and blob (`Space`), since the last look (`s`, `refs/michi/seen/<branch>`), the prediction against
     main on top, side by side (`Enter`) （要確認: #10）
-  - [ ] The branch review's leftovers: notes on lines sent to the branch's Claude (stage 6), merge from the review (with `m`, stages 3–4),
+  - [ ] The branch review's leftovers: notes on lines sent to the branch's Claude (stage 6), ~~merge from the review~~ (`m`, v0.29.0, TESTING 13.12),
     `Open PR` (with the PR button, stage 4) （要確認: #10）
   - [x] Stage and commit (`2`, v0.10.0): files, lines and hunks (`git apply --cached`), the message per worktree, amend (asked first
     when the head is pushed), the check while Claude is writing, the count of uncommitted files on the `2` tab （要確認: #12）
