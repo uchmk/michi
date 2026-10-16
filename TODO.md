@@ -45,15 +45,17 @@
   - [x] Fetch / pull / push (v0.11.0): `f` `p` `P` in every view on the worktree the view points at, pull fast-forward only, push with
     the upstream set for a new branch, progress and Esc (the whole process tree) in the key bar, the last fetch's age, the band before
     `--force-with-lease` with the remote's tip kept under `refs/michi/backup/`, the Claude band before a pull （要確認: #15）
-  - [ ] Fetch / pull / push's leftovers: stop a pull during a merge (with the merge state, stage 3), pick the remote to push to
-    （要確認: #15）
+  - [x] Stop a pull during a merge (v0.15.0): with the toast why （要確認: #15, #22）
+  - [ ] Fetch / pull / push's leftovers: pick the remote to push to （要確認: #15）
   - [x] Branches (v0.12.0): the palette on `b` (filter, switch, follow a remote one, make at the selected commit with Enter or make and
     switch with Shift+Enter, Delete with the commits no other branch has kept under `refs/michi/backup/`, refusals when another worktree
     has it, during a merge, and for remote branches), the Claude band before a switch （要確認: #16）
   - [x] Tags and revert (v0.12.0): the tag palette on `T` (annotated with a message, light without; push; delete always kept under
     `refs/michi/backup/`), revert on `t` after a band (a merge asks for the parent; one that clashes is called off) （要確認: #16）
-  - [ ] Branches' leftovers: rename, set the upstream, merge / rebase / cherry-pick (with the conflict screen, stage 3), hand a clashing
-    revert to the conflict screen （要確認: #16）
+  - [x] Cherry-pick and merge (v0.15.0): `C` in the graph picks onto the window's worktree (a merge asks for the parent), `m` in the
+    worktree table merges the local trunk into the row's branch, both after a band; a clash opens `4`, and so does a clashing revert
+    （要確認: #16, #22）
+  - [ ] Branches' leftovers: rename, set the upstream, rebase onto another branch, `m` in the graph （要確認: #16）
   - [x] Stash and discard (v0.13.0): the stash palette on `s` (the row that puts the changes away first, untracked files too, the typed
     text as the message and the filter, Enter applies and Shift+Enter pops, a clash keeps the stash, Delete drops it after a band with
     a backup, the stash in the detail and on a click in the side column), discard on `d` in `2` (files, untracked files with their
@@ -61,9 +63,17 @@
   - [x] Clean-up (v0.14.0): `c` over the worktree table lists the branches merged into the trunk or gone from their remote and the
     worktrees whose folder is gone, picked with Space / `a`, asked with the band; a branch's worktree goes with it, unmerged tips kept
     under `refs/michi/backup/`, and what has to stay (main, here, changes, locked, a tsumugi tab) is listed with why （要確認: #20）
-- [ ] 3. Conflicts: the conflict screen (`4`), locks during a merge (and「· マージ中」in red on the chip), rerere asked once, cherry-pick; prediction moved to gix-merge and
-  checked against `git merge-tree --write-tree`; the prediction's text while a merge is under way (「予測は衝突の解消（4）の実物に変わりました」)
-- [ ] 4. Worktrees: new work (`N`), remove (`x`), go to the tab (`o`), take in main (`m`), the PR button (`gh pr create`); needs tsumugi `new --worktree BRANCH --from REF`
+- [ ] 3. Conflicts
+  - [x] The conflict screen (`4`, v0.15.0): the places with ours / theirs (and the base), picks `o` `t` `b` `B` and back to base, files
+    that clashed whole, start a file over (kept under `refs/michi/backup/` first), the done bar with git's message and Ctrl+Enter
+    (the Claude band first), call it off after the row (kept first), moving on to the next worktree stopped; locks during a merge
+    (pull, `C`, `m`, revert, the `2` commit) with「· マージ中」in red on the chip; cherry-pick （要確認: #22）
+  - [ ] The rest: rerere asked once; intent rows (`git log -L`); `e` to edit the result; word diff; hand it to Claude; open in an
+    external tool; dim the buttons locked during a merge; prediction moved to gix-merge and checked against
+    `git merge-tree --write-tree`; the prediction's text while a merge is under way (「予測は衝突の解消（4）の実物に変わりました」), the prediction pills and counts
+    hidden in the graph and the worktree table while merging, and the graph's merging row (「⚠ 衝突 残り N」)
+    （要確認: #22）
+- [ ] 4. Worktrees: new work (`N`), remove (`x`), go to the tab (`o`), take in main (`m`, merge done in v0.15.0; rebase not yet), the PR button (`gh pr create`); needs tsumugi `new --worktree BRANCH --from REF`
   and `focus N|NAME` (in tsumugi's TODO.md)
 - [ ] 5. Rebase: reorder, squash, reword, the in-progress band
 - [ ] 6. Claude: hand a conflict to Claude through `tsumugi send` and watch the markers, notify on waiting / done, hand over notes from the

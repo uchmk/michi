@@ -1,10 +1,11 @@
 //! Reverting a commit: a new commit on a worktree's branch that undoes it.
-//! One that does not go in cleanly is called off, leaving the worktree as it
-//! was; the files that clashed say why.
+//! One that clashes stops to be solved (see [`crate::conflict`]); one whose
+//! commit a hook refused is called off, leaving the worktree as it was.
 
 use std::path::Path;
 
-use crate::branch::{self, Doing};
+use crate::branch::Doing;
+use crate::conflict::{self, Outcome};
 use crate::git;
 use crate::oid::Oid;
 
@@ -13,7 +14,7 @@ use crate::oid::Oid;
 pub enum Reverted {
     /// The new commit.
     Made(Oid),
-    /// It clashed in these files, and was called off.
+    /// It clashed in these files, and stopped to be solved.
     Conflict(Vec<String>),
     /// Its changes are undone already: nothing to commit, and nothing done.
     Empty,
@@ -24,12 +25,10 @@ pub enum Reverted {
 /// A worktree in the middle of something (a merge, another revert) is
 /// refused, and so is one whose changes the revert would overwrite.
 pub fn revert(wt: &Path, id: &Oid, mainline: Option<u32>) -> Result<Reverted, git::Error> {
-    if let Some(d) = branch::doing(wt) {
-        return Err(git::Error::Git(format!("this worktree is in the middle of a {}", d.word())));
-    }
+    conflict::idle(wt)?;
     let id = id.to_string();
     let m = mainline.map(|n| n.to_string());
-    let mut args = vec!["revert", "--no-edit"];
+    let mut args = vec!["-c", "merge.conflictStyle=zdiff3", "revert", "--no-edit"];
     if let Some(m) = &m {
         args.extend(["-m", m]);
     }
@@ -38,28 +37,10 @@ pub fn revert(wt: &Path, id: &Oid, mainline: Option<u32>) -> Result<Reverted, gi
     if out.status.success() {
         return Ok(Reverted::Made(Oid::parse(&git::read_text(wt, &["rev-parse", "HEAD"])?).ok_or_else(no_head)?));
     }
-    let said = String::from_utf8_lossy(&out.stderr);
-    if branch::doing(wt) != Some(Doing::Revert) {
-        // Nothing to commit: git says so on its standard output only.
-        if said.trim().is_empty() && out.status.code() == Some(1) {
-            return Ok(Reverted::Empty);
-        }
-        return Err(git::refused_all(&said));
-    }
-    let failed = git::refused_all(&said);
-    // Stopped half-way: called off, whatever stopped it.
-    let clashed = git::read_text(wt, &["diff", "--name-only", "--diff-filter=U"]);
-    let staged = git::check(wt, &["diff", "--cached", "--quiet", "HEAD"]);
-    branch::write(wt, &["revert", "--abort"])?;
-    let clashed: Vec<String> = clashed?.lines().map(str::to_owned).collect();
-    if !clashed.is_empty() {
-        Ok(Reverted::Conflict(clashed))
-    } else if staged? {
-        Ok(Reverted::Empty)
-    } else {
-        // Went in, and the commit was refused (a hook): what it said.
-        Err(failed)
-    }
+    Ok(match conflict::stopped(wt, Doing::Revert, &out)? {
+        Outcome::Conflict(files) => Reverted::Conflict(files),
+        Outcome::Made(_) | Outcome::UpToDate | Outcome::Empty => Reverted::Empty,
+    })
 }
 
 fn no_head() -> git::Error {
@@ -69,6 +50,7 @@ fn no_head() -> git::Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::branch;
     use crate::testrepo::TempRepo;
 
     fn commit(t: &TempRepo, file: &str, text: &str) -> Oid {
@@ -94,13 +76,17 @@ mod tests {
     }
 
     #[test]
-    fn a_clash_is_called_off() {
+    fn a_clash_stays_to_be_solved() {
         let t = TempRepo::configured("revert-clash");
         commit(&t, "a.txt", "1\n");
         let two = commit(&t, "a.txt", "2\n");
         let three = commit(&t, "a.txt", "3\n");
         t.write(&t.repo, "c.txt", "mine\n");
         assert_eq!(revert(&t.repo, &two, None).unwrap(), Reverted::Conflict(vec!["a.txt".into()]));
+        assert_eq!(branch::doing(&t.repo), Some(Doing::Revert));
+        let c = conflict::read(&t.repo).unwrap().unwrap();
+        assert_eq!((c.theirs.name.as_str(), c.base, c.left()), (two.short().as_str(), Some(two), 1));
+        assert!(conflict::abort(&t.repo).unwrap().is_some(), "kept first");
         assert_eq!(branch::doing(&t.repo), None);
         assert_eq!(t.out(&t.repo, &["rev-parse", "HEAD"]), three.to_string());
         assert_eq!(std::fs::read_to_string(t.repo.join("a.txt")).unwrap(), "3\n");

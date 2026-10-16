@@ -106,6 +106,16 @@ impl Band {
     pub fn new(text: String, then: Then) -> Band {
         Band { text, then, parents: 0 }
     }
+
+    /// The word on a parent's button: a revert keeps that parent's side, a
+    /// pick takes the changes against it.
+    pub fn parent_key(&self) -> &'static str {
+        if matches!(self.then, Then::Act(Task::CherryPick { .. })) {
+            "band.parent_pick"
+        } else {
+            "band.parent"
+        }
+    }
 }
 
 /// How long ago `at` was, in a few words (`3 min ago`).
@@ -139,12 +149,13 @@ impl App {
         true
     }
 
-    /// The worktree a pull or push is for: the one the `2` view shows, the
-    /// worktree table's selected row, else the window's own.
+    /// The worktree a pull or push is for: the one the `2` or the `4` view
+    /// shows, the worktree table's selected row, else the window's own.
     fn net_tree(&self) -> Option<PathBuf> {
         let picked = match self.view {
             View::Changes => self.changes.wt.clone(),
             View::Worktree => self.wt_selected().filter(|t| !t.wt.bare && t.wt.prunable.is_none()).map(|t| t.wt.path.clone()),
+            View::Conflict => self.conflicts.shown().map(|c| c.wt.clone()),
             View::Graph => None,
         };
         picked.or_else(|| match &self.repo {
@@ -154,8 +165,14 @@ impl App {
     }
 
     /// `p`: a pull moves the worktree's HEAD and files, so where a Claude
-    /// is working it waits for a yes.
+    /// is working it waits for a yes, and in the middle of a merge or the
+    /// like it waits for that to be over.
     fn pull(&mut self, wt: PathBuf) {
+        if let Some(d) = self.doing_in(&wt) {
+            let text = self.tr("net.pull_doing").replace("{wt}", &act::name(&wt)).replace("{doing}", &self.doing_word(d));
+            self.say_for(text, 6);
+            return;
+        }
         if self.claude_working(&wt) {
             let text = self.tr("net.claude_pull").replace("{}", &act::name(&wt));
             self.band = Some(Band::new(text, Then::Net(Job::Pull { wt })));
@@ -211,7 +228,7 @@ impl App {
                 if matches!(task, Task::Tidy { .. }) {
                     self.tidy = None;
                 }
-                if let (Task::Revert { mainline, .. }, Some(n)) = (&mut task, side) {
+                if let (Task::Revert { mainline, .. } | Task::CherryPick { mainline, .. }, Some(n)) = (&mut task, side) {
                     *mainline = Some(n);
                 }
                 self.act(task);

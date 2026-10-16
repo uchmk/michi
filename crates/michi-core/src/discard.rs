@@ -10,6 +10,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::backup;
@@ -95,16 +96,19 @@ fn keep_untracked(wt: &Path, paths: &[&str]) -> Result<String, git::Error> {
 }
 
 /// An index file of our own, gone when dropped.
-struct TempIndex(PathBuf);
+pub(crate) struct TempIndex(PathBuf);
+
+static COUNT: AtomicUsize = AtomicUsize::new(0);
 
 impl TempIndex {
-    fn new() -> TempIndex {
+    pub(crate) fn new() -> TempIndex {
         let nanos = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_nanos());
-        TempIndex(std::env::temp_dir().join(format!("michi-index-{}-{nanos}", std::process::id())))
+        let n = COUNT.fetch_add(1, Ordering::Relaxed);
+        TempIndex(std::env::temp_dir().join(format!("michi-index-{}-{nanos}-{n}", std::process::id())))
     }
 
     /// git in the worktree at `wt` with this index.
-    fn command(&self, wt: &Path) -> Command {
+    pub(crate) fn command(&self, wt: &Path) -> Command {
         let mut c = git::command();
         c.env("GIT_INDEX_FILE", &self.0).arg("-C").arg(wt);
         c
@@ -117,7 +121,8 @@ impl Drop for TempIndex {
     }
 }
 
-fn run(mut c: Command) -> Result<Vec<u8>, git::Error> {
+/// What git wrote, or all it said when it refused.
+pub(crate) fn run(mut c: Command) -> Result<Vec<u8>, git::Error> {
     let out = c.output().map_err(git::started)?;
     if out.status.success() {
         Ok(out.stdout)

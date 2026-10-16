@@ -58,7 +58,7 @@ pub fn doing(wt: &Path) -> Option<Doing> {
 
 /// The worktree's own git folder: `.git` itself, or where its `.git` file
 /// points (`gitdir: …/.git/worktrees/x`).
-fn git_dir(wt: &Path) -> Option<PathBuf> {
+pub(crate) fn git_dir(wt: &Path) -> Option<PathBuf> {
     let dot = wt.join(".git");
     let meta = fs::metadata(&dot).ok()?;
     if meta.is_dir() {

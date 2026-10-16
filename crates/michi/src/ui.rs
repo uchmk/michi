@@ -8,6 +8,7 @@ use std::time::{Duration, SystemTime};
 use egui::text::{LayoutJob, TextFormat, TextWrapping};
 use egui::{pos2, vec2, Align2, Color32, CornerRadius, CursorIcon, FontId, Id, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, ViewportCommand};
 use ito_common::Clock;
+use michi_core::branch::Doing;
 use michi_core::git;
 use michi_core::summary::Head;
 
@@ -68,6 +69,8 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
             }
         } else if app.view == View::Changes {
             crate::changes_ui::show(ui, app, r, live);
+        } else if app.view == View::Conflict {
+            crate::conflict_ui::show(ui, app, r, live);
         } else {
             empty_view(ui, app, body);
         }
@@ -175,13 +178,23 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
     x = name.right() + 16.0;
     // The view tabs, each with its digit, hanging from the bar's foot like
     // folder tabs; the one in force opens into the view. Changes counts the
-    // files not committed.
+    // files not committed; Conflicts, there only while something clashed,
+    // the places still to solve.
     for v in View::ALL {
         let on = app.is_on(v);
+        if v == View::Conflict && !on && app.conflicts.all.is_empty() {
+            continue;
+        }
         let digit = ui.fonts_mut(|f| f.layout_no_wrap(v.digit().to_string(), FontId::monospace(11.0), c.dim));
         let text = ui.fonts_mut(|f| f.layout_no_wrap(app.tr(v.label()).to_owned(), FontId::proportional(13.0), c.fg));
         let n = if v == View::Changes { app.changes_count() } else { 0 };
-        let count = (n > 0).then(|| ui.fonts_mut(|f| f.layout_no_wrap(n.to_string(), FontId::monospace(10.5), c.dim)));
+        let count = if v == View::Conflict {
+            let left = app.conflicts.left();
+            let text = if left > 0 { format!("● {left}") } else { "● ✓".to_owned() };
+            Some(ui.fonts_mut(|f| f.layout_no_wrap(text, FontId::proportional(11.5), c.err)))
+        } else {
+            (n > 0).then(|| ui.fonts_mut(|f| f.layout_no_wrap(n.to_string(), FontId::monospace(10.5), c.dim)))
+        };
         let w = 12.0 + digit.size().x + 6.0 + text.size().x + count.as_ref().map_or(0.0, |g| 6.0 + g.size().x) + 12.0;
         let tab = Rect::from_min_max(pos2(x, r.bottom() - 30.0), pos2(x + w, r.bottom()));
         let resp = ui.interact(tab, ui.id().with(("tab", v.digit())), Sense::CLICK);
@@ -206,7 +219,8 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
         let tw = text.size().x;
         p.galley(pos2(tx, ty - text.size().y / 2.0), text, tc);
         if let Some(g) = count {
-            p.galley(pos2(tx + tw + 6.0, ty - g.size().y / 2.0), g, c.dim);
+            let ink = if v == View::Conflict { c.err } else { c.dim };
+            p.galley(pos2(tx + tw + 6.0, ty - g.size().y / 2.0), g, ink);
         }
         if resp.clicked() {
             out.view = Some(v);
@@ -279,11 +293,23 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
 }
 
 /// The repository chip, right-aligned to `right`: the name, then the branch
-/// and the count of worktrees. What does not fit before `left` goes, the
-/// branch first.
+/// and the count of worktrees, and what the worktree is in the middle of in
+/// red. What does not fit before `left` goes, the branch first.
 fn chip(ui: &Ui, app: &App, p: &egui::Painter, left: f32, right: f32, mid: f32) {
     let c = ito_theme::colors();
     let font = FontId::proportional(12.0);
+    let doing = match &app.repo {
+        Repo::Ready(s) => app.doing_in(&s.top).map(|d| match d {
+            Doing::Merge => "chip.merging",
+            Doing::Rebase => "chip.rebasing",
+            Doing::CherryPick => "chip.cherry",
+            Doing::Revert => "chip.reverting",
+            Doing::Bisect => "chip.bisecting",
+        }),
+        _ => None,
+    };
+    let doing_g = doing.map(|key| ui.fonts_mut(|f| f.layout_no_wrap(format!(" · {}", app.tr(key)), font.clone(), c.err)));
+    let doing_w = doing_g.as_ref().map_or(0.0, |g| g.size().x);
     // The branch mark is drawn, not typed: no face every system has draws ⎇.
     let (name, mark, rest, rest_color) = match &app.repo {
         Repo::Loading => (String::new(), false, "…".to_owned(), c.dim),
@@ -301,7 +327,7 @@ fn chip(ui: &Ui, app: &App, p: &egui::Painter, left: f32, right: f32, mid: f32) 
     let rest_g = ui.fonts_mut(|f| f.layout_no_wrap(rest, font, rest_color));
     let gap = if name.is_empty() { 0.0 } else { 5.0 };
     let mark_w = if mark { BRANCH_MARK + 4.0 } else { 0.0 };
-    let full = name_g.size().x + gap + mark_w + rest_g.size().x;
+    let full = name_g.size().x + gap + mark_w + rest_g.size().x + doing_w;
     let (inner, show_rest) = if right - 18.0 - full >= left {
         (full, true)
     } else if !name.is_empty() && right - 18.0 - name_g.size().x >= left {
@@ -321,7 +347,11 @@ fn chip(ui: &Ui, app: &App, p: &egui::Painter, left: f32, right: f32, mid: f32) 
             branch_mark(p, pos2(x + BRANCH_MARK / 2.0, mid), rest_color);
             x += mark_w;
         }
+        let w = rest_g.size().x;
         p.galley(pos2(x, mid - rest_g.size().y / 2.0), rest_g, rest_color);
+        if let Some(g) = doing_g {
+            p.galley(pos2(x + w, mid - g.size().y / 2.0), g, c.err);
+        }
     }
     // The folder it is on, for a closer look.
     let resp = ui.interact(rect, ui.id().with("chip"), Sense::hover());
@@ -451,7 +481,7 @@ fn band(ui: &mut Ui, app: &mut App, r: Rect, live: bool) -> f32 {
     }
     for n in (1..=u32::from(b.parents)).rev() {
         let d = char::from_digit(n, 10).unwrap_or('1');
-        caps.push((d.to_string(), app.tr("band.parent").replace("{}", &n.to_string()), d));
+        caps.push((d.to_string(), app.tr(b.parent_key()).replace("{}", &n.to_string()), d));
     }
     for (k, word, c_) in caps {
         let cap = kbd(ui, &p, pos2(right, mid), &k);

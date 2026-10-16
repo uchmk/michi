@@ -8,6 +8,7 @@ pub mod branch;
 pub mod change;
 pub mod clash;
 pub mod claude;
+pub mod conflict;
 pub mod discard;
 pub mod git;
 pub mod history;

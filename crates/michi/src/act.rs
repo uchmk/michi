@@ -1,11 +1,13 @@
-//! Branches, tags, reverts, stashes and clean-ups: what the window sends
-//! the act thread, and what it says when one ends. They run one after
-//! another, each quick; a tag to push goes on to the net thread when it is
-//! made.
+//! Branches, tags, reverts, stashes, clean-ups, merges and their conflicts:
+//! what the window sends the act thread, and what it says when one ends.
+//! They run one after another, each quick; a tag to push goes on to the net
+//! thread when it is made.
 
 use std::path::{Path, PathBuf};
 
 use michi_core::backup;
+use michi_core::branch::Doing;
+use michi_core::conflict::{self, Block, Conflict, Pick};
 use michi_core::git;
 use michi_core::oid::Oid;
 use michi_core::revert::{self, Reverted};
@@ -13,7 +15,7 @@ use michi_core::stash::{self, Applied, Saved};
 use michi_core::tidy::{self, Found, Item, Outcome};
 use michi_core::{branch, tag};
 
-use crate::app::App;
+use crate::app::{App, View};
 use crate::work::Job;
 
 /// What the act thread is to do.
@@ -50,6 +52,22 @@ pub enum Task {
     FindTidy { here: PathBuf },
     /// Takes the rows picked from that list away.
     Tidy { picks: Vec<Item> },
+    /// Merges `rev` into the branch of the worktree at `wt`.
+    Merge { wt: PathBuf, rev: String },
+    /// Picks `id` onto the branch of the worktree at `wt`; a merge against
+    /// the parent (from 1) given.
+    CherryPick { wt: PathBuf, id: Oid, mainline: Option<u32> },
+    /// Solves the place `block` of the file at `path` with `pick`.
+    Resolve { wt: PathBuf, path: String, block: Box<Block>, pick: Pick },
+    /// Solves the file at `path`, which clashed whole, with our side's
+    /// (`ours`) or theirs.
+    Take { wt: PathBuf, path: String, ours: bool },
+    /// The file at `path` back as git left it.
+    Restart { wt: PathBuf, path: String },
+    /// Commits what the worktree at `wt` stopped in, all solved.
+    Conclude { wt: PathBuf, doing: Doing, message: String },
+    /// Calls off what the worktree at `wt` is in the middle of.
+    Abort { wt: PathBuf, doing: Doing },
 }
 
 impl Task {
@@ -68,6 +86,18 @@ impl Task {
             Task::DropStash { .. } => "stash drop",
             Task::FindTidy { .. } => "for-each-ref",
             Task::Tidy { .. } => "worktree remove",
+            Task::Merge { .. } => "merge",
+            Task::CherryPick { .. } => "cherry-pick",
+            Task::Resolve { .. } => "add",
+            Task::Take { .. } => "checkout",
+            Task::Restart { .. } => "checkout --conflict",
+            Task::Conclude { doing: Doing::Rebase, .. } => "rebase --continue",
+            Task::Conclude { .. } => "commit",
+            Task::Abort { doing: Doing::Merge, .. } => "merge --abort",
+            Task::Abort { doing: Doing::Rebase, .. } => "rebase --abort",
+            Task::Abort { doing: Doing::CherryPick, .. } => "cherry-pick --abort",
+            Task::Abort { doing: Doing::Revert, .. } => "revert --abort",
+            Task::Abort { doing: Doing::Bisect, .. } => "bisect reset",
         }
     }
 }
@@ -84,6 +114,21 @@ pub enum Acted {
     Unstashed(Applied),
     Found(Found),
     Tidied(Outcome),
+    Merged(conflict::Outcome),
+    /// The head after the commit.
+    Committed(Oid),
+    Solved(Box<Solved>),
+}
+
+/// A place solved, or a file put back as git left it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Solved {
+    /// Where what the file had is kept (put back).
+    pub saved: Option<String>,
+    /// The worktree read again just after, for the view not to wait for the
+    /// next read of everything: its conflict (none: it is not stopped any
+    /// more), or nothing when it could not be read.
+    pub read: Option<Option<Conflict>>,
 }
 
 /// Does `task` in the repository `dir` is in.
@@ -101,7 +146,19 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::DropStash { id } => stash::drop(dir, id).map(|saved| Acted::Kept(Some(saved))),
         Task::FindTidy { here } => tidy::find(dir, here).map(Acted::Found),
         Task::Tidy { picks } => Ok(Acted::Tidied(tidy::remove(dir, picks))),
+        Task::Merge { wt, rev } => conflict::merge(wt, rev).map(Acted::Merged),
+        Task::CherryPick { wt, id, mainline } => conflict::cherry_pick(wt, id, *mainline).map(Acted::Merged),
+        Task::Resolve { wt, path, block, pick } => conflict::resolve(wt, path, block, *pick).map(|_| solved(wt, None)),
+        Task::Take { wt, path, ours } => conflict::take(wt, path, *ours).map(|()| solved(wt, None)),
+        Task::Restart { wt, path } => conflict::restart(wt, path).map(|saved| solved(wt, Some(saved))),
+        Task::Conclude { wt, message, .. } => conflict::commit(wt, message).map(Acted::Committed),
+        Task::Abort { wt, .. } => conflict::abort(wt).map(Acted::Kept),
     }
+}
+
+/// A place in the worktree at `wt` was solved or put back: it is read again.
+fn solved(wt: &Path, saved: Option<String>) -> Acted {
+    Acted::Solved(Box::new(Solved { saved, read: conflict::read(wt).ok() }))
 }
 
 /// The folder's name, to call a worktree by.
@@ -121,7 +178,16 @@ impl App {
     /// thread.
     pub(crate) fn act_done(&mut self, task: Task, result: Result<Acted, git::Error>) {
         let failed = |a: &App, e: &git::Error| a.tr("act.failed").replace("{job}", task.word()).replace("{e}", &e.to_string());
+        if let (Task::Resolve { wt, .. } | Task::Take { wt, .. } | Task::Restart { wt, .. }, Ok(Acted::Solved(s))) = (&task, &result) {
+            if let Some(read) = &s.read {
+                self.conflicts.set_one(wt, read.clone());
+            }
+        }
         let (text, secs) = match (&task, result) {
+            (Task::Resolve { wt, path, .. } | Task::Take { wt, path, .. }, Err(e)) => {
+                self.conflict_unpick(wt, path);
+                (failed(self, &e), 10)
+            }
             (_, Err(e)) => (failed(self, &e), 10),
             (Task::Create { name, at, switch: None }, Ok(_)) => {
                 (self.tr("act.created").replace("{name}", name).replace("{at}", &at.short()), 4)
@@ -160,7 +226,8 @@ impl App {
                 ),
                 Reverted::Empty => (self.tr("act.revert_empty").replace("{}", &id.short()), 6),
                 Reverted::Conflict(files) => {
-                    (self.tr("act.revert_clash").replace("{id}", &id.short()).replace("{files}", &self.few(&files)), 14)
+                    self.show_conflicts(wt);
+                    (self.tr("act.revert_clash").replace("{id}", &id.short()).replace("{files}", &self.few(&files)), 8)
                 }
             },
             (Task::Stash { wt, .. }, Ok(Acted::Stashed(Saved::Made(id)))) => {
@@ -180,10 +247,55 @@ impl App {
             }
             (Task::FindTidy { .. }, Ok(Acted::Found(found))) => return self.tidy_found(found),
             (Task::Tidy { .. }, Ok(Acted::Tidied(out))) => self.tidied(&out),
+            (Task::Merge { wt, rev }, Ok(Acted::Merged(out))) => {
+                let tr = |key: &'static str| self.tr(key).replace("{rev}", rev).replace("{wt}", &self::name(wt));
+                match out {
+                    conflict::Outcome::Made(new) => (tr("act.merged").replace("{new}", &new.short()), 6),
+                    conflict::Outcome::UpToDate | conflict::Outcome::Empty => (tr("act.merge_none"), 6),
+                    conflict::Outcome::Conflict(files) => {
+                        let text = tr("act.merge_clash").replace("{files}", &self.few(&files));
+                        self.show_conflicts(wt);
+                        (text, 8)
+                    }
+                }
+            }
+            (Task::CherryPick { wt, id, .. }, Ok(Acted::Merged(out))) => {
+                let tr = |key: &'static str| self.tr(key).replace("{id}", &id.short()).replace("{wt}", &self::name(wt));
+                match out {
+                    conflict::Outcome::Made(new) => (tr("act.picked").replace("{new}", &new.short()), 6),
+                    conflict::Outcome::UpToDate | conflict::Outcome::Empty => (tr("act.pick_empty"), 6),
+                    conflict::Outcome::Conflict(files) => {
+                        let text = tr("act.pick_clash").replace("{files}", &self.few(&files));
+                        self.show_conflicts(wt);
+                        (text, 8)
+                    }
+                }
+            }
+            (Task::Restart { path, .. }, Ok(Acted::Solved(s))) => {
+                let saved = s.saved.as_deref().map_or("", backup::short);
+                (self.tr("act.restarted").replace("{path}", path).replace("{saved}", saved), 8)
+            }
+            (Task::Conclude { wt, doing, .. }, Ok(Acted::Committed(new))) => {
+                let text = self.tr("act.concluded").replace("{doing}", &self.doing_word(*doing)).replace("{wt}", &self::name(wt));
+                (text.replace("{new}", &new.short()), 6)
+            }
+            (Task::Abort { wt, doing }, Ok(Acted::Kept(saved))) => {
+                let text = self.tr("act.aborted").replace("{doing}", &self.doing_word(*doing)).replace("{wt}", &self::name(wt));
+                let kept = saved.as_deref().map(|s| self.tr("act.aborted_kept").replace("{}", backup::short(s))).unwrap_or_default();
+                (text + &kept, 10)
+            }
             // Each task ends one way when it goes.
             (_, Ok(_)) => return,
         };
         self.say_for(text, secs);
+    }
+
+    /// A merge, a pick or a revert stopped on a clash in the worktree at
+    /// `wt`: the `4` view shows it, once read.
+    fn show_conflicts(&mut self, wt: &Path) {
+        self.conflicts.wt = Some(wt.to_path_buf());
+        self.conflicts.show(wt);
+        self.view = View::Conflict;
     }
 
     /// Up to three files, then how many more.
@@ -242,9 +354,41 @@ mod tests {
         assert_eq!(said(revert.clone(), Ok(Acted::Reverted(Reverted::Empty))), "Nothing to revert: ccccccc is undone already");
         let files = ["a", "b", "c", "d", "e"].map(String::from).to_vec();
         assert_eq!(
-            said(revert.clone(), Ok(Acted::Reverted(Reverted::Conflict(files)))),
-            "Reverting ccccccc clashed in a, b, c and 2 more, so it was called off: \
-             git revert ccccccc in a terminal lets you resolve it"
+            said(revert.clone(), Ok(Acted::Reverted(Reverted::Conflict(files.clone())))),
+            "Reverting ccccccc clashed in a, b, c and 2 more: solve it in the 4 view"
+        );
+        let merge = Task::Merge { wt: wt.clone(), rev: "main".into() };
+        assert_eq!(said(merge.clone(), Ok(Acted::Merged(conflict::Outcome::Made(oid('d'))))), "Merged main into feat: ddddddd");
+        assert_eq!(said(merge.clone(), Ok(Acted::Merged(conflict::Outcome::UpToDate))), "feat has all of main already");
+        assert_eq!(
+            said(merge, Ok(Acted::Merged(conflict::Outcome::Conflict(files.clone())))),
+            "Merging main into feat clashed in a, b, c and 2 more: solve it in the 4 view"
+        );
+        let pick = Task::CherryPick { wt: wt.clone(), id: oid('c'), mainline: None };
+        assert_eq!(said(pick.clone(), Ok(Acted::Merged(conflict::Outcome::Made(oid('d'))))), "Picked ccccccc onto feat: ddddddd");
+        assert_eq!(said(pick.clone(), Ok(Acted::Merged(conflict::Outcome::Empty))), "Nothing to pick: feat has the changes of ccccccc");
+        assert_eq!(
+            said(pick, Ok(Acted::Merged(conflict::Outcome::Conflict(vec!["a".into()])))),
+            "Picking ccccccc onto feat clashed in a: solve it in the 4 view"
+        );
+        assert_eq!(
+            said(
+                Task::Restart { wt: wt.clone(), path: "a".into() },
+                Ok(Acted::Solved(Box::new(Solved { saved: Some("refs/michi/backup/20261016-120000".into()), read: None })))
+            ),
+            "a is back as git left it; what it had is kept in michi/backup/20261016-120000"
+        );
+        assert_eq!(
+            said(Task::Conclude { wt: wt.clone(), doing: Doing::Merge, message: "m".into() }, Ok(Acted::Committed(oid('f')))),
+            "Committed the merge on feat: fffffff"
+        );
+        assert_eq!(
+            said(Task::Abort { wt: wt.clone(), doing: Doing::Merge }, Ok(Acted::Kept(Some("refs/michi/backup/20261016-120000".into())))),
+            "Called the merge on feat off; its files are kept in michi/backup/20261016-120000"
+        );
+        assert_eq!(
+            said(Task::Abort { wt: wt.clone(), doing: Doing::CherryPick }, Ok(Acted::Kept(None))),
+            "Called the cherry-pick on feat off"
         );
         assert_eq!(
             said(Task::Stash { wt: wt.clone(), message: String::new() }, Ok(Acted::Stashed(Saved::Made(oid('e'))))),

@@ -16,6 +16,7 @@ use michi_core::unseen::Unseen;
 use michi_core::wip::Wip;
 
 use crate::changes::{Changes, Did, Focus, Wish as StageWish};
+use crate::conflicts::Conflicts;
 use crate::detail::Pane;
 use crate::graph::{Folded, Graph};
 use crate::picker::{Item as PickItem, Kind as PickKind, Picker};
@@ -24,16 +25,18 @@ use crate::repo::{Answer, Ask, Reading};
 use crate::review::{Ends, Review, Wish};
 use crate::work::{Band, Running};
 
-/// The three views, opened by `1` to `3` (docs/design.md).
+/// The four views, opened by `1` to `4` (docs/design.md); the `4` view
+/// only while something clashed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum View {
     Graph,
     Changes,
     Worktree,
+    Conflict,
 }
 
 impl View {
-    pub const ALL: [View; 3] = [View::Graph, View::Changes, View::Worktree];
+    pub const ALL: [View; 4] = [View::Graph, View::Changes, View::Worktree, View::Conflict];
 
     /// The digit that opens it.
     pub fn digit(self) -> char {
@@ -41,6 +44,7 @@ impl View {
             View::Graph => '1',
             View::Changes => '2',
             View::Worktree => '3',
+            View::Conflict => '4',
         }
     }
 
@@ -54,6 +58,7 @@ impl View {
             View::Graph => "view.graph",
             View::Changes => "view.changes",
             View::Worktree => "view.worktree",
+            View::Conflict => "view.conflict",
         }
     }
 
@@ -63,6 +68,7 @@ impl View {
             View::Graph => "empty.graph",
             View::Changes => "empty.changes",
             View::Worktree => "empty.worktree",
+            View::Conflict => "empty.conflict",
         }
     }
 
@@ -79,6 +85,7 @@ impl View {
                 ("l h", "key.open_fold"),
                 ("b", "key.branch"),
                 ("t", "key.revert"),
+                ("C", "key.cherry_pick"),
                 ("T", "key.tag"),
                 ("s", "key.stash"),
                 ("Esc", "key.back"),
@@ -106,13 +113,21 @@ impl View {
                 ("d", "key.branch_diff"),
                 ("c", "key.tidy"),
             ],
+            View::Conflict => &[
+                ("] [", "key.place"),
+                ("o", "key.ours"),
+                ("t", "key.theirs"),
+                ("b B", "key.both"),
+                ("Ctrl+Enter", "key.cf_commit"),
+                ("PageDown PageUp", "key.scroll"),
+            ],
         }
     }
 }
 
 /// The keys that work in every view.
 pub const GLOBAL_KEYS: [(&str, &str); 9] = [
-    ("1 2 3", "key.views"),
+    ("1 2 3 4", "key.views"),
     ("N", "key.new_work"),
     ("f", "key.fetch"),
     ("p", "key.pull"),
@@ -184,6 +199,8 @@ pub struct App {
     pub review: Option<Review>,
     /// The `2` view: one worktree's files to stage and commit.
     pub changes: Changes,
+    /// The `4` view: the worktrees stopped on a clash, and their places.
+    pub conflicts: Conflicts,
     /// The view of the frame before: the `2` view reads its files again
     /// when it comes in sight.
     last_view: View,
@@ -235,6 +252,7 @@ impl App {
             wt_sel: 0,
             review: None,
             changes: Changes::default(),
+            conflicts: Conflicts::default(),
             last_view: View::Graph,
             side_open: HashSet::new(),
             seeking: None,
@@ -262,6 +280,26 @@ impl App {
     /// The words for `key` in the language in force.
     pub fn tr(&self, key: &'static str) -> &'static str {
         crate::i18n::tr(&self.lang, key)
+    }
+
+    /// What a worktree in the middle of `d` is doing, for the texts' `{doing}`.
+    /// The Japanese texts leave out the spaces around it, so that a Japanese
+    /// word sits close (`マージの途中`) and an ASCII one gets them here
+    /// (`cherry-pick の途中`).
+    pub fn doing_word(&self, d: michi_core::branch::Doing) -> String {
+        use michi_core::branch::Doing;
+        let word = self.tr(match d {
+            Doing::Merge => "doing.merge",
+            Doing::Rebase => "doing.rebase",
+            Doing::CherryPick => "doing.cherry",
+            Doing::Revert => "doing.revert",
+            Doing::Bisect => "doing.bisect",
+        });
+        if self.lang == "ja" && word.is_ascii() {
+            format!(" {word} ")
+        } else {
+            word.to_owned()
+        }
     }
 
     pub fn say(&mut self, text: impl Into<String>) {
@@ -427,6 +465,14 @@ impl App {
             }
             Answer::Claude(c) => self.claude = c,
             Answer::Clashes(c) => self.clashes = c,
+            Answer::Conflicts(c) => {
+                let had = !self.conflicts.all.is_empty();
+                self.conflicts.set(c);
+                // All committed or called off: nothing to show here.
+                if had && self.conflicts.all.is_empty() && self.view == View::Conflict {
+                    self.view = View::Graph;
+                }
+            }
             Answer::Unseen(u) => self.unseen = u,
             Answer::ReviewList { gen, result, checks } => {
                 let wish = self.review.as_mut().and_then(|r| r.take_list(gen, result.map(|l| *l), checks));
@@ -585,8 +631,18 @@ impl App {
         self.wips.iter().find(|w| paths::key(&w.path) == key).map_or(0, |w| w.files.len())
     }
 
-    /// Ctrl+Enter: commit what is staged in the `2` view.
+    /// Ctrl+Enter: commit what is staged in the `2` view. A worktree in
+    /// the middle of a merge or the like commits it in the `4` view.
     pub fn changes_commit(&mut self) {
+        let wt = self.changes.wt.clone().or_else(|| match &self.repo {
+            Repo::Ready(s) => Some(s.top.clone()),
+            _ => None,
+        });
+        if let Some((wt, d)) = wt.and_then(|wt| self.doing_in(&wt).map(|d| (wt, d))) {
+            let text = self.tr("changes.commit_doing").replace("{wt}", &crate::act::name(&wt)).replace("{doing}", &self.doing_word(d));
+            self.say_for(text, 6);
+            return;
+        }
         let claude = self.claude_writing();
         let done = self.changes.commit(claude);
         self.changes_did(done);
@@ -920,6 +976,7 @@ impl App {
             (Mode::Main, '?') => self.mode = Mode::Help,
             (Mode::Main, ',') => self.mode = Mode::Settings,
             (Mode::Main, c) => match View::from_digit(c) {
+                Some(View::Conflict) => self.open_conflicts(),
                 Some(v) => {
                     self.view = v;
                     self.review_sync();
@@ -928,6 +985,7 @@ impl App {
                 None if self.view == View::Worktree && self.review.is_some() && self.review_key(c) => {}
                 None if self.view == View::Worktree && self.review.is_none() && self.wt_key(c) => {}
                 None if self.view == View::Changes && self.changes_key(c) => {}
+                None if self.view == View::Conflict && self.conflict_key(c) => {}
                 None if self.net_key(c) => {}
                 None => return self.later(|token| token.chars().eq([c])),
             },
@@ -943,6 +1001,7 @@ impl App {
             'T' => self.open_picker(PickKind::Tag),
             's' => self.open_picker(PickKind::Stash),
             't' => self.ask_revert(),
+            'C' => self.ask_cherry(),
             'j' => g.move_by(1),
             'k' => g.move_by(-1),
             'l' => _ = g.open_fold(),
@@ -961,6 +1020,7 @@ impl App {
             'k' => self.wt_move(-1),
             'd' => self.open_review(),
             'c' => self.open_tidy(),
+            'm' => self.ask_merge(),
             _ => return false,
         }
         true
@@ -1010,6 +1070,9 @@ impl App {
         }
         if self.view == View::Changes {
             return self.changes_named(name) || self.later(|token| token == name);
+        }
+        if self.view == View::Conflict {
+            return self.conflict_named(name) || self.later(|token| token == name);
         }
         if self.view == View::Worktree {
             let n = self.trees.trees.len() as i32;
@@ -1096,6 +1159,10 @@ impl App {
                 return true;
             }
         }
+        if self.view == View::Conflict && self.conflicts.abort {
+            self.conflicts.abort = false;
+            return true;
+        }
         if self.view == View::Worktree {
             if let Some(r) = self.review.as_mut().filter(|r| r.wide) {
                 r.wide = false;
@@ -1164,7 +1231,7 @@ pub(crate) mod tests {
             assert!(a.feed(c));
             assert_eq!(a.view, v);
         }
-        assert!(!a.feed('4'));
+        assert!(!a.feed('5'));
         assert!(a.toast.is_none());
     }
 
@@ -1298,6 +1365,17 @@ pub(crate) mod tests {
         a.lang = "ja".into();
         assert!(a.feed('N'));
         assert_eq!(toast(&a), "新しい作業（worktree + Claude） — 後の段階で入ります");
+    }
+
+    #[test]
+    fn what_a_worktree_is_doing_sits_in_the_texts() {
+        use michi_core::branch::Doing;
+        let mut a = app();
+        let text = |a: &App, d| a.tr("act.concluded").replace("{doing}", &a.doing_word(d)).replace("{wt}", "r").replace("{new}", "abc1234");
+        assert_eq!(text(&a, Doing::Merge), "Committed the merge on r: abc1234");
+        a.lang = "ja".into();
+        assert_eq!(text(&a, Doing::Merge), "r のマージをコミットしました: abc1234");
+        assert_eq!(text(&a, Doing::CherryPick), "r の cherry-pick をコミットしました: abc1234");
     }
 
     #[test]
@@ -1557,9 +1635,10 @@ pub(crate) mod tests {
         assert!(a.named("Home"));
         assert_eq!(wt_path(&a), "C:/r/repo");
         assert!(a.toast.is_none(), "nothing to say");
-        // The keys of a later stage say so.
+        // m takes the trunk in, here with nothing to take; the keys of a
+        // later stage say so.
         assert!(a.feed('m'));
-        assert!(toast(&a).starts_with("Take in main"), "{}", toast(&a));
+        assert_eq!(toast(&a), "repo is on main itself: there is nothing to merge");
         a.later_word("wt.pr");
         assert!(toast(&a).starts_with("Open a PR"), "{}", toast(&a));
     }

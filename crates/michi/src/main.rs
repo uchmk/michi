@@ -10,6 +10,8 @@ mod act;
 mod app;
 mod changes;
 mod changes_ui;
+mod conflict_ui;
+mod conflicts;
 mod detail;
 mod detail_ui;
 mod fonts;
@@ -90,10 +92,17 @@ impl Michi {
         if commit {
             self.app.changes_commit();
         }
-        if typing {
+        // The same in the 4 view, for what stopped on a clash.
+        let concluding = ctx.memory(|m| m.has_focus(conflict_ui::message_id()));
+        let conclude =
+            (concluding || self.app.view == View::Conflict) && ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter));
+        if conclude {
+            self.app.conflict_commit();
+        }
+        if typing || concluding {
             return;
         }
-        let let_go = std::mem::take(&mut self.app.changes.typing);
+        let let_go = std::mem::take(&mut self.app.changes.typing) | std::mem::take(&mut self.app.conflicts.typing);
         if ctx.memory(|m| m.has_focus(graph_ui::filter_id())) {
             let (next, back, down, up) = ctx.input_mut(|i| {
                 (

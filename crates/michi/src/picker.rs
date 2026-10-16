@@ -228,7 +228,7 @@ impl App {
     }
 
     /// What the worktree at `wt` is in the middle of, as last read.
-    fn doing_in(&self, wt: &Path) -> Option<Doing> {
+    pub(crate) fn doing_in(&self, wt: &Path) -> Option<Doing> {
         self.trees.trees.iter().find(|t| same(&t.wt.path, wt)).and_then(|t| t.doing)
     }
 
@@ -294,7 +294,7 @@ impl App {
     /// is working, after a yes (`claude` asks).
     fn guarded(&mut self, task: Task, wt: &Path, doing: &'static str, claude: &'static str) {
         if let Some(d) = self.doing_in(wt) {
-            let text = self.tr(doing).replace("{wt}", &act::name(wt)).replace("{doing}", d.word());
+            let text = self.tr(doing).replace("{wt}", &act::name(wt)).replace("{doing}", &self.doing_word(d));
             self.say_for(text, 8);
             return;
         }
@@ -361,7 +361,7 @@ impl App {
         };
         let (id, subject, parents) = (c.id, c.subject.clone(), c.parents.len());
         if let Some(d) = self.doing_in(&wt) {
-            let text = self.tr("act.revert_doing").replace("{wt}", &act::name(&wt)).replace("{doing}", d.word());
+            let text = self.tr("act.revert_doing").replace("{wt}", &act::name(&wt)).replace("{doing}", &self.doing_word(d));
             self.say_for(text, 8);
             return;
         }
@@ -379,6 +379,75 @@ impl App {
         }
         let parents = if parents > 1 { parents.min(9) as u8 } else { 0 };
         self.band = Some(Band { text, then: Then::Act(Task::Revert { wt, id, mainline: None }), parents });
+    }
+
+    /// `C`: asks before it picks the selected commit onto the window's
+    /// worktree; a merge asks which parent its changes are taken against.
+    pub(crate) fn ask_cherry(&mut self) {
+        let Repo::Ready(s) = &self.repo else {
+            self.say(self.tr("act.no_tree"));
+            return;
+        };
+        let wt = s.top.clone();
+        let commit = match self.graph.selected_wip() {
+            Some(_) => None,
+            None => self.graph.selected().and_then(|id| self.graph.find_commit(&id)),
+        };
+        let Some(c) = commit else {
+            self.say(self.tr("act.pick_commit"));
+            return;
+        };
+        let (id, subject, parents) = (c.id, c.subject.clone(), c.parents.len());
+        if let Some(d) = self.doing_in(&wt) {
+            let text = self.tr("act.revert_doing").replace("{wt}", &act::name(&wt)).replace("{doing}", &self.doing_word(d));
+            self.say_for(text, 8);
+            return;
+        }
+        let branch = self.worktrees().into_iter().find(|w| same(&w.path, &wt)).and_then(|w| w.branch);
+        let branch = branch.unwrap_or_else(|| self.tr("act.detached").to_owned());
+        let key = if parents > 1 { "act.cherry_merge" } else { "act.cherry" };
+        let mut text = self
+            .tr(key)
+            .replace("{id}", &id.short())
+            .replace("{subject}", &subject)
+            .replace("{branch}", &branch)
+            .replace("{wt}", &act::name(&wt));
+        if self.claude_working(&wt) {
+            text.push_str(self.tr("act.revert_claude"));
+        }
+        let parents = if parents > 1 { parents.min(9) as u8 } else { 0 };
+        self.band = Some(Band { text, then: Then::Act(Task::CherryPick { wt, id, mainline: None }), parents });
+    }
+
+    /// `m` in the worktree table: asks before it merges the trunk (the
+    /// local branch) into the selected worktree's branch.
+    pub(crate) fn ask_merge(&mut self) {
+        let Some(t) = self.wt_selected() else {
+            self.say(self.tr("act.no_tree"));
+            return;
+        };
+        let (wt, branch, doing) = (t.wt.path.clone(), t.wt.branch.clone(), t.doing);
+        let Some(trunk) = self.trees.trunk.clone().or_else(|| self.graph.trunk_name().map(str::to_owned)) else {
+            self.say(self.tr("act.no_trunk"));
+            return;
+        };
+        let say = |a: &mut App, key: &'static str| {
+            let text = a.tr(key).replace("{wt}", &act::name(&wt)).replace("{rev}", &trunk);
+            let text = text.replace("{doing}", &doing.map_or_else(String::new, |d| a.doing_word(d)));
+            a.say_for(text, 6);
+        };
+        let Some(branch) = branch else { return say(self, "act.merge_detached") };
+        if branch == trunk {
+            return say(self, "act.merge_self");
+        }
+        if doing.is_some() {
+            return say(self, "act.revert_doing");
+        }
+        let mut text = self.tr("act.merge").replace("{rev}", &trunk).replace("{branch}", &branch).replace("{wt}", &act::name(&wt));
+        if self.claude_working(&wt) {
+            text.push_str(self.tr("act.revert_claude"));
+        }
+        self.band = Some(Band::new(text, Then::Act(Task::Merge { wt, rev: trunk })));
     }
 }
 
@@ -563,6 +632,7 @@ mod tests {
         assert!(a.feed('t'));
         let band = a.band.as_ref().unwrap();
         assert_eq!(band.parents, 2);
+        assert_eq!(band.parent_key(), "band.parent", "a revert keeps a parent's side");
         assert!(band.text.contains("is a merge"));
         assert!(a.feed('1'));
         assert!(a.band.is_none());
@@ -575,6 +645,83 @@ mod tests {
         assert!(a.feed('t'));
         assert_eq!(toast(&a), "repo is in the middle of a revert: finish it first");
         assert!(a.band.is_none());
+    }
+
+    #[test]
+    fn c_asks_before_it_picks_a_commit() {
+        let mut a = on("m1");
+        assert!(a.feed('C'));
+        let band = a.band.take().unwrap();
+        let wt = PathBuf::from("C:/r/repo");
+        assert_eq!((band.then, band.parents), (Then::Act(Task::CherryPick { wt, id: id(4), mainline: None }), 0));
+        assert_eq!(band.text, format!("Pick {} “m1” onto main in repo?", id(4).short()));
+
+        // A merge: against which parent.
+        let mut a = on(fixture::FEAT);
+        assert!(a.feed('C'));
+        let band = a.band.as_ref().unwrap();
+        assert_eq!(band.parents, 2);
+        assert_eq!(band.parent_key(), "band.parent_pick", "a pick takes the changes against a parent");
+        assert!(band.text.contains("is a merge"), "{}", band.text);
+        assert!(a.feed('y'));
+        assert!(a.band.is_some(), "y is not a parent");
+        assert!(a.feed('2'));
+        assert!(a.band.is_none());
+
+        // In the middle of a merge: not now.
+        let mut a = on("m1");
+        let mut trees = fixture::trees();
+        trees.trees[0].doing = Some(Doing::Merge);
+        a.take(crate::repo::Answer::Trees(trees));
+        assert!(a.feed('C'));
+        assert_eq!(toast(&a), "repo is in the middle of a merge: finish it first");
+        assert!(a.band.is_none());
+    }
+
+    #[test]
+    fn m_in_the_worktree_table_asks_before_it_merges_the_trunk() {
+        let mut a = on("m1");
+        assert!(a.feed('3'));
+        assert!(a.feed('m'));
+        assert_eq!(toast(&a), "repo is on main itself: there is nothing to merge");
+        assert!(a.band.is_none());
+        assert!(a.feed('j'));
+        assert!(a.feed('m'));
+        let band = a.band.take().unwrap();
+        assert_eq!(band.then, Then::Act(Task::Merge { wt: PathBuf::from("C:/r/wt"), rev: "main".into() }));
+        assert_eq!(band.text, "Merge main into wip in wt?");
+        assert!(a.feed('j'));
+        assert!(a.feed('m'));
+        assert_eq!(toast(&a), "old is on no branch: switch it to one before merging main");
+
+        // In the middle of a rebase: not now.
+        let mut trees = fixture::trees();
+        trees.trees[1].doing = Some(Doing::Rebase);
+        a.take(crate::repo::Answer::Trees(trees));
+        assert!(a.feed('k'));
+        assert!(a.feed('m'));
+        assert_eq!(toast(&a), "wt is in the middle of a rebase: finish it first");
+        assert!(a.band.is_none());
+    }
+
+    #[test]
+    fn a_worktree_in_a_merge_keeps_its_head_from_a_pull_and_a_commit() {
+        let mut a = on("m1");
+        let mut trees = fixture::trees();
+        trees.trees[0].doing = Some(Doing::Merge);
+        a.take(crate::repo::Answer::Trees(trees));
+        assert!(a.feed('p'));
+        assert_eq!(toast(&a), "repo is in the middle of a merge: pull waits until it is over");
+        assert!(a.band.is_none());
+        a.toast = None;
+        a.changes_commit();
+        assert_eq!(toast(&a), "repo is in the middle of a merge: commit it in the 4 view");
+        // Another worktree's pull goes on.
+        assert!(a.feed('3'));
+        assert!(a.feed('j'));
+        a.toast = None;
+        assert!(a.feed('p'));
+        assert!(a.toast.is_none() && a.band.is_none(), "no reading thread here: nothing runs");
     }
 
     /// The app, read, with two stashes (the newer first) and the selection

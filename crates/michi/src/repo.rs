@@ -41,6 +41,7 @@ use std::time::{Duration, Instant, SystemTime};
 use michi_core::change::{self, Places};
 use michi_core::clash::{self, Clashes};
 use michi_core::claude::{self, Session};
+use michi_core::conflict::{self, Conflict};
 use michi_core::discard;
 use michi_core::git::{self, Version};
 use michi_core::history::Setup;
@@ -87,6 +88,9 @@ pub enum Answer {
     Trees(Trees),
     /// Which worktrees would conflict with which.
     Clashes(Clashes),
+    /// The worktrees stopped in the middle of a merge, a cherry-pick, a
+    /// revert or a rebase, with their places.
+    Conflicts(Vec<Conflict>),
     /// The commits not seen yet, per worktree.
     Unseen(Unseen),
     /// The Claude sessions in each worktree (by its folder; only those with
@@ -409,6 +413,7 @@ struct Last {
     wips: Option<Vec<Wip>>,
     trees: Option<Trees>,
     clashes: Option<Clashes>,
+    conflicts: Option<Vec<Conflict>>,
     unseen: Option<Unseen>,
     claude: Option<Option<Sessions>>,
     /// Every ref and every worktree's `HEAD`: when it changes, the history
@@ -572,6 +577,22 @@ fn read_trees(
             if last.unseen.as_ref() != Some(&unseen) {
                 last.unseen = Some(unseen.clone());
                 send(Answer::Unseen(unseen));
+            }
+            let conflicts: Vec<Conflict> = trees
+                .trees
+                .iter()
+                .filter(|t| t.doing.is_some())
+                .filter_map(|t| match conflict::read(&t.wt.path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        eprintln!("michi: {e}");
+                        None
+                    }
+                })
+                .collect();
+            if last.conflicts.as_ref() != Some(&conflicts) {
+                last.conflicts = Some(conflicts.clone());
+                send(Answer::Conflicts(conflicts));
             }
             if last.trees.as_ref() != Some(&trees) {
                 last.trees = Some(trees.clone());
