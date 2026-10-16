@@ -40,8 +40,8 @@
     `Open PR` (with the PR button, stage 4) （要確認: #10）
   - [x] Stage and commit (`2`, v0.10.0): files, lines and hunks (`git apply --cached`), the message per worktree, amend (asked first
     when the head is pushed), the check while Claude is writing, the count of uncommitted files on the `2` tab （要確認: #12）
-  - [ ] Stage and commit's leftovers: splitting a hunk (`s` of `git add -p`), the commit hooks' output shown whole (now one line in a
-    toast); discard and stash are in the everyday operations below （要確認: #12）
+  - [x] Stage and commit's leftovers (v0.14.0): splitting the hunks into their runs of changes (`s`, kept across re-reads), the
+    output git and the hooks gave on a refused write shown whole in place of the diff (colour codes stripped) （要確認: #12, #20）
   - [x] Fetch / pull / push (v0.11.0): `f` `p` `P` in every view on the worktree the view points at, pull fast-forward only, push with
     the upstream set for a new branch, progress and Esc (the whole process tree) in the key bar, the last fetch's age, the band before
     `--force-with-lease` with the remote's tip kept under `refs/michi/backup/`, the Claude band before a pull （要確認: #15）
@@ -58,8 +58,9 @@
     text as the message and the filter, Enter applies and Shift+Enter pops, a clash keeps the stash, Delete drops it after a band with
     a backup, the stash in the detail and on a click in the side column), discard on `d` in `2` (files, untracked files with their
     empty folders, picked lines; always asked, kept under `refs/michi/backup/` first, staged changes refused) （要確認: #18）
-  - [ ] The everyday operations left: clean-up (merged branches, branches gone on origin, worktrees whose folder is gone, picked
-    together; `fetch --prune`, `branch -d`／`-D` with the tips of unmerged ones kept under `refs/michi/backup/`, `worktree remove`／`prune`)
+  - [x] Clean-up (v0.14.0): `c` over the worktree table lists the branches merged into the trunk or gone from their remote and the
+    worktrees whose folder is gone, picked with Space / `a`, asked with the band; a branch's worktree goes with it, unmerged tips kept
+    under `refs/michi/backup/`, and what has to stay (main, here, changes, locked, a tsumugi tab) is listed with why （要確認: #20）
 - [ ] 3. Conflicts: the conflict screen (`4`), locks during a merge (and「· マージ中」in red on the chip), rerere asked once, cherry-pick; prediction moved to gix-merge and
   checked against `git merge-tree --write-tree`; the prediction's text while a merge is under way (「予測は衝突の解消（4）の実物に変わりました」)
 - [ ] 4. Worktrees: new work (`N`), remove (`x`), go to the tab (`o`), take in main (`m`), the PR button (`gh pr create`); needs tsumugi `new --worktree BRANCH --from REF`

@@ -90,6 +90,7 @@ impl View {
                 ("a", "key.stage_all"),
                 ("j k", "key.select"),
                 ("v", "key.range"),
+                ("s", "key.split"),
                 ("d", "key.discard"),
                 ("A", "key.amend"),
                 ("[ ]", "key.worktree"),
@@ -103,6 +104,7 @@ impl View {
                 ("m", "key.take_main"),
                 ("x", "key.remove"),
                 ("d", "key.branch_diff"),
+                ("c", "key.tidy"),
             ],
         }
     }
@@ -204,6 +206,8 @@ pub struct App {
     pub band: Option<Band>,
     /// The branch, tag or stash palette, over the graph.
     pub picker: Option<Picker>,
+    /// The clean-up list, over the worktree table.
+    pub tidy: Option<crate::tidy::Tidy>,
     /// The stash clicked in the side column, and the commit the graph had
     /// selected then: the detail shows the stash until that moves.
     pub side_stash: Option<(Oid, Option<Oid>)>,
@@ -241,6 +245,7 @@ impl App {
             last_fetch: None,
             band: None,
             picker: None,
+            tidy: None,
             side_stash: None,
             quit: false,
         };
@@ -408,8 +413,10 @@ impl App {
                 // The selection stays on its worktree when the list changes.
                 let path = self.trees.trees.get(self.wt_sel).map(|t| t.wt.path.clone());
                 self.wt_sel = path.and_then(|p| trees.trees.iter().position(|t| t.wt.path == p)).unwrap_or(0);
-                // The title follows a switch made here or anywhere else.
+                // The title follows a switch made here or anywhere else, and
+                // worktrees added or taken away.
                 if let Repo::Ready(s) = &mut self.repo {
+                    s.worktrees = trees.trees.len();
                     let top = paths::key(&s.top);
                     if let Some(t) = trees.trees.iter().find(|t| paths::key(&t.wt.path) == top) {
                         s.head = summary::head_of(&t.wt);
@@ -461,6 +468,9 @@ impl App {
                     Err(e) => {
                         let text = self.tr("changes.failed").replace("{}", &e.to_string());
                         self.say_for(text, 8);
+                        if let git::Error::Told { all, .. } = e {
+                            self.changes.tell(&wt, commit, all.clone());
+                        }
                     }
                 }
                 let wish = self.changes.take_done(&wt, commit, result.is_ok());
@@ -641,6 +651,7 @@ impl App {
                 none()
             }
             'A' => Ok(ch.toggle_amend()),
+            's' => ch.split(),
             'd' => ch.discard(claude),
             '[' | ']' => {
                 self.changes_step(if c == ']' { 1 } else { -1 });
@@ -905,6 +916,7 @@ impl App {
             (Mode::Settings, _) | (Mode::Help, _) => return false,
             (Mode::Main, _) if self.picker.is_some() => return false,
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
+            (Mode::Main, c) if self.tidy.is_some() => return self.tidy_key(c),
             (Mode::Main, '?') => self.mode = Mode::Help,
             (Mode::Main, ',') => self.mode = Mode::Settings,
             (Mode::Main, c) => match View::from_digit(c) {
@@ -948,6 +960,7 @@ impl App {
             'j' => self.wt_move(1),
             'k' => self.wt_move(-1),
             'd' => self.open_review(),
+            'c' => self.open_tidy(),
             _ => return false,
         }
         true
@@ -972,6 +985,9 @@ impl App {
     pub fn named(&mut self, name: &str) -> bool {
         if self.mode != Mode::Main {
             return false;
+        }
+        if self.tidy.is_some() {
+            return self.tidy_named(name);
         }
         if self.view == View::Graph {
             let g = &mut self.graph;
@@ -1034,7 +1050,8 @@ impl App {
     }
 
     /// Escape: close the help or the settings, else the branch palette,
-    /// else drop the job waiting for a yes, else the stash the side column
+    /// else drop the job waiting for a yes, else close the clean-up list,
+    /// else the stash the side column
     /// shows, else bring the graph back from beside a wide diff, else
     /// clear the graph's filter; over the worktree table, bring the review's
     /// diff back to one column, else close the review. With nothing else to
@@ -1048,6 +1065,9 @@ impl App {
             return true;
         }
         if self.band.take().is_some() {
+            return true;
+        }
+        if self.tidy.take().is_some() {
             return true;
         }
         if self.view == View::Graph && self.picker.is_none() && self.stash_shown().is_some() {
@@ -1064,7 +1084,7 @@ impl App {
         }
         if self.view == View::Changes {
             let ch = &mut self.changes;
-            if ch.confirm.take().is_some() {
+            if ch.confirm.take().is_some() || ch.told.take().is_some() {
                 return true;
             }
             if ch.focus == Focus::Lines {

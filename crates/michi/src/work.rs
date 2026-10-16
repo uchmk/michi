@@ -208,6 +208,9 @@ impl App {
         match b.then {
             Then::Net(job) => self.order(job),
             Then::Act(mut task) => {
+                if matches!(task, Task::Tidy { .. }) {
+                    self.tidy = None;
+                }
                 if let (Task::Revert { mainline, .. }, Some(n)) = (&mut task, side) {
                     *mainline = Some(n);
                 }

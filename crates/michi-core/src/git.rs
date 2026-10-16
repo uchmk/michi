@@ -272,12 +272,40 @@ pub(crate) fn refused(stderr: &str) -> Error {
 
 /// [`refused`], keeping all git said when it said more than a line.
 pub(crate) fn refused_all(stderr: &str) -> Error {
-    match refused(stderr) {
+    let stderr = plain(stderr);
+    match refused(&stderr) {
         Error::Git(line) if stderr.lines().filter(|l| !l.trim().is_empty()).nth(1).is_some() => {
             Error::Told { line, all: stderr.trim_matches(['\n', '\r']).to_owned() }
         }
         e => e,
     }
+}
+
+/// `s` without a terminal's escapes (the colours a hook may write though
+/// no terminal reads it), each line as a terminal leaves it after its
+/// carriage returns: what came after the last.
+fn plain(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for (n, line) in s.split('\n').enumerate() {
+        if n > 0 {
+            out.push('\n');
+        }
+        let line = line.strip_suffix('\r').unwrap_or(line);
+        let mut chars = line.rsplit('\r').next().unwrap_or(line).chars();
+        while let Some(ch) = chars.next() {
+            if ch != '\x1b' {
+                out.push(ch);
+            } else if chars.next() == Some('[') {
+                // Up to the final byte of the sequence.
+                for c in chars.by_ref() {
+                    if ('@'..='~').contains(&c) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    out
 }
 
 #[cfg(test)]
@@ -329,6 +357,12 @@ mod tests {
         assert_eq!(e.to_string(), "lint: 2 problems");
         assert_eq!(e.all(), "lint: 2 problems\n  a.rs:1 unused");
         assert_eq!(refused_all("fatal: one line\n"), Error::Git("one line".into()));
+        // Colours and what a carriage return wrote over are left out.
+        let coloured = "\x1b[31m✖ lint\x1b[0m: 1 problem\r\n checking…\r  a.rs:1 \x1b[1munused\x1b[22m\r\n";
+        assert_eq!(
+            refused_all(coloured),
+            Error::Told { line: "✖ lint: 1 problem".into(), all: "✖ lint: 1 problem\n  a.rs:1 unused".into() }
+        );
         assert_eq!(Error::Git("one".into()).all(), "one");
     }
 

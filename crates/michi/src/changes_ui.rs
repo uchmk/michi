@@ -13,7 +13,7 @@ use michi_core::show::File;
 use michi_core::stage::{Lists, Side};
 
 use crate::app::App;
-use crate::changes::{Changes, Focus, Op, Shown};
+use crate::changes::{Changes, Focus, Op, Shown, Told};
 use crate::detail::{Paired, Unified};
 use crate::detail_ui::{diff, left_cut, status_ink, Wrap, DIFF_H, FILE_H, NOTE_H, TITLE_H, X};
 use crate::ui::{accent, kbd};
@@ -47,6 +47,11 @@ fn scroll_id() -> Id {
 }
 
 /// The cursor the diff last brought into sight.
+/// How far what git said is scrolled.
+fn told_id() -> Id {
+    Id::new("changes-told-scroll")
+}
+
 fn cursor_seen_id() -> Id {
     Id::new("changes-cursor-seen")
 }
@@ -66,6 +71,8 @@ enum Act {
     Wide(bool),
     Commit,
     No,
+    /// What git said is put away.
+    Untell,
 }
 
 /// The `2` view in `r`.
@@ -78,7 +85,10 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let (to_top, pages) = (std::mem::take(&mut ch.to_top), std::mem::take(&mut ch.pages));
     if to_top {
         // Also while the new file's diff is read.
-        ctx.data_mut(|d| d.insert_temp(scroll_id(), 0.0_f32));
+        ctx.data_mut(|d| {
+            d.insert_temp(scroll_id(), 0.0_f32);
+            d.insert_temp(told_id(), 0.0_f32);
+        });
     }
     let pointer = if live { ui.input(|i| i.pointer.hover_pos()).filter(|at| r.contains(*at)) } else { None };
     let mut act = None;
@@ -116,7 +126,11 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         act = Some(a);
     }
     let ch = &app.changes;
-    if let Some((side, f)) = ch.selected() {
+    if let Some(told) = &ch.told {
+        if told_of(ui, app, told, dr, live, pointer, pages) {
+            act = Some(Act::Untell);
+        }
+    } else if let Some((side, f)) = ch.selected() {
         if let Some(a) = title_row(ui, app, side, f, Rect::from_min_size(dr.min, vec2(dr.width(), TITLE_H)), live, pointer) {
             act = Some(a);
         }
@@ -147,8 +161,46 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         Act::No => {
             app.escape();
         }
+        Act::Untell => app.changes.told = None,
     }
     ctx.request_repaint();
+}
+
+/// All git said when a write failed, in place of the diff: what failed
+/// over the words as git wrote them, scrolled as the diff is. Whether
+/// "close" was clicked.
+fn told_of(ui: &Ui, app: &App, told: &Told, dr: Rect, live: bool, pointer: Option<Pos2>, pages: i32) -> bool {
+    let c = ito_theme::colors();
+    let ctx = ui.ctx();
+    let rr = Rect::from_min_size(dr.min, vec2(dr.width(), TITLE_H));
+    let p = ui.painter_at(rr);
+    p.rect_filled(rr, 0.0, c.side);
+    p.line_segment([rr.left_bottom() - vec2(0.0, 0.5), rr.right_bottom() - vec2(0.0, 0.5)], Stroke::new(1.0, c.border));
+    let mid = rr.center().y;
+    let cap = kbd(ui, &p, pos2(rr.right() - X, mid), "Esc");
+    let w = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, app.tr("changes.told_close"), FontId::proportional(12.0), c.dim);
+    let closed = clicked(ui, &p, w.union(cap).expand(3.0), "changes-untell", live, pointer);
+    let title = app.tr(if told.commit { "changes.told_commit" } else { "changes.told" });
+    let g = ui.fonts_mut(|f| {
+        let mut job = LayoutJob::simple_singleline(title.to_owned(), FontId::proportional(12.5), c.err);
+        job.wrap = TextWrapping::truncate_at_width((w.left() - 12.0 - rr.left() - X).max(0.0));
+        f.layout_job(job)
+    });
+    p.galley(pos2(rr.left() + X, mid - g.size().y / 2.0), g, c.err);
+
+    let body = Rect::from_min_max(pos2(dr.left(), rr.bottom()), dr.max);
+    let p = ui.painter_at(body);
+    let g = ui.fonts_mut(|f| f.layout(told.all.clone(), FontId::monospace(12.0), c.fg, (body.width() - 2.0 * X).max(40.0)));
+    let total = g.size().y + 24.0;
+    let mut scroll = ctx.data(|d| d.get_temp::<f32>(told_id())).unwrap_or(0.0);
+    scroll += pages as f32 * (body.height() - 40.0).max(40.0);
+    if live && ui.rect_contains_pointer(body) {
+        scroll -= ui.input(|i| i.smooth_scroll_delta.y);
+    }
+    scroll = scroll.clamp(0.0, (total - body.height()).max(0.0));
+    ctx.data_mut(|d| d.insert_temp(told_id(), scroll));
+    p.galley(pos2(body.left() + X, body.top() + 10.0 - scroll), g, c.fg);
+    closed
 }
 
 /// Whether `hit` was clicked; a hand over it.
@@ -771,7 +823,10 @@ mod tests {
         assert!(app.feed('j'));
         assert_eq!(app.changes.picked().len(), 3);
         let drawn = frame(&ctx, &mut app, 900.0, Vec::new());
-        assert!(drawn.iter().any(|t| t == "Space in or out · v range · a hunk · d throw away · h back"), "how lines are picked: {drawn:?}");
+        assert!(
+            drawn.iter().any(|t| t == "Space in or out · v range · a hunk · s split · d throw away · h back"),
+            "how lines are picked: {drawn:?}"
+        );
         assert!(app.named("Enter"));
         frame(&ctx, &mut app, 1400.0, Vec::new());
         assert!(app.escape(), "Esc leaves the lines first");
@@ -860,6 +915,43 @@ mod tests {
             app.toast.as_ref().map(|(t, _)| t.as_str()),
             Some("Threw away 3 lines of a.txt; kept in michi/backup/2026-10-16T10-00-00")
         );
+    }
+
+    #[test]
+    fn all_a_hook_said_is_shown_in_place_of_the_diff_until_put_away() {
+        let ctx = egui::Context::default();
+        let mut app = opened();
+        take_list(&mut app, lists(&["s.txt"], &["a.txt", "b.txt"]));
+        take_file(&mut app, Some(two_hunks("s.txt")));
+        let wt = PathBuf::from("C:/r/wt");
+        let told = || michi_core::git::Error::Told { line: "lint: 2 problems".into(), all: "lint: 2 problems\n  a.rs:1 unused".into() };
+        let fail = |app: &mut App, commit: bool, e: michi_core::git::Error| {
+            app.take(Answer::ChangesDone { wt: wt.clone(), commit, result: Err(e) });
+        };
+        fail(&mut app, true, told());
+        assert_eq!(app.toast.as_ref().map(|(t, _)| t.as_str()), Some("Could not write: lint: 2 problems"), "the first line in the toast");
+        let drawn = frame(&ctx, &mut app, 900.0, Vec::new());
+        for text in ["Could not commit: all git and the hooks said", "lint: 2 problems\n  a.rs:1 unused", "Close"] {
+            assert!(drawn.iter().any(|t| t == text), "{text:?} in {drawn:?}");
+        }
+        assert!(!drawn.iter().any(|t| t.starts_with("@@")), "the diff is not drawn: {drawn:?}");
+        assert!(app.escape());
+        assert!(app.changes.told.is_none(), "Esc puts it away");
+        // Another file puts it away too; so does a write that goes through.
+        fail(&mut app, false, told());
+        let drawn = frame(&ctx, &mut app, 900.0, Vec::new());
+        assert!(drawn.iter().any(|t| t == "Could not write: all git said"), "{drawn:?}");
+        assert!(app.feed('j'));
+        assert!(app.changes.told.is_none());
+        fail(&mut app, true, told());
+        app.take(Answer::ChangesDone { wt: wt.clone(), commit: false, result: Ok(Did::Staged) });
+        assert!(app.changes.told.is_none());
+        // A line of git's goes in the toast alone; another worktree's words
+        // are not shown here.
+        fail(&mut app, true, michi_core::git::Error::Git("nothing to commit".into()));
+        assert!(app.changes.told.is_none());
+        app.take(Answer::ChangesDone { wt: "C:/r/repo".into(), commit: true, result: Err(told()) });
+        assert!(app.changes.told.is_none());
     }
 
     #[test]

@@ -24,6 +24,7 @@ pub mod stage;
 pub mod stash;
 pub mod summary;
 pub mod tag;
+pub mod tidy;
 pub mod track;
 pub mod unseen;
 pub mod wip;

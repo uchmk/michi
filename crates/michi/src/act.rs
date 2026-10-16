@@ -1,6 +1,7 @@
-//! Branches, tags, reverts and stashes: what the window sends the act
-//! thread, and what it says when one ends. They run one after another, each
-//! quick; a tag to push goes on to the net thread when it is made.
+//! Branches, tags, reverts, stashes and clean-ups: what the window sends
+//! the act thread, and what it says when one ends. They run one after
+//! another, each quick; a tag to push goes on to the net thread when it is
+//! made.
 
 use std::path::{Path, PathBuf};
 
@@ -9,6 +10,7 @@ use michi_core::git;
 use michi_core::oid::Oid;
 use michi_core::revert::{self, Reverted};
 use michi_core::stash::{self, Applied, Saved};
+use michi_core::tidy::{self, Found, Item, Outcome};
 use michi_core::{branch, tag};
 
 use crate::app::App;
@@ -43,6 +45,11 @@ pub enum Task {
     Unstash { wt: PathBuf, id: Oid, pop: bool },
     /// Drops the stash `id`.
     DropStash { id: Oid },
+    /// Lists what can be cleaned up, the window being on the worktree at
+    /// `here`.
+    FindTidy { here: PathBuf },
+    /// Takes the rows picked from that list away.
+    Tidy { picks: Vec<Item> },
 }
 
 impl Task {
@@ -59,6 +66,8 @@ impl Task {
             Task::Unstash { pop: false, .. } => "stash apply",
             Task::Unstash { pop: true, .. } => "stash pop",
             Task::DropStash { .. } => "stash drop",
+            Task::FindTidy { .. } => "for-each-ref",
+            Task::Tidy { .. } => "worktree remove",
         }
     }
 }
@@ -73,6 +82,8 @@ pub enum Acted {
     Reverted(Reverted),
     Stashed(Saved),
     Unstashed(Applied),
+    Found(Found),
+    Tidied(Outcome),
 }
 
 /// Does `task` in the repository `dir` is in.
@@ -88,6 +99,8 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Stash { wt, message } => stash::save(wt, message).map(Acted::Stashed),
         Task::Unstash { wt, id, pop } => stash::apply(wt, id, *pop).map(Acted::Unstashed),
         Task::DropStash { id } => stash::drop(dir, id).map(|saved| Acted::Kept(Some(saved))),
+        Task::FindTidy { here } => tidy::find(dir, here).map(Acted::Found),
+        Task::Tidy { picks } => Ok(Acted::Tidied(tidy::remove(dir, picks))),
     }
 }
 
@@ -165,6 +178,8 @@ impl App {
                 let saved = saved.as_deref().map_or("", backup::short);
                 (self.tr("act.dropped").replace("{id}", &id.short()).replace("{saved}", saved), 10)
             }
+            (Task::FindTidy { .. }, Ok(Acted::Found(found))) => return self.tidy_found(found),
+            (Task::Tidy { .. }, Ok(Acted::Tidied(out))) => self.tidied(&out),
             // Each task ends one way when it goes.
             (_, Ok(_)) => return,
         };
@@ -172,7 +187,7 @@ impl App {
     }
 
     /// Up to three files, then how many more.
-    fn few(&self, files: &[String]) -> String {
+    pub(crate) fn few(&self, files: &[String]) -> String {
         let mut list = files.iter().take(3).map(String::as_str).collect::<Vec<_>>().join(", ");
         if files.len() > 3 {
             list.push_str(&self.tr("act.more").replace("{}", &(files.len() - 3).to_string()));

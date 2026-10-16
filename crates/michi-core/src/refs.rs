@@ -35,6 +35,9 @@ pub struct Refs {
     /// How far each local branch with an upstream is ahead of it and
     /// behind it: name to `(ahead, behind)`.
     pub track: HashMap<String, (u32, u32)>,
+    /// The local branches whose upstream is gone from its remote (a pull
+    /// request's branch deleted when it was merged).
+    pub gone: Vec<String>,
     pub remotes: Vec<RemoteRef>,
     /// Peeled: an annotated tag's commit, not the tag object.
     pub tags: Vec<Ref>,
@@ -114,6 +117,8 @@ impl Refs {
                 if symref.is_empty() {
                     if let Some(t) = parse_track(track) {
                         refs.track.insert(branch.to_owned(), t);
+                    } else if track == "gone" {
+                        refs.gone.push(branch.to_owned());
                     }
                     refs.locals.push(Ref { name: branch.to_owned(), id });
                 }
@@ -250,6 +255,7 @@ mod tests {
         let lines = [
             format!("refs/heads/main\0{}\0\0\0ahead 2, behind 1", id('1')),
             format!("refs/heads/feat/x\0{}\0\0\0", id('2')),
+            format!("refs/heads/done\0{}\0\0\0gone", id('2')),
             format!("refs/remotes/origin/HEAD\0{}\0\0refs/remotes/origin/main", id('1')),
             format!("refs/remotes/origin/main\0{}\0\0", id('3')),
             format!("refs/remotes/my/fork/feat/x\0{}\0\0", id('2')),
@@ -258,7 +264,9 @@ mod tests {
             format!("refs/tags/light\0{}\0\0", id('3')),
         ];
         let r = Refs::parse(lines.join("\n").as_bytes(), &["origin", "my/fork"]);
-        assert_eq!(r.locals.iter().map(|x| x.name.as_str()).collect::<Vec<_>>(), ["main", "feat/x"]);
+        assert_eq!(r.locals.iter().map(|x| x.name.as_str()).collect::<Vec<_>>(), ["main", "feat/x", "done"]);
+        assert_eq!(r.gone, ["done"]);
+        assert_eq!(r.track.get("done"), None);
         assert_eq!(r.track.get("main"), Some(&(2, 1)));
         assert_eq!(r.track.get("feat/x"), Some(&(0, 0)), "an empty track is even with its upstream");
         let remotes: Vec<_> = r.remotes.iter().map(|x| (x.remote.as_str(), x.name.as_str())).collect();
@@ -271,6 +279,7 @@ mod tests {
         assert_eq!(one.locals, ["main"]);
         assert_eq!(one.tags, ["v1"]);
         let two = &labels[&Oid::parse(&id('2')).unwrap()];
+        assert_eq!(two.locals, ["feat/x", "done"]);
         assert_eq!(two.remotes, [("my/fork".to_owned(), "feat/x".to_owned())]);
         assert_eq!(r.remote_names(), ["my/fork", "origin", "stray"]);
     }

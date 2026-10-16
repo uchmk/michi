@@ -26,6 +26,8 @@ mod review;
 mod review_ui;
 mod settings;
 mod side_ui;
+mod tidy;
+mod tidy_ui;
 mod ui;
 mod work;
 mod wt_ui;
@@ -222,6 +224,7 @@ impl eframe::App for Michi {
             settings::show(&mut body, &mut self.app);
         }
         picker_ui::show(&ctx, &mut self.app);
+        tidy_ui::show(&ctx, &mut self.app);
         // A tab leaves the settings and the key list for its view; the gear
         // opens the settings and closes them.
         if let Some(v) = out.view {

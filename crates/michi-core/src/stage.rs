@@ -197,6 +197,79 @@ pub fn diff(dir: &Path, side: Side, file: &File) -> Result<Option<Diff>, git::Er
     Ok(Some(Diff { file: f, patch }))
 }
 
+impl Diff {
+    /// Each hunk cut into a piece per run of added and deleted lines, as `s`
+    /// of `git add -p` cuts it, the context between two runs shared out
+    /// (the earlier piece takes the odd line): a piece is then a hunk of its
+    /// own to look at and to pick. A patch still takes the pieces of a hunk
+    /// together ([`Patch::pick`]), so what goes in or out is as before.
+    /// False when no hunk has two runs, or when its lines cannot be picked.
+    pub fn split(&mut self) -> bool {
+        let Some(patch) = &mut self.patch else { return false };
+        if patch.hunks.len() != self.file.hunks.len() {
+            return false;
+        }
+        let mut any = false;
+        let (mut hunks, mut raws) = (Vec::new(), Vec::new());
+        for (hunk, raw) in std::mem::take(&mut self.file.hunks).into_iter().zip(std::mem::take(&mut patch.hunks)) {
+            let cuts = cuts(&hunk.lines);
+            let start = show::hunk_range(&hunk.header);
+            let (Some((mut old, _, mut new, _)), false, true) = (start, cuts.is_empty(), hunk.lines.len() == raw.lines.len()) else {
+                hunks.push(hunk);
+                raws.push(raw);
+                continue;
+            };
+            any = true;
+            // What follows `@@` (the function git found) stays on the first.
+            let after = hunk.header.split_once(" @@").map_or("", |(_, a)| a);
+            let bounds: Vec<usize> = std::iter::once(0).chain(cuts).chain(std::iter::once(hunk.lines.len())).collect();
+            let (mut lines, mut raw_lines) = (hunk.lines.into_iter(), raw.lines.into_iter());
+            let mut raw_header = Some(raw.header);
+            for (i, w) in bounds.windows(2).enumerate() {
+                let piece: Vec<Line> = lines.by_ref().take(w[1] - w[0]).collect();
+                let olds = piece.iter().filter(|l| l.kind != Kind::Add).count() as u32;
+                let news = piece.iter().filter(|l| l.kind != Kind::Del).count() as u32;
+                let header = format!("@@ -{} +{} @@{}", range(old, olds), range(new, news), if i == 0 { after } else { "" });
+                (old, new) = (old + olds, new + news);
+                raws.push(RawHunk {
+                    // The first keeps git's header: the patch is cut from it.
+                    header: raw_header.take().unwrap_or_else(|| header.clone().into_bytes()),
+                    lines: raw_lines.by_ref().take(piece.len()).collect(),
+                    joined: i > 0,
+                });
+                hunks.push(Hunk { header, lines: piece });
+            }
+        }
+        self.file.hunks = hunks;
+        patch.hunks = raws;
+        any
+    }
+}
+
+/// Where a hunk's lines are cut into a piece per run of changes: in the
+/// middle of the context between two runs, the odd line to the earlier.
+fn cuts(lines: &[Line]) -> Vec<usize> {
+    let mut out = Vec::new();
+    let mut end = None;
+    for k in lines.iter().enumerate().filter(|(_, l)| l.kind != Kind::Context).map(|(k, _)| k) {
+        if let Some(e) = end.filter(|&e| k > e) {
+            out.push(e + (k - e).div_ceil(2));
+        }
+        end = Some(k + 1);
+    }
+    out
+}
+
+/// A hunk header's `start,count`, as git writes it: the count left out
+/// when it is one, the line before when there is none.
+fn range(start: u32, n: u32) -> String {
+    match n {
+        0 => format!("{},0", start.saturating_sub(1)),
+        1 => start.to_string(),
+        _ => format!("{start},{n}"),
+    }
+}
+
 /// An untracked file as all added, from its content.
 fn untracked_diff(dir: &Path, file: &File) -> File {
     let mut f = File { counts: None, ..file.clone() };
@@ -244,6 +317,9 @@ pub struct Patch {
 struct RawHunk {
     header: Vec<u8>,
     lines: Vec<RawLine>,
+    /// It was cut off the hunk before it ([`Diff::split`]), which a patch
+    /// takes it with.
+    joined: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -300,7 +376,7 @@ impl Patch {
             } else if line.starts_with(b"@@ ") {
                 let Some((_, lo, _, ln)) = show::hunk_range(&String::from_utf8_lossy(line)) else { continue };
                 (left_old, left_new) = (lo, ln);
-                p.hunks.push(RawHunk { header: full.to_vec(), lines: Vec::new() });
+                p.hunks.push(RawHunk { header: full.to_vec(), lines: Vec::new(), joined: false });
             } else if line.starts_with(b"\\") {
                 p.no_eol();
             } else if p.hunks.is_empty() && (line.starts_with(b"--- ") || line.starts_with(b"+++ ")) {
@@ -324,19 +400,26 @@ impl Patch {
     /// worktree's against the index), to unstage them when `reverse` (the
     /// index's against the head). A context line is never picked; `None`
     /// when no added or deleted line is. The hunks keep where they start
-    /// and leave the counting to `--recount`.
+    /// and leave the counting to `--recount`; the pieces of a split hunk go
+    /// as the one hunk git wrote.
     pub fn pick(&self, picked: impl Fn(usize, usize) -> bool, reverse: bool) -> Option<Vec<u8>> {
         let mut out = self.head.clone();
         let mut any = false;
-        for (h, hunk) in self.hunks.iter().enumerate() {
-            let changed = |l: &RawLine| matches!(l.bytes.first(), Some(b'+' | b'-'));
-            if !hunk.lines.iter().enumerate().any(|(k, l)| changed(l) && picked(h, k)) {
+        let changed = |l: &RawLine| matches!(l.bytes.first(), Some(b'+' | b'-'));
+        let mut first = 0;
+        while first < self.hunks.len() {
+            let end = first + 1 + self.hunks[first + 1..].iter().take_while(|h| h.joined).count();
+            let from = first;
+            let lines = move || (from..end).flat_map(|h| self.hunks[h].lines.iter().enumerate().map(move |(k, l)| (h, k, l)));
+            let header = &self.hunks[first].header;
+            first = end;
+            if !lines().any(|(h, k, l)| changed(l) && picked(h, k)) {
                 continue;
             }
             any = true;
-            out.extend_from_slice(&hunk.header);
+            out.extend_from_slice(header);
             out.push(b'\n');
-            for (k, l) in hunk.lines.iter().enumerate() {
+            for (h, k, l) in lines() {
                 let mark = l.bytes.first().copied().unwrap_or(b' ');
                 let keep = mark == b' ' || picked(h, k);
                 // The side the patch is put on stays as it is: a line left
@@ -579,6 +662,70 @@ mod tests {
     }
 
     #[test]
+    fn a_split_hunk_is_picked_piece_by_piece_and_patched_as_one() {
+        let t = repo("stage-split");
+        t.write(&t.repo, "n.txt", TEN);
+        t.git(&t.repo, &["add", "."]);
+        t.git(&t.repo, &["commit", "-q", "-m", "numbers"]);
+        // One hunk with two runs, 6 and 7 between them.
+        let changed = TEN.replace("\n5\n", "\nfive\n").replace("\n8\n", "\neight\n");
+        t.write(&t.repo, "n.txt", &changed);
+        let whole = diff_of(&t, Side::Unstaged, "n.txt");
+        assert_eq!(whole.file.hunks.len(), 1);
+        let mut d = whole.clone();
+        assert!(d.split());
+        let headers: Vec<&str> = d.file.hunks.iter().map(|h| h.header.as_str()).collect();
+        assert_eq!(headers, ["@@ -2,5 +2,5 @@", "@@ -7,5 +7,5 @@"]);
+        let texts: Vec<Vec<&str>> = d.file.hunks.iter().map(|h| h.lines.iter().map(|l| l.text.as_str()).collect()).collect();
+        assert_eq!(texts, [vec!["2", "3", "4", "5", "five", "6"], vec!["7", "8", "eight", "9", "10", "11"]]);
+        // The second piece alone: the patch is the one the whole hunk gives
+        // for the same lines.
+        let p = d.patch.as_ref().unwrap();
+        let second: Vec<(usize, usize)> = p.changed_in(1).into_iter().map(|k| (1, k)).collect();
+        assert_eq!(second, lines_of(&d, Kind::Del, &["8"]).into_iter().chain(lines_of(&d, Kind::Add, &["eight"])).collect::<Vec<_>>());
+        let same: Vec<(usize, usize)> =
+            lines_of(&whole, Kind::Del, &["8"]).into_iter().chain(lines_of(&whole, Kind::Add, &["eight"])).collect();
+        assert_eq!(pick(&d, &second, false), pick(&whole, &same, false));
+        apply(&t.repo, &pick(&d, &second, false), false).unwrap();
+        assert_eq!(staged(&t, "n.txt") + "\n", TEN.replace("\n8\n", "\neight\n"));
+        // Both pieces of what is left, staged as one hunk.
+        let mut d = diff_of(&t, Side::Unstaged, "n.txt");
+        assert!(!d.split(), "one run left");
+        let all = lines_of(&d, Kind::Del, &["5"]).into_iter().chain(lines_of(&d, Kind::Add, &["five"])).collect::<Vec<_>>();
+        apply(&t.repo, &pick(&d, &all, false), false).unwrap();
+        assert_eq!(staged(&t, "n.txt") + "\n", changed);
+    }
+
+    #[test]
+    fn a_split_with_one_line_between_and_out_of_the_index() {
+        let t = repo("unstage-split");
+        t.write(&t.repo, "n.txt", TEN);
+        t.git(&t.repo, &["add", "."]);
+        t.git(&t.repo, &["commit", "-q", "-m", "numbers"]);
+        // Three runs: 5 goes, 7 becomes seven, 9 comes after it; one line
+        // between each, which the earlier piece takes.
+        let changed = TEN.replace("\n5\n", "\n").replace("\n7\n", "\nseven\n").replace("\n9\n", "\n8.5\n9\n");
+        t.write(&t.repo, "n.txt", &changed);
+        stage(&t.repo, &["n.txt"]).unwrap();
+        let mut d = diff_of(&t, Side::Staged, "n.txt");
+        assert!(d.split());
+        let headers: Vec<&str> = d.file.hunks.iter().map(|h| h.header.as_str()).collect();
+        assert_eq!(headers, ["@@ -2,5 +2,4 @@", "@@ -7,2 +6,2 @@", "@@ -9,3 +8,4 @@"]);
+        // The middle piece out of the index: 7 is back there, and the rest
+        // stays.
+        let p = d.patch.as_ref().unwrap();
+        let middle: Vec<(usize, usize)> = p.changed_in(1).into_iter().map(|k| (1, k)).collect();
+        assert_eq!(middle.len(), 2);
+        apply(&t.repo, &pick(&d, &middle, true), true).unwrap();
+        assert_eq!(staged(&t, "n.txt") + "\n", changed.replace("\nseven\n", "\n7\n"));
+        // No hunk to cut: a file with one change.
+        let mut d = diff_of(&t, Side::Unstaged, "n.txt");
+        let before = d.clone();
+        assert!(!d.split());
+        assert_eq!(d, before);
+    }
+
+    #[test]
     fn chosen_lines_are_unstaged_and_the_rest_stay_in() {
         let t = repo("unstage-lines");
         t.write(&t.repo, "n.txt", TEN);
@@ -682,6 +829,27 @@ mod tests {
         // Nothing staged: git says so.
         let e = commit(&t.repo, "Nothing", false).unwrap_err();
         assert!(matches!(e, git::Error::Git(_)), "{e:?}");
+    }
+
+    #[test]
+    fn a_hook_that_refuses_is_heard_whole() {
+        let t = repo("stage-hook");
+        let hooks = t.root.join("hooks");
+        std::fs::create_dir_all(&hooks).unwrap();
+        let hook = hooks.join("pre-commit");
+        // What a hook writes on its standard output git writes on its error.
+        std::fs::write(&hook, "#!/bin/sh\necho 'lint: 2 problems'\necho '  a.rs:1 unused' >&2\nexit 1\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        t.git(&t.repo, &["config", "core.hooksPath", &hooks.to_string_lossy()]);
+        t.write(&t.repo, "a.txt", "a\n");
+        stage(&t.repo, &[]).unwrap();
+        let e = commit(&t.repo, "Add a", false).unwrap_err();
+        assert_eq!(e, git::Error::Told { line: "lint: 2 problems".into(), all: "lint: 2 problems\n  a.rs:1 unused".into() });
+        assert_eq!(t.out(&t.repo, &["rev-list", "--count", "HEAD"]), "1", "nothing was committed");
     }
 
     #[test]

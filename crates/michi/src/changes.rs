@@ -143,6 +143,9 @@ pub struct Changes {
     file_gen: u32,
     file_waiting: bool,
     shown: Option<(Side, String, Read)>,
+    /// The file whose hunks are cut into their runs of changes (`s`): it is
+    /// cut again each time it is read.
+    split: Option<(Side, String)>,
     pub focus: Focus,
     /// The line the cursor is on (of [`Shown::changed`]), and where a range
     /// of lines started.
@@ -172,6 +175,18 @@ pub struct Changes {
     pub focus_message: bool,
     /// The messages of the other worktrees, kept while another is shown.
     drafts: HashMap<PathBuf, String>,
+    /// All git said when a write failed and it said more than a line (a
+    /// hook's output, mostly): shown in place of the diff until Esc, a
+    /// write that goes through, the lines or another file.
+    pub told: Option<Told>,
+}
+
+/// What git said, whole, when a write failed.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Told {
+    /// It was a commit: the hooks spoke too.
+    pub commit: bool,
+    pub all: String,
 }
 
 impl Changes {
@@ -190,11 +205,13 @@ impl Changes {
         self.file_asked = None;
         self.file_waiting = false;
         self.shown = None;
+        self.split = None;
         self.focus = Focus::Files;
         (self.cursor, self.anchor) = (0, None);
         (self.amend, self.filled, self.pushed) = (false, None, None);
         self.claude_ok = false;
         self.confirm = None;
+        self.told = None;
         self.to_top = true;
         self.pages = 0;
         self.refresh()
@@ -274,7 +291,15 @@ impl Changes {
         }
         self.file_waiting = false;
         let Some((side, path)) = self.file_asked.clone() else { return };
-        let read = result.map(|d| d.map(|d| Box::new(Shown::of(d))));
+        let split = self.split.as_ref().is_some_and(|(s, p)| *s == side && *p == path);
+        let read = result.map(|d| {
+            d.map(|mut d| {
+                if split {
+                    d.split();
+                }
+                Box::new(Shown::of(d))
+            })
+        });
         let lines = match &read {
             Ok(Some(s)) if s.diff.patch.is_some() => s.changed.len(),
             _ => 0,
@@ -321,7 +346,20 @@ impl Changes {
             self.message.clear();
             (self.amend, self.filled, self.pushed) = (false, None, None);
         }
+        if ok {
+            self.told = None;
+        }
         self.refresh()
+    }
+
+    /// A write in `wt` failed and git said `all`, more than a line: it is
+    /// shown in place of the diff, from its top.
+    pub fn tell(&mut self, wt: &Path, commit: bool, all: String) {
+        if self.wt.as_deref() == Some(wt) {
+            self.told = Some(Told { commit, all });
+            self.to_top = true;
+            self.pages = 0;
+        }
     }
 
     /// The selected file's diff: `None` while it is read.
@@ -392,6 +430,7 @@ impl Changes {
             self.sel = k;
             self.to_top = true;
             self.pages = 0;
+            self.told = None;
             self.leave_lines();
         }
         self.want_file()
@@ -425,7 +464,30 @@ impl Changes {
         };
         self.focus = Focus::Lines;
         self.cursor = self.cursor.min(n - 1);
+        self.told = None;
         Ok(())
+    }
+
+    /// `s`: the selected file's hunks cut into their runs of changes, a
+    /// piece each to look at and to pick by itself, the keys going to its
+    /// lines; or, when they are cut, put back as git wrote them (read
+    /// again). Err with the word saying why not.
+    pub fn split(&mut self) -> Result<Option<Wish>, &'static str> {
+        self.enter_lines()?;
+        let key = self.selected().map(|(side, f)| (side, f.path.clone()));
+        if key.is_some() && self.split == key {
+            self.split = None;
+            self.file_asked = None;
+            return Ok(self.want_file());
+        }
+        let Some((_, _, Ok(Some(s)))) = &mut self.shown else { return Err("changes.reading") };
+        let mut diff = s.diff.clone();
+        if !diff.split() {
+            return Err("changes.no_split");
+        }
+        **s = Shown::of(diff);
+        self.split = key;
+        Ok(None)
     }
 
     /// Whether the selected file's diff has lines to pick.
@@ -684,6 +746,15 @@ pub(crate) mod tests {
         stage::Diff { file: f, patch: Some(stage::Patch::parse(patch.as_bytes())) }
     }
 
+    /// `b.txt` with one hunk of two runs, `b` and `c` between them.
+    fn two_runs(path: &str) -> stage::Diff {
+        let mut f = file(path);
+        let lines = [(Kind::Del, "a"), (Kind::Add, "A"), (Kind::Context, "b"), (Kind::Context, "c"), (Kind::Del, "d"), (Kind::Add, "D")];
+        f.hunks = vec![Hunk { header: "@@ -1,4 +1,4 @@".into(), lines: lines.iter().map(|&(k, t)| line(k, t)).collect() }];
+        let patch = format!("diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n@@ -1,4 +1,4 @@\n-a\n+A\n b\n c\n-d\n+D\n");
+        stage::Diff { file: f, patch: Some(stage::Patch::parse(patch.as_bytes())) }
+    }
+
     fn list_gen(w: &[Wish]) -> u32 {
         match w {
             [Wish::List { gen, .. }] => *gen,
@@ -804,6 +875,39 @@ pub(crate) mod tests {
         c.move_cursor(1);
         assert!(c.apply_lines(false).is_ok());
         assert_eq!((c.cursor, c.anchor), (2, None));
+    }
+
+    #[test]
+    fn s_splits_the_hunks_keeps_them_split_as_read_again_and_joins_them() {
+        let mut c = opened();
+        assert_eq!(c.split(), Err("changes.no_split"), "a.txt has one run in each hunk");
+        let w = c.move_by(1);
+        c.take_file(file_gen(&Vec::from_iter(w)), Ok(Some(two_runs("b.txt"))));
+        assert_eq!(c.split(), Ok(None));
+        assert_eq!(c.focus, Focus::Lines);
+        let hunks = |c: &Changes| match c.diff() {
+            Some(Ok(Some(s))) => s.diff.file.hunks.iter().map(|h| h.header.clone()).collect::<Vec<_>>(),
+            _ => panic!("no diff"),
+        };
+        assert_eq!(hunks(&c), ["@@ -1,2 +1,2 @@", "@@ -3,2 +3,2 @@"]);
+        // `a` picks a piece; the patch is the hunk git wrote.
+        c.move_cursor(2);
+        c.pick_hunk();
+        assert_eq!(c.picked(), [(1, 1), (1, 2)]);
+        let ws = c.apply_lines(false);
+        let Ok(Some(Wish::Do { op: Op::Apply { patch, .. }, .. })) = ws else { panic!("{ws:?}") };
+        assert!(String::from_utf8(patch).unwrap().ends_with("@@ -1,4 +1,4 @@\n a\n b\n c\n-d\n+D\n"));
+        // Read again, it is cut again.
+        let w = c.take_done(Path::new(WT), false, true);
+        let ws = c.take_list(list_gen(&Vec::from_iter(w)), Ok(lists(&["s.txt"], &["a.txt", "b.txt"])));
+        c.take_file(file_gen(&ws), Ok(Some(two_runs("b.txt"))));
+        assert_eq!(hunks(&c).len(), 2);
+        // `s` again: read again as git writes it.
+        let w = c.split();
+        let Ok(Some(Wish::File { gen, .. })) = w else { panic!("{w:?}") };
+        c.take_file(gen, Ok(Some(two_runs("b.txt"))));
+        assert_eq!(hunks(&c), ["@@ -1,4 +1,4 @@"]);
+        assert_eq!(c.focus, Focus::Lines);
     }
 
     #[test]

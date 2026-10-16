@@ -328,7 +328,10 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         };
         for task in act_rx {
             let result = act::run(&act_dir, &task);
-            let _ = act_pokes.send(Poke::Now);
+            // A list read moves nothing.
+            if !matches!(task, Task::FindTidy { .. }) {
+                let _ = act_pokes.send(Poke::Now);
+            }
             // A stash gone from the middle of the list leaves the refs as
             // they were: the history is read again all the same.
             if matches!(task, Task::Unstash { pop: true, .. } | Task::DropStash { .. }) {
