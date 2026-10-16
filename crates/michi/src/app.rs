@@ -110,6 +110,7 @@ impl View {
                 ("o", "key.tab"),
                 ("p", "key.pr"),
                 ("r", "key.reorder"),
+                ("M", "key.rebase_trunk"),
                 ("Enter", "key.in_graph"),
                 ("m", "key.take_main"),
                 ("x", "key.remove"),
@@ -1149,6 +1150,7 @@ impl App {
             'x' => self.ask_remove(),
             'p' => self.open_pr(),
             'r' => self.open_reorder(),
+            'M' => self.ask_rebase_trunk(),
             'N' => self.open_new_work(),
             _ => return false,
         }

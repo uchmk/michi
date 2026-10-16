@@ -656,6 +656,33 @@ impl App {
         }
         self.band = Some(Band::new(text, Then::Act(Task::Merge { wt, rev: trunk })));
     }
+
+    /// `M` over the worktree table: asks before the row's branch is rebased
+    /// onto the trunk (the other way to take main in).
+    pub(crate) fn ask_rebase_trunk(&mut self) {
+        let Some(t) = self.wt_selected() else { return self.say(self.tr("act.no_tree")) };
+        let (wt, branch, doing) = (t.wt.path.clone(), t.wt.branch.clone(), t.doing);
+        let Some(trunk) = self.trees.trunk.clone().or_else(|| self.graph.trunk_name().map(str::to_owned)) else {
+            return self.say(self.tr("act.no_trunk"));
+        };
+        let say = |a: &mut App, key: &'static str| {
+            let text = a.tr(key).replace("{wt}", &act::name(&wt)).replace("{rev}", &trunk);
+            let text = text.replace("{doing}", &doing.map_or_else(String::new, |d| a.doing_word(d)));
+            a.say_for(text, 6);
+        };
+        let Some(branch) = branch else { return say(self, "act.merge_detached") };
+        if branch == trunk {
+            return say(self, "act.rebase_self");
+        }
+        if doing.is_some() {
+            return say(self, "act.revert_doing");
+        }
+        let mut text = self.tr("act.rebase").replace("{branch}", &branch).replace("{onto}", &trunk).replace("{wt}", &act::name(&wt));
+        if self.claude_working(&wt) {
+            text.push_str(self.tr("act.revert_claude"));
+        }
+        self.band = Some(Band::new(text, Then::Act(Task::Rebase { wt, onto: trunk })));
+    }
 }
 
 pub(crate) fn same(a: &Path, b: &Path) -> bool {

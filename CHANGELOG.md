@@ -2,6 +2,12 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.36.0] - 2026-10-16
+
+### 追加
+
+- worktree の表で `M`: 選んだ行のブランチを trunk に rebase する（先に確かめる窓。今の先端は `refs/michi/backup/` に退避し、ぶつかったら取りやめる）。`m` のマージに並ぶ、main を取り込むもう 1 つの方法。
+
 ## [0.35.0] - 2026-10-16
 
 ### 追加
