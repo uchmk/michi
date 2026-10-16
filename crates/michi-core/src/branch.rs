@@ -103,6 +103,44 @@ pub fn track(wt: &Path, remote: &str, name: &str) -> Result<(), git::Error> {
     write(wt, &["switch", "--no-guess", "-c", name, "--track", remote])
 }
 
+/// Renames the branch `old` to `new`; a name that is taken is refused.
+/// The worktree that has it checked out follows (git moves HEAD).
+pub fn rename(dir: &Path, old: &str, new: &str) -> Result<(), git::Error> {
+    check_name(dir, new)?;
+    write(dir, &["branch", "-m", old, new])
+}
+
+/// Makes the branch `name` follow the remote branch `remote` (`origin/feat`).
+pub fn set_upstream(dir: &Path, name: &str, remote: &str) -> Result<(), git::Error> {
+    write(dir, &["branch", "--set-upstream-to", remote, name])
+}
+
+/// The remote branch of the same name as `name` (`origin/feat`), when there
+/// is one; the first remote's when several have it.
+pub fn same_name_remote(dir: &Path, name: &str) -> Result<Option<String>, git::Error> {
+    let out = git::read_text(dir, &["for-each-ref", "--format=%(refname:short)", "refs/remotes"])?;
+    Ok(out.lines().find(|r| r.split_once('/').is_some_and(|(_, b)| b == name)).map(str::to_owned))
+}
+
+/// Rebases the branch of the worktree at `wt` onto `onto`. The tip it has
+/// now is kept under `refs/michi/backup/` first (the name is returned). A
+/// clash is called off with `rebase --abort`, leaving the worktree as it
+/// was, and reported.
+pub fn rebase(wt: &Path, onto: &str) -> Result<String, git::Error> {
+    if let Some(d) = doing(wt) {
+        return Err(git::Error::Git(format!("the worktree is in the middle of a {}", d.word())));
+    }
+    let tip = git::read_maybe(wt, &["rev-parse", "--verify", "-q", "HEAD^{commit}"])?
+        .and_then(|out| Oid::parse(String::from_utf8_lossy(&out).trim()))
+        .ok_or_else(|| git::Error::Git("no commit to rebase".to_owned()))?;
+    let saved = backup::save(wt, &tip, &format!("before rebase onto {onto}"))?;
+    if let Err(e) = write(wt, &["rebase", onto]) {
+        let _ = write(wt, &["rebase", "--abort"]);
+        return Err(e);
+    }
+    Ok(saved)
+}
+
 /// Deletes the branch `name`. When no other branch, remote branch or tag
 /// has its tip, the tip is kept under `refs/michi/backup/` first: the
 /// backup's name then. A branch a worktree has checked out is refused.
@@ -199,6 +237,72 @@ mod tests {
         assert_eq!(t.out(&t.repo, &["symbolic-ref", "--short", "HEAD"]), "feat");
         assert_eq!(head(&t, &t.repo), first);
         assert_eq!(t.out(&t.repo, &["rev-parse", "--abbrev-ref", "feat@{upstream}"]), "origin/feat");
+    }
+
+    #[test]
+    fn a_branch_is_renamed_and_follows_the_remote() {
+        let t = TempRepo::configured("branch-rename");
+        let first = head(&t, &t.repo);
+        t.git(&t.repo, &["branch", "other"]);
+        rename(&t.repo, "main", "trunk").unwrap();
+        assert_eq!(t.out(&t.repo, &["symbolic-ref", "--short", "HEAD"]), "trunk");
+        assert!(rename(&t.repo, "trunk", "other").is_err(), "taken");
+        assert!(rename(&t.repo, "trunk", "a..b").is_err(), "bad name");
+        t.git(&t.repo, &["remote", "add", "origin", &t.root.join("remote.git").to_string_lossy()]);
+        assert_eq!(same_name_remote(&t.repo, "trunk").unwrap(), None);
+        t.git(&t.repo, &["update-ref", "refs/remotes/origin/trunk", &first.to_string()]);
+        let r = same_name_remote(&t.repo, "trunk").unwrap().unwrap();
+        assert_eq!(r, "origin/trunk");
+        set_upstream(&t.repo, "trunk", &r).unwrap();
+        assert_eq!(t.out(&t.repo, &["rev-parse", "--abbrev-ref", "trunk@{upstream}"]), "origin/trunk");
+    }
+
+    #[test]
+    fn a_rebase_keeps_the_old_tip_and_a_clash_is_called_off() {
+        let t = TempRepo::configured("branch-rebase");
+        t.write(
+            &t.repo, "f.txt", "base
+",
+        );
+        t.git(&t.repo, &["add", "f.txt"]);
+        t.git(&t.repo, &["commit", "-q", "-m", "base"]);
+        t.git(&t.repo, &["switch", "-q", "-c", "side"]);
+        t.write(
+            &t.repo, "g.txt", "side
+",
+        );
+        t.git(&t.repo, &["add", "g.txt"]);
+        t.git(&t.repo, &["commit", "-q", "-m", "side g"]);
+        let old = head(&t, &t.repo);
+        t.git(&t.repo, &["switch", "-q", "main"]);
+        t.write(
+            &t.repo, "h.txt", "main
+",
+        );
+        t.git(&t.repo, &["add", "h.txt"]);
+        t.git(&t.repo, &["commit", "-q", "-m", "main h"]);
+        t.git(&t.repo, &["switch", "-q", "side"]);
+        let saved = rebase(&t.repo, "main").unwrap();
+        assert_eq!(t.out(&t.repo, &["rev-parse", &saved]), old.to_string());
+        assert_ne!(head(&t, &t.repo), old);
+        assert!(t.repo.join("h.txt").exists());
+        // A clash: both change f.txt.
+        t.write(
+            &t.repo, "f.txt", "side
+",
+        );
+        t.git(&t.repo, &["commit", "-q", "-am", "side f"]);
+        t.git(&t.repo, &["switch", "-q", "main"]);
+        t.write(
+            &t.repo, "f.txt", "main
+",
+        );
+        t.git(&t.repo, &["commit", "-q", "-am", "main f"]);
+        t.git(&t.repo, &["switch", "-q", "side"]);
+        let before = head(&t, &t.repo);
+        assert!(rebase(&t.repo, "main").is_err());
+        assert_eq!(doing(&t.repo), None, "called off");
+        assert_eq!(head(&t, &t.repo), before);
     }
 
     #[test]

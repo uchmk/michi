@@ -55,7 +55,8 @@
   - [x] Cherry-pick and merge (v0.15.0): `C` in the graph picks onto the window's worktree (a merge asks for the parent), `m` in the
     worktree table merges the local trunk into the row's branch, both after a band; a clash opens `4`, and so does a clashing revert
     （要確認: #16, #22）
-  - [ ] Branches' leftovers: rename, set the upstream, rebase onto another branch, `m` in the graph （要確認: #16）
+  - [x] Branches' leftovers (v0.27.0): rename (`F2`), set the upstream (`Ctrl+U`) and rebase onto the row (`Ctrl+R`, after a band; a clash is
+    called off, the old tip kept under `refs/michi/backup/`) in the branch palette, `m` in the graph merges the selected commit （要確認: #16）
   - [x] Stash and discard (v0.13.0): the stash palette on `s` (the row that puts the changes away first, untracked files too, the typed
     text as the message and the filter, Enter applies and Shift+Enter pops, a clash keeps the stash, Delete drops it after a band with
     a backup, the stash in the detail and on a click in the side column), discard on `d` in `2` (files, untracked files with their
