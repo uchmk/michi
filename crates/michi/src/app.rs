@@ -185,6 +185,8 @@ pub struct Handed {
     pub ran: bool,
     /// Reads that found it stopped without ever seeing it run.
     pub polls: u32,
+    /// It was handed a conflict (not notes): look at the markers when it stops.
+    pub conflict: bool,
 }
 
 pub struct App {
@@ -961,6 +963,7 @@ impl App {
     /// seen running for a while is dropped, as is one whose sessions are gone.
     fn handed_stopped(&mut self) {
         let mut said = Vec::new();
+        let mut check = Vec::new();
         let mut watched = std::mem::take(&mut self.handed);
         watched.retain_mut(|h| {
             let agents: Vec<_> = self.claude_in(&h.wt).iter().filter(|s| s.is_agent()).collect();
@@ -973,6 +976,9 @@ impl App {
             }
             h.polls += 1;
             if h.ran || h.polls >= 3 {
+                if h.conflict {
+                    check.push(h.wt.clone());
+                }
                 said.push(self.tr("claude.handed_done").replace("{wt}", &crate::act::name(&h.wt)));
                 return false;
             }
@@ -982,12 +988,15 @@ impl App {
         if let Some(t) = said.pop() {
             self.say_for(t, 10);
         }
+        for wt in check {
+            self.act(crate::act::Task::Markers { wt });
+        }
     }
 
     /// Watches the Claude in the worktree at `wt`, which was handed a conflict.
     pub fn watch_handed(&mut self, wt: PathBuf) {
         self.handed.retain(|h| h.wt != wt);
-        self.handed.push(Handed { wt, ran: false, polls: 0 });
+        self.handed.push(Handed { wt, ran: false, polls: 0, conflict: false });
     }
 
     /// The Claude sessions in the worktree at `path`, the one to show first

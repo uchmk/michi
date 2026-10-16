@@ -83,8 +83,8 @@
 - [ ] 4. Worktrees: new work (`N` done in v0.31.0; remove `x` and the tab `o` in v0.30.0), take in main (`m`, merge done in v0.15.0; rebase not yet), the PR page (`p`, v0.32.0; michi opens the page, the browser writes the PR per v1-scope)
   and `focus N|NAME` (in tsumugi's TODO.md)
 - [ ] 5. Rebase: reorder, squash, reword, the in-progress band (`r` screen done in v0.33.0, TESTING 10.16; the in-progress band is the conflict screen's, v0.17.0)
-- [ ] 6. Claude: hand a conflict to Claude through `tsumugi send` (v0.24.0) and notify on waiting / done (v0.26.0), hand over notes from the
-  branch diff (v0.34.0, TESTING 13.13). Left: watch the markers (whether the conflict markers are gone)
+- [x] 6. Claude: hand a conflict to Claude through `tsumugi send` (v0.24.0) and notify on waiting / done (v0.26.0), hand over notes from the
+  branch diff (v0.34.0, TESTING 13.13). Watch the markers after it stops (v0.35.0, TESTING 21.31). Stage 6 is done.
 
 ## Owner
 

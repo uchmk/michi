@@ -3,7 +3,7 @@
 前の会話から次の会話への引き継ぎ。新しいセッションは `C:\dev\michi` で始め、CLAUDE.md・TODO.md・この文書の順に読む。
 設計の正は [design.md](design.md) とモック。大きなファイル（design.md・graph.rs・wt_ui.rs など）は全部読まず、要るところだけ読む。
 
-## いまの版（v0.34.0、2026-10-16）
+## いまの版（v0.35.0、2026-10-16）
 
 段 1「見る」は終わり、段 2「変える」は TODO.md の 2. のうち後回しにしたもの（各 question の issue の「後回し」）だけが残る。
 段 3「衝突」は衝突の画面とマージ中のロックが入った（v0.17.0）。別のセッションが `michi.com`（Windows のコンソールの前段）を
@@ -64,7 +64,7 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
    Claude に渡したあとの通知は v0.26.0 で入った（`App::handed`、TESTING 21.30）。
 3. 段 4: `o`・`x` は v0.30.0（TESTING 10.12・10.13）、`N`（新しい作業。`tsumugi new --worktree`）は v0.31.0（TESTING 10.14）。`p`（PR のページをブラウザで開く。v1-scope どおり michi は PR を作らない）は v0.32.0（TESTING 10.15）で、段 4 は終わり。
    段 5: `r`（rebase の画面。並べ替え・squash・fixup・題を直す・外す。`michi-core/src/rebase.rs`）は v0.33.0（TESTING 10.16）。途中で止まった状態は衝突の画面（4）が持つ。次は段 6。
-   段 6: ブランチの差分の行のメモ（`J K n g`、`michi-core/src/notes.rs`）は v0.34.0（TESTING 13.13・13.14）。残りは衝突マーカーが消えたかの見張り。
+   段 6: ブランチの差分の行のメモ（`J K n g`、`michi-core/src/notes.rs`）は v0.34.0（TESTING 13.13・13.14）。衝突マーカーが消えたかの見張りは v0.35.0（TESTING 21.31）。段 6 は済み。
 4. 段 2 の後回し: （済み）レビューのメモは v0.34.0（TESTING 13.13・13.14）、PR を開くは v0.32.0（#10）。レビューからのマージ（`m`）は v0.29.0（TESTING 13.12）。push 先のリモートを選ぶ窓（#15）は v0.28.0 で入った（TESTING 15.12）。
    ブランチの名前の変更（`F2`）・upstream（`Ctrl+U`）・rebase（`Ctrl+R`）・樹形図の `m` は v0.27.0 で入った（TESTING 22.1〜22.4）。rebase の途中の帯（continue / skip）は段 5 の衝突の画面で。
 5. 段 4〜6 は TODO.md のとおり。段 4 は tsumugi の `new --worktree` と `focus` が要る（tsumugi の TODO.md に書いてある）。

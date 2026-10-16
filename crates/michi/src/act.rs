@@ -206,6 +206,11 @@ pub enum Task {
         notes: Vec<michi_core::notes::Note>,
         session: Option<u64>,
     },
+    /// Counts the places of the conflict at `wt` that still have markers,
+    /// once the Claude handed it has stopped.
+    Markers {
+        wt: PathBuf,
+    },
     /// Opens the pull request page of `branch` on GitHub in the browser.
     OpenPr {
         wt: PathBuf,
@@ -267,6 +272,7 @@ impl Task {
             Task::Abort { doing: Doing::CherryPick, .. } => "cherry-pick --abort",
             Task::Abort { doing: Doing::Revert, .. } => "revert --abort",
             Task::Abort { doing: Doing::Bisect, .. } => "bisect reset",
+            Task::Markers { .. } => "conflict",
             Task::Handoff { .. } | Task::HandNotes { .. } | Task::Focus { .. } | Task::NewWork { .. } => "tsumugi",
             Task::OpenPr { .. } => "remote",
             Task::External { .. } => "mergetool",
@@ -300,6 +306,8 @@ pub enum Acted {
     Intent(conflict::Intent),
     /// Whether rerere is on (none: nobody said).
     Rerere(Option<bool>),
+    /// The places left with markers (none: nothing is in the middle of a clash).
+    Markers(Option<usize>),
 }
 
 /// A place solved, or a file put back as git left it.
@@ -358,6 +366,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Focus { session } => handoff::focus(*session).map(|()| Acted::Done),
         Task::Handoff { conflict, session } => hand_off(conflict, *session).map(|()| Acted::Done),
         Task::HandNotes { wt, branch, trunk, notes, session } => hand_notes(wt, branch, trunk, notes, *session).map(|()| Acted::Done),
+        Task::Markers { wt } => conflict::read(wt).map(|c| Acted::Markers(c.map(|c| c.left()))),
         Task::AskRerere { wt } => rerere::enabled(wt).map(Acted::Rerere),
         Task::Rerere { wt, on } => rerere::set(wt, *on).map(|()| Acted::Done),
     }
@@ -421,7 +430,12 @@ impl App {
         }
         let (text, secs) = match (&task, result) {
             // Not being able to ask is not worth a toast.
-            (Task::AskRerere { .. }, Err(_)) => return,
+            (Task::AskRerere { .. } | Task::Markers { .. }, Err(_)) => return,
+            (Task::Markers { .. }, Ok(Acted::Markers(None))) => return,
+            (Task::Markers { wt }, Ok(Acted::Markers(Some(n)))) => {
+                let key = if n == 0 { "claude.markers_gone" } else { "claude.markers_left" };
+                (self.tr(key).replace("{wt}", &self::name(wt)).replace("{n}", &n.to_string()), 10)
+            }
             (Task::Intent { wt, path, j, .. }, Ok(Acted::Intent(i))) => {
                 self.conflicts.set_intent(wt, path, *j, i);
                 return;
@@ -442,6 +456,9 @@ impl App {
             (Task::Handoff { conflict, session }, Ok(_)) => {
                 let key = if session.is_some() { "act.handed" } else { "act.handed_new" };
                 self.watch_handed(conflict.wt.clone());
+                if let Some(h) = self.handed.last_mut() {
+                    h.conflict = true;
+                }
                 (self.tr(key).replace("{wt}", &self::name(&conflict.wt)), 8)
             }
             (Task::HandNotes { wt, notes, session, .. }, Ok(_)) => {
@@ -772,5 +789,18 @@ mod tests {
         assert!(toast(&a).starts_with("Opened y.bin with"), "{}", toast(&a));
         a.act_done(t(), Err(git::Error::Git("no tool".into())));
         assert_eq!(toast(&a), "mergetool failed: no tool");
+    }
+
+    #[test]
+    fn the_markers_left_after_a_handoff_are_counted_in_a_toast() {
+        let mut a = app();
+        let t = || Task::Markers { wt: PathBuf::from("/r/main") };
+        a.act_done(t(), Ok(Acted::Markers(Some(2))));
+        assert!(toast(&a).contains("2 places"), "{}", toast(&a));
+        a.act_done(t(), Ok(Acted::Markers(Some(0))));
+        assert!(toast(&a).contains("no conflict markers"), "{}", toast(&a));
+        a.toast = None;
+        a.act_done(t(), Ok(Acted::Markers(None)));
+        assert!(a.toast.is_none());
     }
 }
