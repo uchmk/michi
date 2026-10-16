@@ -54,7 +54,12 @@
     `refs/michi/backup/`), revert on `t` after a band (a merge asks for the parent; one that clashes is called off) （要確認: #16）
   - [ ] Branches' leftovers: rename, set the upstream, merge / rebase / cherry-pick (with the conflict screen, stage 3), hand a clashing
     revert to the conflict screen （要確認: #16）
-  - [ ] The everyday operations left (stash, discard, clean-up), backups to `refs/michi/backup/<time>`
+  - [x] Stash and discard (v0.13.0): the stash palette on `s` (the row that puts the changes away first, untracked files too, the typed
+    text as the message and the filter, Enter applies and Shift+Enter pops, a clash keeps the stash, Delete drops it after a band with
+    a backup, the stash in the detail and on a click in the side column), discard on `d` in `2` (files, untracked files with their
+    empty folders, picked lines; always asked, kept under `refs/michi/backup/` first, staged changes refused) （要確認: #18）
+  - [ ] The everyday operations left: clean-up (merged branches, branches gone on origin, worktrees whose folder is gone, picked
+    together; `fetch --prune`, `branch -d`／`-D` with the tips of unmerged ones kept under `refs/michi/backup/`, `worktree remove`／`prune`)
 - [ ] 3. Conflicts: the conflict screen (`4`), locks during a merge (and「· マージ中」in red on the chip), rerere asked once, cherry-pick; prediction moved to gix-merge and
   checked against `git merge-tree --write-tree`; the prediction's text while a merge is under way (「予測は衝突の解消（4）の実物に変わりました」)
 - [ ] 4. Worktrees: new work (`N`), remove (`x`), go to the tab (`o`), take in main (`m`), the PR button (`gh pr create`); needs tsumugi `new --worktree BRANCH --from REF`
