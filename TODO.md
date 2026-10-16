@@ -75,8 +75,8 @@
   - [x] word diff (v0.23.0, TESTING 21.27): the words of ours / theirs that the base (else the other side) lacks are marked (`michi_core::words::marks`).
   - [x] hand it to Claude (v0.24.0, TESTING 21.28): `g` / the bar's button writes a brief (`michi_core::handoff`, in the temp dir) and runs `tsumugi send N` to the Claude in that worktree or `tsumugi new … -- claude` (`Task::Handoff`). Not done: the toast when that Claude becomes waiting/done.
   - [x] open in an external tool (v0.25.0, TESTING 21.29): `w` / the whole-file place's button runs `git mergetool --no-prompt` when `merge.tool` is set, else opens the file with the system's program (`michi_core::external`, `Task::External`).
-  - [ ] The rest: prediction moved to gix-merge and checked against
-    `git merge-tree --write-tree`.
+  - [x] ~~Prediction moved to gix-merge~~: tried and dropped (2026-10-16): gix 0.89 was 4–15× slower than `git merge-tree --write-tree`
+    (100–420 ms against 25–40 ms) and counted hunks differently (git joins near ones). Stays on the git command.
     Done (v0.18.0 / v0.18.1, TESTING 21.21–21.22; the graph tool band dims `Pull` and `Stash`): the graph's merging row (a WIP row with `theirs`, `Dot::Conflict`); the prediction pills / column / pairs are hidden while merging (`App::merging`) and the pairs' note says「予測は衝突の解消（4）の実物に変わりました」
     （要確認: #22）
 - [ ] 4. Worktrees: new work (`N`), remove (`x`), go to the tab (`o`), take in main (`m`, merge done in v0.15.0; rebase not yet), the PR button (`gh pr create`); needs tsumugi `new --worktree BRANCH --from REF`
