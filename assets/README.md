@@ -3,6 +3,8 @@
 | File | What it is |
 | --- | --- |
 | `icon.svg` | The icon, and the only copy that is edited |
+| `screenshots/*.png`, `demo.gif` | Window captures of `michi.exe` (v0.23.0) on the tsumugi repository, for the top README |
+| `social-preview.png` | The 1280×640 image for the repository's social preview (set by hand in Settings; GitHub has no API for it) |
 
 The mark is "A 合流" (a meeting of ways), chosen on 2026-10-15 from the three
 in the screen mock: a branch joining main, drawn the way the commit graph keeps
