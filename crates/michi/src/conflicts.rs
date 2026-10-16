@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use michi_core::branch::Doing;
-use michi_core::conflict::{Body, Conflict, Pick};
+use michi_core::conflict::{Body, Conflict, Intent, Pick};
 use michi_core::paths;
 
 use crate::act::{self, Task};
@@ -68,6 +68,9 @@ pub struct Conflicts {
     /// The files rerere solved that were looked at (the worktree's key and
     /// the path).
     confirmed: HashSet<(String, String)>,
+    /// What each side meant by a place, once read; and the places asked for.
+    intents: HashMap<Key, Intent>,
+    asked: HashSet<Key>,
     /// Places picked here whose file is not read again yet.
     pending: HashSet<Key>,
     /// The places whose base column is shown or hidden by hand; the rest
@@ -120,6 +123,8 @@ impl Conflicts {
         let keys: HashSet<String> = all.iter().map(|c| paths::key(&c.wt)).collect();
         self.tags.retain(|(k, ..), _| keys.contains(k));
         self.confirmed.retain(|(k, _)| keys.contains(k));
+        self.intents.retain(|(k, ..), _| keys.contains(k));
+        self.asked.retain(|(k, ..)| keys.contains(k));
         self.bases.retain(|(k, ..), _| keys.contains(k));
         self.pending.retain(|(k, ..)| !fresh(k));
         self.all = all;
@@ -267,6 +272,16 @@ impl Conflicts {
         true
     }
 
+    /// What each side meant by the place, once read.
+    pub fn intent(&self, p: Place) -> Option<&Intent> {
+        self.intents.get(&self.key(p)?)
+    }
+
+    /// The intent of the place `path`/`j` of the worktree at `wt` was read.
+    pub fn set_intent(&mut self, wt: &Path, path: &str, j: usize, i: Intent) {
+        self.intents.insert((paths::key(wt), path.to_owned(), Some(j)), i);
+    }
+
     /// Whether the place was picked and is not read again yet.
     pub fn waits(&self, p: Place) -> bool {
         self.key(p).is_some_and(|k| self.pending.contains(&k))
@@ -405,6 +420,8 @@ impl App {
         let key = paths::key(wt);
         let mine = |(k, p, _): &Key| *k == key && p == path;
         self.conflicts.pending.retain(|k| !mine(k));
+        self.conflicts.intents.retain(|k, _| !mine(k));
+        self.conflicts.asked.retain(|k| !mine(k));
         self.conflicts.tags.retain(|k, _| !mine(k));
     }
 
@@ -444,6 +461,27 @@ impl App {
         self.conflicts.abort = false;
         let Some(c) = self.conflicts.shown() else { return };
         let task = Task::Abort { wt: c.wt.clone(), doing: c.doing };
+        self.act(task);
+    }
+
+    /// Reads what each side meant by the selected place, once.
+    pub(crate) fn conflict_want_intent(&mut self) {
+        let cf = &self.conflicts;
+        let Some(c) = cf.shown() else { return };
+        let Some(&p) = places(c).get(cf.at) else { return };
+        let (Body::Text(blocks), Some(j)) = (&c.files[p.0].body, p.1) else { return };
+        let Some(key) = cf.key(p) else { return };
+        if cf.asked.contains(&key) || (c.ours.id.is_none() && c.theirs.id.is_none()) {
+            return;
+        }
+        let task = Task::Intent {
+            wt: c.wt.clone(),
+            path: c.files[p.0].path.clone(),
+            j,
+            block: Box::new(blocks[j].clone()),
+            conflict: Box::new(c.clone()),
+        };
+        self.conflicts.asked.insert(key);
         self.act(task);
     }
 
@@ -521,6 +559,23 @@ pub(crate) mod tests {
             ],
             auto: Vec::new(),
         }
+    }
+
+    #[test]
+    fn an_intent_is_kept_for_its_place_until_the_worktree_is_done() {
+        let mut cf = Conflicts::default();
+        cf.set(vec![conflict("/r/main")]);
+        let change = michi_core::conflict::Change {
+            id: michi_core::oid::Oid::parse(&"a".repeat(40)).unwrap(),
+            subject: "s".into(),
+            author: "me".into(),
+            time: 0,
+        };
+        cf.set_intent(Path::new("/r/main"), "x.txt", 2, Intent { ours: Some(change), theirs: None });
+        assert!(cf.intent((0, Some(2))).is_some_and(|i| i.theirs.is_none()));
+        assert!(cf.intent((0, Some(0))).is_none(), "another place");
+        cf.set_one(Path::new("/r/main"), None);
+        assert!(cf.intents.is_empty());
     }
 
     #[test]

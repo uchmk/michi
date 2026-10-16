@@ -783,6 +783,56 @@ pub fn restart(wt: &Path, path: &str) -> Result<String, git::Error> {
     Ok(kept)
 }
 
+/// The commit that last changed a place's lines on one side.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Change {
+    pub id: Oid,
+    pub subject: String,
+    pub author: String,
+    /// Seconds since the epoch.
+    pub time: i64,
+}
+
+/// What each side meant by a place: the commit since the base that
+/// changed its lines (`git log -L`). `None` when the side has no lines
+/// there or git could not follow them.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Intent {
+    pub ours: Option<Change>,
+    pub theirs: Option<Change>,
+}
+
+/// The intent of both sides at `block` of the file at `path` in the
+/// worktree at `wt`, whose conflict is `c`.
+pub fn intent(wt: &Path, path: &str, block: &Block, c: &Conflict) -> Intent {
+    let base = c.base.as_ref();
+    let of = |lines: &[String], tip: Option<&Oid>| tip.and_then(|t| change_of(wt, path, lines, t, base));
+    Intent { ours: of(&block.ours, c.ours.id.as_ref()), theirs: of(&block.theirs, c.theirs.id.as_ref()) }
+}
+
+/// The newest commit in `base..tip` that touched `lines` of the file at `path`.
+fn change_of(wt: &Path, path: &str, lines: &[String], tip: &Oid, base: Option<&Oid>) -> Option<Change> {
+    if lines.is_empty() {
+        return None;
+    }
+    let blob = git::read(wt, &["show", &format!("{tip}:{path}")]).ok()?;
+    let text = String::from_utf8_lossy(&blob);
+    let all: Vec<&str> = text.split('\n').map(|l| l.trim_end_matches('\r')).collect();
+    let at = all.windows(lines.len()).position(|w| w.iter().zip(lines).all(|(a, b)| *a == b.trim_end_matches('\r')))?;
+    let range = format!("-L{},{}:{path}", at + 1, at + lines.len());
+    let tip = tip.to_string();
+    let span = base.map(|b| format!("{b}..{tip}")).unwrap_or(tip);
+    let out = git::read(wt, &["log", "-n1", "-s", "--format=%H%x1f%an%x1f%ct%x1f%s", &range, &span]).ok()?;
+    let out = String::from_utf8_lossy(&out);
+    let mut f = out.lines().next()?.split('\x1f');
+    Some(Change {
+        id: Oid::parse(f.next()?)?,
+        author: f.next()?.to_owned(),
+        time: f.next()?.parse().ok()?,
+        subject: f.next().unwrap_or_default().to_owned(),
+    })
+}
+
 /// Makes git's rerere forget the resolution it applied to the file at `path`
 /// in the worktree at `wt`, then starts the file over (git leaves the
 /// applied text in it). The backup's ref. git answers `error:` with a zero
@@ -1257,6 +1307,21 @@ mod tests {
         assert_eq!(t.out(r, &["branch", "--show-current"]), "feat");
         assert_eq!(t.out(r, &["log", "-1", "--format=%s"]), "feat");
         assert_eq!(t.out(r, &["rev-parse", "HEAD^"]), t.out(r, &["rev-parse", "main"]));
+    }
+
+    #[test]
+    fn each_side_s_intent_is_the_commit_that_changed_the_place() {
+        let t = clash("conflict-intent");
+        let r = &t.repo;
+        merge(r, "feat").unwrap();
+        let c = read(r).unwrap().unwrap();
+        let Body::Text(blocks) = &c.files[0].body else { panic!() };
+        let i = intent(r, "a.txt", &blocks[1], &c);
+        let (o, th) = (i.ours.unwrap(), i.theirs.unwrap());
+        assert_eq!((o.subject.as_str(), th.subject.as_str()), ("main", "feat"));
+        assert_eq!(o.id.to_string(), t.out(r, &["rev-parse", "main"]));
+        assert_eq!(th.id.to_string(), t.out(r, &["rev-parse", "feat"]));
+        assert!(o.time > 0 && !o.author.is_empty());
     }
 
     #[test]

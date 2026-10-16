@@ -68,6 +68,8 @@ pub enum Task {
     /// The file at `path`, which rerere solved, started over and rerere's
     /// memory of it dropped.
     Forget { wt: PathBuf, path: String },
+    /// What each side meant by the place `block` of the file at `path`.
+    Intent { wt: PathBuf, path: String, j: usize, block: Box<Block>, conflict: Box<Conflict> },
     /// Commits what the worktree at `wt` stopped in, all solved.
     Conclude { wt: PathBuf, doing: Doing, message: String },
     /// Calls off what the worktree at `wt` is in the middle of.
@@ -100,6 +102,7 @@ impl Task {
             Task::Take { .. } => "checkout",
             Task::Restart { .. } => "checkout --conflict",
             Task::Forget { .. } => "rerere forget",
+            Task::Intent { .. } => "log -L",
             Task::Conclude { doing: Doing::Rebase, .. } => "rebase --continue",
             Task::Conclude { .. } => "commit",
             Task::Abort { doing: Doing::Merge, .. } => "merge --abort",
@@ -129,6 +132,7 @@ pub enum Acted {
     /// The head after the commit.
     Committed(Oid),
     Solved(Box<Solved>),
+    Intent(conflict::Intent),
     /// Whether rerere is on (none: nobody said).
     Rerere(Option<bool>),
 }
@@ -164,6 +168,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Resolve { wt, path, block, pick } => conflict::resolve(wt, path, block, *pick).map(|_| solved(wt, None)),
         Task::Take { wt, path, ours } => conflict::take(wt, path, *ours).map(|()| solved(wt, None)),
         Task::Restart { wt, path } => conflict::restart(wt, path).map(|saved| solved(wt, Some(saved))),
+        Task::Intent { wt, path, block, conflict, .. } => Ok(Acted::Intent(conflict::intent(wt, path, block, conflict))),
         Task::Forget { wt, path } => conflict::forget(wt, path).map(|saved| solved(wt, Some(saved))),
         Task::Conclude { wt, message, .. } => conflict::commit(wt, message).map(Acted::Committed),
         Task::Abort { wt, .. } => conflict::abort(wt).map(Acted::Kept),
@@ -206,6 +211,11 @@ impl App {
         let (text, secs) = match (&task, result) {
             // Not being able to ask is not worth a toast.
             (Task::AskRerere { .. }, Err(_)) => return,
+            (Task::Intent { wt, path, j, .. }, Ok(Acted::Intent(i))) => {
+                self.conflicts.set_intent(wt, path, *j, i);
+                return;
+            }
+            (Task::Intent { .. }, Err(_)) => return,
             (Task::AskRerere { wt }, Ok(Acted::Rerere(None))) => {
                 let text = self.tr("act.rerere_ask").replace("{wt}", &self::name(wt));
                 self.band = Some(Band::new(text, Then::Act(Task::Rerere { wt: wt.clone(), on: true })));

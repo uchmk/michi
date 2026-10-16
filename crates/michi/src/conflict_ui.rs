@@ -147,6 +147,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         }
     }
 
+    app.conflict_want_intent();
     let Some(a) = act else { return };
     let cfs = &mut app.conflicts;
     match a {
@@ -273,9 +274,19 @@ struct Plan {
     /// What it is solved with, or will be.
     result: Option<Vec<String>>,
     buttons: Vec<(&'static str, &'static str, Pick)>,
+    /// What each side meant by it, once read: one row for each side.
+    intent: Option<michi_core::conflict::Intent>,
 }
 
 impl Plan {
+    fn intent_h(&self) -> f32 {
+        if self.intent.is_some() {
+            2.0 * LINE + 6.0
+        } else {
+            0.0
+        }
+    }
+
     fn result_rows(&self) -> usize {
         self.result.as_ref().map_or(1, |r| r.len().max(1))
     }
@@ -569,7 +580,8 @@ impl Draw<'_> {
                 buttons.push((self.tr("cf.pick_base"), "", Pick::Base));
             }
         }
-        Plan { waits, open, base, rows, tag, result, buttons }
+        let intent = cfs.intent(place).filter(|i| i.ours.is_some() || i.theirs.is_some()).cloned();
+        Plan { waits, open, base, rows, tag, result, buttons, intent }
     }
 
     /// The buttons of a file that clashed whole, while it is to be solved.
@@ -580,7 +592,7 @@ impl Draw<'_> {
     }
 
     fn block_h(&self, plan: &Plan, width: f32) -> f32 {
-        let mut h = HEAD + COL_HEAD + 8.0 + plan.rows as f32 * LINE + 1.0;
+        let mut h = HEAD + plan.intent_h() + COL_HEAD + 8.0 + plan.rows as f32 * LINE + 1.0;
         h += RES_HEAD + plan.result_rows() as f32 * LINE + 12.0 + 8.0;
         if plan.open {
             h += HINT_H + 8.0 + flow_h(self.ui, &plan.buttons, width - 20.0) + 10.0;
@@ -852,7 +864,24 @@ impl Draw<'_> {
         }
 
         // Ours, the base, theirs.
-        let top = head.bottom();
+        if let Some(i) = &plan.intent {
+            let now = chrono::Local::now();
+            for (q, (word, ink, ch)) in
+                [(self.tr("cf.ours"), c.run, &i.ours), (self.tr("cf.theirs"), c.done, &i.theirs)].into_iter().enumerate()
+            {
+                let mid = head.bottom() + 3.0 + q as f32 * LINE + LINE / 2.0;
+                let w = p.text(pos2(r.left() + 12.0, mid), Align2::LEFT_CENTER, word, FontId::proportional(11.0), ink);
+                let text = match ch {
+                    Some(ch) => {
+                        let at = crate::graph::when(ch.time, &now, self.tr("time.yesterday"));
+                        format!("{}  {} · {} · {at}", ch.id.short(), ch.subject, ch.author)
+                    }
+                    None => self.tr("cf.intent_none").to_owned(),
+                };
+                clipped(ui, p, pos2(w.right() + 10.0, mid), &text, FontId::proportional(12.0), c.dim, r.right() - w.right() - 24.0);
+            }
+        }
+        let top = head.bottom() + plan.intent_h();
         let rows_h = COL_HEAD + 8.0 + plan.rows as f32 * LINE;
         let parts: &[f32] = if plan.base { &[1.0, 0.8, 1.0] } else { &[1.0, 1.0] };
         let unit = r.width() / parts.iter().sum::<f32>();
