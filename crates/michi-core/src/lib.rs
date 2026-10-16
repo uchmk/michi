@@ -17,6 +17,7 @@ pub mod history;
 pub mod log;
 pub mod net;
 pub mod newwork;
+pub mod notes;
 pub mod oid;
 pub mod paths;
 pub mod pr;

@@ -10,7 +10,8 @@ use michi_core::clash::Outcome;
 use michi_core::show::File;
 
 use crate::app::App;
-use crate::detail_ui::{diff, left_cut, status_ink, Wrap, DIFF_H, FILE_H, NOTE_H, TITLE_H, X};
+use crate::detail::{At, Paired, Unified};
+use crate::detail_ui::{diff, left_cut, status_ink, Marks, Wrap, DIFF_H, FILE_H, NOTE_H, TITLE_H, X};
 use crate::graph_ui::{clash_line, clipped};
 use crate::review::Review;
 use crate::ui::kbd;
@@ -46,6 +47,15 @@ enum Act {
     Select(usize),
     Check(usize),
     Wide(bool),
+    Line(At),
+}
+
+/// The note strip under the diff: the room it takes.
+const NOTE_BOX_H: f32 = 118.0;
+const NOTE_LINE_H: f32 = 26.0;
+
+fn note_id() -> Id {
+    Id::new("michi-review-note")
 }
 
 /// The review in `r`.
@@ -55,7 +65,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let p = ui.painter_at(r);
     p.rect_filled(r, 0.0, c.bg);
     let Some(rv) = app.review.as_mut() else { return };
-    let (to_top, pages) = (std::mem::take(&mut rv.to_top), std::mem::take(&mut rv.pages));
+    let (to_top, pages, follow) = (std::mem::take(&mut rv.to_top), std::mem::take(&mut rv.pages), std::mem::take(&mut rv.follow));
     if to_top {
         // Also while the new file's diff is read.
         ctx.data_mut(|d| d.insert_temp(scroll_id(), 0.0_f32));
@@ -80,6 +90,10 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         let text = app.tr("review.seen").replace("{n}", &n.to_string()).replace("{m}", &m.to_string());
         let ink = if n == m && m > 0 { c.done } else { c.dim };
         right = p.text(pos2(right, mid), Align2::RIGHT_CENTER, text, FontId::proportional(12.0), ink).left() - 14.0;
+    }
+    if !rv.notes.is_empty() {
+        let text = app.tr("review.notes").replace("{n}", &rv.notes.len().to_string());
+        right = p.text(pos2(right, mid), Align2::RIGHT_CENTER, text, FontId::proportional(12.0), c.wait).left() - 14.0;
     }
     for (word, key, on) in [("review.since_last", 's', rv.since_last), ("review.uncommitted", 'u', rv.wip)] {
         let (l, hit) = switch(ui, &p, right, mid, app.tr(word), key, on, live);
@@ -118,8 +132,22 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         if let Some(a) = title_row(ui, app, rv, f, Rect::from_min_size(dr.min, vec2(dr.width(), TITLE_H)), live, pointer) {
             act = Some(a);
         }
-        let body = Rect::from_min_max(pos2(dr.left(), dr.top() + TITLE_H), dr.max);
-        body_of(ui, app, rv, body, live, pages);
+        let full = Rect::from_min_max(pos2(dr.left(), dr.top() + TITLE_H), dr.max);
+        let strip_h = if rv.editing.is_some() {
+            NOTE_BOX_H
+        } else if rv.note_here().is_some() {
+            NOTE_LINE_H
+        } else {
+            0.0
+        };
+        let body = Rect::from_min_max(full.min, pos2(full.right(), (full.bottom() - strip_h).max(full.top())));
+        if let Some(a) = body_of(ui, app, rv, body, live, pages, follow) {
+            act = Some(a);
+        }
+        if strip_h > 0.0 {
+            let strip = Rect::from_min_max(pos2(full.left(), body.bottom()), full.max);
+            note_strip(ui, app, strip);
+        }
     }
 
     let Some(a) = act else { return };
@@ -135,6 +163,11 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         Act::Check(k) => {
             let wish = app.review.as_mut().and_then(|rv| rv.check_at(k));
             app.wish(wish);
+        }
+        Act::Line(at) => {
+            if let Some(rv) = app.review.as_mut() {
+                rv.point(at);
+            }
         }
         Act::Wide(w) => {
             if let Some(rv) = app.review.as_mut() {
@@ -341,17 +374,31 @@ enum Piece {
 
 /// The selected file's diff in `body`, scrolled by the wheel and by the
 /// `pages` the keys asked for.
-fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, pages: i32) {
+fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, pages: i32, follow: bool) -> Option<Act> {
     let c = ito_theme::colors();
     let ctx = ui.ctx();
     let p = ui.painter_at(body);
     let d = match rv.diff() {
-        None => return note(ui, &p, body, app.tr("detail.reading")),
-        Some(Err(e)) => return note(ui, &p, body, &app.tr("detail.failed").replace("{}", &e.to_string())),
-        Some(Ok(None)) => return note(ui, &p, body, app.tr("detail.no_diff")),
+        None => {
+            note(ui, &p, body, app.tr("detail.reading"));
+            return None;
+        }
+        Some(Err(e)) => {
+            note(ui, &p, body, &app.tr("detail.failed").replace("{}", &e.to_string()));
+            return None;
+        }
+        Some(Ok(None)) => {
+            note(ui, &p, body, app.tr("detail.no_diff"));
+            return None;
+        }
         Some(Ok(Some(d))) => d,
     };
     let (f, rows) = (&d.0, &d.1);
+    let noted: Vec<At> = (0..f.hunks.len())
+        .flat_map(|h| (0..f.hunks[h].lines.len()).map(move |l| (h as u32, l as u32)))
+        .filter(|at| rv.is_noted(*at))
+        .collect();
+    let marks = Marks { cursor: rv.line, noted: &noted };
     let mut pieces = Vec::new();
     if f.not_utf8 {
         pieces.push(Piece::Note("detail.not_utf8"));
@@ -381,12 +428,30 @@ fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, pages: i32) 
 
     let mut scroll = ctx.data(|dt| dt.get_temp::<f32>(scroll_id())).unwrap_or(0.0);
     scroll += pages as f32 * (body.height() - 40.0).max(40.0);
+    let tops = wrap.tops(rows);
+    let diff_top: f32 = pieces.iter().zip(&heights).take_while(|(piece, _)| !matches!(piece, Piece::Diff)).map(|(_, h)| h).sum();
+    let row_of = |at: At| {
+        if rv.wide {
+            rows.paired.iter().position(|r| matches!(r, Paired::Pair(a, b) if *a == Some(at) || *b == Some(at)))
+        } else {
+            rows.unified.iter().position(|r| *r == Unified::Line(at))
+        }
+    };
+    if let (true, Some(k)) = (follow, rv.line.and_then(row_of)) {
+        let (top, bottom) = (diff_top + tops[k], diff_top + tops[k + 1]);
+        if top < scroll {
+            scroll = top - 8.0;
+        } else if bottom > scroll + body.height() {
+            scroll = bottom - body.height() + 8.0;
+        }
+    }
     if live && ui.rect_contains_pointer(body) {
         scroll -= ui.input(|i| i.smooth_scroll_delta.y);
     }
     scroll = scroll.clamp(0.0, (total - body.height()).max(0.0));
     ctx.data_mut(|dt| dt.insert_temp(scroll_id(), scroll));
 
+    let mut act = None;
     let mut y = body.top() - scroll;
     for (piece, h) in pieces.iter().zip(heights) {
         let rr = Rect::from_min_size(pos2(body.left(), y), vec2(body.width(), h));
@@ -398,7 +463,29 @@ fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, pages: i32) 
             Piece::Note(key) => {
                 p.text(pos2(rr.left() + X, rr.top() + 10.0), Align2::LEFT_TOP, app.tr(key), FontId::proportional(12.0), c.dim);
             }
-            Piece::Diff => diff(ui, &p, f, rows, Rect::from_min_size(rr.min, vec2(rr.width(), rr.height() - 6.0)), body, &wrap),
+            Piece::Diff => {
+                let at = Rect::from_min_size(rr.min, vec2(rr.width(), rr.height() - 6.0));
+                diff(ui, &p, f, rows, at, body, &wrap, &marks);
+                let resp = ui.interact(at.intersect(body), Id::new("review-diff"), Sense::CLICK);
+                if let (true, true, Some(q)) = (live, resp.clicked(), resp.interact_pointer_pos()) {
+                    let y = q.y - at.top();
+                    let k = tops.partition_point(|&t| t <= y).saturating_sub(1).min(tops.len() - 2);
+                    let hit = if rv.wide {
+                        match rows.paired[k] {
+                            Paired::Pair(old, new) => new.or(old),
+                            Paired::Hunk(_) => None,
+                        }
+                    } else {
+                        match rows.unified[k] {
+                            Unified::Line(at) => Some(at),
+                            Unified::Hunk(_) => None,
+                        }
+                    };
+                    if let Some(at) = hit {
+                        act = Some(Act::Line(at));
+                    }
+                }
+            }
             Piece::Cut => {
                 let mut job = LayoutJob::default();
                 job.append(
@@ -410,6 +497,36 @@ fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, pages: i32) 
                 p.galley(pos2(rr.left() + X, rr.top() + (DIFF_H - g.size().y) / 2.0), g, c.dim);
             }
         }
+    }
+    act
+}
+
+/// The strip under the diff: the note being written for the cursor's line,
+/// or the one it has.
+fn note_strip(ui: &mut Ui, app: &mut App, strip: Rect) {
+    let c = ito_theme::colors();
+    let p = ui.painter_at(strip);
+    p.rect_filled(strip, 0.0, c.side);
+    p.line_segment([strip.left_top() + vec2(0.0, 0.5), strip.right_top() + vec2(0.0, 0.5)], Stroke::new(1.0, c.border));
+    let small = FontId::proportional(12.0);
+    let editing = app.review.as_ref().is_some_and(|r| r.editing.is_some());
+    let head = app.review.as_ref().and_then(|r| Some((r.selected()?.path.clone(), r.target()?)));
+    let Some((path, (_, line, code))) = head else { return };
+    let keys = app.tr("review.note_keys").to_owned();
+    if editing {
+        let label = format!("{path}:{line}   {}", code.trim());
+        clipped(ui, &p, pos2(strip.left() + X, strip.top() + 12.0), &label, small.clone(), c.dim, strip.width() - 2.0 * X);
+        let edit = Rect::from_min_max(pos2(strip.left() + X, strip.top() + 22.0), pos2(strip.right() - X, strip.bottom() - 22.0));
+        if let Some(text) = app.review.as_mut().and_then(|r| r.editing.as_mut()) {
+            let resp = ui.put(edit, egui::TextEdit::multiline(text).id(note_id()).desired_width(f32::INFINITY));
+            if !resp.has_focus() {
+                resp.request_focus();
+            }
+        }
+        p.text(pos2(strip.left() + X, strip.bottom() - 11.0), Align2::LEFT_CENTER, keys, small, c.dim);
+    } else if let Some(n) = app.review.as_ref().and_then(|r| r.note_here()) {
+        let text = format!("✎ {}", n.text.replace('\n', " "));
+        clipped(ui, &p, pos2(strip.left() + X, strip.center().y), &text, small, c.wait, strip.width() - 2.0 * X);
     }
 }
 
@@ -474,6 +591,43 @@ mod tests {
             show(ui, app, r, true);
         });
         out.textures_delta.clear();
+    }
+
+    #[test]
+    fn a_note_is_written_on_a_line_kept_and_taken_away() {
+        let ctx = egui::Context::default();
+        let mut app = opened();
+        take_list(&mut app, Ok(listed(files(), None)));
+        take_selected(&mut app);
+        assert!(app.feed('g'));
+        assert_eq!(crate::app::tests::toast(&app), app.tr("review.no_notes"));
+        assert!(app.feed('J'));
+        let line = app.review.as_ref().unwrap().line.expect("the first line");
+        assert!(app.feed('n'));
+        app.review.as_mut().unwrap().editing = Some("why this?".into());
+        frame(&ctx, &mut app, 900.0, Vec::new());
+        frame(&ctx, &mut app, 500.0, Vec::new());
+        app.review.as_mut().unwrap().noted();
+        let rv = app.review.as_ref().unwrap();
+        assert_eq!((rv.notes.len(), rv.is_noted(line), rv.note_here().map(|n| n.text.as_str())), (1, true, Some("why this?")));
+        frame(&ctx, &mut app, 900.0, Vec::new());
+        assert!(app.named("Enter"));
+        frame(&ctx, &mut app, 1400.0, Vec::new());
+        // The notes stay with the worktree while the review is closed.
+        app.close_review();
+        assert_eq!(app.kept_notes.len(), 1);
+        assert!(app.feed('d'));
+        assert_eq!(app.review.as_ref().unwrap().notes.len(), 1);
+        assert!(app.kept_notes.is_empty());
+        // The same line written empty takes it away.
+        take_list(&mut app, Ok(listed(files(), None)));
+        take_selected(&mut app);
+        app.feed('J');
+        assert!(app.feed('n'));
+        assert_eq!(app.review.as_ref().unwrap().editing.as_deref(), Some("why this?"), "the note is written again");
+        app.review.as_mut().unwrap().editing = Some(String::new());
+        app.review.as_mut().unwrap().noted();
+        assert!(app.review.as_ref().unwrap().notes.is_empty());
     }
 
     #[test]

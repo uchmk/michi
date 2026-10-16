@@ -29,6 +29,7 @@ mod reorder;
 mod reorder_ui;
 mod repo;
 mod review;
+mod review_notes;
 mod review_ui;
 mod settings;
 mod side_ui;
@@ -121,6 +122,20 @@ impl Michi {
             if let Some(r) = &mut self.app.reorder {
                 if keep {
                     r.edited();
+                } else if leave {
+                    r.editing = None;
+                }
+            }
+            return;
+        }
+        // A note written for a line of the branch review.
+        if self.app.band.is_none() && self.app.review.as_ref().is_some_and(|r| r.editing.is_some()) {
+            let (keep, leave) = ctx.input_mut(|i| {
+                (i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter), i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+            });
+            if let Some(r) = &mut self.app.review {
+                if keep {
+                    r.noted();
                 } else if leave {
                     r.editing = None;
                 }

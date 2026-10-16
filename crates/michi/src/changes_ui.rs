@@ -675,7 +675,7 @@ fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32) {
             }
             Piece::Diff => {
                 let dr = Rect::from_min_size(rr.min, vec2(rr.width(), rr.height() - 6.0));
-                diff(ui, &p, f, rows, dr, body, &wrap);
+                diff(ui, &p, f, rows, dr, body, &wrap, &crate::detail_ui::Marks::default());
                 marks(&p, ch, s, dr, body, &tops);
             }
             Piece::Cut => {

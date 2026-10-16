@@ -197,6 +197,15 @@ pub enum Task {
         conflict: Box<Conflict>,
         session: Option<u64>,
     },
+    /// Writes the notes on the lines of `branch`'s diff to a file and asks a
+    /// Claude to act on them: the tsumugi session `session`, or a new tab.
+    HandNotes {
+        wt: PathBuf,
+        branch: String,
+        trunk: String,
+        notes: Vec<michi_core::notes::Note>,
+        session: Option<u64>,
+    },
     /// Opens the pull request page of `branch` on GitHub in the browser.
     OpenPr {
         wt: PathBuf,
@@ -258,7 +267,7 @@ impl Task {
             Task::Abort { doing: Doing::CherryPick, .. } => "cherry-pick --abort",
             Task::Abort { doing: Doing::Revert, .. } => "revert --abort",
             Task::Abort { doing: Doing::Bisect, .. } => "bisect reset",
-            Task::Handoff { .. } | Task::Focus { .. } | Task::NewWork { .. } => "tsumugi",
+            Task::Handoff { .. } | Task::HandNotes { .. } | Task::Focus { .. } | Task::NewWork { .. } => "tsumugi",
             Task::OpenPr { .. } => "remote",
             Task::External { .. } => "mergetool",
             Task::AskRerere { .. } => "config --get",
@@ -348,6 +357,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::OpenPr { wt, branch } => michi_core::pr::open(wt, branch).map(|_| Acted::Done),
         Task::Focus { session } => handoff::focus(*session).map(|()| Acted::Done),
         Task::Handoff { conflict, session } => hand_off(conflict, *session).map(|()| Acted::Done),
+        Task::HandNotes { wt, branch, trunk, notes, session } => hand_notes(wt, branch, trunk, notes, *session).map(|()| Acted::Done),
         Task::AskRerere { wt } => rerere::enabled(wt).map(Acted::Rerere),
         Task::Rerere { wt, on } => rerere::set(wt, *on).map(|()| Acted::Done),
     }
@@ -363,6 +373,15 @@ fn hand_off(c: &Conflict, session: Option<u64>) -> Result<(), git::Error> {
     match session {
         Some(id) => handoff::send(id, &text),
         None => handoff::start(&c.wt, &name(&c.wt), &text),
+    }
+}
+
+fn hand_notes(wt: &Path, branch: &str, trunk: &str, notes: &[michi_core::notes::Note], session: Option<u64>) -> Result<(), git::Error> {
+    let file = michi_core::notes::write(wt, branch, trunk, notes).map_err(|e| git::Error::Io(e.to_string()))?;
+    let text = michi_core::notes::request(&file);
+    match session {
+        Some(id) => handoff::send(id, &text),
+        None => handoff::start(wt, &name(wt), &text),
     }
 }
 
@@ -424,6 +443,12 @@ impl App {
                 let key = if session.is_some() { "act.handed" } else { "act.handed_new" };
                 self.watch_handed(conflict.wt.clone());
                 (self.tr(key).replace("{wt}", &self::name(&conflict.wt)), 8)
+            }
+            (Task::HandNotes { wt, notes, session, .. }, Ok(_)) => {
+                let key = if session.is_some() { "act.noted" } else { "act.noted_new" };
+                self.notes_sent(wt);
+                self.watch_handed(wt.clone());
+                (self.tr(key).replace("{wt}", &self::name(wt)).replace("{n}", &notes.len().to_string()), 8)
             }
             (Task::Rerere { on, .. }, Ok(_)) => (self.tr(if *on { "act.rerere_on" } else { "act.rerere_off" }).to_owned(), 6),
             (Task::Resolve { wt, path, .. } | Task::ResolveWith { wt, path, .. } | Task::Take { wt, path, .. }, Err(e)) => {

@@ -271,7 +271,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             Block::Diff(f) => {
                 if let Some(rows) = app.detail.rows(f) {
                     let body = Rect::from_min_size(rr.min, vec2(rr.width(), rr.height() - 6.0));
-                    diff(ui, &p, &d.files[f], rows, body, r, &wrap);
+                    diff(ui, &p, &d.files[f], rows, body, r, &wrap, &Marks::default());
                 }
             }
             Block::Cut => {
@@ -658,8 +658,31 @@ impl Wrap {
     }
 }
 
+/// The lines of a diff the branch review marks: the cursor's and the ones
+/// with a note. The other diffs pass none.
+#[derive(Default)]
+pub(crate) struct Marks<'a> {
+    pub cursor: Option<At>,
+    pub noted: &'a [At],
+}
+
+impl Marks<'_> {
+    fn paint(&self, p: &Painter, rr: Rect, at: Option<At>) {
+        let Some(at) = at else { return };
+        let c = ito_theme::colors();
+        if self.cursor == Some(at) {
+            p.rect_filled(rr, 0.0, c.blue.gamma_multiply(0.22));
+            p.rect_stroke(rr, 0.0, Stroke::new(1.0, c.blue), egui::StrokeKind::Inside);
+        }
+        if self.noted.contains(&at) {
+            p.rect_filled(Rect::from_min_size(rr.min, vec2(3.0, rr.height())), 0.0, c.wait);
+        }
+    }
+}
+
 /// A file's diff in `body`, only the rows inside `view`.
-pub(crate) fn diff(ui: &Ui, p: &Painter, f: &File, rows: &crate::detail::Rows, body: Rect, view: Rect, wrap: &Wrap) {
+#[expect(clippy::too_many_arguments, reason = "the painter, the diff, its place and its marks are the frame's")]
+pub(crate) fn diff(ui: &Ui, p: &Painter, f: &File, rows: &crate::detail::Rows, body: Rect, view: Rect, wrap: &Wrap, marks: &Marks) {
     let wide = wrap.wide;
     let tops = wrap.tops(rows);
     let n = tops.len() - 1;
@@ -683,12 +706,17 @@ pub(crate) fn diff(ui: &Ui, p: &Painter, f: &File, rows: &crate::detail::Rows, b
                     );
                     half_row(ui, p, left, old.map(line), true);
                     half_row(ui, p, right, new.map(line), false);
+                    marks.paint(p, Rect::from_min_size(left.min, vec2(left.width(), DIFF_H)), old);
+                    marks.paint(p, Rect::from_min_size(right.min, vec2(right.width(), DIFF_H)), new);
                 }
             }
         } else {
             match rows.unified[k] {
                 Unified::Hunk(h) => hunk_row(p, rr, &f.hunks[h as usize].header),
-                Unified::Line(at) => unified_row(ui, p, rr, line(at)),
+                Unified::Line(at) => {
+                    unified_row(ui, p, rr, line(at));
+                    marks.paint(p, rr, Some(at));
+                }
             }
         }
     }

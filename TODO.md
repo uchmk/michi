@@ -36,7 +36,7 @@
   - [x] The diff of a whole branch (`d` in the worktree table, v0.9.0): `main...<branch>` with the uncommitted changes in or out (`u`),
     files checked as seen by path and blob (`Space`), since the last look (`s`, `refs/michi/seen/<branch>`), the prediction against
     main on top, side by side (`Enter`) （要確認: #10）
-  - [ ] The branch review's leftovers: notes on lines sent to the branch's Claude (stage 6), ~~merge from the review~~ (`m`, v0.29.0, TESTING 13.12),
+  - [x] The branch review's leftovers: ~~notes on lines sent to the branch's Claude~~ (`J K n g`, v0.34.0, TESTING 13.13), ~~merge from the review~~ (`m`, v0.29.0, TESTING 13.12),
     `Open PR` (with the PR button, stage 4) （要確認: #10）
   - [x] Stage and commit (`2`, v0.10.0): files, lines and hunks (`git apply --cached`), the message per worktree, amend (asked first
     when the head is pushed), the check while Claude is writing, the count of uncommitted files on the `2` tab （要確認: #12）
@@ -83,8 +83,8 @@
 - [ ] 4. Worktrees: new work (`N` done in v0.31.0; remove `x` and the tab `o` in v0.30.0), take in main (`m`, merge done in v0.15.0; rebase not yet), the PR page (`p`, v0.32.0; michi opens the page, the browser writes the PR per v1-scope)
   and `focus N|NAME` (in tsumugi's TODO.md)
 - [ ] 5. Rebase: reorder, squash, reword, the in-progress band (`r` screen done in v0.33.0, TESTING 10.16; the in-progress band is the conflict screen's, v0.17.0)
-- [ ] 6. Claude: hand a conflict to Claude through `tsumugi send` and watch the markers, notify on waiting / done, hand over notes from the
-  branch diff
+- [ ] 6. Claude: hand a conflict to Claude through `tsumugi send` (v0.24.0) and notify on waiting / done (v0.26.0), hand over notes from the
+  branch diff (v0.34.0, TESTING 13.13). Left: watch the markers (whether the conflict markers are gone)
 
 ## Owner
 

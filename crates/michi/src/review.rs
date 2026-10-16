@@ -13,7 +13,8 @@ use michi_core::oid::Oid;
 use michi_core::review::{self, Key, List};
 use michi_core::show::{Changes, File};
 
-use crate::detail::Rows;
+use crate::detail::{At, Rows, Unified};
+use michi_core::notes::{self, Note, Side};
 
 /// What the review reads to: the trunk's commit, the branch's, and the
 /// worktree's WIP commit when it has uncommitted changes.
@@ -90,6 +91,14 @@ pub struct Review {
     pub pages: i32,
     /// The diff goes back to its top: another file is selected.
     pub to_top: bool,
+    /// The line of the selected file's diff the notes are about (`J` `K`).
+    pub line: Option<At>,
+    /// The cursor moved: the diff brings it into sight.
+    pub follow: bool,
+    /// The notes on lines of the branch, until they are handed to its Claude.
+    pub notes: Vec<Note>,
+    /// The note being written for `line`.
+    pub editing: Option<String>,
 }
 
 impl Review {
@@ -112,6 +121,10 @@ impl Review {
             wide: false,
             pages: 0,
             to_top: false,
+            line: None,
+            follow: false,
+            notes: Vec::new(),
+            editing: None,
         }
     }
 
@@ -145,6 +158,7 @@ impl Review {
             let sel = path.as_ref().and_then(|p| files.iter().position(|f| f.path == *p));
             if sel.is_none() {
                 self.to_top = true;
+                self.line = None;
             }
             self.sel = sel.unwrap_or(0);
         }
@@ -201,6 +215,81 @@ impl Review {
         self.files().get(self.sel)
     }
 
+    /// The lines of the selected file's diff, top to bottom.
+    fn diff_lines(&self) -> Vec<At> {
+        match self.diff() {
+            Some(Ok(Some(d))) => d.1.unified.iter().filter_map(|u| if let Unified::Line(at) = u { Some(*at) } else { None }).collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// Moves the line cursor by `by` lines in the selected file's diff; the
+    /// first move puts it on the first (or last) line.
+    pub fn step(&mut self, by: i64) {
+        let lines = self.diff_lines();
+        if lines.is_empty() {
+            return;
+        }
+        let now = self.line.and_then(|at| lines.iter().position(|l| *l == at));
+        let k = match now {
+            Some(k) => (k as i64 + by).clamp(0, lines.len() as i64 - 1) as usize,
+            None if by < 0 => lines.len() - 1,
+            None => 0,
+        };
+        self.line = Some(lines[k]);
+        self.follow = true;
+    }
+
+    /// Puts the cursor on `at`, a line of the selected file's diff.
+    pub fn point(&mut self, at: At) {
+        if self.diff_lines().contains(&at) {
+            self.line = Some(at);
+        }
+    }
+
+    /// What a note on the cursor's line is about: its side, its number and
+    /// its text. `None` without a line or a diff.
+    pub fn target(&self) -> Option<(Side, u32, String)> {
+        let at = self.line?;
+        let Some(Ok(Some(d))) = self.diff() else { return None };
+        let l = d.0.hunks.get(at.0 as usize)?.lines.get(at.1 as usize)?;
+        Some(if l.new > 0 { (Side::New, l.new, l.text.clone()) } else { (Side::Old, l.old, l.text.clone()) })
+    }
+
+    /// The note on the cursor's line.
+    pub fn note_here(&self) -> Option<&Note> {
+        let (side, line, _) = self.target()?;
+        notes::find(&self.notes, &self.selected()?.path, side, line)
+    }
+
+    /// Whether the line `at` of the selected file's diff has a note.
+    pub fn is_noted(&self, at: At) -> bool {
+        let (Some(Ok(Some(d))), Some(f)) = (self.diff(), self.selected()) else { return false };
+        let Some(l) = d.0.hunks.get(at.0 as usize).and_then(|h| h.lines.get(at.1 as usize)) else { return false };
+        let (side, n) = if l.new > 0 { (Side::New, l.new) } else { (Side::Old, l.old) };
+        notes::find(&self.notes, &f.path, side, n).is_some()
+    }
+
+    /// `n`: starts writing the note for the cursor's line (the line is the
+    /// first one when there is none). False when there is no line.
+    pub fn write_note(&mut self) -> bool {
+        if self.line.is_none() {
+            self.step(1);
+        }
+        if self.target().is_none() {
+            return false;
+        }
+        self.editing = Some(self.note_here().map(|n| n.text.clone()).unwrap_or_default());
+        true
+    }
+
+    /// Keeps what was written (nothing written takes the note away).
+    pub fn noted(&mut self) {
+        let (Some(text), Some((side, line, code)), Some(f)) = (self.editing.take(), self.target(), self.selected()) else { return };
+        let path = f.path.clone();
+        notes::put(&mut self.notes, Note { path, line, side, code, text });
+    }
+
     pub fn is_checked(&self, f: &File) -> bool {
         self.checks.contains(&review::key(f))
     }
@@ -227,6 +316,7 @@ impl Review {
             self.sel = k;
             self.to_top = true;
             self.pages = 0;
+            self.line = None;
         }
         self.want_file()
     }

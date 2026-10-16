@@ -147,8 +147,11 @@ pub const GLOBAL_KEYS: [(&str, &str); 9] = [
 ];
 
 /// The keys of the branch review, drawn over the worktree table.
-pub const REVIEW_KEYS: [(&str, &str); 8] = [
+pub const REVIEW_KEYS: [(&str, &str); 11] = [
     ("j k", "key.file"),
+    ("J K", "key.line"),
+    ("n", "key.note"),
+    ("g", "key.hand_notes"),
     ("Space", "key.seen"),
     ("u", "key.uncommitted"),
     ("s", "key.since_last"),
@@ -218,6 +221,8 @@ pub struct App {
     pub wt_sel: usize,
     /// The branch review (`d`), over the worktree table.
     pub review: Option<Review>,
+    /// The notes of closed reviews, by worktree, until they are handed over.
+    pub kept_notes: Vec<(PathBuf, Vec<michi_core::notes::Note>)>,
     /// The `2` view: one worktree's files to stage and commit.
     pub changes: Changes,
     /// The `4` view: the worktrees stopped on a clash, and their places.
@@ -278,6 +283,7 @@ impl App {
             handed: Vec::new(),
             wt_sel: 0,
             review: None,
+            kept_notes: Vec::new(),
             changes: Changes::default(),
             conflicts: Conflicts::default(),
             last_view: View::Graph,
@@ -801,7 +807,10 @@ impl App {
             _ if self.trees.trunk_head.is_none() => "review.no_trunk",
             None => "review.detached",
             Some(branch) => {
-                self.review = Some(Review::new(path, branch));
+                let notes = self.notes_back(&path);
+                let mut r = Review::new(path, branch);
+                r.notes = notes;
+                self.review = Some(r);
                 self.review_sync();
                 return;
             }
@@ -812,7 +821,9 @@ impl App {
 
     /// Closes the branch review.
     pub fn close_review(&mut self) {
-        self.review = None;
+        if let Some(r) = self.review.take() {
+            self.notes_away(r.path, r.notes);
+        }
         if let Some(r) = &self.reading {
             r.review_closed();
         }
@@ -859,9 +870,22 @@ impl App {
             self.ask_merge();
             return true;
         }
+        match c {
+            'n' if self.review.is_some() => return self.review_note_key(),
+            'g' if self.review.is_some() => return self.review_hand_key(),
+            _ => {}
+        }
         let Some(r) = self.review.as_mut() else { return false };
         let mut said = None;
         let wishes = match c {
+            'J' => {
+                r.step(1);
+                Vec::new()
+            }
+            'K' => {
+                r.step(-1);
+                Vec::new()
+            }
             'j' => r.move_by(1).into_iter().collect(),
             'k' => r.move_by(-1).into_iter().collect(),
             ' ' => r.check(),
@@ -883,6 +907,16 @@ impl App {
             }
             None => self.review_sync(),
         }
+        true
+    }
+
+    fn review_note_key(&mut self) -> bool {
+        self.review_note();
+        true
+    }
+
+    fn review_hand_key(&mut self) -> bool {
+        self.review_hand();
         true
     }
 

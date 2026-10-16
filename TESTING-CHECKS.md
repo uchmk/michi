@@ -163,6 +163,7 @@
 - [ ] **13.9** Press `d` on a worktree with a detached HEAD; on a branch with nothing from main → The toast `This worktree is on no branch`; the review reads `No file changed from main`
 - [ ] **13.10** Commit in the worktree while the review is open; switch the worktree to another branch from a terminal → The list follows the new commit within about a second, keeping the ticks; on another branch the list stays as it was and nothing is read
 - [ ] **13.11** Narrow the window to its smallest; switch to the light theme → The branch name is cut with `…`, the files keep their counts and the key bar folds what does not fit; the colours stay readable in both themes
+- [ ] **13.14** `n` on a line that has a note, empty it, Ctrl+Enter; `g` with no notes; Esc while writing → The note is taken away; a toast says there are no notes yet; Esc leaves the note as it was
 
 ## 14. Changes: stage and commit
 
