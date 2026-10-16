@@ -43,14 +43,23 @@ pub enum Task {
         remote: String,
         name: String,
     },
+    /// Deletes the branch `name`.
+    Delete {
+        name: String,
+    },
     /// Renames the branch `old` to `new`.
     Rename {
         old: String,
         new: String,
     },
-    /// Deletes the branch `name`.
-    Delete {
+    /// Makes the branch `name` follow the remote branch of its name.
+    Upstream {
         name: String,
+    },
+    /// Rebases the branch of the worktree at `wt` onto `onto`.
+    Rebase {
+        wt: PathBuf,
+        onto: String,
     },
     /// The tag `name` on `at`, with `message` (none: a light one); pushed
     /// when made, with `push`.
@@ -189,6 +198,9 @@ impl Task {
             Task::Create { switch: None, .. } => "branch",
             Task::Create { .. } | Task::Switch { .. } | Task::Track { .. } => "switch",
             Task::Delete { .. } => "branch -D",
+            Task::Rename { .. } => "branch -m",
+            Task::Upstream { .. } => "branch --set-upstream-to",
+            Task::Rebase { .. } => "rebase",
             Task::Tag { .. } => "tag",
             Task::Untag { .. } => "tag -d",
             Task::Revert { .. } => "revert",
@@ -212,7 +224,6 @@ impl Task {
             Task::Abort { doing: Doing::CherryPick, .. } => "cherry-pick --abort",
             Task::Abort { doing: Doing::Revert, .. } => "revert --abort",
             Task::Abort { doing: Doing::Bisect, .. } => "bisect reset",
-            Task::Rename { .. } => "branch -m",
             Task::Handoff { .. } => "tsumugi",
             Task::External { .. } => "mergetool",
             Task::AskRerere { .. } => "config --get",
@@ -229,6 +240,8 @@ pub enum Acted {
     /// It deleted something, kept under this backup (none: other refs
     /// have it).
     Kept(Option<String>),
+    /// The branch now follows this remote branch.
+    Upstream(String),
     Reverted(Reverted),
     Stashed(Saved),
     Unstashed(Applied),
@@ -261,6 +274,12 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Switch { wt, name } => branch::switch(wt, name).map(|()| Acted::Done),
         Task::Track { wt, remote, name } => branch::track(wt, remote, name).map(|()| Acted::Done),
         Task::Delete { name } => branch::delete(dir, name).map(Acted::Kept),
+        Task::Rename { old, new } => branch::rename(dir, old, new).map(|()| Acted::Done),
+        Task::Upstream { name } => match branch::same_name_remote(dir, name)? {
+            Some(remote) => branch::set_upstream(dir, name, &remote).map(|()| Acted::Upstream(remote)),
+            None => Err(git::Error::Git(format!("no remote branch is named '{name}'"))),
+        },
+        Task::Rebase { wt, onto } => branch::rebase(wt, onto).map(|saved| Acted::Kept(Some(saved))),
         Task::Tag { name, at, message, .. } => tag::create(dir, name, at, message).map(|()| Acted::Done),
         Task::Untag { name } => tag::delete(dir, name).map(|saved| Acted::Kept(Some(saved))),
         Task::Revert { wt, id, mainline } => revert::revert(wt, id, *mainline).map(Acted::Reverted),
@@ -279,7 +298,6 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Forget { wt, path } => conflict::forget(wt, path).map(|saved| solved(wt, Some(saved))),
         Task::Conclude { wt, message, .. } => conflict::commit(wt, message).map(Acted::Committed),
         Task::Abort { wt, .. } => conflict::abort(wt).map(Acted::Kept),
-        Task::Rename { old, new } => branch::rename(dir, old, new).map(|()| Acted::Done),
         Task::External { wt, path } => external::open(wt, path).map(Acted::Opened),
         Task::Handoff { conflict, session } => hand_off(conflict, *session).map(|()| Acted::Done),
         Task::AskRerere { wt } => rerere::enabled(wt).map(Acted::Rerere),
@@ -357,7 +375,6 @@ impl App {
                 self.watch_handed(conflict.wt.clone());
                 (self.tr(key).replace("{wt}", &self::name(&conflict.wt)), 8)
             }
-            (Task::Rename { old, new }, Ok(_)) => (self.tr("act.renamed").replace("{old}", old).replace("{new}", new), 4),
             (Task::Rerere { on, .. }, Ok(_)) => (self.tr(if *on { "act.rerere_on" } else { "act.rerere_off" }).to_owned(), 6),
             (Task::Resolve { wt, path, .. } | Task::ResolveWith { wt, path, .. } | Task::Take { wt, path, .. }, Err(e)) => {
                 self.conflict_unpick(wt, path);
@@ -378,6 +395,14 @@ impl App {
                 (self.tr("act.deleted_kept").replace("{name}", name).replace("{saved}", backup::short(&saved)), 10)
             }
             (Task::Delete { name }, Ok(_)) => (self.tr("act.deleted").replace("{}", name), 4),
+            (Task::Rename { old, new }, Ok(_)) => (self.tr("act.renamed").replace("{old}", old).replace("{new}", new), 4),
+            (Task::Upstream { name }, Ok(Acted::Upstream(remote))) => {
+                (self.tr("act.upstream").replace("{name}", name).replace("{remote}", &remote), 4)
+            }
+            (Task::Rebase { wt, onto }, Ok(Acted::Kept(saved))) => {
+                let saved = saved.as_deref().map_or("", backup::short);
+                (self.tr("act.rebased").replace("{wt}", &self::name(wt)).replace("{onto}", onto).replace("{saved}", saved), 10)
+            }
             (Task::Tag { name, at, push: false, .. }, Ok(_)) => {
                 (self.tr("act.tagged").replace("{name}", name).replace("{at}", &at.short()), 4)
             }
