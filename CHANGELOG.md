@@ -2,7 +2,7 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
-## [0.15.0] - 2026-10-16
+## [0.17.0] - 2026-10-16
 
 ### 追加
 
@@ -27,6 +27,35 @@
 - マージなどの途中の worktree では、pull・cherry-pick・main の取り込み・revert・変更の画面のコミットを止め、トーストで理由を言う。
   ほかの worktree の操作と fetch・push は続く。タイトルバーに赤で「· マージ中」（rebase 中・cherry-pick 中・revert 中・bisect 中）。
 - revert が衝突したら、中止せずに `4` の画面で解く。
+
+## [0.16.0] - 2026-10-16
+
+### 変更
+
+- `michi.com` を ito の `ito-console`（ito 0.42.0）の前段にした。kura・yagura・tsumugi・minato と同じ 1 つのコードになる。
+  オプションがあれば `michi.exe` を走らせて待ち、フォルダか何も無ければ窓が上がるまで待って戻るのは変わらない。窓を開くとき、出力がパイプなら、
+  窓には一時フォルダのファイル（`michi-com-<pid>-<n>.out`・`.err`。窓が閉じれば消える）を渡し、窓が上がった時点までの中身をパイプへ写す。
+  これまでは窓に `michi.com` のパイプを渡していたので、`michi.com` が終わった後の窓の書き込みが誰も読まないパイプに当たり得た。
+  出力がコンソールかファイルなら、窓はそれをそのまま持つ。
+- `--version`・`--help`・引数やフォルダの誤りの文字を書く `say` は `ito_console::out`・`err` を使う（書けなければ捨てるのは変わらない）。
+  `windows-sys` への直接の依存を外した。
+- ito を 0.36.0 から 0.42.0（30efd62）に上げた。
+
+## [0.15.0] - 2026-10-16
+
+### 追加
+
+- Windows のコンソールの前段 `michi.com`（kura の `kura.com`・yagura の `yagura.com` と同じ）。`michi.exe` は窓のプログラムなので、PowerShell は待たず、
+  `$v = & michi.exe --version` は空だった。`cargo build --release` が `michi-com.exe` を作り、Build の成果物には `michi.com` の名で入る。
+  `PATHEXT` で `.COM` が `.EXE` より先なので、`michi` と打てばこちらが動く。オプションがあれば `michi.exe` を同じ引数で走らせて待ち、
+  終了コードを返す。フォルダか何も無ければ窓を開き、上がったら戻る（フォルダでなければ `michi.exe` の文字と終了コードを返す）。
+  **2 つは同じフォルダに置く。**
+
+### 修正
+
+- `--version`・`--help`・引数やフォルダの誤りの文字を書けなくても panic しない。PowerShell の `$v = & michi.exe --version` は、閉じたパイプへの
+  書き込みで後から「failed printing to stdout」（os error 232）の panic を出していた。文字は、出力がファイルかパイプならそこへ、そうでなければ
+  起動したコンソールへ出す（kura と同じ）。
 
 ## [0.14.0] - 2026-10-16
 

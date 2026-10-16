@@ -33,6 +33,15 @@
   CI の `clippy` も Linux の機械から Linux・`x86_64-pc-windows-msvc`・`aarch64-apple-darwin` の 3 つを見る（macOS は 2026-10-16 から）。
 - `Audit`（`.github/workflows/audit.yml`、2026-10-16 から。kura・tsumugi・ito・yagura・minato と同じ）は `cargo audit`（RustSec の脆弱性の一覧）を
   main への push・PR・毎週月曜に回す。脆弱性で落ち、警告では落ちない。赤くなったら、直った版に `cargo update -p <クレート>` で上げる。
+- `Build`（`.github/workflows/build.yml`、2026-10-16 から。kura・ito・yagura・minato と同じ 6 つのターゲット）は main への push と手動で、
+  6 つのターゲットを `--release` でリンクし、Windows x64 で `michi.com` の `--version`・`--help`・知らない引数・無いフォルダと、
+  閉じたパイプへの `michi.exe --version` が panic しないことを確かめ、実行ファイル（Windows は `michi.com` も）を成果物に残す。
+  テストは回さない（CI の役目）。リリースがまだ無いので、macOS をリンクするのはここだけ。
+- `michi.com`（`crates/michi/src/bin/michi-com.rs`、v0.15.0 から）は Windows のコンソールの前段。中身は ito の `ito_console::front`
+  （v0.16.0 から。kura・yagura・tsumugi・minato と共有）で、michi が持つのはどのコマンドラインを文字で答えるか（`answers_in_text`）だけ。
+  オプションがあれば `michi.exe` を同じ引数で走らせて待ち、フォルダか何も無ければ窓が上がるまで待って戻る。
+  `main.rs` の `parse_args` を変えたら `answers_in_text` も揃える。文字の出力は `main.rs` の `say`（`ito_console::out`・`err`。ファイルかパイプならそこへ、
+  そうでなければ親のコンソールへ。書けなくても panic しない）。リリースを作るときは zip に `michi-com.exe` を `michi.com` の名で入れる。
 
 ## 共有のクレート（ito）
 

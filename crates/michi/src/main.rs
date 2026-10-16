@@ -301,45 +301,47 @@ fn folder(path: Option<PathBuf>) -> Result<PathBuf, String> {
     Ok(abs)
 }
 
-/// A release build on Windows has no console of its own: borrow the one it
-/// was started from, so `--help` and `--version` can be read.
-#[cfg(windows)]
-fn attach_console() {
-    // SAFETY: no arguments to get wrong; failing (no parent console) is fine.
-    unsafe extern "system" {
-        fn AttachConsole(process: u32) -> i32;
+/// Puts a line where whoever typed the command is looking, on standard error
+/// when `err` (`ito_console::out` and `err`, as kura's `say`).
+///
+/// A release build on Windows is a GUI-subsystem program and has no console
+/// of its own. When the standard handle is a file or a pipe (`michi.com`
+/// hands on its own, `cmd`'s `>`), the line goes there; otherwise it goes to
+/// the console michi was started from. A write that fails is let go:
+/// PowerShell gives a bare `$v = & michi.exe --version` a pipe and closes it
+/// without waiting, and `println!` panicked on that ("failed printing to
+/// stdout", os error 232). `michi.com` is the way to read it there.
+fn say(text: &str, err: bool) {
+    let line = format!(
+        "{text}
+"
+    );
+    match err {
+        true => ito_console::err(&line),
+        false => ito_console::out(&line),
     }
-    const ATTACH_PARENT_PROCESS: u32 = u32::MAX;
-    let _ = unsafe { AttachConsole(ATTACH_PARENT_PROCESS) };
 }
-
-#[cfg(not(windows))]
-fn attach_console() {}
 
 fn main() -> eframe::Result {
     let path = match parse_args(std::env::args_os().skip(1)) {
         Ok(Cli::Version) => {
-            attach_console();
-            println!("michi {}", env!("CARGO_PKG_VERSION"));
+            say(&format!("michi {}", env!("CARGO_PKG_VERSION")), false);
             return Ok(());
         }
         Ok(Cli::Help) => {
-            attach_console();
-            println!("{USAGE}");
+            say(USAGE, false);
             return Ok(());
         }
         Ok(Cli::Open(path)) => path,
         Err(e) => {
-            attach_console();
-            eprintln!("michi: {e}\n\n{USAGE}");
+            say(&format!("michi: {e}\n\n{USAGE}"), true);
             std::process::exit(2);
         }
     };
     let dir = match folder(path) {
         Ok(d) => d,
         Err(e) => {
-            attach_console();
-            eprintln!("michi: {e}");
+            say(&format!("michi: {e}"), true);
             std::process::exit(2);
         }
     };

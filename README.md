@@ -31,6 +31,18 @@ or newer. Nothing in it changes a repository yet.
 cargo run -p michi -- C:\dev\some-repo   # or no path: the current folder
 ```
 
+## `michi.com` on Windows
+
+`michi.exe` is a windowed program, so PowerShell does not wait for it:
+`$v = & michi --version` would come back empty. `cargo build --release` also
+makes `michi-com.exe`, a small console program, the same as kura's `kura.com`
+and yagura's `yagura.com`: copy it to `michi.com` beside `michi.exe` (the Build
+artifacts hold both under these names). `PATHEXT` lists `.COM` before `.EXE`,
+so typing `michi` finds it first. Given an option (`--version`, `--help`) it
+runs `michi.exe` with the same arguments and handles, waits, and passes on the
+exit code; given a folder or nothing it opens the window and returns once it is
+up. **Keep the two in one folder.**
+
 ## License
 
 Dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at

@@ -1,0 +1,133 @@
+name: Build
+
+# A downloadable binary for each of six targets, on every push to main, as
+# kura's build.yml. Kept apart from ci.yml: this one produces an artifact,
+# that one is the gate, and a failure here should not read as a failing test.
+# ci.yml and arm64.yml build Windows and Linux in debug, and clippy
+# type-checks the macOS code but never links; michi has no release yet, so
+# this is the only place macOS is linked and a release build is made.
+#
+# The targets and runners are kura's: both Windows builds on the x64 runner,
+# macOS x64 cross-built on the ARM runner, Linux on native runners.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'LICENSE*']
+  # Or from the Actions tab, on any branch, whenever a build is wanted.
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      # Which target broke, and whether the rest still build, is the useful
+      # information.
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: windows-arm64
+            os: windows-latest
+            target: aarch64-pc-windows-msvc
+          - name: macos-arm64
+            os: macos-14
+            target: aarch64-apple-darwin
+          - name: macos-x64
+            os: macos-14
+            target: x86_64-apple-darwin
+          - name: linux-x64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - name: linux-arm64
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+
+    name: ${{ matrix.name }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Add the target
+        run: rustup target add ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # The jobs sharing a runner image would otherwise share one cache
+          # entry and keep evicting each other's.
+          key: ${{ matrix.target }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build
+        run: cargo build --release --locked -p michi --target ${{ matrix.target }}
+
+      # The release binaries start and answer. x64 only: the runner cannot
+      # run ARM64.
+      #
+      # michi.com (v0.15.0) is the console front kept beside michi.exe, as
+      # kura.com and yagura.com. Being a console program, PowerShell waits
+      # for it and takes its output, so the bare forms that come back empty
+      # from michi.exe have to work here, and a folder that is not one comes
+      # back through it with michi.exe's exit code.
+      #
+      # michi.exe itself is a GUI-subsystem program: PowerShell hands it a
+      # pipe for `$v = & michi.exe --version` and closes it without waiting.
+      # The write is let go there, where println! panicked (os error 232):
+      # here the pipe is closed before michi.exe has started writing.
+      - name: Check michi.com
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path "target/${{ matrix.target }}/release/michi.exe").Path
+          $com = "target/${{ matrix.target }}/release/michi.com"
+          Copy-Item "target/${{ matrix.target }}/release/michi-com.exe" $com
+          $ver = & $com --version
+          if (-not ($ver -match '^michi \d')) { throw "& michi.com --version gave: '$ver'" }
+          $help = & $com --help
+          if ($help.Count -lt 2) { throw "& michi.com --help gave $($help.Count) line(s)" }
+          $p = [System.Diagnostics.Process]::new()
+          $p.StartInfo.FileName = $exe
+          $p.StartInfo.Arguments = '--version'
+          $p.StartInfo.UseShellExecute = $false
+          $p.StartInfo.RedirectStandardOutput = $true
+          [void]$p.Start()
+          $p.StandardOutput.Close()
+          $p.WaitForExit()
+          if ($p.ExitCode -ne 0) { throw "michi.exe --version into a closed pipe exited $($p.ExitCode)" }
+          & $com no-such-folder 2> nofolder.txt
+          $nofolder = $LASTEXITCODE
+          $said = (Get-Content -Raw nofolder.txt).Trim()
+          if (-not ($said -match 'not a folder')) { throw "michi.com no-such-folder said: '$said'" }
+          & $com --bogus 2> refused.txt
+          $refused = $LASTEXITCODE
+          $said = (Get-Content -Raw refused.txt).Trim()
+          if (-not ($said -match 'unknown argument')) { throw "michi.com --bogus said: '$said'" }
+          # The step ends with `exit $LASTEXITCODE`, and this 2 is the pass.
+          $global:LASTEXITCODE = 0
+          if ($nofolder -ne 2) { throw "michi.com no-such-folder exited $nofolder, not michi.exe's 2" }
+          if ($refused -ne 2) { throw "michi.com --bogus exited $refused, not michi.exe's 2" }
+          "michi.com: $ver, $($help.Count) lines of help, refusal exits $nofolder and $refused"
+
+      - name: Gather the files
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/michi${{ runner.os == 'Windows' && '.exe' || '' }} dist/
+          # And Windows gets the console front beside it, under the name that
+          # makes `michi` find it first (v0.15.0, src/bin/michi-com.rs).
+          if [ "${{ runner.os }}" = Windows ]; then cp target/${{ matrix.target }}/release/michi-com.exe dist/michi.com; fi
+          cp LICENSE-MIT LICENSE-APACHE dist/
+
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          # The commit is in the name, so two downloads are never confused.
+          name: michi-${{ matrix.name }}-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
