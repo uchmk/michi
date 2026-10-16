@@ -167,10 +167,10 @@ mod tests {
         );
         r.git(&r.repo, &["commit", "-q", "-am", "main"]);
         let all = worktree::list(&r.repo).unwrap();
-        let m = std::process::Command::new("git").arg("-C").arg(&r.repo).args(["merge", "feat"]).output().unwrap();
-        let w = read(&all[0]).unwrap().unwrap_or_else(|| {
-            panic!("no wip: merge {:?} {} {}", m.status, String::from_utf8_lossy(&m.stdout), String::from_utf8_lossy(&m.stderr))
-        });
+        // Without an identity (as on CI) git refuses to start the merge.
+        let args = ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "merge", "feat"];
+        let _ = std::process::Command::new("git").arg("-C").arg(&r.repo).args(args).output();
+        let w = read(&all[0]).unwrap().unwrap();
         assert_eq!(w.theirs.map(|t| t.to_string()), Some(r.out(&r.repo, &["rev-parse", "feat"])));
     }
 
