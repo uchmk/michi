@@ -86,6 +86,19 @@ impl Michi {
             self.picker_keys(ctx);
             return;
         }
+        // A result written by hand in the 4 view takes the keys until it is
+        // solved with (Ctrl+Enter) or left (Esc).
+        if self.app.conflicts.edit.is_some() {
+            let (apply, leave) = ctx.input_mut(|i| {
+                (i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter), i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+            });
+            if apply {
+                self.app.conflict_edit_apply();
+            } else if leave {
+                self.app.conflict_edit_cancel();
+            }
+            return;
+        }
         let typing = ctx.memory(|m| m.has_focus(changes_ui::message_id()));
         let commit =
             (typing || self.app.view == View::Changes) && ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter));

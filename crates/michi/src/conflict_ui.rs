@@ -40,6 +40,8 @@ const GAP_FILE: f32 = 12.0;
 const FILE_H: f32 = 28.0;
 const SKIP_H: f32 = 20.0;
 const LINE: f32 = 18.0;
+/// A row of the field a result is written in.
+const EDIT_LINE: f32 = 16.0;
 const HEAD: f32 = 34.0;
 const COL_HEAD: f32 = 22.0;
 const RES_HEAD: f32 = 24.0;
@@ -59,6 +61,11 @@ fn scroll_id() -> Id {
 }
 
 /// The commit's message, for Ctrl+Enter.
+/// The field a result is written in by hand.
+pub fn edit_id() -> Id {
+    Id::new("conflict-edit")
+}
+
 pub fn message_id() -> Id {
     Id::new("conflict-message")
 }
@@ -99,7 +106,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let side_w = if r.width() < NARROW { SIDE_NARROW } else { SIDE_W }.min(r.width() * 0.35);
     let sr = Rect::from_min_max(r.min, pos2(r.left() + side_w, r.bottom()));
     let mr = Rect::from_min_max(pos2(sr.right(), r.top()), r.max);
-    let d = Draw { ui, app, cf, live, pointer, wide: mr.width() >= WIDE };
+    let d = Draw { ui, app, cf, live, pointer, wide: mr.width() >= WIDE, field: Default::default() };
     let mut act = d.side(sr);
     let bar = Rect::from_min_size(mr.min, vec2(mr.width(), BAR_H));
     if let Some(a) = d.bar(bar) {
@@ -115,6 +122,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     }
     let body = Rect::from_min_max(pos2(mr.left(), top), mr.max);
     let (a, field) = d.body(body, pages, follow);
+    let written = d.field.take();
     if a.is_some() {
         act = a;
     }
@@ -147,6 +155,26 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         }
     }
 
+    match (written, app.conflicts.edit.as_mut()) {
+        (Some((field, clip)), Some(e)) => {
+            let edit = egui::TextEdit::multiline(&mut e.text)
+                .id(edit_id())
+                .frame(egui::Frame::NONE.inner_margin(egui::Margin::symmetric(6, 2)))
+                .font(FontId::monospace(12.0))
+                .text_color(c.fg)
+                .desired_width(field.width())
+                .desired_rows(1)
+                .interactive(live);
+            let mut child = ui.new_child(egui::UiBuilder::new().max_rect(field));
+            child.set_clip_rect(clip);
+            let resp = child.put(field, edit);
+            if std::mem::take(&mut e.focus) {
+                resp.request_focus();
+            }
+        }
+        (None, Some(e)) => e.focus = true,
+        _ => {}
+    }
     app.conflict_want_intent();
     let Some(a) = act else { return };
     let cfs = &mut app.conflicts;
@@ -189,6 +217,9 @@ struct Draw<'a> {
     pointer: Option<Pos2>,
     /// Wide enough for the base column by itself.
     wide: bool,
+    /// Where the field for a result written by hand goes, and what of it
+    /// is in sight.
+    field: std::cell::Cell<Option<(Rect, Rect)>>,
 }
 
 /// A row of the side column.
@@ -276,9 +307,19 @@ struct Plan {
     buttons: Vec<(&'static str, &'static str, Pick)>,
     /// What each side meant by it, once read: one row for each side.
     intent: Option<michi_core::conflict::Intent>,
+    /// The rows of the field its result is being written in.
+    writing: Option<usize>,
 }
 
 impl Plan {
+    /// The height of the result's box.
+    fn result_px(&self) -> f32 {
+        match self.writing {
+            Some(n) => n as f32 * EDIT_LINE + 12.0,
+            None => self.result_rows() as f32 * LINE + 12.0,
+        }
+    }
+
     fn intent_h(&self) -> f32 {
         if self.intent.is_some() {
             2.0 * LINE + 6.0
@@ -581,7 +622,8 @@ impl Draw<'_> {
             }
         }
         let intent = cfs.intent(place).filter(|i| i.ours.is_some() || i.theirs.is_some()).cloned();
-        Plan { waits, open, base, rows, tag, result, buttons, intent }
+        let writing = cfs.edit.as_ref().filter(|_| cfs.editing(place)).map(|e| e.rows());
+        Plan { waits, open, base, rows, tag, result, buttons, intent, writing }
     }
 
     /// The buttons of a file that clashed whole, while it is to be solved.
@@ -593,7 +635,7 @@ impl Draw<'_> {
 
     fn block_h(&self, plan: &Plan, width: f32) -> f32 {
         let mut h = HEAD + plan.intent_h() + COL_HEAD + 8.0 + plan.rows as f32 * LINE + 1.0;
-        h += RES_HEAD + plan.result_rows() as f32 * LINE + 12.0 + 8.0;
+        h += RES_HEAD + plan.result_px() + 8.0;
         if plan.open {
             h += HINT_H + 8.0 + flow_h(self.ui, &plan.buttons, width - 20.0) + 10.0;
         }
@@ -964,12 +1006,24 @@ impl Draw<'_> {
             p.rect_stroke(chip, CornerRadius::same(3), Stroke::new(1.0, c.border), StrokeKind::Inside);
             p.galley(pos2(chip.left() + 6.0, mid - word.size().y / 2.0), word, c.fg);
         }
-        let rows = plan.result_rows();
-        let rb = Rect::from_min_size(pos2(r.left() + 10.0, rh.bottom()), vec2(r.width() - 20.0, rows as f32 * LINE + 12.0));
+        let rb = Rect::from_min_size(pos2(r.left() + 10.0, rh.bottom()), vec2(r.width() - 20.0, plan.result_px()));
         p.rect_filled(rb, CornerRadius::same(5), c.panel);
         let corners = [rb.left_top(), rb.right_top(), rb.right_bottom(), rb.left_bottom(), rb.left_top()];
         p.extend(Shape::dashed_line(&corners, Stroke::new(1.0, c.border_strong()), 3.0, 2.0));
+        if plan.writing.is_some() {
+            self.field.set(Some((rb.shrink2(vec2(2.0, 4.0)), p.clip_rect())));
+            clipped(
+                ui,
+                p,
+                pos2(rh.right() - 14.0 - 300.0, rh.center().y),
+                self.tr("cf.edit_hint"),
+                FontId::proportional(11.0),
+                c.wait,
+                300.0,
+            );
+        }
         match &plan.result {
+            _ if plan.writing.is_some() => {}
             Some(lines) if !lines.is_empty() => {
                 for (q, line) in lines.iter().enumerate() {
                     let mid = rb.top() + 6.0 + q as f32 * LINE + LINE / 2.0;
@@ -1148,6 +1202,7 @@ fn tag_key(tag: Option<Tag>) -> &'static str {
         Some(Tag::Took(true)) => "cf.tag_file_ours",
         Some(Tag::Took(false)) => "cf.tag_file_theirs",
         Some(Tag::Reused) => "cf.tag_reused",
+        Some(Tag::Edited) => "cf.tag_edited",
         None => "cf.hand",
     }
 }

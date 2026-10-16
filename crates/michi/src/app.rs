@@ -119,6 +119,7 @@ impl View {
                 ("t", "key.theirs"),
                 ("b B", "key.both"),
                 ("Enter", "key.cf_reused"),
+                ("e", "key.cf_edit"),
                 ("x", "key.cf_forget"),
                 ("Ctrl+Enter", "key.cf_commit"),
                 ("PageDown PageUp", "key.scroll"),

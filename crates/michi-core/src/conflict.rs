@@ -723,6 +723,16 @@ fn with_context(regions: Vec<Region>, lines: &[&[u8]]) -> Vec<Block> {
 /// Whether it was. A place that is not in the file as it was read is
 /// refused.
 pub fn resolve(wt: &Path, path: &str, block: &Block, pick: Pick) -> Result<bool, git::Error> {
+    solve(wt, path, block, Some(pick), &[])
+}
+
+/// Like [`resolve`], with `lines` the person wrote in the place instead of
+/// a pick; none leaves the place empty.
+pub fn resolve_with(wt: &Path, path: &str, block: &Block, lines: &[String]) -> Result<bool, git::Error> {
+    solve(wt, path, block, None, lines)
+}
+
+fn solve(wt: &Path, path: &str, block: &Block, pick: Option<Pick>, written: &[String]) -> Result<bool, git::Error> {
     let file = wt.join(path);
     let bytes = fs::read(&file).map_err(|e| git::Error::Io(format!("{path}: {e}")))?;
     let lines = split(&bytes);
@@ -735,11 +745,12 @@ pub fn resolve(wt: &Path, path: &str, block: &Block, pick: Pick) -> Result<bool,
     let eol: &[u8] = if lines[raw.start].ends_with(b"\r\n") { b"\r\n" } else { b"\n" };
     let section = |r: &Range<usize>| lines[r.clone()].concat();
     let mut picked = match pick {
-        Pick::Ours => section(&raw.ours),
-        Pick::Theirs => section(&raw.theirs),
-        Pick::Both => [section(&raw.ours), section(&raw.theirs)].concat(),
-        Pick::BothTheirsFirst => [section(&raw.theirs), section(&raw.ours)].concat(),
-        Pick::Base => match (&raw.base, &block.base) {
+        None => written.iter().flat_map(|l| [l.as_bytes(), eol].concat()).collect(),
+        Some(Pick::Ours) => section(&raw.ours),
+        Some(Pick::Theirs) => section(&raw.theirs),
+        Some(Pick::Both) => [section(&raw.ours), section(&raw.theirs)].concat(),
+        Some(Pick::BothTheirsFirst) => [section(&raw.theirs), section(&raw.ours)].concat(),
+        Some(Pick::Base) => match (&raw.base, &block.base) {
             (Some(b), _) => section(b),
             (None, Some(b)) => b.iter().flat_map(|l| [l.as_bytes(), eol].concat()).collect(),
             (None, None) => return Err(git::Error::Git(format!("{path}: the base of this place is not known"))),
@@ -1307,6 +1318,24 @@ mod tests {
         assert_eq!(t.out(r, &["branch", "--show-current"]), "feat");
         assert_eq!(t.out(r, &["log", "-1", "--format=%s"]), "feat");
         assert_eq!(t.out(r, &["rev-parse", "HEAD^"]), t.out(r, &["rev-parse", "main"]));
+    }
+
+    #[test]
+    fn a_place_is_solved_with_the_lines_written_in_it() {
+        let t = clash("conflict-written");
+        let r = &t.repo;
+        merge(r, "feat").unwrap();
+        let c = read(r).unwrap().unwrap();
+        let Body::Text(blocks) = &c.files[0].body else { panic!() };
+        assert!(blocks.iter().filter(|b| b.is_open()).count() >= 2);
+        let first = blocks.iter().find(|b| b.is_open()).unwrap().clone();
+        let lines = s(&["mine", "and yours"]);
+        resolve_with(r, "a.txt", &first, &lines).unwrap();
+        let c = read(r).unwrap().unwrap();
+        let Body::Text(blocks) = &c.files[0].body else { panic!() };
+        assert!(blocks.iter().any(|b| b.result.as_ref() == Some(&lines)));
+        let text = std::fs::read_to_string(r.join("a.txt")).unwrap();
+        assert!(text.replace("\r\n", "\n").contains("mine\nand yours\n"), "{text}");
     }
 
     #[test]

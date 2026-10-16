@@ -24,60 +24,143 @@ use crate::work::{Band, Job, Then};
 pub enum Task {
     /// The branch `name` at `at`; the worktree at `switch` goes onto it,
     /// when given.
-    Create { name: String, at: Oid, switch: Option<PathBuf> },
+    Create {
+        name: String,
+        at: Oid,
+        switch: Option<PathBuf>,
+    },
     /// The worktree at `wt` onto the branch `name`.
-    Switch { wt: PathBuf, name: String },
+    Switch {
+        wt: PathBuf,
+        name: String,
+    },
     /// The branch `name` following the remote branch `remote`
     /// (`origin/feat`), with the worktree at `wt` onto it.
-    Track { wt: PathBuf, remote: String, name: String },
+    Track {
+        wt: PathBuf,
+        remote: String,
+        name: String,
+    },
     /// Deletes the branch `name`.
-    Delete { name: String },
+    Delete {
+        name: String,
+    },
     /// The tag `name` on `at`, with `message` (none: a light one); pushed
     /// when made, with `push`.
-    Tag { name: String, at: Oid, message: String, push: bool },
+    Tag {
+        name: String,
+        at: Oid,
+        message: String,
+        push: bool,
+    },
     /// Deletes the tag `name`.
-    Untag { name: String },
+    Untag {
+        name: String,
+    },
     /// Reverts `id` on the branch of the worktree at `wt`; a merge with
     /// the parent (from 1) whose side stays.
-    Revert { wt: PathBuf, id: Oid, mainline: Option<u32> },
+    Revert {
+        wt: PathBuf,
+        id: Oid,
+        mainline: Option<u32>,
+    },
     /// Puts the changes of the worktree at `wt` away, with `message`
     /// (git's own when empty).
-    Stash { wt: PathBuf, message: String },
+    Stash {
+        wt: PathBuf,
+        message: String,
+    },
     /// Puts the stash `id` back on the worktree at `wt`; drops it then,
     /// with `pop`.
-    Unstash { wt: PathBuf, id: Oid, pop: bool },
+    Unstash {
+        wt: PathBuf,
+        id: Oid,
+        pop: bool,
+    },
     /// Drops the stash `id`.
-    DropStash { id: Oid },
+    DropStash {
+        id: Oid,
+    },
     /// Lists what can be cleaned up, the window being on the worktree at
     /// `here`.
-    FindTidy { here: PathBuf },
+    FindTidy {
+        here: PathBuf,
+    },
     /// Takes the rows picked from that list away.
-    Tidy { picks: Vec<Item> },
+    Tidy {
+        picks: Vec<Item>,
+    },
     /// Merges `rev` into the branch of the worktree at `wt`.
-    Merge { wt: PathBuf, rev: String },
+    Merge {
+        wt: PathBuf,
+        rev: String,
+    },
     /// Picks `id` onto the branch of the worktree at `wt`; a merge against
     /// the parent (from 1) given.
-    CherryPick { wt: PathBuf, id: Oid, mainline: Option<u32> },
+    CherryPick {
+        wt: PathBuf,
+        id: Oid,
+        mainline: Option<u32>,
+    },
     /// Solves the place `block` of the file at `path` with `pick`.
-    Resolve { wt: PathBuf, path: String, block: Box<Block>, pick: Pick },
+    Resolve {
+        wt: PathBuf,
+        path: String,
+        block: Box<Block>,
+        pick: Pick,
+    },
+    ResolveWith {
+        wt: PathBuf,
+        path: String,
+        block: Box<Block>,
+        lines: Vec<String>,
+    },
     /// Solves the file at `path`, which clashed whole, with our side's
     /// (`ours`) or theirs.
-    Take { wt: PathBuf, path: String, ours: bool },
+    Take {
+        wt: PathBuf,
+        path: String,
+        ours: bool,
+    },
     /// The file at `path` back as git left it.
-    Restart { wt: PathBuf, path: String },
+    Restart {
+        wt: PathBuf,
+        path: String,
+    },
     /// The file at `path`, which rerere solved, started over and rerere's
     /// memory of it dropped.
-    Forget { wt: PathBuf, path: String },
+    Forget {
+        wt: PathBuf,
+        path: String,
+    },
     /// What each side meant by the place `block` of the file at `path`.
-    Intent { wt: PathBuf, path: String, j: usize, block: Box<Block>, conflict: Box<Conflict> },
+    Intent {
+        wt: PathBuf,
+        path: String,
+        j: usize,
+        block: Box<Block>,
+        conflict: Box<Conflict>,
+    },
     /// Commits what the worktree at `wt` stopped in, all solved.
-    Conclude { wt: PathBuf, doing: Doing, message: String },
+    Conclude {
+        wt: PathBuf,
+        doing: Doing,
+        message: String,
+    },
     /// Calls off what the worktree at `wt` is in the middle of.
-    Abort { wt: PathBuf, doing: Doing },
+    Abort {
+        wt: PathBuf,
+        doing: Doing,
+    },
     /// Reads whether rerere is on in the repository of the worktree at `wt`.
-    AskRerere { wt: PathBuf },
+    AskRerere {
+        wt: PathBuf,
+    },
     /// Turns rerere on or off in the repository of the worktree at `wt`.
-    Rerere { wt: PathBuf, on: bool },
+    Rerere {
+        wt: PathBuf,
+        on: bool,
+    },
 }
 
 impl Task {
@@ -98,7 +181,7 @@ impl Task {
             Task::Tidy { .. } => "worktree remove",
             Task::Merge { .. } => "merge",
             Task::CherryPick { .. } => "cherry-pick",
-            Task::Resolve { .. } => "add",
+            Task::Resolve { .. } | Task::ResolveWith { .. } => "add",
             Task::Take { .. } => "checkout",
             Task::Restart { .. } => "checkout --conflict",
             Task::Forget { .. } => "rerere forget",
@@ -166,6 +249,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Merge { wt, rev } => conflict::merge(wt, rev).map(Acted::Merged),
         Task::CherryPick { wt, id, mainline } => conflict::cherry_pick(wt, id, *mainline).map(Acted::Merged),
         Task::Resolve { wt, path, block, pick } => conflict::resolve(wt, path, block, *pick).map(|_| solved(wt, None)),
+        Task::ResolveWith { wt, path, block, lines } => conflict::resolve_with(wt, path, block, lines).map(|_| solved(wt, None)),
         Task::Take { wt, path, ours } => conflict::take(wt, path, *ours).map(|()| solved(wt, None)),
         Task::Restart { wt, path } => conflict::restart(wt, path).map(|saved| solved(wt, Some(saved))),
         Task::Intent { wt, path, block, conflict, .. } => Ok(Acted::Intent(conflict::intent(wt, path, block, conflict))),
@@ -200,7 +284,11 @@ impl App {
     pub(crate) fn act_done(&mut self, task: Task, result: Result<Acted, git::Error>) {
         let failed = |a: &App, e: &git::Error| a.tr("act.failed").replace("{job}", task.word()).replace("{e}", &e.to_string());
         if let (
-            Task::Resolve { wt, .. } | Task::Take { wt, .. } | Task::Restart { wt, .. } | Task::Forget { wt, .. },
+            Task::Resolve { wt, .. }
+            | Task::ResolveWith { wt, .. }
+            | Task::Take { wt, .. }
+            | Task::Restart { wt, .. }
+            | Task::Forget { wt, .. },
             Ok(Acted::Solved(s)),
         ) = (&task, &result)
         {
@@ -223,7 +311,7 @@ impl App {
             }
             (Task::AskRerere { .. }, Ok(_)) => return,
             (Task::Rerere { on, .. }, Ok(_)) => (self.tr(if *on { "act.rerere_on" } else { "act.rerere_off" }).to_owned(), 6),
-            (Task::Resolve { wt, path, .. } | Task::Take { wt, path, .. }, Err(e)) => {
+            (Task::Resolve { wt, path, .. } | Task::ResolveWith { wt, path, .. } | Task::Take { wt, path, .. }, Err(e)) => {
                 self.conflict_unpick(wt, path);
                 (failed(self, &e), 10)
             }

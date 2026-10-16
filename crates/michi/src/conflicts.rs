@@ -30,6 +30,28 @@ pub enum Tag {
     Took(bool),
     /// The file git's rerere solved on its own, not looked at yet.
     Reused,
+    /// Written by hand in the result's field.
+    Edited,
+}
+
+/// A place's result being written by hand.
+pub struct Edit {
+    key: Key,
+    pub text: String,
+    /// Give the field the keys on the next frame.
+    pub focus: bool,
+}
+
+impl Edit {
+    /// How many lines the field shows.
+    pub fn rows(&self) -> usize {
+        (self.text.lines().count() + usize::from(self.text.ends_with('\n'))).max(1)
+    }
+
+    /// The lines written; none for nothing.
+    pub fn lines(&self) -> Vec<String> {
+        self.text.lines().map(str::to_owned).collect()
+    }
 }
 
 /// The places of `c`, in order: each block of a file merged line by line,
@@ -65,6 +87,8 @@ pub struct Conflicts {
     /// The selected place, an index into [`places`] of the one shown.
     pub at: usize,
     tags: HashMap<Key, Tag>,
+    /// The result being written by hand, if any.
+    pub edit: Option<Edit>,
     /// The files rerere solved that were looked at (the worktree's key and
     /// the path).
     confirmed: HashSet<(String, String)>,
@@ -122,6 +146,9 @@ impl Conflicts {
         let was = self.shown().filter(|c| c.left() > 0).map(|c| paths::key(&c.wt));
         let keys: HashSet<String> = all.iter().map(|c| paths::key(&c.wt)).collect();
         self.tags.retain(|(k, ..), _| keys.contains(k));
+        if self.edit.as_ref().is_some_and(|e| !keys.contains(&e.key.0)) {
+            self.edit = None;
+        }
         self.confirmed.retain(|(k, _)| keys.contains(k));
         self.intents.retain(|(k, ..), _| keys.contains(k));
         self.asked.retain(|(k, ..)| keys.contains(k));
@@ -272,6 +299,11 @@ impl Conflicts {
         true
     }
 
+    /// Whether the result of `p` is being written by hand.
+    pub fn editing(&self, p: Place) -> bool {
+        self.edit.as_ref().is_some_and(|e| self.key(p).as_ref() == Some(&e.key))
+    }
+
     /// What each side meant by the place, once read.
     pub fn intent(&self, p: Place) -> Option<&Intent> {
         self.intents.get(&self.key(p)?)
@@ -347,6 +379,7 @@ impl App {
             'b' => self.conflict_pick(Pick::Both),
             'B' => self.conflict_pick(Pick::BothTheirsFirst),
             'x' => self.conflict_forget(),
+            'e' => self.conflict_edit(),
             _ => return false,
         }
         true
@@ -413,6 +446,50 @@ impl App {
         self.conflicts.at = at;
         self.conflicts.next_open();
         self.act(task);
+    }
+
+    /// `e`: write the selected open place's result by hand, starting from
+    /// both sides.
+    pub(crate) fn conflict_edit(&mut self) {
+        let cf = &self.conflicts;
+        let Some(c) = cf.shown() else { return };
+        let Some(&p) = places(c).get(cf.at) else { return };
+        let Some(key) = cf.key(p) else { return };
+        let (Body::Text(blocks), Some(j)) = (&c.files[p.0].body, p.1) else {
+            self.say(self.tr("cf.edit_whole"));
+            return;
+        };
+        if !blocks[j].is_open() || cf.waits(p) {
+            self.say(self.tr("cf.edit_solved"));
+            return;
+        }
+        let text = blocks[j].lines(Pick::Both).unwrap_or_default().iter().map(|l| format!("{l}\n")).collect();
+        self.conflicts.edit = Some(Edit { key, text, focus: true });
+    }
+
+    /// Ctrl+Enter in the field: solve the place with what is written.
+    pub(crate) fn conflict_edit_apply(&mut self) {
+        let Some(e) = self.conflicts.edit.take() else { return };
+        let Some(c) = self.conflicts.shown() else { return };
+        let Some((p, j)) = places(c).into_iter().find(|&p| self.conflicts.key(p).as_ref() == Some(&e.key)).and_then(|p| Some((p, p.1?)))
+        else {
+            return;
+        };
+        let Body::Text(blocks) = &c.files[p.0].body else { return };
+        if !blocks[j].is_open() {
+            return;
+        }
+        let task =
+            Task::ResolveWith { wt: c.wt.clone(), path: c.files[p.0].path.clone(), block: Box::new(blocks[j].clone()), lines: e.lines() };
+        self.conflicts.pending.insert(e.key.clone());
+        self.conflicts.tags.insert(e.key, Tag::Edited);
+        self.conflicts.next_open();
+        self.act(task);
+    }
+
+    /// Esc in the field: leave the place as it was.
+    pub(crate) fn conflict_edit_cancel(&mut self) {
+        self.conflicts.edit = None;
     }
 
     /// The pick of `path` in the worktree at `wt` failed: it is open again.
@@ -552,7 +629,9 @@ pub(crate) mod tests {
             theirs: Side { name: "feat".into(), id: None },
             base: None,
             started: None,
-            message: "Merge branch 'feat'\n".into(),
+            message: "Merge branch 'feat'
+"
+            .into(),
             files: vec![
                 File { path: "x.txt".into(), unmerged: true, body: Body::Text(vec![block(true), block(false), block(true)]) },
                 File { path: "y.bin".into(), unmerged: true, body: Body::Whole(Whole { why: Why::Binary, ours: true, theirs: true }) },
@@ -576,6 +655,31 @@ pub(crate) mod tests {
         assert!(cf.intent((0, Some(0))).is_none(), "another place");
         cf.set_one(Path::new("/r/main"), None);
         assert!(cf.intents.is_empty());
+    }
+
+    #[test]
+    fn a_result_is_written_by_hand_only_for_a_place_still_to_solve() {
+        let mut a = app();
+        a.conflicts.set(vec![conflict("/r/main")]);
+        a.conflicts.at = 1;
+        a.conflict_key('e');
+        assert_eq!(toast(&a), a.tr("cf.edit_solved"));
+        a.conflicts.at = 3;
+        a.conflict_key('e');
+        assert_eq!(toast(&a), a.tr("cf.edit_whole"));
+        assert!(a.conflicts.edit.is_none());
+        a.conflicts.at = 0;
+        a.conflict_key('e');
+        assert!(a.conflicts.editing((0, Some(0))) && !a.conflicts.editing((0, Some(2))));
+        a.conflict_edit_cancel();
+        assert!(a.conflicts.edit.is_none());
+        a.conflict_key('e');
+        a.conflicts.edit.as_mut().unwrap().text = "one\ntwo\n".into();
+        assert_eq!(a.conflicts.edit.as_ref().unwrap().lines(), ["one", "two"]);
+        a.conflict_edit_apply();
+        assert!(a.conflicts.edit.is_none());
+        assert_eq!(a.conflicts.tag((0, Some(0))), Some(Tag::Edited));
+        assert!(a.conflicts.waits((0, Some(0))));
     }
 
     #[test]

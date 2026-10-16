@@ -71,7 +71,8 @@
   - [x] rerere asked once (v0.19.0, TESTING 21.23): the band on the first `4` of a session when `rerere.enabled` is unset; `y` / `n` write it. Guessing and the ↺ marks (「前に解いた形」, `Enter`, forget) are not done
   - [x] rerere's applied form (v0.20.0, TESTING 21.24): `↺ 前に解いた形` on a file rerere solved, `Enter` accepts, `x` forgets (`git rerere forget` + start over, backed up); the bar counts the ones not looked at
   - [x] intent rows (v0.21.0, TESTING 21.25): under the selected text place, one row each for ours / theirs with the commit that changed those lines (`git log -L`; hash, subject, author, date), read on the action thread once per place
-  - [ ] The rest: `e` to edit the result; word diff; hand it to Claude; open in an
+  - [x] `e` edits the result (v0.22.0, TESTING 21.26): the open place's result box becomes a field (ours then theirs), Ctrl+Enter solves with the lines written (`conflict::resolve_with`, tag ここで書いた), Esc leaves.
+  - [ ] The rest: word diff; hand it to Claude; open in an
     external tool; prediction moved to gix-merge and checked against
     `git merge-tree --write-tree`.
     Done (v0.18.0 / v0.18.1, TESTING 21.21–21.22; the graph tool band dims `Pull` and `Stash`): the graph's merging row (a WIP row with `theirs`, `Dot::Conflict`); the prediction pills / column / pairs are hidden while merging (`App::merging`) and the pairs' note says「予測は衝突の解消（4）の実物に変わりました」
