@@ -58,6 +58,10 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
 
 1. モックの 2 回目はやらない（持ち主が 2026-10-15 に「実装を進めて」）。決めることは `question` の issue に文字で書き、推奨で進める。
 2. 段 3 の残り（TODO.md の 3. の `[ ]`）: 予測を gix-merge に（`git merge-tree --write-tree` と比べる）。
+   まだ着手していない（v0.25.0 の時点）。`gix`・`gix-merge` は今の依存に無く、6 ターゲットのビルドと `verify.sh` の時間が大きく増え、API も動く。
+   先に 10 万コミット級のリポジトリで `git merge-tree` の呼び出しが実際に遅いかを測り、遅いときだけ入れる。入れるなら `predict.rs` の `predict` を差し替え、
+   `merge-tree --write-tree` を正解にした突き合わせのテスト（clean・内容の衝突・削除と変更・バイナリ）を同時に付ける。
+   Claude に渡したあと待ち・済みになったら知らせる通知（`tsumugi ls --json`）も未実装。
 3. 段 2 の後回し: レビューのメモ・マージ・PR（#10）、push 先のリモートを選ぶ（#15）、ブランチの名前の変更・upstream・rebase・樹形図の `m`（#16）。
 4. 段 4〜6 は TODO.md のとおり。段 4 は tsumugi の `new --worktree` と `focus` が要る（tsumugi の TODO.md に書いてある）。
 
