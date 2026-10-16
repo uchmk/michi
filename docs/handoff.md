@@ -3,7 +3,7 @@
 前の会話から次の会話への引き継ぎ。新しいセッションは `C:\dev\michi` で始め、CLAUDE.md・TODO.md・この文書の順に読む。
 設計の正は [design.md](design.md) とモック。大きなファイル（design.md・graph.rs・wt_ui.rs など）は全部読まず、要るところだけ読む。
 
-## いまの版（v0.18.1、2026-10-16）
+## いまの版（v0.19.0、2026-10-16）
 
 段 1「見る」は終わり、段 2「変える」は TODO.md の 2. のうち後回しにしたもの（各 question の issue の「後回し」）だけが残る。
 段 3「衝突」は衝突の画面とマージ中のロックが入った（v0.17.0）。別のセッションが `michi.com`（Windows のコンソールの前段）を
@@ -31,6 +31,8 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
   衝突したら `show_conflicts` で `4` を開く（revert の衝突も）。`Acted::Solved(Box<Solved>)`。
 - マージ中の樹形図（v0.18.0〜0.18.1、TESTING 21.21〜21.22）: `Wip.theirs`（`MERGE_HEAD`）で最上段にマージの行（`Dot::Conflict`、「⚠ 衝突 残り N」）、
   `App::merging()` の間は衝突の予測（印・列・組）を隠して注記を出し、道具帯の `Pull`・`Stash` を薄くする。差分が無いマージ中の worktree には行が出ない。
+- rerere（v0.19.0、TESTING 21.23）: `michi-core/src/rerere.rs`（`enabled`・`set`）、`Task::{AskRerere, Rerere}`。`show_conflicts` が 1 セッションに 1 回聞き、
+  `y` で `rerere.enabled=true`（マージ中なら `git rerere` も）、`n` で `false`、Esc は書かない。当てた形の「↺ 前に解いた形」の札と `Enter`・忘れるは未実装。
 - 書く処理は `michi/src/act.rs` の `Task`（ワーカーで実行、Claude がいれば `work.rs` の `Band` で聞く）。読むスレッドは `repo.rs`。
 
 実機の確認は needs-pc の issue（#1, #3〜#9, #11, #13, #14, #17, #19, #21, #23）で PC のセッションに頼んである。#23 が v0.17.0 の 21.1〜21.20。
@@ -41,7 +43,7 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
 ## 次にやること
 
 1. モックの 2 回目はやらない（持ち主が 2026-10-15 に「実装を進めて」）。決めることは `question` の issue に文字で書き、推奨で進める。
-2. 段 3 の残り（TODO.md の 3. の `[ ]`）: rerere を 1 回聞く、意図の行（`git log -L`）、`e` で結果を直す、単語の差分、Claude に渡す、外部ツール、予測を gix-merge に（`git merge-tree --write-tree` と比べる）。
+2. 段 3 の残り（TODO.md の 3. の `[ ]`）: rerere の当てた形の札（↺）と忘れる、意図の行（`git log -L`）、`e` で結果を直す、単語の差分、Claude に渡す、外部ツール、予測を gix-merge に（`git merge-tree --write-tree` と比べる）。
 3. 段 2 の後回し: レビューのメモ・マージ・PR（#10）、push 先のリモートを選ぶ（#15）、ブランチの名前の変更・upstream・rebase・樹形図の `m`（#16）。
 4. 段 4〜6 は TODO.md のとおり。段 4 は tsumugi の `new --worktree` と `focus` が要る（tsumugi の TODO.md に書いてある）。
 

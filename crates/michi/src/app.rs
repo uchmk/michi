@@ -221,6 +221,8 @@ pub struct App {
     pub last_fetch: Option<SystemTime>,
     /// A job waiting for a yes, under the title bar.
     pub band: Option<Band>,
+    /// rerere was asked about (or read as said) in this session.
+    pub rerere_asked: bool,
     /// The branch, tag or stash palette, over the graph.
     pub picker: Option<Picker>,
     /// The clean-up list, over the worktree table.
@@ -262,6 +264,7 @@ impl App {
             net: None,
             last_fetch: None,
             band: None,
+            rerere_asked: false,
             picker: None,
             tidy: None,
             side_stash: None,

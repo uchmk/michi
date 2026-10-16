@@ -18,6 +18,7 @@ pub mod oid;
 pub mod paths;
 pub mod predict;
 pub mod refs;
+pub mod rerere;
 pub mod revert;
 pub mod review;
 pub mod show;

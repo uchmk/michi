@@ -68,7 +68,8 @@
     that clashed whole, start a file over (kept under `refs/michi/backup/` first), the done bar with git's message and Ctrl+Enter
     (the Claude band first), call it off after the row (kept first), moving on to the next worktree stopped; locks during a merge
     (pull, `C`, `m`, revert, the `2` commit) with「· マージ中」in red on the chip; cherry-pick （要確認: #22）
-  - [ ] The rest: rerere asked once; intent rows (`git log -L`); `e` to edit the result; word diff; hand it to Claude; open in an
+  - [x] rerere asked once (v0.19.0, TESTING 21.23): the band on the first `4` of a session when `rerere.enabled` is unset; `y` / `n` write it. Guessing and the ↺ marks (「前に解いた形」, `Enter`, forget) are not done
+  - [ ] The rest: rerere guesses with the ↺ mark and forget; intent rows (`git log -L`); `e` to edit the result; word diff; hand it to Claude; open in an
     external tool; prediction moved to gix-merge and checked against
     `git merge-tree --write-tree`.
     Done (v0.18.0 / v0.18.1, TESTING 21.21–21.22; the graph tool band dims `Pull` and `Stash`): the graph's merging row (a WIP row with `theirs`, `Dot::Conflict`); the prediction pills / column / pairs are hidden while merging (`App::merging`) and the pairs' note says「予測は衝突の解消（4）の実物に変わりました」

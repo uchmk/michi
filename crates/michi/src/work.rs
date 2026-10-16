@@ -214,7 +214,12 @@ impl App {
         match c {
             'y' if parents == 0 => self.band_yes(None),
             _ if side.is_some() => self.band_yes(side),
-            'n' => self.band = None,
+            // "Never" for rerere is written down; the rest just drop.
+            'n' => {
+                if let Some(Band { then: Then::Act(Task::Rerere { wt, .. }), .. }) = self.band.take() {
+                    self.act(Task::Rerere { wt, on: false });
+                }
+            }
             _ => {}
         }
         true

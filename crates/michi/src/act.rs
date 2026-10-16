@@ -10,13 +10,14 @@ use michi_core::branch::Doing;
 use michi_core::conflict::{self, Block, Conflict, Pick};
 use michi_core::git;
 use michi_core::oid::Oid;
+use michi_core::rerere;
 use michi_core::revert::{self, Reverted};
 use michi_core::stash::{self, Applied, Saved};
 use michi_core::tidy::{self, Found, Item, Outcome};
 use michi_core::{branch, tag};
 
 use crate::app::{App, View};
-use crate::work::Job;
+use crate::work::{Band, Job, Then};
 
 /// What the act thread is to do.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -68,6 +69,10 @@ pub enum Task {
     Conclude { wt: PathBuf, doing: Doing, message: String },
     /// Calls off what the worktree at `wt` is in the middle of.
     Abort { wt: PathBuf, doing: Doing },
+    /// Reads whether rerere is on in the repository of the worktree at `wt`.
+    AskRerere { wt: PathBuf },
+    /// Turns rerere on or off in the repository of the worktree at `wt`.
+    Rerere { wt: PathBuf, on: bool },
 }
 
 impl Task {
@@ -98,6 +103,8 @@ impl Task {
             Task::Abort { doing: Doing::CherryPick, .. } => "cherry-pick --abort",
             Task::Abort { doing: Doing::Revert, .. } => "revert --abort",
             Task::Abort { doing: Doing::Bisect, .. } => "bisect reset",
+            Task::AskRerere { .. } => "config --get",
+            Task::Rerere { .. } => "config",
         }
     }
 }
@@ -118,6 +125,8 @@ pub enum Acted {
     /// The head after the commit.
     Committed(Oid),
     Solved(Box<Solved>),
+    /// Whether rerere is on (none: nobody said).
+    Rerere(Option<bool>),
 }
 
 /// A place solved, or a file put back as git left it.
@@ -153,6 +162,8 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Restart { wt, path } => conflict::restart(wt, path).map(|saved| solved(wt, Some(saved))),
         Task::Conclude { wt, message, .. } => conflict::commit(wt, message).map(Acted::Committed),
         Task::Abort { wt, .. } => conflict::abort(wt).map(Acted::Kept),
+        Task::AskRerere { wt } => rerere::enabled(wt).map(Acted::Rerere),
+        Task::Rerere { wt, on } => rerere::set(wt, *on).map(|()| Acted::Done),
     }
 }
 
@@ -184,6 +195,15 @@ impl App {
             }
         }
         let (text, secs) = match (&task, result) {
+            // Not being able to ask is not worth a toast.
+            (Task::AskRerere { .. }, Err(_)) => return,
+            (Task::AskRerere { wt }, Ok(Acted::Rerere(None))) => {
+                let text = self.tr("act.rerere_ask").replace("{wt}", &self::name(wt));
+                self.band = Some(Band::new(text, Then::Act(Task::Rerere { wt: wt.clone(), on: true })));
+                return;
+            }
+            (Task::AskRerere { .. }, Ok(_)) => return,
+            (Task::Rerere { on, .. }, Ok(_)) => (self.tr(if *on { "act.rerere_on" } else { "act.rerere_off" }).to_owned(), 6),
             (Task::Resolve { wt, path, .. } | Task::Take { wt, path, .. }, Err(e)) => {
                 self.conflict_unpick(wt, path);
                 (failed(self, &e), 10)
@@ -296,6 +316,10 @@ impl App {
         self.conflicts.wt = Some(wt.to_path_buf());
         self.conflicts.show(wt);
         self.view = View::Conflict;
+        // Once a session, ask whether to reuse what is solved here (rerere).
+        if !std::mem::replace(&mut self.rerere_asked, true) {
+            self.act(Task::AskRerere { wt: wt.to_path_buf() });
+        }
     }
 
     /// Up to three files, then how many more.
@@ -427,5 +451,23 @@ mod tests {
         a.net = Some(Running::new(Kind::Fetch, stop));
         a.act_done(Task::Tag { name: "v1".into(), at: oid('a'), message: String::new(), push: true }, Ok(Acted::Done));
         assert_eq!(toast(&a), "Made tag v1, not pushed: fetch is running");
+    }
+
+    #[test]
+    fn rerere_is_asked_once_and_n_writes_it_down() {
+        let mut a = app();
+        let wt = PathBuf::from("w");
+        a.act_done(Task::AskRerere { wt: wt.clone() }, Ok(Acted::Rerere(Some(true))));
+        assert!(a.band.is_none());
+        a.act_done(Task::AskRerere { wt: wt.clone() }, Err(git::Error::Git("no".into())));
+        assert!(a.band.is_none());
+        a.act_done(Task::AskRerere { wt: wt.clone() }, Ok(Acted::Rerere(None)));
+        assert_eq!(a.band.as_ref().map(|b| b.then.clone()), Some(Then::Act(Task::Rerere { wt: wt.clone(), on: true })));
+        a.band_key('n');
+        assert!(a.band.is_none());
+        a.act_done(Task::Rerere { wt: wt.clone(), on: false }, Ok(Acted::Done));
+        assert_eq!(toast(&a), "rerere stays off (git config rerere.enabled false)");
+        a.act_done(Task::Rerere { wt, on: true }, Ok(Acted::Done));
+        assert!(toast(&a).starts_with("rerere is on"));
     }
 }
