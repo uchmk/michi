@@ -167,8 +167,10 @@ mod tests {
         );
         r.git(&r.repo, &["commit", "-q", "-am", "main"]);
         let all = worktree::list(&r.repo).unwrap();
-        let _ = std::process::Command::new("git").arg("-C").arg(&r.repo).args(["merge", "feat"]).output();
-        let w = read(&all[0]).unwrap().unwrap();
+        let m = std::process::Command::new("git").arg("-C").arg(&r.repo).args(["merge", "feat"]).output().unwrap();
+        let w = read(&all[0]).unwrap().unwrap_or_else(|| {
+            panic!("no wip: merge {:?} {} {}", m.status, String::from_utf8_lossy(&m.stdout), String::from_utf8_lossy(&m.stderr))
+        });
         assert_eq!(w.theirs.map(|t| t.to_string()), Some(r.out(&r.repo, &["rev-parse", "feat"])));
     }
 
