@@ -10,11 +10,11 @@ with macOS and Linux on x86_64 and ARM64. A sibling of
 [yagura](https://github.com/uchmk/yagura) and [minato](https://github.com/uchmk/minato),
 sharing their crates in [ito](https://github.com/uchmk/ito).
 
-![michi: the commit graph with the worktrees on the left and the commit detail on the right](assets/screenshots/graph.png)
+![michi: the commit graph with the worktrees on the left and the commit detail on the right](docs/images/graph.png)
 
-![michi: the worktree table with Claude's state and the conflict prediction](assets/screenshots/worktree.png)
+![michi: the worktree table with Claude's state and the conflict prediction](docs/images/worktree.png)
 
-![michi: switching between the graph, the worktrees and the key list](assets/demo.gif)
+![Going through the screens with the keys, each captioned as it is pressed: the graph, the worktrees, the key list, and back to the graph](docs/images/michi.gif)
 
 **Status:** the design was settled on 2026-10-15 and is written down in
 [docs/design.md](docs/design.md), with what v1 leaves out in
