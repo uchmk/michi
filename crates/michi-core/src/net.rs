@@ -72,6 +72,11 @@ pub enum Done {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Why {
     NoRemote,
+    /// Several remotes and none of them is the one pushes go to: the caller
+    /// asks which, and pushes again with it.
+    Choose {
+        remotes: Vec<String>,
+    },
     /// HEAD is on no branch.
     Detached,
     /// The branch has no upstream to pull from.
@@ -179,15 +184,22 @@ pub fn pull(dir: &Path, stop: &AtomicBool, tell: &mut dyn FnMut(Progress)) -> Re
 
 /// Pushes the branch of the worktree at `dir`: to its push remote
 /// (`branch.<b>.pushRemote`, `remote.pushDefault`, its upstream's, `origin`,
-/// the only one), setting the upstream when it has none. When the remote's
+/// the only one), or `chosen` when given, setting the upstream when it has
+/// none. With several remotes and no way to tell which: [`Why::Choose`]. When the remote's
 /// branch has commits this one does not, it is not pushed ([`Why::Behind`])
 /// unless `lease` says to: then the remote's tip is kept first and the push
 /// goes over it with `--force-with-lease`.
-pub fn push(dir: &Path, lease: Option<&Lease>, stop: &AtomicBool, tell: &mut dyn FnMut(Progress)) -> Result<Done, git::Error> {
+pub fn push(
+    dir: &Path,
+    chosen: Option<&str>,
+    lease: Option<&Lease>,
+    stop: &AtomicBool,
+    tell: &mut dyn FnMut(Progress),
+) -> Result<Done, git::Error> {
     let Some(branch) = branch(dir)? else { return Ok(Done::Not(Why::Detached)) };
     let up_remote = config(dir, &format!("branch.{branch}.remote"))?;
     let up_merge = config(dir, &format!("branch.{branch}.merge"))?;
-    let remote = match config(dir, &format!("branch.{branch}.pushRemote"))? {
+    let remote = match chosen.map(str::to_owned).map_or_else(|| config(dir, &format!("branch.{branch}.pushRemote")), |r| Ok(Some(r)))? {
         Some(r) => Some(r),
         None => match config(dir, "remote.pushDefault")? {
             Some(r) => Some(r),
@@ -206,7 +218,10 @@ pub fn push(dir: &Path, lease: Option<&Lease>, stop: &AtomicBool, tell: &mut dyn
             },
         },
     };
-    let Some(remote) = remote else { return Ok(Done::Not(Why::NoRemote)) };
+    let Some(remote) = remote else {
+        let remotes = remotes(dir)?;
+        return Ok(Done::Not(if remotes.is_empty() { Why::NoRemote } else { Why::Choose { remotes } }));
+    };
     let dest = match (&up_remote, &up_merge) {
         (Some(r), Some(m)) if *r == remote => m.clone(),
         _ => format!("refs/heads/{branch}"),
@@ -623,17 +638,17 @@ mod tests {
     fn push_sets_the_upstream_and_keeps_what_it_goes_over() {
         let (t, other) = with_remote("net-push");
         let no = AtomicBool::new(false);
-        assert_eq!(push(&t.repo, None, &no, &mut quiet()).unwrap(), Done::Even { to: "origin/main".into() });
+        assert_eq!(push(&t.repo, None, None, &no, &mut quiet()).unwrap(), Done::Even { to: "origin/main".into() });
 
         t.git(&t.repo, &["switch", "-q", "-c", "feat"]);
         commit(&t, &t.repo, "one.txt");
         let mut told = 0;
         assert_eq!(
-            push(&t.repo, None, &no, &mut |_| told += 1).unwrap(),
+            push(&t.repo, None, None, &no, &mut |_| told += 1).unwrap(),
             Done::Pushed { to: "origin/feat".into(), new: true, saved: None }
         );
         assert_eq!(t.out(&t.repo, &["config", "branch.feat.remote"]), "origin");
-        assert_eq!(push(&t.repo, None, &no, &mut quiet()).unwrap(), Done::Even { to: "origin/feat".into() });
+        assert_eq!(push(&t.repo, None, None, &no, &mut quiet()).unwrap(), Done::Even { to: "origin/feat".into() });
 
         // Someone else pushes to feat; this side has not pulled.
         t.git(&other, &["fetch", "-q"]);
@@ -642,13 +657,13 @@ mod tests {
         t.git(&other, &["push", "-q"]);
         let mine = commit(&t, &t.repo, "two.txt");
         // Not seen before a fetch: the remote says no.
-        assert!(matches!(push(&t.repo, None, &no, &mut quiet()).unwrap(), Done::Not(Why::Rejected { .. })));
+        assert!(matches!(push(&t.repo, None, None, &no, &mut quiet()).unwrap(), Done::Not(Why::Rejected { .. })));
         fetch(&t.repo, &no, &mut quiet()).unwrap();
-        let Done::Not(Why::Behind { lease, count: 1, ahead: 1 }) = push(&t.repo, None, &no, &mut quiet()).unwrap() else {
+        let Done::Not(Why::Behind { lease, count: 1, ahead: 1 }) = push(&t.repo, None, None, &no, &mut quiet()).unwrap() else {
             panic!("not behind")
         };
         assert_eq!((lease.to.as_str(), lease.tip.to_string()), ("origin/feat", theirs.clone()));
-        let Done::Pushed { saved: Some(saved), new: false, .. } = push(&t.repo, Some(&lease), &no, &mut quiet()).unwrap() else {
+        let Done::Pushed { saved: Some(saved), new: false, .. } = push(&t.repo, None, Some(&lease), &no, &mut quiet()).unwrap() else {
             panic!("not pushed")
         };
         assert_eq!(t.out(&t.repo, &["rev-parse", &saved]), theirs);
@@ -657,10 +672,30 @@ mod tests {
         // The lease is the tip it was given: a remote that moved since is not replaced.
         commit(&t, &other, "again.txt");
         t.git(&other, &["push", "-q", "--force", "origin", "HEAD:feat"]);
-        assert!(matches!(push(&t.repo, Some(&lease), &no, &mut quiet()).unwrap(), Done::Not(Why::Rejected { .. })));
+        assert!(matches!(push(&t.repo, None, Some(&lease), &no, &mut quiet()).unwrap(), Done::Not(Why::Rejected { .. })));
 
         t.git(&t.repo, &["switch", "-q", "--detach"]);
-        assert_eq!(push(&t.repo, None, &no, &mut quiet()).unwrap(), Done::Not(Why::Detached));
+        assert_eq!(push(&t.repo, None, None, &no, &mut quiet()).unwrap(), Done::Not(Why::Detached));
+    }
+
+    #[test]
+    fn push_with_several_remotes_and_no_origin_asks_which() {
+        let t = TempRepo::configured("net-push-choose");
+        let no = AtomicBool::new(false);
+        for name in ["up", "mine"] {
+            let bare = t.root.join(format!("{name}.git"));
+            t.git(&t.root, &["init", "-q", "--bare", "-b", "main", &bare.to_string_lossy()]);
+            t.git(&t.repo, &["remote", "add", name, &bare.to_string_lossy()]);
+        }
+        assert_eq!(
+            push(&t.repo, None, None, &no, &mut quiet()).unwrap(),
+            Done::Not(Why::Choose { remotes: vec!["mine".into(), "up".into()] })
+        );
+        let done = push(&t.repo, Some("mine"), None, &no, &mut quiet()).unwrap();
+        assert_eq!(done, Done::Pushed { to: "mine/main".into(), new: true, saved: None });
+        assert_eq!(t.out(&t.repo, &["config", "branch.main.remote"]), "mine");
+        // Its upstream is the one now.
+        assert_eq!(push(&t.repo, None, None, &no, &mut quiet()).unwrap(), Done::Even { to: "mine/main".into() });
     }
 
     #[test]

@@ -24,6 +24,8 @@ pub enum Kind {
     Branch,
     Tag,
     Stash,
+    /// The remotes a push could go to, for the push waiting in `job`.
+    Remote,
 }
 
 /// A row of the palette.
@@ -54,6 +56,10 @@ pub enum Item {
     /// The worktree's changes, to put away as a new stash (what is typed is
     /// its message).
     Save,
+    /// A remote to push to.
+    Target {
+        name: String,
+    },
     /// A stash, `stash@{place}`.
     Stash {
         id: Oid,
@@ -67,7 +73,7 @@ impl Item {
     /// remote branch.
     pub fn title(&self) -> String {
         match self {
-            Item::Local { name, .. } | Item::Tag { name, .. } | Item::Create { name } => name.clone(),
+            Item::Local { name, .. } | Item::Tag { name, .. } | Item::Create { name } | Item::Target { name } => name.clone(),
             Item::Remote { remote, name, .. } => format!("{remote}/{name}"),
             Item::Stash { subject, .. } => subject.clone(),
             Item::Save => String::new(),
@@ -102,6 +108,8 @@ pub struct Picker {
     /// The branch being renamed: the box then holds its new name and the
     /// rows are not shown.
     pub renaming: Option<String>,
+    /// The push a remote is being chosen for.
+    pub job: Option<Job>,
 }
 
 impl Picker {
@@ -126,12 +134,48 @@ impl Picker {
                 locals.chain(remotes).collect()
             }
             Kind::Tag => refs.tags.iter().map(|r| Item::Tag { name: r.name.clone(), id: r.id }).collect(),
+            Kind::Remote => Vec::new(),
             Kind::Stash => {
                 refs.stashes.iter().enumerate().map(|(place, s)| Item::Stash { id: s.id, subject: s.subject.clone(), place }).collect()
             }
         };
-        let mut p =
-            Picker { kind, query: String::new(), matched: None, sel: 0, wt, at, items, rows: Vec::new(), opening: true, renaming: None };
+        let mut p = Picker {
+            kind,
+            query: String::new(),
+            matched: None,
+            sel: 0,
+            wt,
+            at,
+            items,
+            rows: Vec::new(),
+            opening: true,
+            renaming: None,
+            job: None,
+        };
+        p.sync();
+        p
+    }
+
+    /// The palette of the remotes the push `job` could go to.
+    pub fn targets(remotes: Vec<String>, job: Job) -> Picker {
+        let wt = match &job {
+            Job::Push { wt, .. } => wt.clone(),
+            _ => PathBuf::new(),
+        };
+        let items = remotes.into_iter().map(|name| Item::Target { name }).collect();
+        let mut p = Picker {
+            kind: Kind::Remote,
+            query: String::new(),
+            matched: None,
+            sel: 0,
+            wt,
+            at: Oid::parse(&"0".repeat(40)).expect("a zero id"),
+            items,
+            rows: Vec::new(),
+            opening: true,
+            renaming: None,
+            job: Some(job),
+        };
         p.sync();
         p
     }
@@ -140,7 +184,7 @@ impl Picker {
     /// stashes), the first word for a tag.
     pub fn name(&self) -> &str {
         match self.kind {
-            Kind::Branch | Kind::Stash => self.query.trim(),
+            Kind::Branch | Kind::Stash | Kind::Remote => self.query.trim(),
             Kind::Tag => self.query.split_whitespace().next().unwrap_or(""),
         }
     }
@@ -180,7 +224,7 @@ impl Picker {
         let taken = |i: &Item| i.title() == name || matches!(i, Item::Remote { name: n, .. } if *n == name);
         if self.kind == Kind::Stash {
             self.rows.insert(0, Row { item: Item::Save, hits: Vec::new() });
-        } else if !name.is_empty() && !self.items.iter().any(taken) {
+        } else if self.kind != Kind::Remote && !name.is_empty() && !self.items.iter().any(taken) {
             self.rows.push(Row { item: Item::Create { name }, hits: Vec::new() });
         }
         self.sel = 0;
@@ -289,6 +333,12 @@ impl App {
             (Kind::Tag, Item::Tag { id, .. }) => {
                 self.picker = None;
                 self.go_to(id);
+            }
+            (Kind::Remote, Item::Target { name }) => {
+                let job = self.picker.take().and_then(|p| p.job);
+                if let Some(Job::Push { wt, lease, over, .. }) = job {
+                    self.order(Job::Push { wt, remote: Some(name), lease, over });
+                }
             }
             (Kind::Stash, Item::Save) => self.guarded(Task::Stash { wt: wt.clone(), message }, &wt, "act.stash_doing", "act.claude_stash"),
             (Kind::Stash, Item::Stash { id, .. }) => {
@@ -449,7 +499,7 @@ impl App {
                 let text = self.tr("act.drop_stash").replace("{id}", &id.short()).replace("{subject}", &subject);
                 self.band = Some(Band::new(text, Then::Act(Task::DropStash { id })));
             }
-            Item::Create { .. } | Item::Save => {}
+            Item::Create { .. } | Item::Save | Item::Target { .. } => {}
         }
     }
 

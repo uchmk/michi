@@ -246,6 +246,7 @@ michi runs `git fetch --prune --progress`, `git pull --ff-only`, `git push` (and
 | 15.9 | Start a Claude in a worktree from tsumugi; press `p` for that worktree; Esc; `p` and `y` | The band `A Claude is working in <worktree>. Pull there anyway?`; Esc pulls nothing; `y` pulls |
 | 15.10 | Fetch from an https remote that needs a sign-in; fetch from an ssh remote whose key has a passphrase and no ssh-agent | The Git Credential Manager window comes up as it does in a terminal and the fetch goes on after it; the ssh one fails at once (no prompt hangs) with `fetch failed: … — start ssh-agent and ssh-add your key` |
 | 15.11 | Narrow the window to its smallest with a band shown and a fetch running; switch to the light theme | The band wraps its text and grows, its keys stay whole; the key bar folds its keys before the fetch progress or age; both stay readable in both themes |
+| 15.12 | In a clone with two remotes and no `origin` (`git remote rename origin up`, `git remote add mine <path>`), press `P` on a branch with unpushed commits; type `mi`, Enter; then `P` again on another branch; Esc | The box `Push to: pick a remote` (`pushing <worktree>`) lists `mine` and `up`; the keys read `Enter pushes to it (and sets the upstream) · Esc closes`; `mi` leaves `mine`; Enter closes it and pushes there (`Pushed … to mine`, upstream becomes `mine/<branch>`); Esc pushes nothing. With `origin` or a `pushRemote` set no box shows | [ ] |
 
 ## 16. Branches, tags and revert
 

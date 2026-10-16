@@ -46,7 +46,7 @@
     the upstream set for a new branch, progress and Esc (the whole process tree) in the key bar, the last fetch's age, the band before
     `--force-with-lease` with the remote's tip kept under `refs/michi/backup/`, the Claude band before a pull （要確認: #15）
   - [x] Stop a pull during a merge (v0.15.0): with the toast why （要確認: #15, #22）
-  - [ ] Fetch / pull / push's leftovers: pick the remote to push to （要確認: #15）
+  - [x] Fetch / pull / push's leftovers: pick the remote to push to (v0.28.0, TESTING 15.12) （要確認: #15）
   - [x] Branches (v0.12.0): the palette on `b` (filter, switch, follow a remote one, make at the selected commit with Enter or make and
     switch with Shift+Enter, Delete with the commits no other branch has kept under `refs/michi/backup/`, refusals when another worktree
     has it, during a merge, and for remote branches), the Claude band before a switch （要確認: #16）

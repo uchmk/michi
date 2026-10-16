@@ -43,6 +43,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                     Kind::Branch => ("picker.branch", "picker.branch_keys"),
                     Kind::Tag => ("picker.tag", "picker.tag_keys"),
                     Kind::Stash => ("picker.stash", "picker.stash_keys"),
+                    Kind::Remote => ("picker.remote", "picker.remote_keys"),
                 };
                 let edit = ui.add(
                     egui::TextEdit::singleline(&mut p.query)
@@ -60,6 +61,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 let small = FontId::proportional(12.0);
                 let at = match p.kind {
                     Kind::Stash => app.tr("picker.stash_for").replace("{wt}", &act::name(&p.wt)),
+                    Kind::Remote => app.tr("picker.remote_for").replace("{wt}", &act::name(&p.wt)),
                     _ => app.tr("picker.for").replace("{wt}", &act::name(&p.wt)).replace("{at}", &p.at.short()),
                 };
                 ui.add_space(2.0);
@@ -177,6 +179,6 @@ fn describe(app: &App, p: &Picker, item: &Item) -> (String, Option<String>) {
             (app.tr(key).replace("{}", &p.at.short()), None)
         }
         Item::Stash { id, place, .. } => (format!("stash@{{{place}}}"), Some(id.short())),
-        Item::Save => (String::new(), None),
+        Item::Save | Item::Target { .. } => (String::new(), None),
     }
 }

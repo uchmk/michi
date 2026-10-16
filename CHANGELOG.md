@@ -2,6 +2,13 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.28.0] - 2026-10-16
+
+### 追加
+
+- push するリモートを選ぶ窓。リモートが複数あり、`branch.<名>.pushRemote`・`remote.pushDefault`・上流のリモート・`origin` のどれでも決められないとき、
+  `P` / `F` で「push 先の remote を選ぶ」窓が開く（絞り込みと Enter。選んだリモートへ push し、upstream もそこに決める）。リモートが無いときは今までどおり知らせるだけ。
+
 ## [0.27.0] - 2026-10-16
 
 ### 追加

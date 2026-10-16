@@ -15,6 +15,7 @@ use michi_core::{git, paths};
 
 use crate::act::{self, Task};
 use crate::app::{App, Repo, View};
+use crate::picker::Picker;
 
 /// What the net thread is to do.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -23,10 +24,10 @@ pub enum Job {
     Fetch,
     /// The branch of the worktree at `wt`, up to its upstream.
     Pull { wt: PathBuf },
-    /// The branch of the worktree at `wt`; over the remote's commits with
-    /// `lease`. `over`: `F` asked for it, so commits the remote has and
+    /// The branch of the worktree at `wt`, to `remote` when it is chosen;
+    /// over the remote's commits with `lease`. `over`: `F` asked for it, so commits the remote has and
     /// this branch has not bring the band that asks before a push over them.
-    Push { wt: PathBuf, lease: Option<Lease>, over: bool },
+    Push { wt: PathBuf, remote: Option<String>, lease: Option<Lease>, over: bool },
     /// The tag `tag`, to the remote branches are pushed to.
     PushTag { tag: String },
 }
@@ -143,7 +144,7 @@ impl App {
         match (c, self.net_tree()) {
             ('f', _) => self.order(Job::Fetch),
             ('p', Some(wt)) => self.pull(wt),
-            (c, Some(wt)) => self.order(Job::Push { wt, lease: None, over: c == 'F' }),
+            (c, Some(wt)) => self.order(Job::Push { wt, remote: None, lease: None, over: c == 'F' }),
             (_, None) => self.say(self.tr("net.no_tree")),
         }
         true
@@ -284,6 +285,10 @@ impl App {
             Ok(Done::Stopped) => (self.tr("net.stopped").replace("{}", kind.word()), 4),
             Ok(Done::Not(why)) => match why {
                 Why::NoRemote => (self.tr("net.no_remote").to_owned(), 6),
+                Why::Choose { remotes } => {
+                    self.picker = Some(Picker::targets(remotes, job.clone()));
+                    return;
+                }
                 Why::Detached => (self.tr("net.detached").to_owned(), 6),
                 Why::NoUpstream { branch } => (self.tr("net.no_upstream").replace("{}", &branch), 8),
                 Why::Diverged { upstream, ahead, behind } => (
@@ -297,12 +302,12 @@ impl App {
                     (self.tr("net.behind_only").replace("{to}", &lease.to).replace("{n}", &count.to_string()), 8)
                 }
                 Why::Behind { lease, count, .. } => {
-                    let Job::Push { wt, over, .. } = job else { return };
+                    let Job::Push { wt, remote, over, .. } = job else { return };
                     if !over {
                         (self.tr("net.diverged_push").replace("{to}", &lease.to).replace("{n}", &count.to_string()), 10)
                     } else {
                         let text = self.tr("net.lease").replace("{to}", &lease.to).replace("{n}", &count.to_string());
-                        self.band = Some(Band::new(text, Then::Net(Job::Push { wt, lease: Some(lease), over: true })));
+                        self.band = Some(Band::new(text, Then::Net(Job::Push { wt, remote, lease: Some(lease), over: true })));
                         return;
                     }
                 }
@@ -381,7 +386,7 @@ mod tests {
     fn each_ending_is_said() {
         let mut a = app();
         let wt = PathBuf::from("/r/feat");
-        let push = Job::Push { wt: wt.clone(), lease: None, over: false };
+        let push = Job::Push { wt: wt.clone(), remote: None, lease: None, over: false };
         let pull = Job::Pull { wt: wt.clone() };
         let mut said = |job: &Job, r: Result<Done, git::Error>| {
             a.net_done(job.clone(), r);
@@ -431,22 +436,43 @@ mod tests {
     }
 
     #[test]
+    fn a_push_with_several_remotes_asks_which_and_goes_to_the_one_picked() {
+        use crate::picker::{Item, Kind};
+        let mut a = app();
+        let wt = PathBuf::from("/r/feat");
+        let job = Job::Push { wt, remote: None, lease: None, over: false };
+        a.net_done(job, Ok(Done::Not(Why::Choose { remotes: vec!["mine".into(), "up".into()] })));
+        let p = a.picker.as_ref().expect("the palette of remotes");
+        assert_eq!(p.kind, Kind::Remote);
+        assert_eq!(
+            p.rows.iter().map(|r| r.item.clone()).collect::<Vec<_>>(),
+            [Item::Target { name: "mine".into() }, Item::Target { name: "up".into() }]
+        );
+        // What is typed narrows them, and is not offered as a new one.
+        a.picker.as_mut().unwrap().query = "u".into();
+        a.picker.as_mut().unwrap().sync();
+        assert_eq!(a.picker.as_ref().unwrap().rows.len(), 1);
+        a.picker_enter(false);
+        assert!(a.picker.is_none());
+    }
+
+    #[test]
     fn a_push_over_the_remote_s_commits_waits_for_a_yes() {
         let mut a = app();
         let wt = PathBuf::from("/r/feat");
         // P does not push over them: it says F does.
         a.net_done(
-            Job::Push { wt: wt.clone(), lease: None, over: false },
+            Job::Push { wt: wt.clone(), remote: None, lease: None, over: false },
             Ok(Done::Not(Why::Behind { lease: lease(), count: 2, ahead: 1 })),
         );
         assert!(a.band.is_none());
         assert_eq!(toast(&a), "origin/main has 2 commits this branch does not: F pushes over them, asking first");
         a.net_done(
-            Job::Push { wt: wt.clone(), lease: None, over: true },
+            Job::Push { wt: wt.clone(), remote: None, lease: None, over: true },
             Ok(Done::Not(Why::Behind { lease: lease(), count: 2, ahead: 1 })),
         );
         let band = a.band.as_ref().expect("a band");
-        assert_eq!(band.then, Then::Net(Job::Push { wt: wt.clone(), lease: Some(lease()), over: true }));
+        assert_eq!(band.then, Then::Net(Job::Push { wt: wt.clone(), remote: None, lease: Some(lease()), over: true }));
         assert!(band.text.contains("origin/main has 2 commits"), "{}", band.text);
         // Other keys wait; n drops it.
         assert!(a.feed('j'));
