@@ -81,3 +81,13 @@ tsumugi と同じ。`Cargo.toml` の `version` が正、版の繰り上げと CH
 - **マルチアーキテクチャ**: x86_64 と ARM64 の 6 ターゲットへのクロスコンパイルを軽く保つ。Pure Rust のクレートを優先する（gix、libgit2 を使わない）。
 - **スクロールバーは樹形図だけ。**ほかは入りきらない行を畳む。
 - 色は tsumugi の Dark の系統（ito-theme）。アイコンは `icon.rs` でコードから描き、`build.rs` で exe に焼く（tsumugi・yagura・minato と同じ）。
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (`uchmk/michi`, via the `gh` CLI). PRs are not a request surface. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root (skip silently if absent). See `docs/agents/domain.md`.
