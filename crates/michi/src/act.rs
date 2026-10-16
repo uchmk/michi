@@ -16,7 +16,7 @@ use michi_core::rerere;
 use michi_core::revert::{self, Reverted};
 use michi_core::stash::{self, Applied, Saved};
 use michi_core::tidy::{self, Found, Item, Outcome};
-use michi_core::{branch, tag};
+use michi_core::{branch, tag, worktree};
 
 use crate::app::{App, View};
 use crate::work::{Band, Job, Then};
@@ -79,6 +79,12 @@ pub enum Task {
         wt: PathBuf,
         id: Oid,
         mainline: Option<u32>,
+    },
+    /// Closes the Claude tabs `sessions`, keeps the uncommitted change of the
+    /// worktree at `wt` and takes the worktree away (its branch stays).
+    RemoveWorktree {
+        wt: PathBuf,
+        sessions: Vec<u64>,
     },
     /// Puts the changes of the worktree at `wt` away, with `message`
     /// (git's own when empty).
@@ -174,6 +180,10 @@ pub enum Task {
         conflict: Box<Conflict>,
         session: Option<u64>,
     },
+    /// Brings the tsumugi session `session` to the front (`tsumugi focus`).
+    Focus {
+        session: u64,
+    },
     /// Opens the file at `path` in an external tool (`git mergetool` when
     /// `merge.tool` is set, else the system's program for the file).
     External {
@@ -209,7 +219,7 @@ impl Task {
             Task::Unstash { pop: true, .. } => "stash pop",
             Task::DropStash { .. } => "stash drop",
             Task::FindTidy { .. } => "for-each-ref",
-            Task::Tidy { .. } => "worktree remove",
+            Task::Tidy { .. } | Task::RemoveWorktree { .. } => "worktree remove",
             Task::Merge { .. } => "merge",
             Task::CherryPick { .. } => "cherry-pick",
             Task::Resolve { .. } | Task::ResolveWith { .. } => "add",
@@ -224,7 +234,7 @@ impl Task {
             Task::Abort { doing: Doing::CherryPick, .. } => "cherry-pick --abort",
             Task::Abort { doing: Doing::Revert, .. } => "revert --abort",
             Task::Abort { doing: Doing::Bisect, .. } => "bisect reset",
-            Task::Handoff { .. } => "tsumugi",
+            Task::Handoff { .. } | Task::Focus { .. } => "tsumugi",
             Task::External { .. } => "mergetool",
             Task::AskRerere { .. } => "config --get",
             Task::Rerere { .. } => "config",
@@ -287,6 +297,12 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Unstash { wt, id, pop } => stash::apply(wt, id, *pop).map(Acted::Unstashed),
         Task::DropStash { id } => stash::drop(dir, id).map(|saved| Acted::Kept(Some(saved))),
         Task::FindTidy { here } => tidy::find(dir, here).map(Acted::Found),
+        Task::RemoveWorktree { wt, sessions } => {
+            for id in sessions {
+                let _ = handoff::close(*id);
+            }
+            worktree::remove(dir, wt).map(Acted::Kept)
+        }
         Task::Tidy { picks } => Ok(Acted::Tidied(tidy::remove(dir, picks))),
         Task::Merge { wt, rev } => conflict::merge(wt, rev).map(Acted::Merged),
         Task::CherryPick { wt, id, mainline } => conflict::cherry_pick(wt, id, *mainline).map(Acted::Merged),
@@ -299,6 +315,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Conclude { wt, message, .. } => conflict::commit(wt, message).map(Acted::Committed),
         Task::Abort { wt, .. } => conflict::abort(wt).map(Acted::Kept),
         Task::External { wt, path } => external::open(wt, path).map(Acted::Opened),
+        Task::Focus { session } => handoff::focus(*session).map(|()| Acted::Done),
         Task::Handoff { conflict, session } => hand_off(conflict, *session).map(|()| Acted::Done),
         Task::AskRerere { wt } => rerere::enabled(wt).map(Acted::Rerere),
         Task::Rerere { wt, on } => rerere::set(wt, *on).map(|()| Acted::Done),
@@ -370,6 +387,7 @@ impl App {
                 let key = if how == Opened::Tool { "act.external_tool" } else { "act.external_file" };
                 (self.tr(key).replace("{path}", path), 6)
             }
+            (Task::Focus { session }, Ok(_)) => (self.tr("act.focused").replace("{n}", &session.to_string()), 3),
             (Task::Handoff { conflict, session }, Ok(_)) => {
                 let key = if session.is_some() { "act.handed" } else { "act.handed_new" };
                 self.watch_handed(conflict.wt.clone());
@@ -393,6 +411,11 @@ impl App {
             }
             (Task::Delete { name }, Ok(Acted::Kept(Some(saved)))) => {
                 (self.tr("act.deleted_kept").replace("{name}", name).replace("{saved}", backup::short(&saved)), 10)
+            }
+            (Task::RemoveWorktree { wt, .. }, Ok(Acted::Kept(saved))) => {
+                let key = if saved.is_some() { "act.removed_kept" } else { "act.removed" };
+                let saved = saved.as_deref().map_or("", backup::short);
+                (self.tr(key).replace("{wt}", &self::name(wt)).replace("{saved}", saved), 10)
             }
             (Task::Delete { name }, Ok(_)) => (self.tr("act.deleted").replace("{}", name), 4),
             (Task::Rename { old, new }, Ok(_)) => (self.tr("act.renamed").replace("{old}", old).replace("{new}", new), 4),

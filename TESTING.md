@@ -150,6 +150,8 @@ Open a repository with a main worktree, a worktree on a branch that is pushed an
 | 10.9 | Click `Read again` | The toast `Reading the worktrees again…`, and the table follows a change made outside (a new commit, a new worktree) |
 | 10.10 | Narrow the window below 960 wide | Each worktree becomes a card: the branch and folder, then the Claude, `From main`, `Uncommitted`, `Unseen` and `Conflicts ahead` lines, then the buttons, which wrap; still readable at the smallest width |
 | 10.11 | Look at the foot, and switch to the light theme | Only when the Claude column shows, a line on how often it reads tsumugi; colours stay readable in both themes |
+| 10.12 | With a Claude running in a worktree, select its row and press `o`; on a row without a Claude; press `o` in the graph | tsumugi goes to that Claude's tab (waiting or done one first) and a toast `Went to the Claude tab N in tsumugi`; without one a toast `No Claude is running in <worktree>` | [ ] |
+| 10.13 | Select a linked worktree with uncommitted files and a Claude, press `x`; Esc; once more and `y`; on the main worktree and on this window's own | A band `Remove the worktree …? The folder goes; the branch … stays.` naming the Claude tab(s), the uncommitted files and the unpushed commits; Esc removes nothing; yes closes the tabs, keeps the change under `refs/michi/backup/` and removes the folder (the branch stays; a toast names the backup); main and the window's own say they stay | [ ] |
 
 ## 11. Conflict prediction
 

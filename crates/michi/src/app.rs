@@ -1079,6 +1079,7 @@ impl App {
             'h' => _ = g.close_fold(),
             '/' => g.focus_filter = true,
             'z' => self.fold(),
+            'o' => self.focus_claude(false),
             _ => return false,
         }
         true
@@ -1090,11 +1091,39 @@ impl App {
             'j' => self.wt_move(1),
             'k' => self.wt_move(-1),
             'd' => self.open_review(),
+            'o' => self.focus_claude(true),
             'c' => self.open_tidy(),
             'm' => self.ask_merge(),
+            'x' => self.ask_remove(),
             _ => return false,
         }
         true
+    }
+
+    /// `o`: goes to the tab of the Claude in the window's worktree (`table`:
+    /// in the selected row's instead), the one waiting or done first.
+    pub(crate) fn focus_claude(&mut self, table: bool) {
+        let wt = if table { self.wt_selected().map(|t| t.wt.path.clone()) } else { self.repo_top() };
+        let Some(wt) = wt else { return self.say(self.tr("act.no_tree")) };
+        let key = paths::key(&wt);
+        let sessions = self.claude.iter().flatten().find(|(p, _)| paths::key(p) == key).map(|(_, s)| s);
+        let agents = || sessions.into_iter().flatten().filter(|s| s.is_agent());
+        let session = agents().find(|s| s.state != State::Running).or_else(|| agents().next()).map(|s| s.id);
+        match session {
+            Some(session) => self.act(crate::act::Task::Focus { session }),
+            None => {
+                let text = self.tr("act.no_claude").replace("{wt}", &crate::act::name(&wt));
+                self.say_for(text, 5);
+            }
+        }
+    }
+
+    /// The window's own worktree, once the repository is read.
+    pub(crate) fn repo_top(&self) -> Option<PathBuf> {
+        match &self.repo {
+            Repo::Ready(s) => Some(s.top.clone()),
+            _ => None,
+        }
     }
 
     /// `z`, or the header's toggle: fold the trunk's merges or show them all.
@@ -1708,6 +1737,16 @@ pub(crate) mod tests {
         assert!(a.claude_in(Path::new("C:/r/repo")).is_empty());
         a.take(Answer::Claude(None));
         assert!(a.claude_in(Path::new("C:/r/wt")).is_empty());
+    }
+
+    #[test]
+    fn o_without_a_claude_in_the_worktree_says_so() {
+        let mut a = app();
+        a.view = View::Worktree;
+        a.take(Answer::Trees(fixture::trees()));
+        a.wt_sel = 1;
+        assert!(a.feed('o'));
+        assert!(toast(&a).starts_with("No Claude is running in"), "{}", toast(&a));
     }
 
     fn wt_path(a: &App) -> &str {

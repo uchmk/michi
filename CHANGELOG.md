@@ -2,6 +2,14 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.30.0] - 2026-10-16
+
+### 追加
+
+- worktree の表と樹形図で `o`: その worktree の Claude のタブへ移る（`tsumugi focus`。待っている・終わったタブを先に）。動いている Claude が無ければ、そう知らせる。
+- worktree の表で `x`: worktree を消す（確かめの帯のあと。ブランチは残る）。動いている Claude のタブは先に閉じ、未コミットの変更（新しいファイルも）は
+  `refs/michi/backup/` に退避してからフォルダを消す。本体の worktree とこの窓の worktree は消せない。
+
 ## [0.29.0] - 2026-10-16
 
 ### 追加

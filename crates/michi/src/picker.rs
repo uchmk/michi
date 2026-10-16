@@ -579,6 +579,53 @@ impl App {
         self.band = Some(Band { text, then: Then::Act(Task::CherryPick { wt, id, mainline: None }), parents });
     }
 
+    /// `x` in the worktree table: asks before it takes the selected worktree
+    /// away (the branch stays).
+    pub(crate) fn ask_remove(&mut self) {
+        let Some(t) = self.wt_selected() else {
+            self.say(self.tr("act.no_tree"));
+            return;
+        };
+        let (wt, branch, ahead, is_main) = (
+            t.wt.path.clone(),
+            t.wt.branch.clone(),
+            t.upstream.as_ref().map_or(0, |u| u.ahead),
+            self.trees.trees.first().is_some_and(|f| same(&f.wt.path, &t.wt.path)),
+        );
+        let name = act::name(&wt);
+        if is_main {
+            let text = self.tr("act.remove_main").replace("{wt}", &name);
+            return self.say_for(text, 5);
+        }
+        if self.repo_top().is_some_and(|top| same(&top, &wt)) {
+            let text = self.tr("act.remove_here").replace("{wt}", &name);
+            return self.say_for(text, 5);
+        }
+        let key = paths::key(&wt);
+        let sessions: Vec<u64> = self
+            .claude
+            .iter()
+            .flatten()
+            .filter(|(p, _)| paths::key(p) == key)
+            .flat_map(|(_, s)| s.iter())
+            .filter(|s| s.is_agent())
+            .map(|s| s.id)
+            .collect();
+        let files = self.wips.iter().find(|w| same(&w.path, &wt)).map_or(0, |w| w.files.len());
+        let claude = if sessions.is_empty() { String::new() } else { format!(" {}", self.tr("act.remove_claude")) };
+        let changes =
+            if files == 0 { String::new() } else { format!(" {}", self.tr("act.remove_changes").replace("{n}", &files.to_string())) };
+        let ahead = if ahead == 0 { String::new() } else { format!(" {}", self.tr("act.remove_ahead").replace("{n}", &ahead.to_string())) };
+        let text = self
+            .tr("act.remove")
+            .replace("{wt}", &name)
+            .replace("{branch}", branch.as_deref().unwrap_or("-"))
+            .replace("{claude}", &claude)
+            .replace("{changes}", &changes)
+            .replace("{ahead}", &ahead);
+        self.band = Some(Band::new(text, Then::Act(Task::RemoveWorktree { wt, sessions })));
+    }
+
     /// `m` in the worktree table: asks before it merges the trunk (the
     /// local branch) into the selected worktree's branch.
     pub(crate) fn ask_merge(&mut self) {
@@ -862,6 +909,20 @@ mod tests {
         assert!(a.feed('m'));
         assert_eq!(toast(&a), "wt is in the middle of a rebase: finish it first");
         assert!(a.band.is_none());
+    }
+
+    #[test]
+    fn x_in_the_worktree_table_asks_before_it_removes_a_worktree() {
+        let mut a = on("m1");
+        assert!(a.feed('3'));
+        assert!(a.feed('x'));
+        assert_eq!(toast(&a), "repo is the main worktree: it stays");
+        assert!(a.band.is_none());
+        assert!(a.feed('j'));
+        assert!(a.feed('x'));
+        let band = a.band.take().unwrap();
+        assert_eq!(band.then, Then::Act(Task::RemoveWorktree { wt: PathBuf::from("C:/r/wt"), sessions: Vec::new() }));
+        assert!(band.text.starts_with("Remove the worktree wt? The folder goes; the branch wip stays."), "{}", band.text);
     }
 
     #[test]

@@ -25,6 +25,25 @@ pub fn list(dir: &Path) -> Result<Vec<Worktree>, git::Error> {
     Ok(parse(&git::read(dir, &["worktree", "list", "--porcelain", "-z"])?))
 }
 
+/// Takes the worktree at `wt` away, its branch stays. What is uncommitted
+/// (untracked files too) is kept first as a commit under
+/// `refs/michi/backup/`; that ref's name, `None` when the worktree was clean.
+/// Refuses one with untracked files too big to be kept.
+pub fn remove(dir: &Path, wt: &Path) -> Result<Option<String>, git::Error> {
+    let snap = crate::predict::snapshot(wt, crate::predict::Limits::DEFAULT)?;
+    let mut saved = None;
+    if let Some(snap) = snap {
+        if !snap.left_out.is_empty() {
+            return Err(git::Error::Git("it has untracked files too big to keep".to_owned()));
+        }
+        if let Some(commit) = snap.commit {
+            saved = Some(crate::backup::save(dir, &commit, &format!("worktree {} removed with changes", wt.display()))?);
+        }
+    }
+    crate::branch::write(dir, &["worktree", "remove", "--force", &wt.to_string_lossy()])?;
+    Ok(saved)
+}
+
 /// The records of `--porcelain -z`: each line ends with a NUL, and an empty
 /// line ends a worktree.
 pub fn parse(out: &[u8]) -> Vec<Worktree> {
@@ -60,6 +79,25 @@ pub fn parse(out: &[u8]) -> Vec<Worktree> {
 mod tests {
     use super::*;
     use crate::testrepo::TempRepo;
+
+    #[test]
+    fn remove_keeps_the_branch_and_the_uncommitted_change() {
+        let t = TempRepo::configured("wt-remove");
+        let wt = t.root.join("wt-x");
+        t.git(&t.repo, &["worktree", "add", "-q", "-b", "x", wt.to_str().unwrap(), "main"]);
+        assert_eq!(remove(&t.repo, &wt).unwrap(), None);
+        assert!(!wt.exists());
+        t.git(&t.repo, &["worktree", "add", "-q", wt.to_str().unwrap(), "x"]);
+        t.write(
+            &wt, "new.txt", "new
+",
+        );
+        let saved = remove(&t.repo, &wt).unwrap().expect("a backup");
+        assert!(saved.starts_with(crate::backup::PREFIX));
+        assert!(!wt.exists());
+        assert_eq!(t.out(&t.repo, &["show", &format!("{saved}:new.txt")]), "new");
+        assert!(!t.out(&t.repo, &["branch", "--list", "x"]).is_empty());
+    }
 
     #[test]
     fn porcelain_records_are_read() {

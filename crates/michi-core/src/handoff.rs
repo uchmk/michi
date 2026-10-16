@@ -110,6 +110,16 @@ pub fn send(id: u64, text: &str) -> Result<(), git::Error> {
     tsumugi(Command::new("tsumugi").args(["send", &id.to_string(), text]))
 }
 
+/// Brings the tsumugi session `id` (its window and tab) to the front.
+pub fn focus(id: u64) -> Result<(), git::Error> {
+    tsumugi(Command::new("tsumugi").args(["focus", &id.to_string()]))
+}
+
+/// Closes the tsumugi session `id`.
+pub fn close(id: u64) -> Result<(), git::Error> {
+    tsumugi(Command::new("tsumugi").args(["close", &id.to_string()]))
+}
+
 /// A new tsumugi tab in `folder` named `name` that starts claude with `text`.
 pub fn start(folder: &Path, name: &str, text: &str) -> Result<(), git::Error> {
     tsumugi(Command::new("tsumugi").arg("new").arg(folder).args(["--name", name, "--", "claude", text]))
