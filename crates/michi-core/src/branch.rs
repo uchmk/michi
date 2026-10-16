@@ -103,6 +103,13 @@ pub fn track(wt: &Path, remote: &str, name: &str) -> Result<(), git::Error> {
     write(wt, &["switch", "--no-guess", "-c", name, "--track", remote])
 }
 
+/// Renames the branch `old` to `new` (a worktree on it follows; the
+/// upstream setting goes along). A name that is taken is refused.
+pub fn rename(dir: &Path, old: &str, new: &str) -> Result<(), git::Error> {
+    check_name(dir, new)?;
+    write(dir, &["branch", "-m", old, new])
+}
+
 /// Deletes the branch `name`. When no other branch, remote branch or tag
 /// has its tip, the tip is kept under `refs/michi/backup/` first: the
 /// backup's name then. A branch a worktree has checked out is refused.
@@ -147,6 +154,19 @@ mod tests {
 
     fn head(t: &TempRepo, dir: &Path) -> Oid {
         Oid::parse(&t.out(dir, &["rev-parse", "HEAD"])).unwrap()
+    }
+
+    #[test]
+    fn a_branch_is_renamed_and_a_taken_name_refused() {
+        let t = TempRepo::configured("branch-rename");
+        let at = head(&t, &t.repo);
+        create(&t.repo, "old", &at, None).unwrap();
+        create(&t.repo, "other", &at, None).unwrap();
+        assert!(rename(&t.repo, "old", "other").is_err());
+        assert!(rename(&t.repo, "old", "bad name").is_err());
+        rename(&t.repo, "old", "new").unwrap();
+        let names = t.out(&t.repo, &["branch", "--format=%(refname:short)"]);
+        assert!(names.lines().any(|l| l == "new") && !names.lines().any(|l| l == "old"), "{names}");
     }
 
     #[test]

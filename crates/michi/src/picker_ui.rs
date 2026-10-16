@@ -58,6 +58,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 p.sync();
                 let small = FontId::proportional(12.0);
                 let at = match p.kind {
+                    _ if p.renaming.is_some() => app.tr("picker.renaming").replace("{old}", p.renaming.as_deref().unwrap_or("")),
                     Kind::Stash => app.tr("picker.stash_for").replace("{wt}", &act::name(&p.wt)),
                     _ => app.tr("picker.for").replace("{wt}", &act::name(&p.wt)).replace("{at}", &p.at.short()),
                 };

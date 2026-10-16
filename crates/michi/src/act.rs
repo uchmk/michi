@@ -43,6 +43,11 @@ pub enum Task {
         remote: String,
         name: String,
     },
+    /// Renames the branch `old` to `new`.
+    Rename {
+        old: String,
+        new: String,
+    },
     /// Deletes the branch `name`.
     Delete {
         name: String,
@@ -207,6 +212,7 @@ impl Task {
             Task::Abort { doing: Doing::CherryPick, .. } => "cherry-pick --abort",
             Task::Abort { doing: Doing::Revert, .. } => "revert --abort",
             Task::Abort { doing: Doing::Bisect, .. } => "bisect reset",
+            Task::Rename { .. } => "branch -m",
             Task::Handoff { .. } => "tsumugi",
             Task::External { .. } => "mergetool",
             Task::AskRerere { .. } => "config --get",
@@ -273,6 +279,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Forget { wt, path } => conflict::forget(wt, path).map(|saved| solved(wt, Some(saved))),
         Task::Conclude { wt, message, .. } => conflict::commit(wt, message).map(Acted::Committed),
         Task::Abort { wt, .. } => conflict::abort(wt).map(Acted::Kept),
+        Task::Rename { old, new } => branch::rename(dir, old, new).map(|()| Acted::Done),
         Task::External { wt, path } => external::open(wt, path).map(Acted::Opened),
         Task::Handoff { conflict, session } => hand_off(conflict, *session).map(|()| Acted::Done),
         Task::AskRerere { wt } => rerere::enabled(wt).map(Acted::Rerere),
@@ -350,6 +357,7 @@ impl App {
                 self.watch_handed(conflict.wt.clone());
                 (self.tr(key).replace("{wt}", &self::name(&conflict.wt)), 8)
             }
+            (Task::Rename { old, new }, Ok(_)) => (self.tr("act.renamed").replace("{old}", old).replace("{new}", new), 4),
             (Task::Rerere { on, .. }, Ok(_)) => (self.tr(if *on { "act.rerere_on" } else { "act.rerere_off" }).to_owned(), 6),
             (Task::Resolve { wt, path, .. } | Task::ResolveWith { wt, path, .. } | Task::Take { wt, path, .. }, Err(e)) => {
                 self.conflict_unpick(wt, path);

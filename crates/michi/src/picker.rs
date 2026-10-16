@@ -99,6 +99,8 @@ pub struct Picker {
     pub rows: Vec<Row>,
     /// Opened this frame: the click that opened it is not a click outside.
     pub opening: bool,
+    /// The branch being renamed: what is typed is its new name.
+    pub renaming: Option<String>,
 }
 
 impl Picker {
@@ -127,7 +129,8 @@ impl Picker {
                 refs.stashes.iter().enumerate().map(|(place, s)| Item::Stash { id: s.id, subject: s.subject.clone(), place }).collect()
             }
         };
-        let mut p = Picker { kind, query: String::new(), matched: None, sel: 0, wt, at, items, rows: Vec::new(), opening: true };
+        let mut p =
+            Picker { kind, query: String::new(), matched: None, sel: 0, wt, at, items, rows: Vec::new(), opening: true, renaming: None };
         p.sync();
         p
     }
@@ -240,6 +243,16 @@ impl App {
         let Some(p) = &self.picker else { return };
         let Some(item) = p.selected().cloned() else { return };
         let (kind, wt, at, message) = (p.kind, p.wt.clone(), p.at, p.message().to_owned());
+        if let Some(old) = p.renaming.clone() {
+            let new = p.name().to_owned();
+            if new == old || new.is_empty() {
+                self.say(self.tr("act.rename_same"));
+            } else {
+                self.picker = None;
+                self.act(Task::Rename { old, new });
+            }
+            return;
+        }
         match (kind, item) {
             (Kind::Branch, Item::Local { name, at: Some(there), .. }) => {
                 let text = if same(&there, &wt) {
@@ -308,6 +321,19 @@ impl App {
             self.band = Some(Band::new(text, Then::Act(task)));
         } else {
             self.act(task);
+        }
+    }
+
+    /// F2 on a local branch's row: what is typed next is its new name (Enter
+    /// renames, Esc closes the palette as always).
+    pub(crate) fn picker_rename(&mut self) {
+        let Some(p) = &mut self.picker else { return };
+        if p.kind != Kind::Branch {
+            return;
+        }
+        if let Some(Item::Local { name, .. }) = p.selected().cloned() {
+            p.query = name.clone();
+            p.renaming = Some(name);
         }
     }
 
@@ -554,6 +580,21 @@ mod tests {
         assert_eq!(toast(&a), "Remote branches are not deleted here: git push origin --delete feat does it");
         assert!(a.picker.is_some() && a.band.is_none(), "the palette stays");
         assert!(a.escape());
+        assert!(a.picker.is_none());
+    }
+
+    #[test]
+    fn f2_renames_the_selected_local_branch_with_what_is_typed() {
+        let mut a = on("m2");
+        assert!(a.feed('b'));
+        typed(&mut a, "wip");
+        a.picker_rename();
+        assert_eq!(a.picker.as_ref().unwrap().renaming.as_deref(), Some("wip"));
+        // The name is still the old one: nothing to do yet.
+        a.picker_enter(false);
+        assert!(a.picker.is_some() && !toast(&a).is_empty());
+        typed(&mut a, "wip2");
+        a.picker_enter(false);
         assert!(a.picker.is_none());
     }
 
