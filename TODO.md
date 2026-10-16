@@ -74,8 +74,8 @@
   - [x] `e` edits the result (v0.22.0, TESTING 21.26): the open place's result box becomes a field (ours then theirs), Ctrl+Enter solves with the lines written (`conflict::resolve_with`, tag ここで書いた), Esc leaves.
   - [x] word diff (v0.23.0, TESTING 21.27): the words of ours / theirs that the base (else the other side) lacks are marked (`michi_core::words::marks`).
   - [x] hand it to Claude (v0.24.0, TESTING 21.28): `g` / the bar's button writes a brief (`michi_core::handoff`, in the temp dir) and runs `tsumugi send N` to the Claude in that worktree or `tsumugi new … -- claude` (`Task::Handoff`). Not done: the toast when that Claude becomes waiting/done.
-  - [ ] The rest: open in an
-    external tool; prediction moved to gix-merge and checked against
+  - [x] open in an external tool (v0.25.0, TESTING 21.29): `w` / the whole-file place's button runs `git mergetool --no-prompt` when `merge.tool` is set, else opens the file with the system's program (`michi_core::external`, `Task::External`).
+  - [ ] The rest: prediction moved to gix-merge and checked against
     `git merge-tree --write-tree`.
     Done (v0.18.0 / v0.18.1, TESTING 21.21–21.22; the graph tool band dims `Pull` and `Stash`): the graph's merging row (a WIP row with `theirs`, `Dot::Conflict`); the prediction pills / column / pairs are hidden while merging (`App::merging`) and the pairs' note says「予測は衝突の解消（4）の実物に変わりました」
     （要確認: #22）

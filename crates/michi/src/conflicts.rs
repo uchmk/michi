@@ -382,6 +382,7 @@ impl App {
             'x' => self.conflict_forget(),
             'e' => self.conflict_edit(),
             'g' => self.conflict_handoff(),
+            'w' => self.conflict_external(None),
             _ => return false,
         }
         true
@@ -604,6 +605,17 @@ impl App {
         let session = agents().find(|s| s.state != State::Running).or_else(|| agents().next()).map(|s| s.id);
         let conflict = Box::new(c.clone());
         self.act(Task::Handoff { conflict, session });
+    }
+
+    /// Opens a file in an external tool: `file` (an index into the files),
+    /// or the selected place's.
+    pub(crate) fn conflict_external(&mut self, file: Option<usize>) {
+        let cf = &self.conflicts;
+        let Some(c) = cf.shown() else { return };
+        let Some(i) = file.or_else(|| places(c).get(cf.at).map(|p| p.0)) else { return };
+        let Some(f) = c.files.get(i) else { return };
+        let (wt, path) = (c.wt.clone(), f.path.clone());
+        self.act(Task::External { wt, path });
     }
 
     /// The file's button: its places back as git left them.

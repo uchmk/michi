@@ -84,6 +84,7 @@ enum Act {
     Restart(usize),
     AskAbort,
     Handoff,
+    External(usize),
     AbortNo,
     AbortYes,
     Commit,
@@ -204,6 +205,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         Act::Restart(i) => app.conflict_restart(i),
         Act::AskAbort => app.conflict_ask_abort(),
         Act::Handoff => app.conflict_handoff(),
+        Act::External(i) => app.conflict_external(Some(i)),
         Act::AbortNo => cfs.abort = false,
         Act::AbortYes => app.conflict_abort(),
         Act::Commit => app.conflict_commit(),
@@ -642,10 +644,10 @@ impl Draw<'_> {
     }
 
     /// The buttons of a file that clashed whole, while it is to be solved.
-    fn whole_buttons(&self, w: &Whole) -> Vec<(&'static str, &'static str, Pick)> {
+    fn whole_buttons(&self, w: &Whole) -> Vec<(&'static str, &'static str, Option<Pick>)> {
         let ours = if w.ours { "cf.take_ours" } else { "cf.take_ours_gone" };
         let theirs = if w.theirs { "cf.take_theirs" } else { "cf.take_theirs_gone" };
-        vec![(self.tr(ours), "o", Pick::Ours), (self.tr(theirs), "t", Pick::Theirs)]
+        vec![(self.tr(ours), "o", Some(Pick::Ours)), (self.tr(theirs), "t", Some(Pick::Theirs)), (self.tr("cf.open_external"), "w", None)]
     }
 
     fn block_h(&self, plan: &Plan, width: f32) -> f32 {
@@ -657,7 +659,7 @@ impl Draw<'_> {
         h
     }
 
-    fn whole_h(&self, buttons: &[(&'static str, &'static str, Pick)], width: f32) -> f32 {
+    fn whole_h(&self, buttons: &[(&'static str, &'static str, Option<Pick>)], width: f32) -> f32 {
         let mut h = HEAD + WHY_H;
         if !buttons.is_empty() {
             h += flow_h(self.ui, buttons, width - 20.0) + 10.0;
@@ -1133,7 +1135,7 @@ impl Draw<'_> {
             let rects = flow(ui, &buttons, r.left() + 10.0, head.bottom() + WHY_H, r.right() - 10.0);
             for (q, ((label, key, pick), br)) in buttons.iter().zip(rects).enumerate() {
                 if button(ui, p, br, label, key, Look::Plain, ("cf-take", k, q), self.live, pointer) {
-                    out = Some(Act::Pick(k, *pick));
+                    out = Some(pick.map_or(Act::External(i), |pick| Act::Pick(k, pick)));
                 }
             }
         }
@@ -1366,7 +1368,7 @@ fn button(
 
 /// The buttons laid from `left` at `top`, a row after another when one is
 /// full at `right`.
-fn flow(ui: &Ui, buttons: &[(&str, &str, Pick)], left: f32, top: f32, right: f32) -> Vec<Rect> {
+fn flow<T>(ui: &Ui, buttons: &[(&str, &str, T)], left: f32, top: f32, right: f32) -> Vec<Rect> {
     let mut out = Vec::new();
     let (mut x, mut y) = (left, top);
     for (label, key, _) in buttons {
@@ -1382,7 +1384,7 @@ fn flow(ui: &Ui, buttons: &[(&str, &str, Pick)], left: f32, top: f32, right: f32
 }
 
 /// How tall the buttons are, laid in `width`.
-fn flow_h(ui: &Ui, buttons: &[(&str, &str, Pick)], width: f32) -> f32 {
+fn flow_h<T>(ui: &Ui, buttons: &[(&str, &str, T)], width: f32) -> f32 {
     flow(ui, buttons, 0.0, 0.0, width).last().map_or(0.0, |r| r.bottom())
 }
 

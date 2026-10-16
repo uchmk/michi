@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use michi_core::backup;
 use michi_core::branch::Doing;
 use michi_core::conflict::{self, Block, Conflict, Pick};
+use michi_core::external::{self, Opened};
 use michi_core::git;
 use michi_core::handoff;
 use michi_core::oid::Oid;
@@ -159,6 +160,12 @@ pub enum Task {
         conflict: Box<Conflict>,
         session: Option<u64>,
     },
+    /// Opens the file at `path` in an external tool (`git mergetool` when
+    /// `merge.tool` is set, else the system's program for the file).
+    External {
+        wt: PathBuf,
+        path: String,
+    },
     /// Reads whether rerere is on in the repository of the worktree at `wt`.
     AskRerere {
         wt: PathBuf,
@@ -201,6 +208,7 @@ impl Task {
             Task::Abort { doing: Doing::Revert, .. } => "revert --abort",
             Task::Abort { doing: Doing::Bisect, .. } => "bisect reset",
             Task::Handoff { .. } => "tsumugi",
+            Task::External { .. } => "mergetool",
             Task::AskRerere { .. } => "config --get",
             Task::Rerere { .. } => "config",
         }
@@ -211,6 +219,7 @@ impl Task {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Acted {
     Done,
+    Opened(Opened),
     /// It deleted something, kept under this backup (none: other refs
     /// have it).
     Kept(Option<String>),
@@ -264,6 +273,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Forget { wt, path } => conflict::forget(wt, path).map(|saved| solved(wt, Some(saved))),
         Task::Conclude { wt, message, .. } => conflict::commit(wt, message).map(Acted::Committed),
         Task::Abort { wt, .. } => conflict::abort(wt).map(Acted::Kept),
+        Task::External { wt, path } => external::open(wt, path).map(Acted::Opened),
         Task::Handoff { conflict, session } => hand_off(conflict, *session).map(|()| Acted::Done),
         Task::AskRerere { wt } => rerere::enabled(wt).map(Acted::Rerere),
         Task::Rerere { wt, on } => rerere::set(wt, *on).map(|()| Acted::Done),
@@ -331,6 +341,10 @@ impl App {
                 return;
             }
             (Task::AskRerere { .. }, Ok(_)) => return,
+            (Task::External { path, .. }, Ok(Acted::Opened(how))) => {
+                let key = if how == Opened::Tool { "act.external_tool" } else { "act.external_file" };
+                (self.tr(key).replace("{path}", path), 6)
+            }
             (Task::Handoff { conflict, session }, Ok(_)) => {
                 let key = if session.is_some() { "act.handed" } else { "act.handed_new" };
                 (self.tr(key).replace("{wt}", &self::name(&conflict.wt)), 8)
@@ -617,5 +631,17 @@ mod tests {
         assert!(toast(&a).starts_with("Started a Claude in a new tab"), "{}", toast(&a));
         a.act_done(Task::Handoff { conflict: c, session: None }, Err(git::Error::Git("tsumugi: gone".into())));
         assert_eq!(toast(&a), "tsumugi failed: tsumugi: gone");
+    }
+
+    #[test]
+    fn an_external_open_says_which_way_it_went() {
+        let mut a = app();
+        let t = || Task::External { wt: PathBuf::from("/r/main"), path: "y.bin".into() };
+        a.act_done(t(), Ok(Acted::Opened(Opened::Tool)));
+        assert_eq!(toast(&a), "Closed the merge tool on y.bin");
+        a.act_done(t(), Ok(Acted::Opened(Opened::File)));
+        assert!(toast(&a).starts_with("Opened y.bin with"), "{}", toast(&a));
+        a.act_done(t(), Err(git::Error::Git("no tool".into())));
+        assert_eq!(toast(&a), "mergetool failed: no tool");
     }
 }
