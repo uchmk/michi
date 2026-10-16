@@ -33,6 +33,9 @@
   CI の `clippy` も Linux の機械から Linux・`x86_64-pc-windows-msvc`・`aarch64-apple-darwin` の 3 つを見る（macOS は 2026-10-16 から）。
 - `Audit`（`.github/workflows/audit.yml`、2026-10-16 から。kura・tsumugi・ito・yagura・minato と同じ）は `cargo audit`（RustSec の脆弱性の一覧）を
   main への push・PR・毎週月曜に回す。脆弱性で落ち、警告では落ちない。赤くなったら、直った版に `cargo update -p <クレート>` で上げる。
+- `Build`（`.github/workflows/build.yml`、2026-10-16 から。kura・ito・yagura・minato と同じ 6 つのターゲット）は main への push と手動で、
+  6 つのターゲットを `--release` でリンクし、Windows x64 で `--version` を確かめ、実行ファイルを成果物に残す。テストは回さない（CI の役目）。
+  リリースがまだ無いので、macOS をリンクするのはここだけ。
 
 ## 共有のクレート（ito）
 
