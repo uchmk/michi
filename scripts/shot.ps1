@@ -2,6 +2,8 @@
 #   scripts/shot.ps1 -Exe target\debug\michi.exe -Arg C:\path\to\repo -Out $env:TEMP\shot\name -Width 1100 -Keys "@500,167|sleep1;{ENTER}"
 # Groups in -Keys are split by ';' (one picture after each), keys in a group by '|':
 # '@x,y' clicks at a point of the window, 'sleepN' waits N seconds, anything else goes to SendKeys.
+# It stops when michi has gone or another window is in front, so no key lands elsewhere;
+# what michi wrote to its standard error is in <Out>-stderr.txt.
 param([string]$Exe, [string]$Arg, [string]$Out, [int]$Wait = 8, [string]$Do = "", [int]$After = 3, [string]$Keys = "", [int]$Width = 1400, [switch]$Keep)
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Windows.Forms
@@ -12,6 +14,7 @@ public struct RECT { public int L, T, R, B; }
 public static class W {
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr h, int x, int y, int w, int hh, bool r);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
@@ -20,7 +23,7 @@ public static class W {
 }
 "@
 [W]::SetProcessDPIAware() | Out-Null
-$p = Start-Process -FilePath $Exe -ArgumentList $Arg -PassThru
+$p = Start-Process -FilePath $Exe -ArgumentList $Arg -PassThru -RedirectStandardError "$Out-stderr.txt"
 Start-Sleep -Seconds $Wait
 $p.Refresh()
 $h = $p.MainWindowHandle
@@ -43,11 +46,14 @@ function Shoot($name) {
 }
 if ($Do -ne "") { Invoke-Expression $Do; Start-Sleep -Seconds $After }
 Shoot "a"
-$names = "b", "c", "d", "e", "f"
 $i = 0
-foreach ($group in ($Keys -split ';')) {
+:groups foreach ($group in ($Keys -split ';')) {
   if ($group -eq "") { continue }
   foreach ($k in ($group -split '\|')) {
+    if ($k -notmatch '^sleep[0-9]+$') {
+      if ($p.HasExited) { "michi exited ($($p.ExitCode)) before '$k': see $Out-stderr.txt"; break groups }
+      if ([W]::GetForegroundWindow() -ne $h) { "another window came in front before '$k': stopped"; break groups }
+    }
     if ($k -match '^@([0-9]+),([0-9]+)$') {
       [W]::SetCursorPos($r.L + [int]$Matches[1], $r.T + [int]$Matches[2]) | Out-Null
       Start-Sleep -Milliseconds 150
@@ -56,8 +62,8 @@ foreach ($group in ($Keys -split ';')) {
     } elseif ($k -match '^sleep([0-9]+)$') { Start-Sleep -Seconds ([int]$Matches[1]) }
     elseif ($k -ne "") { [System.Windows.Forms.SendKeys]::SendWait($k); Start-Sleep -Milliseconds 500 }
   }
-  Shoot $names[$i]
+  Shoot ([string][char](98 + $i))
   $i++
 }
-if (-not $Keep) { Stop-Process -Id $p.Id }
+if (-not $Keep -and -not $p.HasExited) { Stop-Process -Id $p.Id }
 "$($r.R - $r.L) x $($r.B - $r.T)"

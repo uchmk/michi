@@ -1,4 +1,4 @@
-//! Draws the branch and tag palette (picker.rs) at the top of the window,
+//! Draws the branch, tag and stash palette (picker.rs) at the top of the window,
 //! the way ito-palette draws the command palette: the box to type in, up to
 //! ten rows with the typed characters lit, and its keys at the foot.
 
@@ -41,6 +41,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 let (hint, keys) = match p.kind {
                     Kind::Branch => ("picker.branch", "picker.branch_keys"),
                     Kind::Tag => ("picker.tag", "picker.tag_keys"),
+                    Kind::Stash => ("picker.stash", "picker.stash_keys"),
                 };
                 let edit = ui.add(
                     egui::TextEdit::singleline(&mut p.query)
@@ -56,7 +57,10 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 }
                 p.sync();
                 let small = FontId::proportional(12.0);
-                let at = app.tr("picker.for").replace("{wt}", &act::name(&p.wt)).replace("{at}", &p.at.short());
+                let at = match p.kind {
+                    Kind::Stash => app.tr("picker.stash_for").replace("{wt}", &act::name(&p.wt)),
+                    _ => app.tr("picker.for").replace("{wt}", &act::name(&p.wt)).replace("{at}", &p.at.short()),
+                };
                 ui.add_space(2.0);
                 ui.label(RichText::new(at).font(small.clone()).color(c.dim));
                 ui.add_space(2.0);
@@ -117,10 +121,15 @@ fn row(ui: &Ui, app: &App, p: &Picker, k: usize, rect: Rect) {
     let room = (rect.width() - 12.0 - id_w - detail_w).max(rect.width() / 2.0);
     // Nothing leaves the row: a long title ends in "…".
     let mut job = LayoutJob::default();
-    let ink = if matches!(r.item, Item::Create { .. }) { accent() } else { c.fg };
+    let ink = if matches!(r.item, Item::Create { .. } | Item::Save) { accent() } else { c.fg };
+    let text = match &r.item {
+        Item::Save if p.message().is_empty() => app.tr("picker.save").to_owned(),
+        Item::Save => app.tr("picker.save_as").replace("{}", p.message()),
+        item => item.title(),
+    };
     let mut run = String::new();
     let mut lit = false;
-    for (n, ch) in r.item.title().chars().enumerate() {
+    for (n, ch) in text.chars().enumerate() {
         let hit = r.hits.contains(&n);
         if hit != lit && !run.is_empty() {
             job.append(&std::mem::take(&mut run), 0.0, TextFormat::simple(font.clone(), if lit { accent() } else { ink }));
@@ -166,5 +175,7 @@ fn describe(app: &App, p: &Picker, item: &Item) -> (String, Option<String>) {
             let key = if p.kind == Kind::Branch { "picker.create" } else { "picker.tag_at" };
             (app.tr(key).replace("{}", &p.at.short()), None)
         }
+        Item::Stash { id, place, .. } => (format!("stash@{{{place}}}"), Some(id.short())),
+        Item::Save => (String::new(), None),
     }
 }

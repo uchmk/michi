@@ -13,7 +13,7 @@ use michi_core::show::File;
 use michi_core::stage::{Lists, Side};
 
 use crate::app::App;
-use crate::changes::{Changes, Focus, Shown};
+use crate::changes::{Changes, Focus, Op, Shown};
 use crate::detail::{Paired, Unified};
 use crate::detail_ui::{diff, left_cut, status_ink, Wrap, DIFF_H, FILE_H, NOTE_H, TITLE_H, X};
 use crate::ui::{accent, kbd};
@@ -250,11 +250,19 @@ fn confirm(ui: &Ui, app: &App, p: &Painter, band: Rect, live: bool, pointer: Opt
         right = hit.left() - 14.0;
     }
     let mut text = Vec::new();
+    if let Op::Discard { path, untracked, lines, .. } = &cf.op {
+        let key = match (untracked, lines) {
+            (true, _) => "changes.discard_untracked",
+            (false, 0) => "changes.discard_file",
+            _ => "changes.discard_lines",
+        };
+        text.push(app.tr(key).replace("{file}", path).replace("{n}", &lines.to_string()));
+    }
     if cf.claude {
-        text.push(app.tr("changes.claude_writing"));
+        text.push(app.tr("changes.claude_writing").to_owned());
     }
     if cf.pushed {
-        text.push(app.tr("changes.rewrites"));
+        text.push(app.tr("changes.rewrites").to_owned());
     }
     let left = band.left() + PAD_X;
     p.text(pos2(left, mid), Align2::LEFT_CENTER, "●", FontId::proportional(12.0), if cf.claude { c.run } else { c.wait });
@@ -695,6 +703,7 @@ mod tests {
     use super::*;
     use crate::app::View;
     use crate::changes::tests::{lists, two_hunks};
+    use crate::changes::Did;
     use crate::graph::fixture;
     use crate::repo::Answer;
     use michi_core::claude::{Session, State};
@@ -762,7 +771,7 @@ mod tests {
         assert!(app.feed('j'));
         assert_eq!(app.changes.picked().len(), 3);
         let drawn = frame(&ctx, &mut app, 900.0, Vec::new());
-        assert!(drawn.iter().any(|t| t == "Space in or out · v range · a hunk · h back"), "how lines are picked: {drawn:?}");
+        assert!(drawn.iter().any(|t| t == "Space in or out · v range · a hunk · d throw away · h back"), "how lines are picked: {drawn:?}");
         assert!(app.named("Enter"));
         frame(&ctx, &mut app, 1400.0, Vec::new());
         assert!(app.escape(), "Esc leaves the lines first");
@@ -830,6 +839,27 @@ mod tests {
         assert!(app.feed('y'));
         assert!(app.changes.confirm.is_none() && app.changes.claude_ok, "y says yes, and it holds");
         frame(&ctx, &mut app, 900.0, Vec::new());
+    }
+
+    #[test]
+    fn d_asks_what_goes_and_says_where_it_is_kept() {
+        let ctx = egui::Context::default();
+        let mut app = opened();
+        take_list(&mut app, lists(&[], &["a.txt"]));
+        assert!(app.feed('d'));
+        let drawn = frame(&ctx, &mut app, 1400.0, Vec::new());
+        let ask = "Throw away the changes to a.txt? They are kept under refs/michi/backup/ first.";
+        assert!(drawn.iter().any(|t| t == ask), "{drawn:?}");
+        assert!(app.escape());
+        assert!(app.changes.confirm.is_none(), "Esc says no");
+        assert!(app.feed('d') && app.feed('y'));
+        let saved = "refs/michi/backup/2026-10-16T10-00-00".to_owned();
+        let did = Did::Discarded { path: "a.txt".into(), untracked: false, lines: 3, saved };
+        app.take(Answer::ChangesDone { wt: "C:/r/wt".into(), commit: false, result: Ok(did) });
+        assert_eq!(
+            app.toast.as_ref().map(|(t, _)| t.as_str()),
+            Some("Threw away 3 lines of a.txt; kept in michi/backup/2026-10-16T10-00-00")
+        );
     }
 
     #[test]

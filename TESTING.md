@@ -29,7 +29,7 @@ What text can check (reading the repository, the git version, the command line) 
 | 2.1 | Press `1`, `2`, `3` | The tab in force moves and opens into the view; the graph shows the history (section 6), the worktrees show their table (section 10), the changes show the files to stage (section 14) |
 | 2.2 | Click each tab | Same as the digit |
 | 2.3 | Press `?` in `1`, `2` and `3`; narrow the window below 460 wide and press `?` | A card with the keys: "Everywhere" first, then the view's, two to a line with the word at the left and the keys at the right, every key there down to `Esc`; the tab stays lit under it; `?` or Esc closes it; the narrow window has one to a line |
-| 2.4 | Press `N` in any view and `s` in the graph (Enter spreads the diff: 8.5; `f` `p` `P`: 15; `b` `T` `t`: 16) | A toast at the foot names the key's work and says it comes in a later stage; it goes after 4 seconds |
+| 2.4 | Press `N` in any view (Enter spreads the diff: 8.5; `f` `p` `P`: 15; `b` `T` `t`: 16; `s`: 17) | A toast at the foot names the key's work and says it comes in a later stage; it goes after 4 seconds |
 | 2.5 | Press Ctrl+Shift+P, or click the palette field | The same toast for the command search; the field lights under the pointer with a text cursor |
 | 2.6 | Press a key with no work (`q`, `4`) | Nothing happens |
 
@@ -100,7 +100,7 @@ The same repository as section 6.
 | 7.2 | Click a worktree, a branch and a tag | The graph selects that commit and scrolls it into sight; the detail follows |
 | 7.3 | Click a group (`test/`, `origin`) | It opens to list its branches further in, with the count at its right; again, it closes; hovering a branch inside shows its full name |
 | 7.4 | Click a branch whose commit is older than what is read | The graph reads on until it gets there and selects it; one that is not in the history gives the toast `Not in the history: <hash>` |
-| 7.5 | Have a branch ahead of its upstream and one behind (commit without pushing; `git fetch` after a push from elsewhere), and a stash (`git stash`) | The branch and its worktree show `↑N`, `↓N` or both in dim at the right; no number when even or with no upstream. A `Stash` section comes last with each stash's message and a hollow square; hovering shows its hash; a click does nothing yet |
+| 7.5 | Have a branch ahead of its upstream and one behind (commit without pushing; `git fetch` after a push from elsewhere), and a stash (`git stash`) | The branch and its worktree show `↑N`, `↓N` or both in dim at the right; no number when even or with no upstream. A `Stash` section comes last with each stash's message and a hollow square; hovering shows its hash; a click shows it in the detail (17.9) |
 
 ## 8. Detail and diff
 
@@ -212,7 +212,7 @@ michi writes only through `git add`, `git reset`, `git apply --cached` and `git 
 | --- | --- | --- |
 | 14.1 | Press `2` in the set-up worktree | The top bar: the worktrees as chips (the window's own lit, a green ● on one where a Claude is writing), `[ ]` after them, `Amend A` on the right; the files on the left under `Staged` and `Not staged`, each with its letter (M A D R `?` in their colours), the path and `+n −n`, the new file last with `?`; under the list the message box with `What changed, and why` and `Commit`; the selected file's diff on the right; the `2` tab reads `2 Changes` and the number of files listed (a file both staged and changed counted once); the key bar lists `Space`, `c`, `l h`, `a`, `j k`, `v`, `A`, `[ ]`, `Enter`, `Esc` |
 | 14.2 | Press `j` / `k`; Space on a file not staged, then on a staged one; `a`, then `a` again; click a file, double-click another | Space moves the file to `Staged` (and back out on a staged one) and the selection stays on that file; the first `a` stages everything, the second unstages everything; a click selects, a double-click stages or unstages; `git status` in a terminal agrees each time |
-| 14.3 | On a changed file with two hunks press `l`, `j`, `v`, `j`, Space; then `a`; then `h` | `l` puts an accent strip on the first changed line and the title reads `Space in or out · v range · a hunk · h back`; `j` walks the changed lines only; `v` picks a range (tinted blue); Space stages just those lines (`git diff --cached` shows them, `git diff` the rest); `a` stages the hunk under the cursor; `h` goes back to the files |
+| 14.3 | On a changed file with two hunks press `l`, `j`, `v`, `j`, Space; then `a`; then `h` | `l` puts an accent strip on the first changed line and the title reads `Space in or out · v range · a hunk · d throw away · h back`; `j` walks the changed lines only; `v` picks a range (tinted blue); Space stages just those lines (`git diff --cached` shows them, `git diff` the rest); `a` stages the hunk under the cursor; `h` goes back to the files |
 | 14.4 | Press `l` on the new file, on a binary file and on a renamed file | The toast `This file goes in whole: its lines cannot be picked`; the diff says the same; Space stages the whole file |
 | 14.5 | Press `c`, write a two-line message (`j`, `k`, Space type as text), press Ctrl+Enter | The box takes the keys; the commit is made (toast `Committed <hash>`), the box and the staged list empty, the graph (`1`) shows the commit with the message; Esc in the box only leaves it |
 | 14.6 | Press Ctrl+Enter with nothing staged; then stage a file and press Ctrl+Enter with an empty box | The toasts `Nothing staged to commit` and `Write a commit message first (c)`; nothing is written |
@@ -269,3 +269,37 @@ and `git update-ref refs/michi/backup/<time>` before it deletes.
 | 16.14 | Select a merge commit and press `t`; press `1` | The band `<id> “<subject>” is a merge. Revert it with a new commit on <branch> in <worktree>, keeping which parent's side?` with `keep parent 1 1`, `keep parent 2 2` and `Not now Esc`; `1` reverts it keeping the first parent's side: `Reverted <id> on <worktree>: <new>` |
 | 16.15 | Revert a commit whose lines a later commit changed; revert a commit already reverted; in a worktree in the middle of a merge press `t` | `Reverting <id> clashed in <files>, so it was called off: git revert <id> in a terminal lets you resolve it` and `git status` is clean; `Nothing to revert: <id> is undone already`; `<worktree> is in the middle of a merge: finish it first` |
 | 16.16 | Look at the tool band of `1`; press `?`; narrow the window to its smallest with the palette open; switch to the light theme | The tool band reads `Branch b` (`ブランチ b` in Japanese); help lists `b Make or switch a branch`, `T Tag the commit`, `t Revert the commit (asks first)`; the palette narrows with the window, long names end in `…` and the commits stay at the right; readable in both themes |
+
+## 17. Stash
+
+Set up: as in 16; in `a` change a tracked file and add an untracked one.
+michi runs `git stash push --include-untracked` (`-m` with the message typed), `git stash apply <hash>`, `git stash drop stash@{k}` (after a pop, and when dropped)
+and `git update-ref refs/michi/backup/<time>` before it drops one.
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 17.1 | In `1` press `s` (or click `Stash s` in the tool band); Esc; `s` and click outside | A palette under the top bar: the box with `Stash: a message to put the changes away, or pick one`, under it `in <worktree>`, the first row `Put the changes away` in the accent colour and selected, then the stashes newest first, each with `stash@{k}` and its hash at the right; the foot reads `Enter puts away or applies · Shift+Enter pops · Del drops · Esc closes`; Esc and a click outside close it |
+| 17.2 | `s`, type `half done` and Enter | The first row reads `Put the changes away as “half done”` and the stashes below narrow to those matching it; Enter: `Put the changes of <worktree> away: <hash>`; the uncommitted row goes from the graph, `git status` is clean (the untracked file gone too) and `git stash list` shows `On <branch>: half done` |
+| 17.3 | `s` and ↓ to a stash | The detail shows the stash: its message, hash and the commit it was made on as its parent, its files (the untracked one as `A`) and their diff |
+| 17.4 | On a stash press Enter; then `git checkout -- . ; git clean -fd` in a terminal; `s`, the same stash and Shift+Enter | Enter: `Put the stash back on <worktree>; it stays in the list`, the changes are back, the untracked file too, and the stash is still listed; Shift+Enter: `Put the stash back on <worktree> and dropped it` and it is gone from the palette and the side column |
+| 17.5 | With the stash's file changed again, Enter on the stash; then `git checkout -- .`, commit a change to the same lines and Shift+Enter on it | The first: `stash apply failed: error: Your local changes to the following files would be overwritten by merge: <file>` and nothing changes; the second: `The stash clashed on <worktree> in <file>: resolve the marks there and git add them; the stash is kept`, `git status` shows `UU <file>` with the marks in it and the stash is still listed |
+| 17.6 | On a stash press Delete; Esc; again and `y`; Delete on the first row | The band `Drop stash <hash> “<message>”? It is kept under refs/michi/backup/ first.`; Esc drops nothing; `y`: `Dropped stash <hash>; kept in michi/backup/<time>`, `git stash list` no longer has it and `git rev-parse refs/michi/backup/<time>` gives its hash; Delete on the first row does nothing |
+| 17.7 | In a worktree in the middle of a merge, `s` and Enter on the first row, then on a stash; with a Claude working in the worktree (from tsumugi), `s` and Enter; Esc; again and `y`; the same on a stash | `Stashes are stopped in <worktree>: it is in the middle of a merge.` for 8 seconds and the palette stays; with the Claude the band `A Claude is working in <worktree>. Put its changes away anyway?` (`Put the stash back there anyway?` on a stash); Esc does nothing; `y` does it |
+| 17.8 | Select another worktree's uncommitted row in `1` and press `s`, Enter; with no changes anywhere press `s` and Enter | The palette reads `in <that worktree>` and puts that worktree's changes away; with none: `<worktree> has no changes to put away` |
+| 17.9 | Click a stash in the side column; Esc; click it again and press `j` | The detail shows the stash as in 17.3 and its row is lit in blue; Esc brings back the selected commit and the row goes dark; `j` does too |
+| 17.10 | Press `?`; narrow the window to its smallest with the palette open; switch to the light theme | Help lists `s Stash`; the palette narrows with the window, long messages end in `…` and the hashes stay at the right; readable in both themes |
+
+## 18. Discard
+
+Set up: as in 16; in `a` change two tracked files (one in two places far apart) and add an untracked file in a new folder, `u/new.txt`.
+michi runs `git stash create` and `git update-ref refs/michi/backup/<time>` first, then `git restore --worktree -- <file>`,
+or `git apply --reverse` with the picked lines; an untracked file is kept in a commit of its own on the head (made with an index of its own) and then deleted.
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 18.1 | In `2` on a changed tracked file in Unstaged press `d`; Esc; `d` again and `y` | The band `<file> の変更を捨てますか？先に refs/michi/backup/ に退避します。` (`Throw away the changes to <file>? They are kept under refs/michi/backup/ first.`) with `進める y` / `やめる Esc`; Esc leaves the file; `y`: the toast `<file> の変更を捨てました。michi/backup/<time> に退避しました` for 10 seconds, the file leaves Unstaged and `git show refs/michi/backup/<time>:<file>` has the change |
+| 18.2 | On the file with two changes press `l`, `v`, `j` over the first change and `d`, `y` | The band `<file> の 2 行の変更を捨てますか？…`; `y`: `<file> の 2 行を捨てました。…`, the first change is gone, the second stays and the cursor stays in the lines; the backup has the file with both changes; `git diff --cached` is as it was |
+| 18.3 | `h`, on `u/new.txt` press `d`, `y` | The band `u/new.txt を消しますか？Git が追っていないファイルです。…`; `y`: `u/new.txt を消しました。…`, the file and the empty folder `u` are gone and `git show refs/michi/backup/<time>:u/new.txt` has it |
+| 18.4 | Stage a file (Space) and press `d` on it in Staged | `ステージした変更は捨てません。先に外してください（Space）` and nothing changes |
+| 18.5 | With a Claude working in the worktree (from tsumugi), `d` on a file | The band carries both the question for the file and `この worktree では Claude が書いている途中です。横から書き込みますか？`; Esc does nothing; `y` throws the changes away |
+| 18.6 | Press `?`; narrow the window to its smallest with the band up; switch to the light theme | Help lists `d 変更を捨てる（先に確かめる）`; the band's text wraps or ends in `…` with `y` and `Esc` still visible; readable in both themes |

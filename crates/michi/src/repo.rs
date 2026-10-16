@@ -41,6 +41,7 @@ use std::time::{Duration, Instant, SystemTime};
 use michi_core::change::{self, Places};
 use michi_core::clash::{self, Clashes};
 use michi_core::claude::{self, Session};
+use michi_core::discard;
 use michi_core::git::{self, Version};
 use michi_core::history::Setup;
 use michi_core::log::{self, Commit, Reader};
@@ -49,6 +50,7 @@ use michi_core::oid::Oid;
 use michi_core::review::{self, Checks, List};
 use michi_core::show::{self, Changes, Detail};
 use michi_core::stage::{self, Lists};
+use michi_core::stash;
 use michi_core::summary::{self, Summary};
 use michi_core::track::{self, Trees};
 use michi_core::unseen::{self, Marks, Unseen};
@@ -56,7 +58,7 @@ use michi_core::wip::{self, Wip};
 use michi_core::worktree::{self, Worktree};
 
 use crate::act::{self, Acted, Task};
-use crate::changes::{self as staging, Op};
+use crate::changes::{self as staging, Did, Op};
 use crate::fswatch::{self, Fs};
 use crate::review::Wish;
 use crate::work::{Job, Order};
@@ -104,8 +106,8 @@ pub enum Answer {
     /// The head's message and whether a remote has the head.
     ChangesLast { gen: u32, result: Result<(String, bool), git::Error> },
     /// A write in the worktree `wt` is done (`commit` when it committed),
-    /// with the commit it made.
-    ChangesDone { wt: PathBuf, commit: bool, result: Result<Option<Oid>, git::Error> },
+    /// and what it did.
+    ChangesDone { wt: PathBuf, commit: bool, result: Result<Did, git::Error> },
     /// How far git has got with the fetch, pull or push that runs.
     NetProgress(Progress),
     /// The fetch, pull or push is over.
@@ -171,7 +173,14 @@ impl Reading {
     /// yet answered is dropped.
     pub fn detail(&self, id: Oid, patch: bool) {
         let gen = self.latest.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
-        let _ = self.wants.send(Want { gen, id, patch });
+        let _ = self.wants.send(Want { gen, id, patch, stash: false });
+    }
+
+    /// Read the stash `id` in full, its untracked files too, the way
+    /// [`Reading::detail`] reads a commit.
+    pub fn stash(&self, id: Oid) {
+        let gen = self.latest.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
+        let _ = self.wants.send(Want { gen, id, patch: true, stash: true });
     }
 
     /// The window came in front (`true`) or went behind: the worktrees are
@@ -246,6 +255,7 @@ struct Want {
     gen: u32,
     id: Oid,
     patch: bool,
+    stash: bool,
 }
 
 /// Start reading `dir`: git's version and the summary, then the history.
@@ -309,7 +319,7 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         networks(&net_dir, &net_rx, &net_pokes, send);
     });
     let (acts, act_rx) = mpsc::channel();
-    let (act_tx, act_dir, act_ctx, act_pokes) = (tx.clone(), dir.clone(), ctx.clone(), pokes.clone());
+    let (act_tx, act_dir, act_ctx, act_pokes, act_asks) = (tx.clone(), dir.clone(), ctx.clone(), pokes.clone(), asks.clone());
     // No thread for the tasks: none ends.
     let _ = std::thread::Builder::new().name("act".into()).spawn(move || {
         let send = |a: Answer| {
@@ -319,6 +329,11 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         for task in act_rx {
             let result = act::run(&act_dir, &task);
             let _ = act_pokes.send(Poke::Now);
+            // A stash gone from the middle of the list leaves the refs as
+            // they were: the history is read again all the same.
+            if matches!(task, Task::Unstash { pop: true, .. } | Task::DropStash { .. }) {
+                let _ = act_asks.send(Ask::Reload);
+            }
             send(Answer::ActDone { task, result });
         }
     });
@@ -729,10 +744,18 @@ fn stagings(wishes: &Receiver<staging::Wish>, latest: &[AtomicU32; 3], send: imp
                 paths.iter().map(String::as_str).collect()
             }
             let result = match op {
-                Op::Stage(paths) => stage::stage(&wt, &strs(&paths)).map(|()| None),
-                Op::Unstage(paths) => stage::unstage(&wt, &strs(&paths)).map(|()| None),
-                Op::Apply { patch, reverse } => stage::apply(&wt, &patch, reverse).map(|()| None),
-                Op::Commit { message, amend } => stage::commit(&wt, &message, amend).map(Some),
+                Op::Stage(paths) => stage::stage(&wt, &strs(&paths)).map(|()| Did::Staged),
+                Op::Unstage(paths) => stage::unstage(&wt, &strs(&paths)).map(|()| Did::Staged),
+                Op::Apply { patch, reverse } => stage::apply(&wt, &patch, reverse).map(|()| Did::Staged),
+                Op::Commit { message, amend } => stage::commit(&wt, &message, amend).map(Did::Committed),
+                Op::Discard { path, untracked, patch, lines } => {
+                    let saved = match &patch {
+                        Some(patch) => discard::lines(&wt, &path, patch),
+                        None if untracked => discard::untracked(&wt, &[&path]),
+                        None => discard::files(&wt, &[&path]),
+                    };
+                    saved.map(|saved| Did::Discarded { path, untracked, lines, saved })
+                }
             };
             send(Answer::ChangesDone { wt, commit, result });
             // The reads wait for the writes: what they read would be stale.
@@ -772,7 +795,8 @@ fn details(dir: &Path, wants: &Receiver<Want>, latest: &AtomicU32, send: impl Fn
         if stale() {
             continue;
         }
-        let result = show::read(dir, &want.id, want.patch, &stale).map(Box::new);
+        let result = if want.stash { stash::read(dir, &want.id, &stale) } else { show::read(dir, &want.id, want.patch, &stale) };
+        let result = result.map(Box::new);
         if !stale() {
             send(Answer::Detail { id: want.id, result });
         }

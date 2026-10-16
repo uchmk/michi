@@ -6,13 +6,15 @@
 //!
 //! A write waits for a yes while a Claude is writing in the worktree, and
 //! an amend of a commit some remote has; a yes for the Claude holds until
-//! the worktree changes or the Claude stops.
+//! the worktree changes or the Claude stops. Throwing changes away always
+//! waits for one.
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use michi_core::git;
-use michi_core::show::{File, Kind};
+use michi_core::oid::Oid;
+use michi_core::show::{File, Kind, Status};
 use michi_core::stage::{self, Lists, Side};
 
 use crate::detail::Rows;
@@ -48,12 +50,37 @@ pub enum Op {
         message: String,
         amend: bool,
     },
+    /// The unstaged changes of the file at `path` thrown away, kept under a
+    /// backup first: the file back as the index has it, deleted when it is
+    /// `untracked`, or only the lines of `patch` (`lines` of them) taken out.
+    Discard {
+        path: String,
+        untracked: bool,
+        patch: Option<Vec<u8>>,
+        lines: usize,
+    },
 }
 
 impl Op {
     fn is_commit(&self) -> bool {
         matches!(self, Op::Commit { .. })
     }
+}
+
+/// What a write did.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Did {
+    /// Staged or unstaged.
+    Staged,
+    Committed(Oid),
+    /// Threw away changes of `path` as [`Op::Discard`] says, kept under the
+    /// backup `saved`.
+    Discarded {
+        path: String,
+        untracked: bool,
+        lines: usize,
+        saved: String,
+    },
 }
 
 /// Where the keys go: the files, or the selected file's lines.
@@ -484,6 +511,33 @@ impl Changes {
         Ok(self.act(Op::Apply { patch, reverse }, claude))
     }
 
+    /// `d`: the unstaged changes of the selected file thrown away, or on
+    /// the lines those of the picked lines; asked first. Err with the word
+    /// saying why not.
+    pub fn discard(&mut self, claude: bool) -> Result<Option<Wish>, &'static str> {
+        if !self.settled() {
+            return Err("changes.busy");
+        }
+        let Some((side, f)) = self.selected() else { return Ok(None) };
+        if side == Side::Staged {
+            return Err("changes.discard_staged");
+        }
+        let (path, untracked) = (f.path.clone(), f.status == Status::Untracked);
+        let op = if self.focus == Focus::Lines {
+            if self.file_waiting || self.shown().is_none() {
+                return Err("changes.busy");
+            }
+            let picked: HashSet<(usize, usize)> = self.picked().into_iter().collect();
+            let Some(patch) = self.shown().and_then(|s| s.diff.patch.as_ref()?.pick(|h, k| picked.contains(&(h, k)), true)) else {
+                return Ok(None);
+            };
+            Op::Discard { path, untracked: false, patch: Some(patch), lines: picked.len() }
+        } else {
+            Op::Discard { path, untracked, patch: None, lines: 0 }
+        };
+        Ok(self.act(op, claude))
+    }
+
     /// `A`: the next commit takes the head's place, or no longer. Its
     /// message comes to amend; one filled in and not changed goes again.
     pub fn toggle_amend(&mut self) -> Option<Wish> {
@@ -527,12 +581,12 @@ impl Changes {
     }
 
     /// The write `op`, or a question first: a Claude writes in the worktree
-    /// (`claude`) and no yes was given for it, or the commit to amend is a
-    /// remote's too.
+    /// (`claude`) and no yes was given for it, the commit to amend is a
+    /// remote's too, or it throws changes away.
     fn act(&mut self, op: Op, claude: bool) -> Option<Wish> {
         let claude = claude && !self.claude_ok;
         let pushed = op.is_commit() && self.amend && self.pushed == Some(true);
-        if claude || pushed {
+        if claude || pushed || matches!(op, Op::Discard { .. }) {
             self.confirm = Some(Confirm { op, claude, pushed });
             return None;
         }
@@ -550,6 +604,10 @@ impl Changes {
         let c = self.confirm.take()?;
         if c.claude {
             self.claude_ok = true;
+        }
+        if matches!(c.op, Op::Discard { patch: Some(_), .. }) {
+            // As for lines staged: the cursor to the range's start.
+            self.cursor = self.anchor.take().map_or(self.cursor, |a| a.min(self.cursor));
         }
         self.send(c.op)
     }
@@ -793,6 +851,51 @@ pub(crate) mod tests {
         c.claude_ok = true;
         c.open("C:/r/other".into());
         assert!(!c.claude_ok);
+    }
+
+    #[test]
+    fn d_throws_away_a_file_or_the_picked_lines_after_a_yes() {
+        let mut c = opened();
+        // A file: asked first, always.
+        assert_eq!(c.discard(false), Ok(None));
+        let discard = |path: &str, untracked| Op::Discard { path: path.into(), untracked, patch: None, lines: 0 };
+        assert_eq!(c.confirm, Some(Confirm { op: discard("a.txt", false), claude: false, pushed: false }));
+        assert_eq!(c.yes(), Some(Wish::Do { wt: WT.into(), op: discard("a.txt", false) }));
+        assert_eq!(c.discard(false), Err("changes.busy"));
+        let w = c.take_done(Path::new(WT), false, true);
+        let mut l = lists(&["s.txt"], &["a.txt", "b.txt"]);
+        l.unstaged[1].status = Status::Untracked;
+        c.take_list(list_gen(&Vec::from_iter(w)), Ok(l));
+        // An untracked one is deleted.
+        c.move_by(1);
+        c.discard(false).unwrap();
+        assert_eq!(c.confirm.take().map(|c| c.op), Some(discard("b.txt", true)));
+        // Lines: the picked ones, by the patch that takes them out; a no
+        // keeps the range.
+        let w = c.move_by(-1);
+        c.take_file(file_gen(&Vec::from_iter(w)), Ok(Some(two_hunks("a.txt"))));
+        c.enter_lines().unwrap();
+        c.move_cursor(1);
+        c.toggle_range();
+        c.move_cursor(1);
+        assert_eq!(c.discard(true), Ok(None));
+        let Some(Confirm { op: Op::Discard { path, untracked: false, patch: Some(patch), lines: 2 }, claude: true, .. }) = &c.confirm
+        else {
+            panic!("{:?}", c.confirm)
+        };
+        assert_eq!(path, "a.txt");
+        let patch = String::from_utf8(patch.clone()).unwrap();
+        assert!(patch.contains("\n b\n+c\n") && patch.contains("\n-x\n y\n"), "{patch}");
+        c.confirm = None;
+        assert_eq!((c.cursor, c.anchor), (2, Some(1)));
+        c.discard(false).unwrap();
+        assert!(c.yes().is_some());
+        assert_eq!((c.cursor, c.anchor), (1, None));
+        // Staged files are not thrown away.
+        let w = c.take_done(Path::new(WT), false, true);
+        c.take_list(list_gen(&Vec::from_iter(w)), Ok(lists(&["s.txt"], &["a.txt"])));
+        c.select(0);
+        assert_eq!(c.discard(false), Err("changes.discard_staged"));
     }
 
     #[test]

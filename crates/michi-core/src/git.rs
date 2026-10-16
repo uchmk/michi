@@ -246,13 +246,28 @@ pub(crate) fn started(e: io::Error) -> Error {
     }
 }
 
-/// What git's standard error says, as an [`Error`].
+/// What git's standard error says, as an [`Error`]: its first line, and
+/// the files listed under it when it ends in a colon.
 pub(crate) fn refused(stderr: &str) -> Error {
     if stderr.contains("not a git repository") {
         return Error::NotRepo;
     }
-    let line = stderr.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("git failed");
-    Error::Git(line.strip_prefix("fatal: ").unwrap_or(line).to_owned())
+    let mut lines = stderr.lines().skip_while(|l| l.trim().is_empty());
+    let line = lines.next().map(str::trim).unwrap_or("git failed");
+    let mut line = line.strip_prefix("fatal: ").unwrap_or(line).to_owned();
+    if line.ends_with(':') {
+        // `error: Your local changes to the following files would be
+        // overwritten by merge:` and the files, each indented.
+        let files: Vec<&str> = lines.take_while(|l| l.starts_with([' ', '\t'])).map(str::trim).filter(|l| !l.is_empty()).collect();
+        for (n, f) in files.iter().enumerate().take(3) {
+            line.push_str(if n == 0 { " " } else { ", " });
+            line.push_str(f);
+        }
+        if files.len() > 3 {
+            line.push_str(&format!(" (+{})", files.len() - 3));
+        }
+    }
+    Error::Git(line)
 }
 
 /// [`refused`], keeping all git said when it said more than a line.
@@ -268,6 +283,20 @@ pub(crate) fn refused_all(stderr: &str) -> Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_refusal_names_the_files_listed_under_it() {
+        let said = "error: Your local changes to the following files would be overwritten by merge:\n\ta.txt\n\tb.txt\nPlease commit your changes or stash them before you merge.\nAborting\n";
+        let e = refused_all(said);
+        assert_eq!(e.to_string(), "error: Your local changes to the following files would be overwritten by merge: a.txt, b.txt");
+        let many =
+            "error: The following untracked working tree files would be overwritten by checkout:\n\t1\n\t2\n\t3\n\t4\n\t5\nAborting\n";
+        assert_eq!(
+            refused(many).to_string(),
+            "error: The following untracked working tree files would be overwritten by checkout: 1, 2, 3 (+2)"
+        );
+        assert_eq!(refused("\nfatal: bad revision 'x'\n").to_string(), "bad revision 'x'");
+    }
 
     #[test]
     fn versions_are_read_from_every_platform_s_wording() {

@@ -15,10 +15,10 @@ use michi_core::track::{Tree, Trees};
 use michi_core::unseen::Unseen;
 use michi_core::wip::Wip;
 
-use crate::changes::{Changes, Focus, Wish as StageWish};
+use crate::changes::{Changes, Did, Focus, Wish as StageWish};
 use crate::detail::Pane;
 use crate::graph::{Folded, Graph};
-use crate::picker::{Kind as PickKind, Picker};
+use crate::picker::{Item as PickItem, Kind as PickKind, Picker};
 use crate::prefs::Prefs;
 use crate::repo::{Answer, Ask, Reading};
 use crate::review::{Ends, Review, Wish};
@@ -90,6 +90,7 @@ impl View {
                 ("a", "key.stage_all"),
                 ("j k", "key.select"),
                 ("v", "key.range"),
+                ("d", "key.discard"),
                 ("A", "key.amend"),
                 ("[ ]", "key.worktree"),
                 ("Enter", "key.side"),
@@ -201,8 +202,11 @@ pub struct App {
     pub last_fetch: Option<SystemTime>,
     /// A job waiting for a yes, under the title bar.
     pub band: Option<Band>,
-    /// The branch or tag palette, over the graph.
+    /// The branch, tag or stash palette, over the graph.
     pub picker: Option<Picker>,
+    /// The stash clicked in the side column, and the commit the graph had
+    /// selected then: the detail shows the stash until that moves.
+    pub side_stash: Option<(Oid, Option<Oid>)>,
     pub quit: bool,
 }
 
@@ -237,6 +241,7 @@ impl App {
             last_fetch: None,
             band: None,
             picker: None,
+            side_stash: None,
             quit: false,
         };
         app.set_language();
@@ -280,12 +285,31 @@ impl App {
         self.changes_sync();
     }
 
-    /// Asks for the selected commit in full when the selection has changed,
-    /// and counts a trunk merge's commits; whether it had changed.
+    /// The stash the detail shows in place of the selected commit: the one
+    /// the stash palette has selected, else the one clicked in the side
+    /// column while the graph's selection stays where it was.
+    pub fn stash_shown(&self) -> Option<Oid> {
+        if let Some(PickItem::Stash { id, .. }) = self.picker.as_ref().and_then(|p| p.selected()) {
+            return Some(*id);
+        }
+        let (id, at) = self.side_stash?;
+        let there = self.graph.setup().refs.stashes.iter().any(|s| s.id == id);
+        (there && at == self.graph.selected()).then_some(id)
+    }
+
+    /// A stash in the side column is clicked: the detail shows it.
+    pub fn show_stash(&mut self, id: Oid) {
+        self.side_stash = Some((id, self.graph.selected()));
+    }
+
+    /// Asks for the selected commit (or the stash shown) in full when the
+    /// selection has changed, and counts a trunk merge's commits; whether
+    /// it had changed.
     pub fn sync_detail(&mut self) -> bool {
-        let id = self.graph.selected();
+        let stash = self.stash_shown();
+        let id = stash.or(self.graph.selected());
         // The same worktree's change read anew: the detail keeps its place.
-        let wip = self.graph.selected_wip().map(|w| w.path.clone());
+        let wip = self.graph.selected_wip().filter(|_| stash.is_none()).map(|w| w.path.clone());
         let changed = if wip.is_some() && wip == self.detail_wip { self.detail.refresh(id) } else { self.detail.select(id) };
         self.detail_wip = wip;
         // A commit picked by a key or the mouse is seen now.
@@ -298,12 +322,16 @@ impl App {
         }
         if changed {
             if let (Some(id), Some(r)) = (id, &self.reading) {
-                // A merge's diff (the whole branch's) comes in stage 2.
-                let patch = self.graph.find_commit(&id).is_none_or(|c| c.parents.len() < 2);
-                r.detail(id, patch);
+                if stash.is_some() {
+                    r.stash(id);
+                } else {
+                    // A merge's diff (the whole branch's) comes in stage 2.
+                    let patch = self.graph.find_commit(&id).is_none_or(|c| c.parents.len() < 2);
+                    r.detail(id, patch);
+                }
             }
         }
-        if let Some(id) = id {
+        if let Some(id) = id.filter(|_| stash.is_none()) {
             let read = self.graph.read();
             if self.detail.merged(id, read).is_none() {
                 let commits = self.graph.merged_by(&id);
@@ -416,11 +444,20 @@ impl App {
             Answer::ChangesLast { gen, result } => self.changes.take_last(gen, result),
             Answer::ChangesDone { wt, commit, result } => {
                 match &result {
-                    Ok(Some(id)) => {
+                    Ok(Did::Committed(id)) => {
                         let text = self.tr("changes.committed").replace("{}", &id.short());
                         self.say(text);
                     }
-                    Ok(None) => {}
+                    Ok(Did::Discarded { path, untracked, lines, saved }) => {
+                        let key = match (untracked, lines) {
+                            (true, _) => "changes.deleted",
+                            (false, 0) => "changes.discarded",
+                            _ => "changes.discarded_lines",
+                        };
+                        let text = self.tr(key).replace("{file}", path).replace("{n}", &lines.to_string());
+                        self.say_for(text.replace("{saved}", michi_core::backup::short(saved)), 10);
+                    }
+                    Ok(Did::Staged) => {}
                     Err(e) => {
                         let text = self.tr("changes.failed").replace("{}", &e.to_string());
                         self.say_for(text, 8);
@@ -604,6 +641,7 @@ impl App {
                 none()
             }
             'A' => Ok(ch.toggle_amend()),
+            'd' => ch.discard(claude),
             '[' | ']' => {
                 self.changes_step(if c == ']' { 1 } else { -1 });
                 return true;
@@ -891,6 +929,7 @@ impl App {
         match c {
             'b' => self.open_picker(PickKind::Branch),
             'T' => self.open_picker(PickKind::Tag),
+            's' => self.open_picker(PickKind::Stash),
             't' => self.ask_revert(),
             'j' => g.move_by(1),
             'k' => g.move_by(-1),
@@ -995,7 +1034,8 @@ impl App {
     }
 
     /// Escape: close the help or the settings, else the branch palette,
-    /// else drop the job waiting for a yes, else bring the graph back from beside a wide diff, else
+    /// else drop the job waiting for a yes, else the stash the side column
+    /// shows, else bring the graph back from beside a wide diff, else
     /// clear the graph's filter; over the worktree table, bring the review's
     /// diff back to one column, else close the review. With nothing else to
     /// close, stop the fetch, pull or push that runs.
@@ -1008,6 +1048,10 @@ impl App {
             return true;
         }
         if self.band.take().is_some() {
+            return true;
+        }
+        if self.view == View::Graph && self.picker.is_none() && self.stash_shown().is_some() {
+            self.side_stash = None;
             return true;
         }
         if self.view == View::Graph && self.detail.wide {
@@ -1223,7 +1267,7 @@ pub(crate) mod tests {
         assert!(a.feed('f'), "fetch works now");
         assert!(a.toast.is_none() && a.net.is_none(), "no reading thread here: nothing runs");
         assert!(a.feed('s'), "the graph's own key");
-        assert!(toast(&a).starts_with("Stash"));
+        assert_eq!(toast(&a), "No worktree to work in", "the stashes, with nothing read");
         assert!(a.named("Enter"), "the diff side by side, no longer a later stage");
         assert!(a.detail.wide);
         a.feed('2');

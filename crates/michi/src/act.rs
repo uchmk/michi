@@ -1,6 +1,6 @@
-//! Branches, tags and reverts: what the window sends the act thread, and
-//! what it says when one ends. They run one after another, each quick; a
-//! tag to push goes on to the net thread when it is made.
+//! Branches, tags, reverts and stashes: what the window sends the act
+//! thread, and what it says when one ends. They run one after another, each
+//! quick; a tag to push goes on to the net thread when it is made.
 
 use std::path::{Path, PathBuf};
 
@@ -8,6 +8,7 @@ use michi_core::backup;
 use michi_core::git;
 use michi_core::oid::Oid;
 use michi_core::revert::{self, Reverted};
+use michi_core::stash::{self, Applied, Saved};
 use michi_core::{branch, tag};
 
 use crate::app::App;
@@ -34,6 +35,14 @@ pub enum Task {
     /// Reverts `id` on the branch of the worktree at `wt`; a merge with
     /// the parent (from 1) whose side stays.
     Revert { wt: PathBuf, id: Oid, mainline: Option<u32> },
+    /// Puts the changes of the worktree at `wt` away, with `message`
+    /// (git's own when empty).
+    Stash { wt: PathBuf, message: String },
+    /// Puts the stash `id` back on the worktree at `wt`; drops it then,
+    /// with `pop`.
+    Unstash { wt: PathBuf, id: Oid, pop: bool },
+    /// Drops the stash `id`.
+    DropStash { id: Oid },
 }
 
 impl Task {
@@ -46,6 +55,10 @@ impl Task {
             Task::Tag { .. } => "tag",
             Task::Untag { .. } => "tag -d",
             Task::Revert { .. } => "revert",
+            Task::Stash { .. } => "stash",
+            Task::Unstash { pop: false, .. } => "stash apply",
+            Task::Unstash { pop: true, .. } => "stash pop",
+            Task::DropStash { .. } => "stash drop",
         }
     }
 }
@@ -58,6 +71,8 @@ pub enum Acted {
     /// have it).
     Kept(Option<String>),
     Reverted(Reverted),
+    Stashed(Saved),
+    Unstashed(Applied),
 }
 
 /// Does `task` in the repository `dir` is in.
@@ -70,6 +85,9 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Tag { name, at, message, .. } => tag::create(dir, name, at, message).map(|()| Acted::Done),
         Task::Untag { name } => tag::delete(dir, name).map(|saved| Acted::Kept(Some(saved))),
         Task::Revert { wt, id, mainline } => revert::revert(wt, id, *mainline).map(Acted::Reverted),
+        Task::Stash { wt, message } => stash::save(wt, message).map(Acted::Stashed),
+        Task::Unstash { wt, id, pop } => stash::apply(wt, id, *pop).map(Acted::Unstashed),
+        Task::DropStash { id } => stash::drop(dir, id).map(|saved| Acted::Kept(Some(saved))),
     }
 }
 
@@ -129,17 +147,37 @@ impl App {
                 ),
                 Reverted::Empty => (self.tr("act.revert_empty").replace("{}", &id.short()), 6),
                 Reverted::Conflict(files) => {
-                    let mut list = files.iter().take(3).map(String::as_str).collect::<Vec<_>>().join(", ");
-                    if files.len() > 3 {
-                        list.push_str(&self.tr("act.more").replace("{}", &(files.len() - 3).to_string()));
-                    }
-                    (self.tr("act.revert_clash").replace("{id}", &id.short()).replace("{files}", &list), 14)
+                    (self.tr("act.revert_clash").replace("{id}", &id.short()).replace("{files}", &self.few(&files)), 14)
                 }
             },
+            (Task::Stash { wt, .. }, Ok(Acted::Stashed(Saved::Made(id)))) => {
+                (self.tr("act.stashed").replace("{wt}", &self::name(wt)).replace("{id}", &id.short()), 4)
+            }
+            (Task::Stash { wt, .. }, Ok(_)) => (self.tr("act.stash_nothing").replace("{}", &self::name(wt)), 4),
+            (Task::Unstash { wt, pop, .. }, Ok(Acted::Unstashed(Applied::Done))) => {
+                let key = if *pop { "act.popped" } else { "act.applied" };
+                (self.tr(key).replace("{}", &self::name(wt)), 4)
+            }
+            (Task::Unstash { wt, .. }, Ok(Acted::Unstashed(Applied::Conflict(files)))) => {
+                (self.tr("act.unstash_clash").replace("{wt}", &self::name(wt)).replace("{files}", &self.few(&files)), 14)
+            }
+            (Task::DropStash { id }, Ok(Acted::Kept(saved))) => {
+                let saved = saved.as_deref().map_or("", backup::short);
+                (self.tr("act.dropped").replace("{id}", &id.short()).replace("{saved}", saved), 10)
+            }
             // Each task ends one way when it goes.
             (_, Ok(_)) => return,
         };
         self.say_for(text, secs);
+    }
+
+    /// Up to three files, then how many more.
+    fn few(&self, files: &[String]) -> String {
+        let mut list = files.iter().take(3).map(String::as_str).collect::<Vec<_>>().join(", ");
+        if files.len() > 3 {
+            list.push_str(&self.tr("act.more").replace("{}", &(files.len() - 3).to_string()));
+        }
+        list
     }
 }
 
@@ -192,6 +230,30 @@ mod tests {
             said(revert.clone(), Ok(Acted::Reverted(Reverted::Conflict(files)))),
             "Reverting ccccccc clashed in a, b, c and 2 more, so it was called off: \
              git revert ccccccc in a terminal lets you resolve it"
+        );
+        assert_eq!(
+            said(Task::Stash { wt: wt.clone(), message: String::new() }, Ok(Acted::Stashed(Saved::Made(oid('e'))))),
+            "Put the changes of feat away: eeeeeee"
+        );
+        assert_eq!(
+            said(Task::Stash { wt: wt.clone(), message: String::new() }, Ok(Acted::Stashed(Saved::Nothing))),
+            "feat has no changes to put away"
+        );
+        assert_eq!(
+            said(Task::Unstash { wt: wt.clone(), id: oid('e'), pop: false }, Ok(Acted::Unstashed(Applied::Done))),
+            "Put the stash back on feat; it stays in the list"
+        );
+        assert_eq!(
+            said(Task::Unstash { wt: wt.clone(), id: oid('e'), pop: true }, Ok(Acted::Unstashed(Applied::Done))),
+            "Put the stash back on feat and dropped it"
+        );
+        assert_eq!(
+            said(Task::Unstash { wt: wt.clone(), id: oid('e'), pop: true }, Ok(Acted::Unstashed(Applied::Conflict(vec!["a".into()])))),
+            "The stash clashed on feat in a: resolve the marks there and git add them; the stash is kept"
+        );
+        assert_eq!(
+            said(Task::DropStash { id: oid('e') }, Ok(Acted::Kept(Some("refs/michi/backup/20261016-120000".into())))),
+            "Dropped stash eeeeeee; kept in michi/backup/20261016-120000"
         );
         assert_eq!(
             said(Task::Switch { wt, name: "main".into() }, Err(git::Error::Git("your local changes would be overwritten".into()))),

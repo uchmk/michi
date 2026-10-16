@@ -1,8 +1,9 @@
-//! The branch and tag palette over the graph. `b` lists the branches to
-//! switch a worktree to, and makes a new one from what is typed; `T` lists
-//! the tags to show, push or delete, and makes one on the selected commit.
-//! What is typed is matched the way the other palettes match (ito-match).
-//! And `t`, which asks before it reverts the selected commit.
+//! The branch, tag and stash palette over the graph. `b` lists the branches
+//! to switch a worktree to, and makes a new one from what is typed; `T`
+//! lists the tags to show, push or delete, and makes one on the selected
+//! commit; `s` puts a worktree's changes away, or a stash back. What is
+//! typed is matched the way the other palettes match (ito-match). And `t`,
+//! which asks before it reverts the selected commit.
 
 use std::path::{Path, PathBuf};
 
@@ -22,6 +23,7 @@ use crate::work::{Band, Job, Then};
 pub enum Kind {
     Branch,
     Tag,
+    Stash,
 }
 
 /// A row of the palette.
@@ -49,6 +51,15 @@ pub enum Item {
     Create {
         name: String,
     },
+    /// The worktree's changes, to put away as a new stash (what is typed is
+    /// its message).
+    Save,
+    /// A stash, `stash@{place}`.
+    Stash {
+        id: Oid,
+        subject: String,
+        place: usize,
+    },
 }
 
 impl Item {
@@ -58,6 +69,8 @@ impl Item {
         match self {
             Item::Local { name, .. } | Item::Tag { name, .. } | Item::Create { name } => name.clone(),
             Item::Remote { remote, name, .. } => format!("{remote}/{name}"),
+            Item::Stash { subject, .. } => subject.clone(),
+            Item::Save => String::new(),
         }
     }
 }
@@ -72,12 +85,13 @@ pub struct Row {
 
 pub struct Picker {
     pub kind: Kind,
-    /// What is typed: a branch's name; a tag's name, then its message.
+    /// What is typed: a branch's name; a tag's name, then its message; a
+    /// new stash's message, which narrows the stashes too.
     pub query: String,
     /// The query the rows are for.
     matched: Option<String>,
     pub sel: usize,
-    /// The worktree a branch switches.
+    /// The worktree a branch switches, a stash is made of or put back on.
     pub wt: PathBuf,
     /// Where a new branch or tag goes.
     pub at: Oid,
@@ -88,8 +102,8 @@ pub struct Picker {
 }
 
 impl Picker {
-    /// The branches (or the tags) of `setup`, with `worktrees` to tell where
-    /// each branch is checked out.
+    /// The branches (or the tags, or the stashes) of `setup`, with
+    /// `worktrees` to tell where each branch is checked out.
     pub fn new(kind: Kind, setup: &Setup, worktrees: &[Worktree], wt: PathBuf, at: Oid) -> Picker {
         let refs = &setup.refs;
         let items = match kind {
@@ -109,22 +123,30 @@ impl Picker {
                 locals.chain(remotes).collect()
             }
             Kind::Tag => refs.tags.iter().map(|r| Item::Tag { name: r.name.clone(), id: r.id }).collect(),
+            Kind::Stash => {
+                refs.stashes.iter().enumerate().map(|(place, s)| Item::Stash { id: s.id, subject: s.subject.clone(), place }).collect()
+            }
         };
         let mut p = Picker { kind, query: String::new(), matched: None, sel: 0, wt, at, items, rows: Vec::new(), opening: true };
         p.sync();
         p
     }
 
-    /// The name typed: all of it for a branch, the first word for a tag.
+    /// The name typed: all of it for a branch (and what narrows the
+    /// stashes), the first word for a tag.
     pub fn name(&self) -> &str {
         match self.kind {
-            Kind::Branch => self.query.trim(),
+            Kind::Branch | Kind::Stash => self.query.trim(),
             Kind::Tag => self.query.split_whitespace().next().unwrap_or(""),
         }
     }
 
-    /// A new tag's message: what is typed after its name.
+    /// A new tag's message: what is typed after its name; a new stash's:
+    /// all of it.
     pub fn message(&self) -> &str {
+        if self.kind == Kind::Stash {
+            return self.query.trim();
+        }
         let q = self.query.trim_start();
         q.find(char::is_whitespace).map_or("", |k| q[k..].trim())
     }
@@ -132,6 +154,7 @@ impl Picker {
     /// Matches the rows again when the query has changed: the best first,
     /// in the list's order when as good; what is typed as a new one last,
     /// unless a branch has that name (a remote one is followed instead).
+    /// The stashes have the row that makes one first, and selected.
     pub fn sync(&mut self) {
         if self.matched.as_deref() == Some(self.query.as_str()) {
             return;
@@ -151,7 +174,9 @@ impl Picker {
         hits.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
         self.rows = hits.into_iter().map(|(_, _, r)| r).collect();
         let taken = |i: &Item| i.title() == name || matches!(i, Item::Remote { name: n, .. } if *n == name);
-        if !name.is_empty() && !self.items.iter().any(taken) {
+        if self.kind == Kind::Stash {
+            self.rows.insert(0, Row { item: Item::Save, hits: Vec::new() });
+        } else if !name.is_empty() && !self.items.iter().any(taken) {
             self.rows.push(Row { item: Item::Create { name }, hits: Vec::new() });
         }
         self.sel = 0;
@@ -169,8 +194,8 @@ impl Picker {
 }
 
 impl App {
-    /// `b` or `T`: the palette, for the worktree whose uncommitted change
-    /// the graph has selected, else for the window's own.
+    /// `b`, `T` or `s`: the palette, for the worktree whose uncommitted
+    /// change the graph has selected, else for the window's own.
     pub(crate) fn open_picker(&mut self, kind: Kind) {
         let Repo::Ready(s) = &self.repo else {
             self.say(self.tr("act.no_tree"));
@@ -181,7 +206,9 @@ impl App {
             Some(w) => (w.path.clone(), Some(w.head)),
             None => {
                 let head = worktrees.iter().find(|w| same(&w.path, &s.top)).and_then(|w| Oid::parse(&w.head));
-                (s.top.clone(), self.graph.selected().or(head))
+                // A stash is made of the worktree's head, not the selection.
+                let at = if kind == Kind::Stash { head.or(self.graph.selected()) } else { self.graph.selected().or(head) };
+                (s.top.clone(), at)
             }
         };
         let Some(at) = at else {
@@ -248,6 +275,10 @@ impl App {
                 self.picker = None;
                 self.go_to(id);
             }
+            (Kind::Stash, Item::Save) => self.guarded(Task::Stash { wt: wt.clone(), message }, &wt, "act.stash_doing", "act.claude_stash"),
+            (Kind::Stash, Item::Stash { id, .. }) => {
+                self.guarded(Task::Unstash { wt: wt.clone(), id, pop: shift }, &wt, "act.stash_doing", "act.claude_unstash");
+            }
             _ => {}
         }
     }
@@ -255,8 +286,15 @@ impl App {
     /// Switches the worktree at `wt` (`task`): not in the middle of a merge
     /// or a rebase; where a Claude is working, after a yes.
     fn switch_to(&mut self, task: Task, wt: &Path) {
+        self.guarded(task, wt, "act.doing", "act.claude_switch");
+    }
+
+    /// Runs `task`, which moves the index of the worktree at `wt`: not in
+    /// the middle of a merge or a rebase (`doing` says so); where a Claude
+    /// is working, after a yes (`claude` asks).
+    fn guarded(&mut self, task: Task, wt: &Path, doing: &'static str, claude: &'static str) {
         if let Some(d) = self.doing_in(wt) {
-            let text = self.tr("act.doing").replace("{wt}", &act::name(wt)).replace("{doing}", d.word());
+            let text = self.tr(doing).replace("{wt}", &act::name(wt)).replace("{doing}", d.word());
             self.say_for(text, 8);
             return;
         }
@@ -266,15 +304,15 @@ impl App {
                 Task::Switch { name, .. } | Task::Track { name, .. } | Task::Create { name, .. } => name.as_str(),
                 _ => "",
             };
-            let text = self.tr("act.claude_switch").replace("{wt}", &act::name(wt)).replace("{name}", name);
+            let text = self.tr(claude).replace("{wt}", &act::name(wt)).replace("{name}", name);
             self.band = Some(Band::new(text, Then::Act(task)));
         } else {
             self.act(task);
         }
     }
 
-    /// Delete on the palette's row: a branch or a tag, after a yes. A
-    /// branch checked out somewhere, or a remote one, is not.
+    /// Delete on the palette's row: a branch, a tag or a stash, after a
+    /// yes. A branch checked out somewhere, or a remote one, is not.
     pub(crate) fn picker_delete(&mut self) {
         let Some(item) = self.picker.as_ref().and_then(|p| p.selected().cloned()) else { return };
         match item {
@@ -296,7 +334,12 @@ impl App {
                 let text = self.tr("act.untag").replace("{}", &name);
                 self.band = Some(Band::new(text, Then::Act(Task::Untag { name })));
             }
-            Item::Create { .. } => {}
+            Item::Stash { id, subject, .. } => {
+                self.picker = None;
+                let text = self.tr("act.drop_stash").replace("{id}", &id.short()).replace("{subject}", &subject);
+                self.band = Some(Band::new(text, Then::Act(Task::DropStash { id })));
+            }
+            Item::Create { .. } | Item::Save => {}
         }
     }
 
@@ -532,6 +575,130 @@ mod tests {
         assert!(a.feed('t'));
         assert_eq!(toast(&a), "repo is in the middle of a revert: finish it first");
         assert!(a.band.is_none());
+    }
+
+    /// The app, read, with two stashes (the newer first) and the selection
+    /// on a commit.
+    fn stashed() -> App {
+        use michi_core::refs::Stash;
+        use michi_core::summary::{Head, Summary};
+        let mut a = app();
+        let mut s = fixture::setup();
+        s.refs.stashes = vec![
+            Stash { id: id(13), subject: "On main: half done".into() },
+            Stash { id: id(14), subject: "WIP on wip: 7777777 w1".into() },
+        ];
+        a.take(crate::repo::Answer::Setup { gen: 1, setup: Box::new(s) });
+        a.take(crate::repo::Answer::Commits { gen: 1, batch: fixture::history(), done: true });
+        let top = PathBuf::from("C:/r/repo");
+        a.repo = Repo::Ready(Summary { name: "repo".into(), head: Head::Branch("main".into()), worktrees: 3, top });
+        a.take(crate::repo::Answer::Trees(fixture::trees()));
+        assert!(a.graph.select_id(&id(6)));
+        a
+    }
+
+    #[test]
+    fn s_lists_the_stashes_after_a_row_that_puts_the_changes_away() {
+        let mut a = stashed();
+        assert!(a.feed('s'));
+        let p = a.picker.as_ref().unwrap();
+        assert_eq!((p.kind, p.wt.as_path()), (Kind::Stash, Path::new("C:/r/repo")));
+        assert_eq!(p.rows[0].item, Item::Save);
+        assert_eq!(titles(p), ["", "On main: half done", "WIP on wip: 7777777 w1"]);
+        assert_eq!(p.sel, 0);
+        assert_eq!(a.stash_shown(), None, "the row that makes one");
+        a.picker.as_mut().unwrap().move_by(1);
+        assert_eq!(a.stash_shown(), Some(id(13)), "the detail shows the one selected");
+        // What is typed narrows them, and is the new one's message.
+        typed(&mut a, "half ");
+        let p = a.picker.as_ref().unwrap();
+        assert_eq!((titles(p), p.sel, p.message()), (vec![String::new(), "On main: half done".into()], 0, "half"));
+        a.picker_enter(false);
+        assert!(a.picker.is_none(), "no reading thread here: it closes all the same");
+        assert!(a.band.is_none());
+    }
+
+    #[test]
+    fn a_stash_goes_back_and_shift_pops_it_where_a_claude_works_after_a_yes() {
+        use michi_core::claude::{Session, State};
+        let mut a = stashed();
+        let wt = PathBuf::from("C:/r/repo");
+        let s = Session {
+            id: 1,
+            state: State::Running,
+            command: "claude".into(),
+            agent: "claude".into(),
+            cwd: "C:/r/repo".into(),
+            branch: String::new(),
+            title: String::new(),
+            note: String::new(),
+            since_ms: 0,
+            read_only: false,
+        };
+        a.claude = Some(vec![(wt.clone(), vec![s])]);
+        assert!(a.feed('s'));
+        a.picker.as_mut().unwrap().move_by(2);
+        a.picker_enter(true);
+        assert!(a.picker.is_none());
+        let band = a.band.as_ref().unwrap();
+        assert_eq!(band.then, Then::Act(Task::Unstash { wt: wt.clone(), id: id(14), pop: true }));
+        assert_eq!(band.text, "A Claude is working in repo. Put the stash back there anyway?");
+        assert!(a.escape());
+        assert!(a.feed('s'));
+        a.picker.as_mut().unwrap().move_by(1);
+        a.picker_enter(false);
+        assert_eq!(a.band.as_ref().unwrap().then, Then::Act(Task::Unstash { wt: wt.clone(), id: id(13), pop: false }));
+        assert!(a.escape());
+        assert!(a.feed('s'));
+        typed(&mut a, "later");
+        a.picker_enter(false);
+        let band = a.band.as_ref().unwrap();
+        assert_eq!(band.then, Then::Act(Task::Stash { wt, message: "later".into() }));
+        assert_eq!(band.text, "A Claude is working in repo. Put its changes away anyway?");
+    }
+
+    #[test]
+    fn a_worktree_in_a_merge_keeps_its_stashes() {
+        let mut a = stashed();
+        let mut trees = fixture::trees();
+        trees.trees[0].doing = Some(Doing::Merge);
+        a.take(crate::repo::Answer::Trees(trees));
+        assert!(a.feed('s'));
+        a.picker_enter(false);
+        assert_eq!(toast(&a), "Stashes are stopped in repo: it is in the middle of a merge.");
+        a.picker.as_mut().unwrap().move_by(1);
+        a.picker_enter(false);
+        assert!(a.picker.is_some() && a.band.is_none(), "the palette stays");
+    }
+
+    #[test]
+    fn dropping_a_stash_waits_for_a_yes() {
+        let mut a = stashed();
+        assert!(a.feed('s'));
+        a.picker_delete();
+        assert!(a.picker.is_some() && a.band.is_none(), "the row that makes one: nothing");
+        a.picker.as_mut().unwrap().move_by(2);
+        a.picker_delete();
+        assert!(a.picker.is_none());
+        let band = a.band.as_ref().unwrap();
+        assert_eq!(band.then, Then::Act(Task::DropStash { id: id(14) }));
+        let text = format!("Drop stash {} “WIP on wip: 7777777 w1”? It is kept under refs/michi/backup/ first.", id(14).short());
+        assert_eq!(band.text, text);
+    }
+
+    #[test]
+    fn a_stash_clicked_aside_shows_until_the_selection_moves_or_escape() {
+        let mut a = stashed();
+        a.show_stash(id(13));
+        assert_eq!(a.stash_shown(), Some(id(13)));
+        assert!(a.escape());
+        assert_eq!(a.stash_shown(), None);
+        a.show_stash(id(14));
+        assert_eq!(a.stash_shown(), Some(id(14)));
+        assert!(a.graph.select_id(&id(4)));
+        assert_eq!(a.stash_shown(), None, "the graph's selection moved");
+        a.show_stash(id(1));
+        assert_eq!(a.stash_shown(), None, "no such stash");
     }
 
     #[test]

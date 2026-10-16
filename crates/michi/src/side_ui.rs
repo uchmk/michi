@@ -1,6 +1,6 @@
 //! The side column: the worktrees, the branches, the remote branches,
 //! the tags and the stashes, each a click away from its commit in the graph
-//! (a stash not yet). It scrolls by the wheel, with no scrollbar
+//! (a stash's is not in it: the detail shows it). It scrolls by the wheel, with no scrollbar
 //! (docs/design.md: the graph's is the one).
 
 use egui::{pos2, vec2, Align2, CornerRadius, CursorIcon, FontId, Id, Rect, Sense, Shape, Stroke, StrokeKind, Ui};
@@ -172,14 +172,14 @@ pub fn rows(app: &App) -> Vec<Row> {
         }
     }
 
-    // The stashes. Their commits are not in the graph, so a click does
-    // nothing yet.
+    // The stashes. Their commits are not in the graph: a click shows one
+    // in the detail.
     let stashes = &setup.refs.stashes;
     if !stashes.is_empty() {
         out.push(heading("side.stash", stashes.len()));
         for s in stashes {
             let tip = format!("{} {}", s.id.short(), s.subject);
-            out.push(item(Kind::Stash, s.subject.clone(), false, None, Some(tip)));
+            out.push(item(Kind::Stash, s.subject.clone(), false, Some(s.id), Some(tip)));
         }
     }
     out
@@ -188,6 +188,7 @@ pub fn rows(app: &App) -> Vec<Row> {
 /// What a click on a row does, once they are drawn.
 enum Act {
     Go(Oid),
+    Stash(Oid),
     Toggle(String),
 }
 
@@ -209,6 +210,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let p = ui.painter_at(r);
     let pointer = if live { ui.input(|i| i.pointer.hover_pos()).filter(|p| r.contains(*p)) } else { None };
     let mut act = None;
+    let shown = app.stash_shown();
     let mut y = r.top() + TOP_PAD - scroll;
     for (k, row) in rows.iter().enumerate() {
         let h = row.height();
@@ -239,6 +241,8 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         let hot = live && pointer.is_some_and(|p| rr.contains(p));
         if let Kind::Worktree { cur: true, .. } = row.kind {
             p.rect_filled(rr, 0.0, c.run.gamma_multiply(0.12));
+        } else if row.kind == Kind::Stash && shown.is_some() && row.id == shown {
+            p.rect_filled(rr, 0.0, c.blue.gamma_multiply(0.22));
         } else if hot {
             p.rect_filled(rr, 0.0, c.panel);
         }
@@ -291,7 +295,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             ctx.set_cursor_icon(CursorIcon::PointingHand);
         }
         if let (true, Some(id)) = (live && resp.clicked(), row.id) {
-            act = Some(Act::Go(id));
+            act = Some(if row.kind == Kind::Stash { Act::Stash(id) } else { Act::Go(id) });
         }
         if let Some(tip) = &row.tip {
             resp.on_hover_text(tip);
@@ -299,6 +303,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     }
     match act {
         Some(Act::Go(id)) => app.go_to(id),
+        Some(Act::Stash(id)) => app.show_stash(id),
         Some(Act::Toggle(key)) => {
             if !app.side_open.remove(&key) {
                 app.side_open.insert(key);
@@ -360,7 +365,7 @@ mod tests {
         let notes: Vec<_> = rows.iter().map(|r| (r.text.as_str(), r.note.as_str())).filter(|(_, n)| !n.is_empty()).collect();
         assert_eq!(notes, [("main", "↓3"), ("wip", "↑2 ↓1"), ("main", "↓3"), ("wip", "↑2 ↓1")]);
         assert_eq!(texts(&rows)[rows.len() - 2..], ["Stash", "On wip: half done"]);
-        assert_eq!(rows.last().unwrap().id, None);
+        assert_eq!(rows.last().unwrap().id, Some(id(5)), "a click shows it in the detail");
     }
 
     #[test]

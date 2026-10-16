@@ -314,7 +314,7 @@ struct Run {
 /// parents; the names on the commit; the message's body; the hint. Its
 /// height. Drawn at `top` with the painter, measured without.
 fn header(ui: &Ui, app: &App, d: &Detail, at: Pos2, width: f32, paint: Option<(&Painter, bool)>, act: &mut Option<Act>) -> f32 {
-    if let Some(w) = app.graph.selected_wip() {
+    if let Some(w) = app.graph.selected_wip().filter(|_| app.stash_shown().is_none()) {
         return wip_header(ui, app, w, at, width, paint.map(|(p, _)| p));
     }
     let c = ito_theme::colors();
