@@ -185,6 +185,11 @@ pub enum Task {
         conflict: Box<Conflict>,
         session: Option<u64>,
     },
+    /// Opens the pull request page of `branch` on GitHub in the browser.
+    OpenPr {
+        wt: PathBuf,
+        branch: String,
+    },
     /// Brings the tsumugi session `session` to the front (`tsumugi focus`).
     Focus {
         session: u64,
@@ -240,6 +245,7 @@ impl Task {
             Task::Abort { doing: Doing::Revert, .. } => "revert --abort",
             Task::Abort { doing: Doing::Bisect, .. } => "bisect reset",
             Task::Handoff { .. } | Task::Focus { .. } | Task::NewWork { .. } => "tsumugi",
+            Task::OpenPr { .. } => "remote",
             Task::External { .. } => "mergetool",
             Task::AskRerere { .. } => "config --get",
             Task::Rerere { .. } => "config",
@@ -321,6 +327,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Abort { wt, .. } => conflict::abort(wt).map(Acted::Kept),
         Task::External { wt, path } => external::open(wt, path).map(Acted::Opened),
         Task::NewWork { repo, plans } => plans.iter().try_for_each(|p| handoff::new_work(repo, p)).map(|()| Acted::Done),
+        Task::OpenPr { wt, branch } => michi_core::pr::open(wt, branch).map(|_| Acted::Done),
         Task::Focus { session } => handoff::focus(*session).map(|()| Acted::Done),
         Task::Handoff { conflict, session } => hand_off(conflict, *session).map(|()| Acted::Done),
         Task::AskRerere { wt } => rerere::enabled(wt).map(Acted::Rerere),
@@ -393,6 +400,7 @@ impl App {
                 let key = if how == Opened::Tool { "act.external_tool" } else { "act.external_file" };
                 (self.tr(key).replace("{path}", path), 6)
             }
+            (Task::OpenPr { branch, .. }, Ok(_)) => (self.tr("act.pr_opened").replace("{b}", branch), 4),
             (Task::Focus { session }, Ok(_)) => (self.tr("act.focused").replace("{n}", &session.to_string()), 3),
             (Task::Handoff { conflict, session }, Ok(_)) => {
                 let key = if session.is_some() { "act.handed" } else { "act.handed_new" };

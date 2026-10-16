@@ -19,6 +19,7 @@ pub mod net;
 pub mod newwork;
 pub mod oid;
 pub mod paths;
+pub mod pr;
 pub mod predict;
 pub mod refs;
 pub mod rerere;

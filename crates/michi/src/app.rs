@@ -108,6 +108,7 @@ impl View {
             View::Worktree => &[
                 ("j k", "key.select"),
                 ("o", "key.tab"),
+                ("p", "key.pr"),
                 ("Enter", "key.in_graph"),
                 ("m", "key.take_main"),
                 ("x", "key.remove"),
@@ -1099,6 +1100,7 @@ impl App {
             'c' => self.open_tidy(),
             'm' => self.ask_merge(),
             'x' => self.ask_remove(),
+            'p' => self.open_pr(),
             'N' => self.open_new_work(),
             _ => return false,
         }
@@ -1120,6 +1122,17 @@ impl App {
                 let text = self.tr("act.no_claude").replace("{wt}", &crate::act::name(&wt));
                 self.say_for(text, 5);
             }
+        }
+    }
+
+    /// `p`: the pull request page of the selected worktree's branch, in the
+    /// browser (michi does not write the pull request itself).
+    pub(crate) fn open_pr(&mut self) {
+        let Some(t) = self.wt_selected() else { return self.say(self.tr("act.no_tree")) };
+        let (wt, branch) = (t.wt.path.clone(), t.wt.branch.clone());
+        match branch {
+            Some(branch) => self.act(crate::act::Task::OpenPr { wt, branch }),
+            None => self.say(self.tr("act.no_branch")),
         }
     }
 

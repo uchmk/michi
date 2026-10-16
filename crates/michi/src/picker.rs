@@ -926,6 +926,14 @@ mod tests {
     }
 
     #[test]
+    fn p_in_the_worktree_table_is_a_key_of_the_table() {
+        let mut a = on("m1");
+        assert!(a.feed('3'));
+        assert!(a.keys().iter().any(|(k, _)| *k == "p"));
+        assert!(a.feed('p'), "no reading thread here: nothing runs, nothing is said");
+    }
+
+    #[test]
     fn m_in_the_graph_asks_before_it_merges_the_selected_commit() {
         let mut a = on("m1");
         let id = a.graph.selected().unwrap();

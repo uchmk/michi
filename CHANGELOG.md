@@ -2,6 +2,14 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.32.0] - 2026-10-16
+
+### 追加
+
+- worktree の表で `p`: 選んだ worktree のブランチの PR のページをブラウザで開く（GitHub の `pull/new/<ブランチ>`。すでに PR があればそのページへ案内される）。
+  push 先は `branch.<名>.pushRemote`・`remote.pushDefault`・追跡しているリモート・`origin` の順。GitHub 以外のリモートとブランチにいない worktree は、そう知らせる。
+  michi は PR を作らない（v1-scope どおり）。作るのはブラウザ。
+
 ## [0.31.0] - 2026-10-16
 
 ### 追加
