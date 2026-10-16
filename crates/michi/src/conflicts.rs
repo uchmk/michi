@@ -8,6 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use michi_core::branch::Doing;
+use michi_core::claude::State;
 use michi_core::conflict::{Body, Conflict, Intent, Pick};
 use michi_core::paths;
 
@@ -380,6 +381,7 @@ impl App {
             'B' => self.conflict_pick(Pick::BothTheirsFirst),
             'x' => self.conflict_forget(),
             'e' => self.conflict_edit(),
+            'g' => self.conflict_handoff(),
             _ => return false,
         }
         true
@@ -588,6 +590,22 @@ impl App {
         self.act(Task::Forget { wt, path });
     }
 
+    /// Hands the places still open to a Claude: the one working in this
+    /// worktree (one waiting for a person first), or a new tab.
+    pub(crate) fn conflict_handoff(&mut self) {
+        let Some(c) = self.conflicts.shown() else { return };
+        if c.left() == 0 {
+            self.say(self.tr("cf.hand_none"));
+            return;
+        }
+        let key = paths::key(&c.wt);
+        let sessions = self.claude.iter().flatten().find(|(p, _)| paths::key(p) == key).map(|(_, s)| s);
+        let agents = || sessions.into_iter().flatten().filter(|s| s.is_agent());
+        let session = agents().find(|s| s.state != State::Running).or_else(|| agents().next()).map(|s| s.id);
+        let conflict = Box::new(c.clone());
+        self.act(Task::Handoff { conflict, session });
+    }
+
     /// The file's button: its places back as git left them.
     pub(crate) fn conflict_restart(&mut self, file: usize) {
         let Some(c) = self.conflicts.shown() else { return };
@@ -655,6 +673,18 @@ pub(crate) mod tests {
         assert!(cf.intent((0, Some(0))).is_none(), "another place");
         cf.set_one(Path::new("/r/main"), None);
         assert!(cf.intents.is_empty());
+    }
+
+    #[test]
+    fn nothing_is_handed_over_when_no_place_is_left() {
+        let mut a = app();
+        let mut c = conflict("/r/main");
+        c.files.truncate(1);
+        c.files[0].body = Body::Text(vec![block(false)]);
+        c.files[0].unmerged = false;
+        a.conflicts.set(vec![c]);
+        a.conflict_key('g');
+        assert_eq!(toast(&a), a.tr("cf.hand_none"));
     }
 
     #[test]
