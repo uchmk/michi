@@ -130,7 +130,18 @@ fn tool_band(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         let b = Rect::from_min_max(pos2(x, mid - 13.0), pos2(x + w, mid + 13.0));
         let resp = ui.interact(b, ui.id().with(("tool", k)), Sense::CLICK);
         let hot = live && resp.hovered();
-        let ink = if t.prime { c.run } else { c.fg };
+        // What moves a worktree's HEAD or index waits for the merge; the press says so.
+        let locked = app.merging() && matches!(t.key, 'p' | 's');
+        let ink = if t.prime {
+            c.run
+        } else if locked {
+            c.dim
+        } else {
+            c.fg
+        };
+        if locked {
+            resp.clone().on_hover_text(app.tr("tool.locked"));
+        }
         if hot {
             p.rect_filled(b, CornerRadius::same(5), c.panel);
         }

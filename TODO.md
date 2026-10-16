@@ -69,9 +69,9 @@
     (the Claude band first), call it off after the row (kept first), moving on to the next worktree stopped; locks during a merge
     (pull, `C`, `m`, revert, the `2` commit) with「· マージ中」in red on the chip; cherry-pick （要確認: #22）
   - [ ] The rest: rerere asked once; intent rows (`git log -L`); `e` to edit the result; word diff; hand it to Claude; open in an
-    external tool; dim the buttons locked during a merge; prediction moved to gix-merge and checked against
+    external tool; prediction moved to gix-merge and checked against
     `git merge-tree --write-tree`.
-    Done, not committed (TESTING 21.21): the graph's merging row (a WIP row with `theirs`, `Dot::Conflict`); the prediction pills / column / pairs are hidden while merging (`App::merging`) and the pairs' note says「予測は衝突の解消（4）の実物に変わりました」
+    Done (v0.18.0 / v0.18.1, TESTING 21.21–21.22; the graph tool band dims `Pull` and `Stash`): the graph's merging row (a WIP row with `theirs`, `Dot::Conflict`); the prediction pills / column / pairs are hidden while merging (`App::merging`) and the pairs' note says「予測は衝突の解消（4）の実物に変わりました」
     （要確認: #22）
 - [ ] 4. Worktrees: new work (`N`), remove (`x`), go to the tab (`o`), take in main (`m`, merge done in v0.15.0; rebase not yet), the PR button (`gh pr create`); needs tsumugi `new --worktree BRANCH --from REF`
   and `focus N|NAME` (in tsumugi's TODO.md)
