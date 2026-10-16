@@ -1949,7 +1949,7 @@ dependencies = [
 
 [[package]]
 name = "michi"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "chrono",
  "eframe",
@@ -1963,12 +1963,13 @@ dependencies = [
  "ito-winres",
  "michi-core",
  "notify",
+ "windows-sys 0.61.2",
  "winit",
 ]
 
 [[package]]
 name = "michi-core"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "chrono",
  "serde",

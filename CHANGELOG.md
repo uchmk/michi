@@ -2,6 +2,22 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.15.0] - 2026-10-16
+
+### 追加
+
+- Windows のコンソールの前段 `michi.com`（kura の `kura.com`・yagura の `yagura.com` と同じ）。`michi.exe` は窓のプログラムなので、PowerShell は待たず、
+  `$v = & michi.exe --version` は空だった。`cargo build --release` が `michi-com.exe` を作り、Build の成果物には `michi.com` の名で入る。
+  `PATHEXT` で `.COM` が `.EXE` より先なので、`michi` と打てばこちらが動く。オプションがあれば `michi.exe` を同じ引数で走らせて待ち、
+  終了コードを返す。フォルダか何も無ければ窓を開き、上がったら戻る（フォルダでなければ `michi.exe` の文字と終了コードを返す）。
+  **2 つは同じフォルダに置く。**
+
+### 修正
+
+- `--version`・`--help`・引数やフォルダの誤りの文字を書けなくても panic しない。PowerShell の `$v = & michi.exe --version` は、閉じたパイプへの
+  書き込みで後から「failed printing to stdout」（os error 232）の panic を出していた。文字は、出力がファイルかパイプならそこへ、そうでなければ
+  起動したコンソールへ出す（kura と同じ）。
+
 ## [0.14.0] - 2026-10-16
 
 ### 追加

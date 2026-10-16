@@ -6,6 +6,9 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+# `michi-com` (src/bin/michi-com.rs) makes two binaries, and a bare
+# `cargo run` would not know which one to start.
+default-run = "michi"
 
 # The checklist generator; its own tests run with the rest.
 [[example]]
@@ -31,3 +34,8 @@ winit = { version = "0.30", default-features = false, features = ["rwh_06", "x11
 egui = "0.36"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 notify = "8"
+
+# The console calls of `say` in main.rs and of `michi.com`
+# (src/bin/michi-com.rs), at the version winit already brings.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_Threading"] }

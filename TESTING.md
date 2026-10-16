@@ -325,3 +325,13 @@ michi lists with `git for-each-ref --merged` and the upstream's `[gone]`; for ea
 | 19.7 | Commit to a ticked branch from a terminal while its band is up, then `y` | It stays: `… Stayed: <branch> (it moved after it was listed)`; the others go |
 | 19.8 | With nothing left to clean up press `c` | The toast `Nothing to clean up: no branch is merged into main or gone from its remote, and no worktree's folder is gone`; no list opens |
 | 19.9 | Press `?` in `3`; narrow the window to its smallest with the list open; switch to the light theme | Help lists `c Clean up`; long rows end in `…` with the boxes and hashes still visible; readable in both themes |
+
+## 20. The command line and `michi.com` (Windows)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 20.1 | Put `michi.exe` and `michi.com` (from the Build artifact, or `michi-com.exe` copied to that name) in one folder; in PowerShell there run `$v = .\michi --version; "[$v]"` | `michi.com` answers: `[michi 0.15.0]` (the version), printed by the second statement, and the prompt comes back after it |
+| 20.2 | Run `.\michi --help` in PowerShell, then in `cmd` | The usage lines print before the prompt comes back, in both |
+| 20.3 | Run `.\michi --bogus`, then `.\michi C:\no-such-folder`, each followed by `$LASTEXITCODE` (`echo %ERRORLEVEL%` in `cmd`) | `michi: unknown argument` and the usage, then `2`; `michi: not a folder: C:\no-such-folder`, then `2`; no window opens |
+| 20.4 | Run `.\michi C:\dev\some-repo` (a repository), then `.\michi` with no argument in a repository's folder | The window opens on that folder and the prompt comes back as soon as it is up, with michi still open; closing the window later prints nothing in the console |
+| 20.5 | Run `$v = .\michi.exe --version` (the windowed program itself), wait a few seconds, then run `.\michi.exe --version` | `$v` is empty and no `panicked` message appears later (the line has nowhere to go and is let go); the second, with no `$v =`, prints the version in the console |
