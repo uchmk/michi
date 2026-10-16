@@ -347,6 +347,7 @@ impl App {
             }
             (Task::Handoff { conflict, session }, Ok(_)) => {
                 let key = if session.is_some() { "act.handed" } else { "act.handed_new" };
+                self.watch_handed(conflict.wt.clone());
                 (self.tr(key).replace("{wt}", &self::name(&conflict.wt)), 8)
             }
             (Task::Rerere { on, .. }, Ok(_)) => (self.tr(if *on { "act.rerere_on" } else { "act.rerere_off" }).to_owned(), 6),

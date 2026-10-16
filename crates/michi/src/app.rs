@@ -170,6 +170,16 @@ pub enum Repo {
     Failed(git::Error),
 }
 
+/// A worktree whose Claude was handed a conflict: see [`App::handed`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Handed {
+    pub wt: PathBuf,
+    /// Seen running since it was handed.
+    pub ran: bool,
+    /// Reads that found it stopped without ever seeing it run.
+    pub polls: u32,
+}
+
 pub struct App {
     pub view: View,
     pub mode: Mode,
@@ -198,6 +208,8 @@ pub struct App {
     pub clashes: Clashes,
     /// The commits not seen yet, per worktree.
     pub unseen: Unseen,
+    /// The worktrees whose Claude was handed a conflict, until it stops.
+    pub handed: Vec<Handed>,
     /// The worktree table's selected row.
     pub wt_sel: usize,
     /// The branch review (`d`), over the worktree table.
@@ -256,6 +268,7 @@ impl App {
             wips: Vec::new(),
             clashes: Clashes::default(),
             unseen: Unseen::default(),
+            handed: Vec::new(),
             wt_sel: 0,
             review: None,
             changes: Changes::default(),
@@ -471,7 +484,10 @@ impl App {
                 self.trees = trees;
                 self.review_sync();
             }
-            Answer::Claude(c) => self.claude = c,
+            Answer::Claude(c) => {
+                self.claude = c;
+                self.handed_stopped();
+            }
             Answer::Clashes(c) => self.clashes = c,
             Answer::Conflicts(c) => {
                 let had = !self.conflicts.all.is_empty();
@@ -891,6 +907,40 @@ impl App {
         } else {
             self.view.keys()
         }
+    }
+
+    /// Says so when a Claude handed a conflict has stopped writing: it was
+    /// seen running and no agent in its worktree runs now. One that is not
+    /// seen running for a while is dropped, as is one whose sessions are gone.
+    fn handed_stopped(&mut self) {
+        let mut said = Vec::new();
+        let mut watched = std::mem::take(&mut self.handed);
+        watched.retain_mut(|h| {
+            let agents: Vec<_> = self.claude_in(&h.wt).iter().filter(|s| s.is_agent()).collect();
+            if agents.is_empty() {
+                return h.polls < 3 && h.ran;
+            }
+            if agents.iter().any(|s| s.state == State::Running) {
+                h.ran = true;
+                return true;
+            }
+            h.polls += 1;
+            if h.ran || h.polls >= 3 {
+                said.push(self.tr("claude.handed_done").replace("{wt}", &crate::act::name(&h.wt)));
+                return false;
+            }
+            true
+        });
+        self.handed = watched;
+        if let Some(t) = said.pop() {
+            self.say_for(t, 10);
+        }
+    }
+
+    /// Watches the Claude in the worktree at `wt`, which was handed a conflict.
+    pub fn watch_handed(&mut self, wt: PathBuf) {
+        self.handed.retain(|h| h.wt != wt);
+        self.handed.push(Handed { wt, ran: false, polls: 0 });
     }
 
     /// The Claude sessions in the worktree at `path`, the one to show first
@@ -1599,6 +1649,33 @@ pub(crate) mod tests {
         a.graph.select(1);
         assert!(a.sync_detail());
         assert!(a.detail.got().is_none() && a.detail.to_top);
+    }
+
+    #[test]
+    fn a_handed_claude_is_announced_once_it_stops() {
+        let mut a = app();
+        let wt = PathBuf::from("C:/r/wt");
+        let s = |state| Session {
+            id: 3,
+            state,
+            command: "claude".into(),
+            agent: "claude".into(),
+            cwd: "C:/r/wt".into(),
+            branch: "wip".into(),
+            title: "fix".into(),
+            note: String::new(),
+            since_ms: 0,
+            read_only: false,
+        };
+        let give = |a: &mut App, st| a.take(Answer::Claude(Some(vec![(PathBuf::from("C:/r/wt"), vec![s(st)])])));
+        a.watch_handed(wt);
+        give(&mut a, State::Running);
+        assert!(a.toast.is_none());
+        give(&mut a, State::Running);
+        assert!(a.toast.is_none() && a.handed.len() == 1);
+        give(&mut a, State::Waiting);
+        assert!(toast(&a).contains("wt"), "{}", toast(&a));
+        assert!(a.handed.is_empty());
     }
 
     #[test]
