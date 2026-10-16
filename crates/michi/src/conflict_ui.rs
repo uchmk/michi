@@ -3,6 +3,7 @@
 //! the right a bar over each file's places, the lines around them, and the
 //! commit once all is solved.
 
+use std::ops::Range;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -288,6 +289,8 @@ struct Col<'a> {
     ink: Color32,
     note: String,
     lines: Option<&'a [String]>,
+    /// The words of each line that the reference does not have.
+    marks: Vec<Vec<Range<usize>>>,
     fill: Color32,
     empty: &'static str,
 }
@@ -929,28 +932,36 @@ impl Draw<'_> {
         let unit = r.width() / parts.iter().sum::<f32>();
         let mut x = r.left();
         let short = |o: &Option<michi_core::oid::Oid>| o.as_ref().map(|o| o.short()).unwrap_or_default();
+        // The words each side changed: against the base, else against the other side.
+        let tabs = |l: &[String]| l.iter().map(|x| x.replace('\t', "    ")).collect::<Vec<_>>();
+        let (ours, theirs) = (tabs(&b.ours), tabs(&b.theirs));
+        let base = b.base.as_deref().map(tabs);
+        let ours_marks = michi_core::words::marks(base.as_deref().unwrap_or(&theirs), &ours);
+        let theirs_marks = michi_core::words::marks(base.as_deref().unwrap_or(&ours), &theirs);
         let mut cols = vec![Col {
             word: self.tr("cf.ours").to_owned(),
             ink: c.run,
             note: side_note(&self.cf.ours),
             lines: Some(&b.ours),
+            marks: ours_marks,
             fill: c.run.gamma_multiply(0.07),
             empty: "cf.none_lines",
         }];
         if plan.base {
             let empty = if b.base.as_ref().is_some_and(Vec::is_empty) { "cf.base_empty" } else { "cf.base_unknown" };
             let (ink, note, lines) = (c.fg, short(&self.cf.base), b.base.as_deref());
-            cols.push(Col { word: "base".to_owned(), ink, note, lines, fill: Color32::TRANSPARENT, empty });
+            cols.push(Col { word: "base".to_owned(), ink, note, lines, marks: Vec::new(), fill: Color32::TRANSPARENT, empty });
         }
         cols.push(Col {
             word: self.tr("cf.theirs").to_owned(),
             ink: c.done,
             note: side_note(&self.cf.theirs),
             lines: Some(&b.theirs),
+            marks: theirs_marks,
             fill: c.done.gamma_multiply(0.07),
             empty: "cf.none_lines",
         });
-        for (m, Col { word, ink, note, lines, fill, empty }) in cols.iter().enumerate() {
+        for (m, Col { word, ink, note, lines, marks, fill, empty }) in cols.iter().enumerate() {
             let w = parts[m] * unit;
             let col = Rect::from_min_size(pos2(x, top), vec2(w, rows_h));
             x += w;
@@ -986,7 +997,11 @@ impl Draw<'_> {
                             c.dim.gamma_multiply(0.6),
                         );
                         let text = line.replace('\t', "    ");
-                        clipped(ui, p, pos2(lr.left() + NUM_W, mid), &text, FontId::monospace(12.0), c.fg, w - NUM_W - 6.0);
+                        let at = pos2(lr.left() + NUM_W, mid);
+                        match marks.get(q).filter(|m| !m.is_empty()) {
+                            Some(m) => marked(ui, p, at, &text, m, ink.gamma_multiply(0.35), w - NUM_W - 6.0),
+                            None => clipped(ui, p, at, &text, FontId::monospace(12.0), c.fg, w - NUM_W - 6.0),
+                        }
                     }
                 }
                 None => italic(ui, p, pos2(col.left() + 10.0, y0 + LINE / 2.0), self.tr(empty), c.dim, w - 20.0),
@@ -1229,6 +1244,34 @@ fn galley(ui: &Ui, text: String, font: FontId, color: Color32) -> Arc<Galley> {
 
 fn wrapped(ui: &Ui, text: String, font: FontId, color: Color32, width: f32) -> Arc<Galley> {
     ui.fonts_mut(|f| f.layout(text, font, color, width.max(40.0)))
+}
+
+/// `text` from `left_center` with the byte `ranges` on a `back` ground, cut with … to `width`.
+fn marked(ui: &Ui, p: &Painter, left_center: Pos2, text: &str, ranges: &[Range<usize>], back: Color32, width: f32) {
+    if width < 8.0 {
+        return;
+    }
+    let font = FontId::monospace(12.0);
+    let c = ito_theme::colors();
+    let mut job = LayoutJob::default();
+    let mut at = 0;
+    let put = |job: &mut LayoutJob, part: &str, background| {
+        if !part.is_empty() {
+            job.append(part, 0.0, TextFormat { font_id: font.clone(), color: c.fg, background, ..Default::default() });
+        }
+    };
+    for r in ranges.iter().filter(|r| r.end <= text.len() && text.is_char_boundary(r.start) && text.is_char_boundary(r.end)) {
+        if r.start < at {
+            continue;
+        }
+        put(&mut job, &text[at..r.start], Color32::TRANSPARENT);
+        put(&mut job, &text[r.clone()], back);
+        at = r.end;
+    }
+    put(&mut job, &text[at..], Color32::TRANSPARENT);
+    job.wrap = TextWrapping::truncate_at_width(width);
+    let g = ui.fonts_mut(|f| f.layout_job(job));
+    p.galley(pos2(left_center.x, left_center.y - g.size().y / 2.0), g, c.fg);
 }
 
 /// A note in italics from `left_center`, cut to `width`.

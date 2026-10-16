@@ -3,7 +3,7 @@
 前の会話から次の会話への引き継ぎ。新しいセッションは `C:\dev\michi` で始め、CLAUDE.md・TODO.md・この文書の順に読む。
 設計の正は [design.md](design.md) とモック。大きなファイル（design.md・graph.rs・wt_ui.rs など）は全部読まず、要るところだけ読む。
 
-## いまの版（v0.22.0、2026-10-16）
+## いまの版（v0.23.0、2026-10-16）
 
 段 1「見る」は終わり、段 2「変える」は TODO.md の 2. のうち後回しにしたもの（各 question の issue の「後回し」）だけが残る。
 段 3「衝突」は衝突の画面とマージ中のロックが入った（v0.17.0）。別のセッションが `michi.com`（Windows のコンソールの前段）を
@@ -37,6 +37,7 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
   `Enter` で確かめた（`confirmed`、メモリだけ）、`x` で `Task::Forget`（`conflict::forget` = `git rerere forget` + `restart`）。下の帯に確かめていない数。
   **git の癖**: `core.autocrlf=true`（この PC の全体設定）だと `git rerere forget` が `error: no remembered resolution` で失敗する（終了コードは 0。stderr の `error:` を見て断る）。
   `false` で記録した解き方なら忘れられる。手でエディタで直したファイルも「前に解いた形」に見える（区別できない）。
+- 単語の差分（v0.23.0、TESTING 21.27）: `michi-core/src/words.rs` の `marks(基準, 側)` が行ごとのバイト範囲を返し、`conflict_ui::marked` が塗る（基準は base、なければもう一方の側）。
 - `e` で結果を直す（v0.22.0、TESTING 21.26）: `Conflicts.edit`（`Edit`: 書きかけの文字列）、`conflict_edit`/`_apply`/`_cancel`、`Task::ResolveWith` → `conflict::resolve_with`（札 `Tag::Edited`）。欄は `conflict_ui` の `Draw.field` に置き場所を取って `show()` で TextEdit を載せる。欄があるあいだ main.rs の `keys()` は Ctrl+Enter / Esc だけを見る。
 - 意図の行（v0.21.0、TESTING 21.25）: `conflict::intent`（`git log -n1 -L<行>,<行>:<path> <base>..<tip>`）、`Task::Intent`、`Conflicts::{intent,set_intent}`、
   `App::conflict_want_intent`（選んだ箇所を 1 回だけ頼む）。`Plan.intent` があれば箇所の見出しの下に 2 行ぶん高くなる。
@@ -47,14 +48,14 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
 #18（stash・捨てる）・#20（片付け・分割・hook の出力）・#22（衝突の画面・ロック・cherry-pick・取り込み。作ってからの補足をコメントに書いた）。
 どれもまだ回答は無い。
 
-**実機の確認（#24 に積んだ）**: TESTING 21.21〜21.26（v0.18.0〜v0.22.0: マージ中の樹形図の行・予測を隠す・`Pull`/`Stash` を薄くする・rerere を聞く帯・当てた形の札と忘れる）。
+**実機の確認（#24 に積んだ）**: TESTING 21.21〜21.27（v0.18.0〜v0.23.0: マージ中の樹形図の行・予測を隠す・`Pull`/`Stash` を薄くする・rerere を聞く帯・当てた形の札と忘れる）。
 （#23 は 21.1〜21.20 用。）いまの状態: 作業中の変更は無い。
 差分が無いマージ中の worktree にはマージの行が出ない制限がある。
 
 ## 次にやること
 
 1. モックの 2 回目はやらない（持ち主が 2026-10-15 に「実装を進めて」）。決めることは `question` の issue に文字で書き、推奨で進める。
-2. 段 3 の残り（TODO.md の 3. の `[ ]`）: 単語の差分、Claude に渡す、外部ツール、予測を gix-merge に（`git merge-tree --write-tree` と比べる）。
+2. 段 3 の残り（TODO.md の 3. の `[ ]`）: Claude に渡す、外部ツール、予測を gix-merge に（`git merge-tree --write-tree` と比べる）。
 3. 段 2 の後回し: レビューのメモ・マージ・PR（#10）、push 先のリモートを選ぶ（#15）、ブランチの名前の変更・upstream・rebase・樹形図の `m`（#16）。
 4. 段 4〜6 は TODO.md のとおり。段 4 は tsumugi の `new --worktree` と `focus` が要る（tsumugi の TODO.md に書いてある）。
 

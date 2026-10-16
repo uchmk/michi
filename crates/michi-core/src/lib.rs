@@ -30,6 +30,7 @@ pub mod tidy;
 pub mod track;
 pub mod unseen;
 pub mod wip;
+pub mod words;
 pub mod worktree;
 
 #[cfg(test)]
