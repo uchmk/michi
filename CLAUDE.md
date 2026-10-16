@@ -31,6 +31,8 @@
   CI と verify.sh が `cargo fmt --all --check` で見る。整形だけのコミットは `.git-blame-ignore-revs` に書く。
 - clippy は `--all-targets -- -D warnings` で警告ゼロを保つ。検証は CI と同じ stable で回す。
   CI の `clippy` も Linux の機械から Linux・`x86_64-pc-windows-msvc`・`aarch64-apple-darwin` の 3 つを見る（macOS は 2026-10-16 から）。
+- `Audit`（`.github/workflows/audit.yml`、2026-10-16 から。kura・tsumugi・ito・yagura・minato と同じ）は `cargo audit`（RustSec の脆弱性の一覧）を
+  main への push・PR・毎週月曜に回す。脆弱性で落ち、警告では落ちない。赤くなったら、直った版に `cargo update -p <クレート>` で上げる。
 
 ## 共有のクレート（ito）
 
