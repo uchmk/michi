@@ -99,6 +99,9 @@ pub struct Picker {
     pub rows: Vec<Row>,
     /// Opened this frame: the click that opened it is not a click outside.
     pub opening: bool,
+    /// The branch being renamed: the box then holds its new name and the
+    /// rows are not shown.
+    pub renaming: Option<String>,
 }
 
 impl Picker {
@@ -127,7 +130,8 @@ impl Picker {
                 refs.stashes.iter().enumerate().map(|(place, s)| Item::Stash { id: s.id, subject: s.subject.clone(), place }).collect()
             }
         };
-        let mut p = Picker { kind, query: String::new(), matched: None, sel: 0, wt, at, items, rows: Vec::new(), opening: true };
+        let mut p =
+            Picker { kind, query: String::new(), matched: None, sel: 0, wt, at, items, rows: Vec::new(), opening: true, renaming: None };
         p.sync();
         p
     }
@@ -180,6 +184,9 @@ impl Picker {
             self.rows.push(Row { item: Item::Create { name }, hits: Vec::new() });
         }
         self.sel = 0;
+        if self.renaming.is_some() {
+            self.rows.clear();
+        }
     }
 
     pub fn selected(&self) -> Option<&Item> {
@@ -238,6 +245,14 @@ impl App {
     /// and the palette stays.
     pub(crate) fn picker_enter(&mut self, shift: bool) {
         let Some(p) = &self.picker else { return };
+        if let Some(old) = p.renaming.clone() {
+            let new = p.query.trim().to_owned();
+            if !new.is_empty() && new != old {
+                self.picker = None;
+                self.act(Task::Rename { old, new });
+            }
+            return;
+        }
         let Some(item) = p.selected().cloned() else { return };
         let (kind, wt, at, message) = (p.kind, p.wt.clone(), p.at, p.message().to_owned());
         match (kind, item) {
@@ -281,6 +296,101 @@ impl App {
             }
             _ => {}
         }
+    }
+
+    /// F2 on a local branch's row: the box then takes its new name.
+    pub(crate) fn picker_rename(&mut self) {
+        let Some(p) = &mut self.picker else { return };
+        if p.kind != Kind::Branch || p.renaming.is_some() {
+            return;
+        }
+        if let Some(Item::Local { name, .. }) = p.selected().cloned() {
+            p.query = name.clone();
+            p.renaming = Some(name);
+            p.matched = None;
+            p.sync();
+        }
+    }
+
+    /// Ctrl+U on a local branch's row: it follows the remote branch of its
+    /// name.
+    pub(crate) fn picker_upstream(&mut self) {
+        let Some(Item::Local { name, .. }) = self.picker.as_ref().filter(|p| p.renaming.is_none()).and_then(|p| p.selected().cloned())
+        else {
+            return;
+        };
+        self.picker = None;
+        self.act(Task::Upstream { name });
+    }
+
+    /// Ctrl+R on a branch's row: asks before it rebases the palette's
+    /// worktree's branch onto it.
+    pub(crate) fn picker_rebase(&mut self) {
+        let Some(p) = self.picker.as_ref().filter(|p| p.kind == Kind::Branch && p.renaming.is_none()) else { return };
+        let (wt, onto) = match p.selected() {
+            Some(Item::Local { name, .. }) => (p.wt.clone(), name.clone()),
+            Some(Item::Remote { remote, name, .. }) => (p.wt.clone(), format!("{remote}/{name}")),
+            _ => return,
+        };
+        let branch = self.worktrees().into_iter().find(|w| same(&w.path, &wt)).and_then(|w| w.branch);
+        let say = |a: &mut App, key: &'static str| {
+            let doing = a.doing_in(&wt).map_or_else(String::new, |d| a.doing_word(d));
+            let text = a.tr(key).replace("{wt}", &act::name(&wt)).replace("{rev}", &onto).replace("{doing}", &doing);
+            a.say_for(text, 6);
+        };
+        let Some(branch) = branch else { return say(self, "act.merge_detached") };
+        if branch == onto {
+            return say(self, "act.rebase_self");
+        }
+        if self.doing_in(&wt).is_some() {
+            return say(self, "act.revert_doing");
+        }
+        self.picker = None;
+        let mut text = self.tr("act.rebase").replace("{branch}", &branch).replace("{onto}", &onto).replace("{wt}", &act::name(&wt));
+        if self.claude_working(&wt) {
+            text.push_str(self.tr("act.revert_claude"));
+        }
+        self.band = Some(Band::new(text, Then::Act(Task::Rebase { wt, onto })));
+    }
+
+    /// `m` in the graph: asks before it merges the selected commit into the
+    /// window's worktree's branch.
+    pub(crate) fn ask_merge_commit(&mut self) {
+        let Repo::Ready(s) = &self.repo else {
+            self.say(self.tr("act.no_tree"));
+            return;
+        };
+        let wt = s.top.clone();
+        let commit = match self.graph.selected_wip() {
+            Some(_) => None,
+            None => self.graph.selected().and_then(|id| self.graph.find_commit(&id)),
+        };
+        let Some(c) = commit else {
+            self.say(self.tr("act.pick_commit"));
+            return;
+        };
+        let (id, subject) = (c.id, c.subject.clone());
+        let rev = id.to_string();
+        let branch = self.worktrees().into_iter().find(|w| same(&w.path, &wt)).and_then(|w| w.branch);
+        let say = |a: &mut App, key: &'static str| {
+            let doing = a.doing_in(&wt).map_or_else(String::new, |d| a.doing_word(d));
+            let text = a.tr(key).replace("{wt}", &act::name(&wt)).replace("{rev}", &id.short()).replace("{doing}", &doing);
+            a.say_for(text, 6);
+        };
+        let Some(branch) = branch else { return say(self, "act.merge_detached") };
+        if self.doing_in(&wt).is_some() {
+            return say(self, "act.revert_doing");
+        }
+        let mut text = self
+            .tr("act.merge_commit")
+            .replace("{id}", &id.short())
+            .replace("{subject}", &subject)
+            .replace("{branch}", &branch)
+            .replace("{wt}", &act::name(&wt));
+        if self.claude_working(&wt) {
+            text.push_str(self.tr("act.revert_claude"));
+        }
+        self.band = Some(Band::new(text, Then::Act(Task::Merge { wt, rev })));
     }
 
     /// Switches the worktree at `wt` (`task`): not in the middle of a merge
@@ -702,6 +812,47 @@ mod tests {
         assert!(a.feed('m'));
         assert_eq!(toast(&a), "wt is in the middle of a rebase: finish it first");
         assert!(a.band.is_none());
+    }
+
+    #[test]
+    fn m_in_the_graph_asks_before_it_merges_the_selected_commit() {
+        let mut a = on("m1");
+        let id = a.graph.selected().unwrap();
+        assert!(a.feed('m'));
+        let band = a.band.take().unwrap();
+        assert_eq!(band.then, Then::Act(Task::Merge { wt: PathBuf::from("C:/r/repo"), rev: id.to_string() }));
+        assert!(band.text.starts_with(&format!("Merge {} “m1” into main in repo?", id.short())), "{}", band.text);
+    }
+
+    #[test]
+    fn the_branch_palette_renames_follows_and_rebases() {
+        let mut a = on("m1");
+        assert!(a.feed('b'));
+        typed(&mut a, "wip");
+        a.picker_rename();
+        let p = a.picker.as_ref().unwrap();
+        assert_eq!((p.renaming.as_deref(), p.query.as_str(), p.rows.len()), (Some("wip"), "wip", 0));
+        a.picker_enter(false);
+        assert!(a.picker.is_some(), "the same name: nothing to do yet");
+        typed(&mut a, "wip2");
+        a.picker_enter(false);
+        assert!(a.picker.is_none());
+
+        assert!(a.feed('b'));
+        typed(&mut a, "wip");
+        a.picker_rebase();
+        let band = a.band.take().unwrap();
+        assert_eq!(band.then, Then::Act(Task::Rebase { wt: PathBuf::from("C:/r/repo"), onto: "wip".into() }));
+        assert!(a.picker.is_none());
+
+        assert!(a.feed('b'));
+        typed(&mut a, "main");
+        a.picker_rebase();
+        assert_eq!(toast(&a), "repo is on main itself: there is nothing to rebase onto");
+        assert!(a.picker.is_some() && a.band.is_none());
+        typed(&mut a, "feat");
+        a.picker_rebase();
+        assert_eq!(a.band.take().unwrap().then, Then::Act(Task::Rebase { wt: PathBuf::from("C:/r/repo"), onto: "origin/feat".into() }));
     }
 
     #[test]

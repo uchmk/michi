@@ -38,6 +38,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
         .show(ctx, |ui| {
             egui::Frame::new().fill(c.panel).stroke(Stroke::new(1.0, c.border)).corner_radius(6.0).inner_margin(8.0).show(ui, |ui| {
                 ui.set_width(width);
+                let renaming = p.renaming.as_ref().map(|old| app.tr("picker.rename").replace("{}", old));
                 let (hint, keys) = match p.kind {
                     Kind::Branch => ("picker.branch", "picker.branch_keys"),
                     Kind::Tag => ("picker.tag", "picker.tag_keys"),
@@ -46,7 +47,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 let edit = ui.add(
                     egui::TextEdit::singleline(&mut p.query)
                         .id(query_id())
-                        .hint_text(app.tr(hint))
+                        .hint_text(renaming.as_deref().unwrap_or(app.tr(hint)))
                         .desired_width(f32::INFINITY)
                         .lock_focus(true),
                 );

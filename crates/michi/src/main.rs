@@ -175,7 +175,7 @@ impl Michi {
     /// The branch or tag palette's keys: the arrows move, Enter (Shift+Enter)
     /// picks, Delete deletes, Escape closes; what is typed goes in its box.
     fn picker_keys(&mut self, ctx: &egui::Context) {
-        let (enter, shift_enter, up, down, delete, esc) = ctx.input_mut(|i| {
+        let (enter, shift_enter, up, down, delete, esc, rename, upstream, rebase) = ctx.input_mut(|i| {
             let shift_enter = i.consume_key(egui::Modifiers::SHIFT, egui::Key::Enter);
             let mut plain = |k| i.consume_key(egui::Modifiers::NONE, k);
             (
@@ -185,6 +185,9 @@ impl Michi {
                 plain(egui::Key::ArrowDown),
                 plain(egui::Key::Delete),
                 plain(egui::Key::Escape),
+                plain(egui::Key::F2),
+                i.consume_key(egui::Modifiers::COMMAND, egui::Key::U),
+                i.consume_key(egui::Modifiers::COMMAND, egui::Key::R),
             )
         });
         if esc {
@@ -203,6 +206,12 @@ impl Michi {
             self.app.picker_enter(shift_enter);
         } else if delete {
             self.app.picker_delete();
+        } else if rename {
+            self.app.picker_rename();
+        } else if upstream {
+            self.app.picker_upstream();
+        } else if rebase {
+            self.app.picker_rebase();
         }
     }
 
