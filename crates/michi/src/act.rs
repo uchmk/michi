@@ -9,6 +9,7 @@ use michi_core::backup;
 use michi_core::branch::Doing;
 use michi_core::conflict::{self, Block, Conflict, Pick};
 use michi_core::git;
+use michi_core::handoff;
 use michi_core::oid::Oid;
 use michi_core::rerere;
 use michi_core::revert::{self, Reverted};
@@ -152,6 +153,12 @@ pub enum Task {
         wt: PathBuf,
         doing: Doing,
     },
+    /// Writes what is left to solve in `conflict` to a file and asks a Claude
+    /// to solve it: the tsumugi session `session`, or a new tab when none.
+    Handoff {
+        conflict: Box<Conflict>,
+        session: Option<u64>,
+    },
     /// Reads whether rerere is on in the repository of the worktree at `wt`.
     AskRerere {
         wt: PathBuf,
@@ -193,6 +200,7 @@ impl Task {
             Task::Abort { doing: Doing::CherryPick, .. } => "cherry-pick --abort",
             Task::Abort { doing: Doing::Revert, .. } => "revert --abort",
             Task::Abort { doing: Doing::Bisect, .. } => "bisect reset",
+            Task::Handoff { .. } => "tsumugi",
             Task::AskRerere { .. } => "config --get",
             Task::Rerere { .. } => "config",
         }
@@ -256,12 +264,25 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Forget { wt, path } => conflict::forget(wt, path).map(|saved| solved(wt, Some(saved))),
         Task::Conclude { wt, message, .. } => conflict::commit(wt, message).map(Acted::Committed),
         Task::Abort { wt, .. } => conflict::abort(wt).map(Acted::Kept),
+        Task::Handoff { conflict, session } => hand_off(conflict, *session).map(|()| Acted::Done),
         Task::AskRerere { wt } => rerere::enabled(wt).map(Acted::Rerere),
         Task::Rerere { wt, on } => rerere::set(wt, *on).map(|()| Acted::Done),
     }
 }
 
 /// A place in the worktree at `wt` was solved or put back: it is read again.
+/// The brief written, then the Claude asked: in session `session`, or in a
+/// new tab of the worktree.
+fn hand_off(c: &Conflict, session: Option<u64>) -> Result<(), git::Error> {
+    let intents: Vec<_> = handoff::open_places(c).into_iter().map(|(path, b)| conflict::intent(&c.wt, path, b, c)).collect();
+    let file = handoff::write(c, &intents).map_err(|e| git::Error::Io(e.to_string()))?;
+    let text = handoff::request(&file);
+    match session {
+        Some(id) => handoff::send(id, &text),
+        None => handoff::start(&c.wt, &name(&c.wt), &text),
+    }
+}
+
 fn solved(wt: &Path, saved: Option<String>) -> Acted {
     Acted::Solved(Box::new(Solved { saved, read: conflict::read(wt).ok() }))
 }
@@ -310,6 +331,10 @@ impl App {
                 return;
             }
             (Task::AskRerere { .. }, Ok(_)) => return,
+            (Task::Handoff { conflict, session }, Ok(_)) => {
+                let key = if session.is_some() { "act.handed" } else { "act.handed_new" };
+                (self.tr(key).replace("{wt}", &self::name(&conflict.wt)), 8)
+            }
             (Task::Rerere { on, .. }, Ok(_)) => (self.tr(if *on { "act.rerere_on" } else { "act.rerere_off" }).to_owned(), 6),
             (Task::Resolve { wt, path, .. } | Task::ResolveWith { wt, path, .. } | Task::Take { wt, path, .. }, Err(e)) => {
                 self.conflict_unpick(wt, path);
@@ -580,5 +605,17 @@ mod tests {
         assert_eq!(toast(&a), "rerere stays off (git config rerere.enabled false)");
         a.act_done(Task::Rerere { wt, on: true }, Ok(Acted::Done));
         assert!(toast(&a).starts_with("rerere is on"));
+    }
+
+    #[test]
+    fn a_handoff_says_whether_it_asked_a_running_claude_or_started_one() {
+        let mut a = app();
+        let c = Box::new(crate::conflicts::tests::conflict("/r/main"));
+        a.act_done(Task::Handoff { conflict: c.clone(), session: Some(3) }, Ok(Acted::Done));
+        assert!(toast(&a).starts_with("Asked the Claude in main"), "{}", toast(&a));
+        a.act_done(Task::Handoff { conflict: c.clone(), session: None }, Ok(Acted::Done));
+        assert!(toast(&a).starts_with("Started a Claude in a new tab"), "{}", toast(&a));
+        a.act_done(Task::Handoff { conflict: c, session: None }, Err(git::Error::Git("tsumugi: gone".into())));
+        assert_eq!(toast(&a), "tsumugi failed: tsumugi: gone");
     }
 }

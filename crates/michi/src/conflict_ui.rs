@@ -83,6 +83,7 @@ enum Act {
     Base(Place),
     Restart(usize),
     AskAbort,
+    Handoff,
     AbortNo,
     AbortYes,
     Commit,
@@ -202,6 +203,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         }
         Act::Restart(i) => app.conflict_restart(i),
         Act::AskAbort => app.conflict_ask_abort(),
+        Act::Handoff => app.conflict_handoff(),
         Act::AbortNo => cfs.abort = false,
         Act::AbortYes => app.conflict_abort(),
         Act::Commit => app.conflict_commit(),
@@ -516,8 +518,18 @@ impl Draw<'_> {
         if button(ui, &p, b, label_off, "", Look::Danger, "cf-abort", self.live, self.pointer) {
             out = Some(Act::AskAbort);
         }
-
         let (left, total) = (cf.left(), cf.total());
+        let mut edge = b.left();
+        if left > 0 {
+            let (hand, hint) = (self.tr("cf.handoff"), "g");
+            let hw = button_w(ui, hand, hint, Look::Plain);
+            let hb = Rect::from_min_max(pos2(b.left() - 8.0 - hw, mid - BTN_H / 2.0), pos2(b.left() - 8.0, mid + BTN_H / 2.0));
+            if button(ui, &p, hb, hand, hint, Look::Plain, "cf-handoff", self.live, self.pointer) {
+                out = Some(Act::Handoff);
+            }
+            edge = hb.left();
+        }
+
         let (pill, ink) = if left > 0 {
             (self.tr("cf.pill_left").replace("{left}", &left.to_string()).replace("{total}", &total.to_string()), c.err)
         } else {
@@ -526,7 +538,7 @@ impl Draw<'_> {
         let pg = galley(ui, pill, FontId::proportional(12.0), ink);
         let pill_w = pg.size().x + 16.0;
         let x = r.left() + PAD_X;
-        let room = b.left() - 16.0 - pill_w - 10.0 - x;
+        let room = edge - 16.0 - pill_w - 10.0 - x;
         let key = match cf.doing {
             Doing::Merge | Doing::Bisect => "cf.bar_merge",
             Doing::CherryPick => "cf.bar_cherry",
