@@ -109,6 +109,7 @@ impl View {
                 ("j k", "key.select"),
                 ("o", "key.tab"),
                 ("p", "key.pr"),
+                ("r", "key.reorder"),
                 ("Enter", "key.in_graph"),
                 ("m", "key.take_main"),
                 ("x", "key.remove"),
@@ -249,6 +250,7 @@ pub struct App {
     pub new_work: Option<crate::newwork::NewWork>,
     /// The clean-up list, over the worktree table.
     pub tidy: Option<crate::tidy::Tidy>,
+    pub reorder: Option<crate::reorder::Reorder>,
     /// The stash clicked in the side column, and the commit the graph had
     /// selected then: the detail shows the stash until that moves.
     pub side_stash: Option<(Oid, Option<Oid>)>,
@@ -291,6 +293,7 @@ impl App {
             picker: None,
             new_work: None,
             tidy: None,
+            reorder: None,
             side_stash: None,
             quit: false,
         };
@@ -1047,6 +1050,7 @@ impl App {
             (Mode::Main, _) if self.picker.is_some() || self.new_work.is_some() => return false,
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
             (Mode::Main, c) if self.tidy.is_some() => return self.tidy_key(c),
+            (Mode::Main, c) if self.reorder.is_some() => return self.reorder_key(c),
             (Mode::Main, '?') => self.mode = Mode::Help,
             (Mode::Main, ',') => self.mode = Mode::Settings,
             (Mode::Main, c) => match View::from_digit(c) {
@@ -1101,6 +1105,7 @@ impl App {
             'm' => self.ask_merge(),
             'x' => self.ask_remove(),
             'p' => self.open_pr(),
+            'r' => self.open_reorder(),
             'N' => self.open_new_work(),
             _ => return false,
         }
@@ -1166,6 +1171,9 @@ impl App {
         }
         if self.tidy.is_some() {
             return self.tidy_named(name);
+        }
+        if self.reorder.is_some() {
+            return self.reorder_named(name);
         }
         if self.view == View::Graph {
             let g = &mut self.graph;
@@ -1246,6 +1254,9 @@ impl App {
             return true;
         }
         if self.band.take().is_some() {
+            return true;
+        }
+        if self.reorder.take().is_some() {
             return true;
         }
         if self.tidy.take().is_some() {

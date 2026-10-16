@@ -113,6 +113,18 @@ pub enum Task {
     FindTidy {
         here: PathBuf,
     },
+    /// Reads the commits of the worktree at `wt` since `trunk`, for the
+    /// rebase screen.
+    FindReorder {
+        wt: PathBuf,
+        trunk: String,
+    },
+    /// Runs the rebase screen's list on the commits since `base`.
+    Reorder {
+        wt: PathBuf,
+        base: Oid,
+        list: Vec<michi_core::rebase::Entry>,
+    },
     /// Takes the rows picked from that list away.
     Tidy {
         picks: Vec<Item>,
@@ -229,6 +241,8 @@ impl Task {
             Task::Unstash { pop: true, .. } => "stash pop",
             Task::DropStash { .. } => "stash drop",
             Task::FindTidy { .. } => "for-each-ref",
+            Task::FindReorder { .. } => "log",
+            Task::Reorder { .. } => "rebase -i",
             Task::Tidy { .. } | Task::RemoveWorktree { .. } => "worktree remove",
             Task::Merge { .. } => "merge",
             Task::CherryPick { .. } => "cherry-pick",
@@ -267,6 +281,8 @@ pub enum Acted {
     Stashed(Saved),
     Unstashed(Applied),
     Found(Found),
+    Planned(michi_core::rebase::Plan),
+    Reordered(michi_core::rebase::Outcome),
     Tidied(Outcome),
     Merged(conflict::Outcome),
     /// The head after the commit.
@@ -308,6 +324,8 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Unstash { wt, id, pop } => stash::apply(wt, id, *pop).map(Acted::Unstashed),
         Task::DropStash { id } => stash::drop(dir, id).map(|saved| Acted::Kept(Some(saved))),
         Task::FindTidy { here } => tidy::find(dir, here).map(Acted::Found),
+        Task::FindReorder { wt, trunk } => michi_core::rebase::plan(wt, trunk).map(Acted::Planned),
+        Task::Reorder { wt, base, list } => michi_core::rebase::run(wt, base, list).map(Acted::Reordered),
         Task::RemoveWorktree { wt, sessions } => {
             for id in sessions {
                 let _ = handoff::close(*id);
@@ -484,6 +502,20 @@ impl App {
                 (self.tr("act.dropped").replace("{id}", &id.short()).replace("{saved}", saved), 10)
             }
             (Task::FindTidy { .. }, Ok(Acted::Found(found))) => return self.tidy_found(found),
+            (Task::FindReorder { .. }, Ok(Acted::Planned(plan))) => return self.reorder_found(plan),
+            (Task::Reorder { wt, .. }, Ok(Acted::Reordered(out))) => {
+                self.reorder = None;
+                let tr =
+                    |key: &'static str, saved: &str| self.tr(key).replace("{wt}", &self::name(wt)).replace("{saved}", backup::short(saved));
+                match out {
+                    michi_core::rebase::Outcome::Done { backup } => (tr("reorder.done", &backup), 8),
+                    michi_core::rebase::Outcome::Stopped { backup } => {
+                        let text = tr("reorder.clash", &backup);
+                        self.show_conflicts(wt);
+                        (text, 8)
+                    }
+                }
+            }
             (Task::Tidy { .. }, Ok(Acted::Tidied(out))) => self.tidied(&out),
             (Task::Merge { wt, rev }, Ok(Acted::Merged(out))) => {
                 let tr = |key: &'static str| self.tr(key).replace("{rev}", rev).replace("{wt}", &self::name(wt));

@@ -25,6 +25,8 @@ mod newwork_ui;
 mod picker;
 mod picker_ui;
 mod prefs;
+mod reorder;
+mod reorder_ui;
 mod repo;
 mod review;
 mod review_ui;
@@ -107,6 +109,20 @@ impl Michi {
                 }
                 if down {
                     n.cycle(1);
+                }
+            }
+            return;
+        }
+        // A message written for a commit of the rebase screen.
+        if self.app.band.is_none() && self.app.reorder.as_ref().is_some_and(|r| r.editing.is_some()) {
+            let (keep, leave) = ctx.input_mut(|i| {
+                (i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter), i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+            });
+            if let Some(r) = &mut self.app.reorder {
+                if keep {
+                    r.edited();
+                } else if leave {
+                    r.editing = None;
                 }
             }
             return;
@@ -282,6 +298,7 @@ impl eframe::App for Michi {
         picker_ui::show(&ctx, &mut self.app);
         newwork_ui::show(&ctx, &mut self.app);
         tidy_ui::show(&ctx, &mut self.app);
+        reorder_ui::show(&ctx, &mut self.app);
         // A tab leaves the settings and the key list for its view; the gear
         // opens the settings and closes them.
         if let Some(v) = out.view {

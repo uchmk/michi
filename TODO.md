@@ -82,7 +82,7 @@
     （要確認: #22）
 - [ ] 4. Worktrees: new work (`N` done in v0.31.0; remove `x` and the tab `o` in v0.30.0), take in main (`m`, merge done in v0.15.0; rebase not yet), the PR page (`p`, v0.32.0; michi opens the page, the browser writes the PR per v1-scope)
   and `focus N|NAME` (in tsumugi's TODO.md)
-- [ ] 5. Rebase: reorder, squash, reword, the in-progress band
+- [ ] 5. Rebase: reorder, squash, reword, the in-progress band (`r` screen done in v0.33.0, TESTING 10.16; the in-progress band is the conflict screen's, v0.17.0)
 - [ ] 6. Claude: hand a conflict to Claude through `tsumugi send` and watch the markers, notify on waiting / done, hand over notes from the
   branch diff
 

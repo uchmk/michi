@@ -2,6 +2,15 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.33.0] - 2026-10-16
+
+### 追加
+
+- worktree の表で `r`: その worktree のブランチの、トランクからのコミットを古い順に並べる rebase の画面。`j k` で選び、`J K` で動かし、
+  `s`（squash）・`f`（fixup）・`r`（題を直す。`Ctrl+Enter` で決める）・`d`（外す）・`p`（そのまま）を付けて、Enter で確かめの帯、yes で実行する。
+  `git rebase -i`（todo は `GIT_SEQUENCE_EDITOR`、題は `exec git commit --amend -F`）で、前に古い先頭を `refs/michi/backup/` に退避する。
+  変えていない・先頭をまとめる・全部外す・コミットしていない変更がある・merge を含む、は実行せずに知らせる。衝突したら途中で止まり、4 の画面に移る。
+
 ## [0.32.0] - 2026-10-16
 
 ### 追加
