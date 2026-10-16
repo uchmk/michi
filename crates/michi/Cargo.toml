@@ -16,17 +16,19 @@ name = "make-testcheck"
 test = true
 
 [build-dependencies]
-ito-winres = { git = "https://github.com/uchmk/ito", rev = "a54872d2309c5a82df69c851cecf20e17e20a28c" }
+ito-winres = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086" }
 
 [dependencies]
 michi-core = { path = "../michi-core" }
 # Every ito crate at the same rev.
-ito-i18n = { git = "https://github.com/uchmk/ito", rev = "a54872d2309c5a82df69c851cecf20e17e20a28c", features = ["edit"] }
-ito-common = { git = "https://github.com/uchmk/ito", rev = "a54872d2309c5a82df69c851cecf20e17e20a28c", features = ["clock"] }
-ito-theme = { git = "https://github.com/uchmk/ito", rev = "a54872d2309c5a82df69c851cecf20e17e20a28c" }
-ito-prefs = { git = "https://github.com/uchmk/ito", rev = "a54872d2309c5a82df69c851cecf20e17e20a28c" }
-ito-graph = { git = "https://github.com/uchmk/ito", rev = "a54872d2309c5a82df69c851cecf20e17e20a28c", features = ["egui"] }
-ito-match = { git = "https://github.com/uchmk/ito", rev = "a54872d2309c5a82df69c851cecf20e17e20a28c" }
+ito-i18n = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086", features = ["edit"] }
+ito-common = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086", features = ["clock"] }
+ito-theme = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086" }
+ito-prefs = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086" }
+ito-graph = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086", features = ["egui"] }
+ito-match = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086" }
+# `michi.com` (src/bin/michi-com.rs) and the answers `say` writes.
+ito-console = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086" }
 # eframe's own defaults, but for `winit/default` (see tsumugi): the Wayland
 # frame is drawn without the title's text, which brings an unmaintained crate.
 eframe = { version = "0.36", default-features = false, features = ["accesskit", "default_fonts", "links", "wayland", "web_screen_reader", "wgpu", "x11"] }
@@ -34,8 +36,3 @@ winit = { version = "0.30", default-features = false, features = ["rwh_06", "x11
 egui = "0.36"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 notify = "8"
-
-# The console calls of `say` in main.rs and of `michi.com`
-# (src/bin/michi-com.rs), at the version winit already brings.
-[target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_Threading"] }
