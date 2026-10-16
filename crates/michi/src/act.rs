@@ -80,6 +80,11 @@ pub enum Task {
         id: Oid,
         mainline: Option<u32>,
     },
+    /// Starts a worktree and a Claude in it for each of `plans`, through tsumugi.
+    NewWork {
+        repo: PathBuf,
+        plans: Vec<michi_core::newwork::Plan>,
+    },
     /// Closes the Claude tabs `sessions`, keeps the uncommitted change of the
     /// worktree at `wt` and takes the worktree away (its branch stays).
     RemoveWorktree {
@@ -234,7 +239,7 @@ impl Task {
             Task::Abort { doing: Doing::CherryPick, .. } => "cherry-pick --abort",
             Task::Abort { doing: Doing::Revert, .. } => "revert --abort",
             Task::Abort { doing: Doing::Bisect, .. } => "bisect reset",
-            Task::Handoff { .. } | Task::Focus { .. } => "tsumugi",
+            Task::Handoff { .. } | Task::Focus { .. } | Task::NewWork { .. } => "tsumugi",
             Task::External { .. } => "mergetool",
             Task::AskRerere { .. } => "config --get",
             Task::Rerere { .. } => "config",
@@ -315,6 +320,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Conclude { wt, message, .. } => conflict::commit(wt, message).map(Acted::Committed),
         Task::Abort { wt, .. } => conflict::abort(wt).map(Acted::Kept),
         Task::External { wt, path } => external::open(wt, path).map(Acted::Opened),
+        Task::NewWork { repo, plans } => plans.iter().try_for_each(|p| handoff::new_work(repo, p)).map(|()| Acted::Done),
         Task::Focus { session } => handoff::focus(*session).map(|()| Acted::Done),
         Task::Handoff { conflict, session } => hand_off(conflict, *session).map(|()| Acted::Done),
         Task::AskRerere { wt } => rerere::enabled(wt).map(Acted::Rerere),
@@ -417,6 +423,7 @@ impl App {
                 let saved = saved.as_deref().map_or("", backup::short);
                 (self.tr(key).replace("{wt}", &self::name(wt)).replace("{saved}", saved), 10)
             }
+            (Task::NewWork { plans, .. }, Ok(_)) => (self.tr("act.started").replace("{n}", &plans.len().to_string()), 5),
             (Task::Delete { name }, Ok(_)) => (self.tr("act.deleted").replace("{}", name), 4),
             (Task::Rename { old, new }, Ok(_)) => (self.tr("act.renamed").replace("{old}", old).replace("{new}", new), 4),
             (Task::Upstream { name }, Ok(Acted::Upstream(remote))) => {

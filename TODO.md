@@ -80,7 +80,7 @@
     (100–420 ms against 25–40 ms) and counted hunks differently (git joins near ones). Stays on the git command.
     Done (v0.18.0 / v0.18.1, TESTING 21.21–21.22; the graph tool band dims `Pull` and `Stash`): the graph's merging row (a WIP row with `theirs`, `Dot::Conflict`); the prediction pills / column / pairs are hidden while merging (`App::merging`) and the pairs' note says「予測は衝突の解消（4）の実物に変わりました」
     （要確認: #22）
-- [ ] 4. Worktrees: new work (`N`; remove `x` and the tab `o` done in v0.30.0), take in main (`m`, merge done in v0.15.0; rebase not yet), the PR button (`gh pr create`); needs tsumugi `new --worktree BRANCH --from REF`
+- [ ] 4. Worktrees: new work (`N` done in v0.31.0; remove `x` and the tab `o` in v0.30.0), take in main (`m`, merge done in v0.15.0; rebase not yet), the PR button (`gh pr create`); needs tsumugi `new --worktree BRANCH --from REF`
   and `focus N|NAME` (in tsumugi's TODO.md)
 - [ ] 5. Rebase: reorder, squash, reword, the in-progress band
 - [ ] 6. Claude: hand a conflict to Claude through `tsumugi send` and watch the markers, notify on waiting / done, hand over notes from the

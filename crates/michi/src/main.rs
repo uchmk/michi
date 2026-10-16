@@ -20,6 +20,8 @@ mod graph;
 mod graph_ui;
 mod i18n;
 mod icon;
+mod newwork;
+mod newwork_ui;
 mod picker;
 mod picker_ui;
 mod prefs;
@@ -84,6 +86,29 @@ impl Michi {
         }
         if self.app.picker.is_some() {
             self.picker_keys(ctx);
+            return;
+        }
+        if self.app.new_work.is_some() {
+            let (start, esc, up, down) = ctx.input_mut(|i| {
+                (
+                    i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter),
+                    i.consume_key(egui::Modifiers::NONE, egui::Key::Escape),
+                    i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp),
+                    i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown),
+                )
+            });
+            if start {
+                self.app.new_work_start();
+            } else if esc {
+                self.app.escape();
+            } else if let Some(n) = &mut self.app.new_work {
+                if up {
+                    n.cycle(-1);
+                }
+                if down {
+                    n.cycle(1);
+                }
+            }
             return;
         }
         // A result written by hand in the 4 view takes the keys until it is
@@ -255,6 +280,7 @@ impl eframe::App for Michi {
             settings::show(&mut body, &mut self.app);
         }
         picker_ui::show(&ctx, &mut self.app);
+        newwork_ui::show(&ctx, &mut self.app);
         tidy_ui::show(&ctx, &mut self.app);
         // A tab leaves the settings and the key list for its view; the gear
         // opens the settings and closes them.

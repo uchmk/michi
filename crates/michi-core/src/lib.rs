@@ -16,6 +16,7 @@ pub mod handoff;
 pub mod history;
 pub mod log;
 pub mod net;
+pub mod newwork;
 pub mod oid;
 pub mod paths;
 pub mod predict;

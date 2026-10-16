@@ -115,6 +115,11 @@ pub fn focus(id: u64) -> Result<(), git::Error> {
     tsumugi(Command::new("tsumugi").args(["focus", &id.to_string()]))
 }
 
+/// Starts a Claude in a new worktree made by tsumugi for `plan`.
+pub fn new_work(repo: &Path, plan: &crate::newwork::Plan) -> Result<(), git::Error> {
+    tsumugi(Command::new("tsumugi").args(crate::newwork::args(repo, plan)))
+}
+
 /// Closes the tsumugi session `id`.
 pub fn close(id: u64) -> Result<(), git::Error> {
     tsumugi(Command::new("tsumugi").args(["close", &id.to_string()]))

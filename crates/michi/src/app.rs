@@ -244,6 +244,8 @@ pub struct App {
     pub rerere_asked: bool,
     /// The branch, tag or stash palette, over the graph.
     pub picker: Option<Picker>,
+    /// The new-work form while it is open.
+    pub new_work: Option<crate::newwork::NewWork>,
     /// The clean-up list, over the worktree table.
     pub tidy: Option<crate::tidy::Tidy>,
     /// The stash clicked in the side column, and the commit the graph had
@@ -286,6 +288,7 @@ impl App {
             band: None,
             rerere_asked: false,
             picker: None,
+            new_work: None,
             tidy: None,
             side_stash: None,
             quit: false,
@@ -1040,7 +1043,7 @@ impl App {
         match (self.mode, c) {
             (Mode::Help, '?') => self.mode = Mode::Main,
             (Mode::Settings, _) | (Mode::Help, _) => return false,
-            (Mode::Main, _) if self.picker.is_some() => return false,
+            (Mode::Main, _) if self.picker.is_some() || self.new_work.is_some() => return false,
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
             (Mode::Main, c) if self.tidy.is_some() => return self.tidy_key(c),
             (Mode::Main, '?') => self.mode = Mode::Help,
@@ -1080,6 +1083,7 @@ impl App {
             '/' => g.focus_filter = true,
             'z' => self.fold(),
             'o' => self.focus_claude(false),
+            'N' => self.open_new_work(),
             _ => return false,
         }
         true
@@ -1095,6 +1099,7 @@ impl App {
             'c' => self.open_tidy(),
             'm' => self.ask_merge(),
             'x' => self.ask_remove(),
+            'N' => self.open_new_work(),
             _ => return false,
         }
         true
@@ -1224,7 +1229,7 @@ impl App {
             self.mode = Mode::Main;
             return true;
         }
-        if self.picker.take().is_some() {
+        if self.picker.take().is_some() || self.new_work.take().is_some() {
             return true;
         }
         if self.band.take().is_some() {
@@ -1452,7 +1457,7 @@ pub(crate) mod tests {
     fn keys_of_later_stages_say_so() {
         let mut a = app();
         assert!(a.feed('N'));
-        assert_eq!(toast(&a), "New work (worktree + Claude) — coming in a later stage");
+        assert_eq!(toast(&a), "No worktree to work in", "N needs a repository read");
         a.toast = None;
         assert!(a.feed('f'), "fetch works now");
         assert!(a.toast.is_none() && a.net.is_none(), "no reading thread here: nothing runs");
@@ -1465,9 +1470,6 @@ pub(crate) mod tests {
         assert!(a.changes.focus_message, "c goes to the message");
         assert!(!a.feed('z'), "not a key of the changes");
         assert!(!a.feed('q'));
-        a.lang = "ja".into();
-        assert!(a.feed('N'));
-        assert_eq!(toast(&a), "新しい作業（worktree + Claude） — 後の段階で入ります");
     }
 
     #[test]

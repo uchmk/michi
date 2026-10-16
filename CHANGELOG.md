@@ -2,6 +2,15 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.31.0] - 2026-10-16
+
+### 追加
+
+- 樹形図と worktree の表で `N`: 新しい作業の窓。ブランチ（既定は `tsumugi/MMDD-HHMM`）・元（`origin/main`・`main`・選んでいるコミット。↑↓）・
+  指示（空なら claude を始めるだけ）・本数（1〜8。2 本以上はブランチに `-1` `-2`…）を決め、「回すもの」の
+  `tsumugi new <リポ> --worktree <ブランチ> --from <元> -- claude "<指示>"` をそのまま見せる。`Ctrl+Enter` で始める。
+  worktree を作るのは tsumugi（フォルダはリポジトリの横の `<リポ名>-<ブランチ>`）。
+
 ## [0.30.0] - 2026-10-16
 
 ### 追加
