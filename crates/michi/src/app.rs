@@ -896,6 +896,12 @@ impl App {
         self.wips.iter().find(|w| w.path == path)
     }
 
+    /// Whether a merge is under way: the predictions are then replaced by
+    /// the real conflicts (`4`) and are not shown.
+    pub fn merging(&self) -> bool {
+        self.trees.trees.iter().any(|t| t.doing == Some(michi_core::branch::Doing::Merge))
+    }
+
     /// The sides the worktree at `path` would conflict with, and how.
     pub fn clashes_in(&self, path: &Path) -> Vec<(&Side, &Outcome)> {
         let Some(i) = self.clashes.side_of(path) else { return Vec::new() };

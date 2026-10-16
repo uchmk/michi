@@ -349,7 +349,7 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
                 let date = w.written.map_or("—".to_owned(), |t| when(t, &now, yesterday));
                 clipped(ui, &p, pos2(date_x, mid), &date, FontId::proportional(12.0), dim, DATE_W - PAD);
             }
-            clipped(ui, &p, pos2(hash_x, mid), "WIP", FontId::monospace(11.5), dim, HASH_W);
+            clipped(ui, &p, pos2(hash_x, mid), if w.theirs.is_some() { "MERGE" } else { "WIP" }, FontId::monospace(11.5), dim, HASH_W);
             continue;
         }
         let Some(commit) = g.commit(k) else { continue };
@@ -715,6 +715,9 @@ pub(crate) fn claude_look(app: &App, s: &Session) -> Option<(&'static str, &'sta
 /// What the worktrees and the branches whose head is `id` would conflict
 /// with, their commits alone, one line each; `None` when nothing.
 fn head_clashes(app: &App, id: Oid) -> Option<String> {
+    if app.merging() {
+        return None;
+    }
     let cl = &app.clashes;
     let trunk = app.trees.trunk.as_deref().unwrap_or("main");
     let mut lines: Vec<String> = (0..cl.sides.len())
@@ -756,6 +759,9 @@ pub(crate) fn leaves(app: &App, c: &Conflict) -> String {
 /// What the worktree at `path` would conflict with only once its
 /// uncommitted change is counted; `None` when nothing.
 fn wip_clashes(app: &App, path: &std::path::Path) -> Option<String> {
+    if app.merging() {
+        return None;
+    }
     let items: Vec<String> = app
         .clashes_in(path)
         .into_iter()
@@ -792,6 +798,11 @@ pub(crate) fn paint_warn(ui: &Ui, p: &egui::Painter, r: Rect, text: &str, wip: b
 /// the Claude there is doing, and the ⚠ when the change would conflict.
 fn wip_cell(ui: &Ui, app: &App, p: &egui::Painter, w: &Wip, left_center: Pos2, width: f32) {
     let c = ito_theme::colors();
+    if w.theirs.is_some() {
+        if let Some(cf) = app.conflicts.of(&w.path) {
+            return merging_cell(ui, app, p, cf, left_center, width);
+        }
+    }
     let warn = wip_clashes(app, &w.path).map(|tip| (tip, warn_width(ui, app.tr("clash.pill"))));
     let width = width - warn.as_ref().map_or(0.0, |(_, pw)| pw + 10.0);
     let (a, d) = w.counts();
@@ -811,6 +822,33 @@ fn wip_cell(ui: &Ui, app: &App, p: &egui::Painter, w: &Wip, left_center: Pos2, w
         let pr = Rect::from_min_size(pos2(end + 10.0, left_center.y - 8.5), vec2(pw, 17.0));
         paint_warn(ui, p, pr, app.tr("clash.pill"), true, 1.0);
         ui.interact(pr, Id::new(("graph-clash-wip", &w.path)), Sense::hover()).on_hover_text(tip);
+    }
+}
+
+/// A merge under way: the places left (or "solved") as a pill, and what
+/// is merged into what.
+fn merging_cell(ui: &Ui, app: &App, p: &egui::Painter, cf: &michi_core::conflict::Conflict, left_center: Pos2, width: f32) {
+    let c = ito_theme::colors();
+    let left = cf.left();
+    let (pill, done) = if left > 0 {
+        (app.tr("graph.merge_left").replace("{n}", &left.to_string()), false)
+    } else {
+        (app.tr("graph.merge_done").to_owned(), true)
+    };
+    let pw = warn_width(ui, &pill);
+    let pr = Rect::from_min_size(pos2(left_center.x, left_center.y - 8.5), vec2(pw, 17.0));
+    if done {
+        let g = ui.fonts_mut(|f| f.layout_no_wrap(pill, FontId::proportional(11.0), c.done));
+        p.galley(pr.left_center() - vec2(0.0, g.size().y / 2.0), g, c.done);
+    } else {
+        paint_warn(ui, p, pr, &pill, false, 1.0);
+    }
+    let text = app.tr("graph.merging").replace("{from}", &cf.theirs.name).replace("{into}", &cf.ours.name);
+    let g = ui.fonts_mut(|f| f.layout_no_wrap(text, FontId::proportional(13.0), c.dim));
+    let x = pr.right() + 10.0;
+    if x + 8.0 < left_center.x + width {
+        let clip = p.with_clip_rect(Rect::from_min_max(pos2(x, left_center.y - 12.0), pos2(left_center.x + width, left_center.y + 12.0)));
+        clip.galley(pos2(x, left_center.y - g.size().y / 2.0), g, c.dim);
     }
 }
 
@@ -939,6 +977,11 @@ mod tests {
         // A branch no worktree is on, against the trunk.
         assert_eq!(head_clashes(&app, id(3)).as_deref(), Some("Would conflict with main in 1 places (a.md)"));
         assert_eq!(head_clashes(&app, id(4)), None);
+        // While a merge is under way the prediction is the real conflict's to show.
+        app.trees.trees[0].doing = Some(michi_core::branch::Doing::Merge);
+        assert!(app.merging());
+        assert_eq!(head_clashes(&app, id(6)), None);
+        assert_eq!(head_clashes(&app, id(3)), None);
     }
 
     /// The view draws without a window: before the history, with it, with

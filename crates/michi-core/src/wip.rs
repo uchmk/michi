@@ -35,6 +35,9 @@ pub struct Wip {
     pub written: Option<i64>,
     /// Untracked files and folders too big to count.
     pub left_out: Vec<LeftOut>,
+    /// The commit being merged in, when the worktree is in the middle of a
+    /// merge (`MERGE_HEAD`).
+    pub theirs: Option<Oid>,
 }
 
 impl Wip {
@@ -57,6 +60,7 @@ pub fn read(wt: &Worktree) -> Read {
     let Some(snap) = predict::snapshot(&wt.path, predict::Limits::DEFAULT)? else { return Ok(None) };
     // The snapshot's, not `wt.head`: `HEAD` may have moved since the list was read.
     let head = snap.head;
+    let theirs = merge_head(&wt.path);
     let Some(commit) = snap.commit else {
         return Ok(Some(Wip {
             path: wt.path.clone(),
@@ -66,11 +70,19 @@ pub fn read(wt: &Worktree) -> Read {
             files: Vec::new(),
             written: None,
             left_out: snap.left_out,
+            theirs,
         }));
     };
     let files = show::changes(&wt.path, &head, &commit, false, &|| false)?.files;
     let written = files.iter().filter_map(|f| modified(&wt.path.join(&f.path))).max();
-    Ok(Some(Wip { path: wt.path.clone(), branch: wt.branch.clone(), head, commit, files, written, left_out: snap.left_out }))
+    Ok(Some(Wip { path: wt.path.clone(), branch: wt.branch.clone(), head, commit, files, written, left_out: snap.left_out, theirs }))
+}
+
+/// The commit a merge under way in `wt` brings in.
+fn merge_head(wt: &Path) -> Option<Oid> {
+    let dir = crate::branch::git_dir(wt)?;
+    let text = std::fs::read_to_string(dir.join("MERGE_HEAD")).ok()?;
+    Oid::parse(text.lines().next()?.trim())
 }
 
 /// [`read`] for each of `worktrees`, a few at a time; the results come in
@@ -131,6 +143,33 @@ mod tests {
         assert_eq!(got[1], Ok(None));
         // Nothing was staged.
         assert_eq!(r.out(&r.repo, &["diff", "--cached", "--name-only"]), "");
+    }
+
+    #[test]
+    fn a_merge_under_way_names_the_commit_coming_in() {
+        let r = TempRepo::new("wip-merge");
+        r.write(
+            &r.repo, "a.txt", "one
+",
+        );
+        r.git(&r.repo, &["add", "."]);
+        r.git(&r.repo, &["commit", "-q", "-m", "base"]);
+        r.git(&r.repo, &["checkout", "-q", "-b", "feat"]);
+        r.write(
+            &r.repo, "a.txt", "feat
+",
+        );
+        r.git(&r.repo, &["commit", "-q", "-am", "feat"]);
+        r.git(&r.repo, &["checkout", "-q", "main"]);
+        r.write(
+            &r.repo, "a.txt", "main
+",
+        );
+        r.git(&r.repo, &["commit", "-q", "-am", "main"]);
+        let all = worktree::list(&r.repo).unwrap();
+        let _ = std::process::Command::new("git").arg("-C").arg(&r.repo).args(["merge", "feat"]).output();
+        let w = read(&all[0]).unwrap().unwrap();
+        assert_eq!(w.theirs.map(|t| t.to_string()), Some(r.out(&r.repo, &["rev-parse", "feat"])));
     }
 
     #[test]

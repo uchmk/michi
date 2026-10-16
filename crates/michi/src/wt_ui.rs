@@ -365,7 +365,7 @@ fn unseen_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
 /// in which files; yellow where only its uncommitted change does.
 fn clash_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
     let c = ito_theme::colors();
-    if app.clashes.side_of(&t.wt.path).is_none() {
+    if app.merging() || app.clashes.side_of(&t.wt.path).is_none() {
         return vec![text(layout(ui, "—", FontId::proportional(12.5), c.dim, w), 0.0)];
     }
     let mut out = Vec::new();
@@ -624,10 +624,11 @@ fn pairs_box(ui: &Ui, app: &App, w: f32) -> Pairs {
         let i = cl.sides.iter().position(|s| s.name == a)?;
         let j = cl.sides.iter().position(|s| s.name == b)?;
         cl.between(i, j)?.conflict()?;
-        Some((i, j))
+        (!app.merging()).then_some((i, j))
     });
     let note = match picked.and_then(|(i, j)| Some((i, j, cl.between(i, j)?))) {
         _ if n < 2 => app.tr("mx.alone").to_owned(),
+        _ if app.merging() => app.tr("mx.merging").to_owned(),
         Some((i, j, o)) => {
             let places: Vec<String> = o
                 .conflict()
@@ -693,7 +694,7 @@ fn draw_pairs(ui: &Ui, p: &Painter, app: &App, b: &Pairs, at: Pos2, live: bool) 
                 let dim = |s: &str| {
                     p.text(mid, Align2::CENTER_CENTER, s, FontId::proportional(12.0), c.dim);
                 };
-                match cl.between(i, j) {
+                match cl.between(i, j).map(|o| if app.merging() && o.conflict().is_some() { &Outcome::Clean } else { o }) {
                     None => {
                         p.rect_filled(r, 0.0, c.fg.gamma_multiply(0.03));
                         dim("—");

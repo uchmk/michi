@@ -256,7 +256,11 @@ impl Graph {
         for w in &self.wips {
             let head = self.history.find(&w.head).and_then(|i| self.history.hidden_by(i, &self.fold)).unwrap_or(w.head);
             let name = w.branch.as_deref();
-            let row = ito_graph::Row { id: w.commit, parents: &[head], name, trunk: name.is_some() && name == trunk, dot: Dot::Wip };
+            // A merge under way has its second parent too, and a ring in the error colour.
+            let theirs = w.theirs.map(|t| self.history.find(&t).and_then(|i| self.history.hidden_by(i, &self.fold)).unwrap_or(t));
+            let parents: Vec<Oid> = std::iter::once(head).chain(theirs).collect();
+            let dot = if theirs.is_some() { Dot::Conflict } else { Dot::Wip };
+            let row = ito_graph::Row { id: w.commit, parents: &parents, name, trunk: name.is_some() && name == trunk, dot };
             layout.push(row, &mut self.colors);
         }
         self.shown.extend((0..self.history.len() as u32).filter(|&i| self.history.shown(i, &self.fold)));
@@ -872,6 +876,7 @@ pub(crate) mod fixture {
             files: vec![file],
             written,
             left_out: Vec::new(),
+            theirs: None,
         }
     }
 

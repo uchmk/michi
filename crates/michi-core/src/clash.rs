@@ -289,7 +289,16 @@ mod tests {
         assert_eq!(names(&s), ["main", "det"]);
         assert_eq!((s[0].path.as_deref(), s[0].head), (None, id(9)));
         // An uncommitted change gives the tip.
-        let w = Wip { path: "C:/r/det".into(), branch: None, head: id(3), commit: id(4), files: vec![], written: None, left_out: vec![] };
+        let w = Wip {
+            path: "C:/r/det".into(),
+            branch: None,
+            head: id(3),
+            commit: id(4),
+            files: vec![],
+            written: None,
+            left_out: vec![],
+            theirs: None,
+        };
         let s = sides(&all, &[w], None);
         assert_eq!((s[1].head, s[1].tip), (id(3), id(4)));
         assert_eq!((s[0].head, s[0].tip), (id(2), id(2)));
