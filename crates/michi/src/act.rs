@@ -65,6 +65,9 @@ pub enum Task {
     Take { wt: PathBuf, path: String, ours: bool },
     /// The file at `path` back as git left it.
     Restart { wt: PathBuf, path: String },
+    /// The file at `path`, which rerere solved, started over and rerere's
+    /// memory of it dropped.
+    Forget { wt: PathBuf, path: String },
     /// Commits what the worktree at `wt` stopped in, all solved.
     Conclude { wt: PathBuf, doing: Doing, message: String },
     /// Calls off what the worktree at `wt` is in the middle of.
@@ -96,6 +99,7 @@ impl Task {
             Task::Resolve { .. } => "add",
             Task::Take { .. } => "checkout",
             Task::Restart { .. } => "checkout --conflict",
+            Task::Forget { .. } => "rerere forget",
             Task::Conclude { doing: Doing::Rebase, .. } => "rebase --continue",
             Task::Conclude { .. } => "commit",
             Task::Abort { doing: Doing::Merge, .. } => "merge --abort",
@@ -160,6 +164,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Resolve { wt, path, block, pick } => conflict::resolve(wt, path, block, *pick).map(|_| solved(wt, None)),
         Task::Take { wt, path, ours } => conflict::take(wt, path, *ours).map(|()| solved(wt, None)),
         Task::Restart { wt, path } => conflict::restart(wt, path).map(|saved| solved(wt, Some(saved))),
+        Task::Forget { wt, path } => conflict::forget(wt, path).map(|saved| solved(wt, Some(saved))),
         Task::Conclude { wt, message, .. } => conflict::commit(wt, message).map(Acted::Committed),
         Task::Abort { wt, .. } => conflict::abort(wt).map(Acted::Kept),
         Task::AskRerere { wt } => rerere::enabled(wt).map(Acted::Rerere),
@@ -189,7 +194,11 @@ impl App {
     /// thread.
     pub(crate) fn act_done(&mut self, task: Task, result: Result<Acted, git::Error>) {
         let failed = |a: &App, e: &git::Error| a.tr("act.failed").replace("{job}", task.word()).replace("{e}", &e.to_string());
-        if let (Task::Resolve { wt, .. } | Task::Take { wt, .. } | Task::Restart { wt, .. }, Ok(Acted::Solved(s))) = (&task, &result) {
+        if let (
+            Task::Resolve { wt, .. } | Task::Take { wt, .. } | Task::Restart { wt, .. } | Task::Forget { wt, .. },
+            Ok(Acted::Solved(s)),
+        ) = (&task, &result)
+        {
             if let Some(read) = &s.read {
                 self.conflicts.set_one(wt, read.clone());
             }
@@ -294,6 +303,10 @@ impl App {
             (Task::Restart { path, .. }, Ok(Acted::Solved(s))) => {
                 let saved = s.saved.as_deref().map_or("", backup::short);
                 (self.tr("act.restarted").replace("{path}", path).replace("{saved}", saved), 8)
+            }
+            (Task::Forget { path, .. }, Ok(Acted::Solved(s))) => {
+                let saved = s.saved.as_deref().map_or("", backup::short);
+                (self.tr("act.forgotten").replace("{path}", path).replace("{saved}", saved), 8)
             }
             (Task::Conclude { wt, doing, .. }, Ok(Acted::Committed(new))) => {
                 let text = self.tr("act.concluded").replace("{doing}", &self.doing_word(*doing)).replace("{wt}", &self::name(wt));

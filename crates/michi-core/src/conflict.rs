@@ -783,6 +783,21 @@ pub fn restart(wt: &Path, path: &str) -> Result<String, git::Error> {
     Ok(kept)
 }
 
+/// Makes git's rerere forget the resolution it applied to the file at `path`
+/// in the worktree at `wt`, then starts the file over (git leaves the
+/// applied text in it). The backup's ref. git answers `error:` with a zero
+/// status when it knows no such resolution, so the text is what is looked at.
+pub fn forget(wt: &Path, path: &str) -> Result<String, git::Error> {
+    let mut cmd = git::command();
+    cmd.arg("-C").arg(wt).env("GIT_LITERAL_PATHSPECS", "1").args(["rerere", "forget", "--", path]);
+    let out = cmd.output().map_err(git::started)?;
+    let err = String::from_utf8_lossy(&out.stderr);
+    if !out.status.success() || err.lines().any(|l| l.starts_with("error:") || l.starts_with("fatal:")) {
+        return Err(git::refused_all(&err));
+    }
+    restart(wt, path)
+}
+
 /// Commits what the worktree at `wt` stopped in: the files solved by hand
 /// are added first, and none may be left. A merge, a cherry-pick or a
 /// revert commits with `message` (a cherry-pick keeps its author); a rebase
@@ -1242,6 +1257,30 @@ mod tests {
         assert_eq!(t.out(r, &["branch", "--show-current"]), "feat");
         assert_eq!(t.out(r, &["log", "-1", "--format=%s"]), "feat");
         assert_eq!(t.out(r, &["rev-parse", "HEAD^"]), t.out(r, &["rev-parse", "main"]));
+    }
+
+    #[test]
+    fn a_resolution_rerere_applied_is_forgotten_and_the_file_starts_over() {
+        let t = clash("conflict-forget");
+        let r = &t.repo;
+        t.git(r, &["config", "rerere.enabled", "true"]);
+        t.git(r, &["config", "core.autocrlf", "false"]);
+        assert!(matches!(merge(r, "feat").unwrap(), Outcome::Conflict(_)));
+        solve_all(r, Pick::Theirs);
+        t.git(r, &["rerere"]);
+        abort(r).unwrap();
+        // The same clash again: rerere solves a.txt and b.txt on its own.
+        assert!(matches!(merge(r, "feat").unwrap(), Outcome::Conflict(_)));
+        let c = read(r).unwrap().unwrap();
+        assert_eq!(c.left(), 0);
+        assert!(c.files.iter().all(|f| f.unmerged));
+        let saved = forget(r, "a.txt").unwrap();
+        assert!(saved.starts_with("refs/michi/backup/"), "{saved}");
+        let c = read(r).unwrap().unwrap();
+        assert_eq!(c.left(), 2);
+        assert!(text(&t, "a.txt").contains("<<<<<<<"));
+        // Nothing is remembered now: git's refusal comes back as the error.
+        assert!(forget(r, "a.txt").is_err());
     }
 
     #[test]

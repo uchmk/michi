@@ -28,6 +28,8 @@ pub enum Tag {
     Picked(Pick),
     /// The file taken whole: our side's (`true`) or theirs.
     Took(bool),
+    /// The file git's rerere solved on its own, not looked at yet.
+    Reused,
 }
 
 /// The places of `c`, in order: each block of a file merged line by line,
@@ -63,6 +65,9 @@ pub struct Conflicts {
     /// The selected place, an index into [`places`] of the one shown.
     pub at: usize,
     tags: HashMap<Key, Tag>,
+    /// The files rerere solved that were looked at (the worktree's key and
+    /// the path).
+    confirmed: HashSet<(String, String)>,
     /// Places picked here whose file is not read again yet.
     pending: HashSet<Key>,
     /// The places whose base column is shown or hidden by hand; the rest
@@ -114,6 +119,7 @@ impl Conflicts {
         let was = self.shown().filter(|c| c.left() > 0).map(|c| paths::key(&c.wt));
         let keys: HashSet<String> = all.iter().map(|c| paths::key(&c.wt)).collect();
         self.tags.retain(|(k, ..), _| keys.contains(k));
+        self.confirmed.retain(|(k, _)| keys.contains(k));
         self.bases.retain(|(k, ..), _| keys.contains(k));
         self.pending.retain(|(k, ..)| !fresh(k));
         self.all = all;
@@ -223,7 +229,42 @@ impl Conflicts {
     /// What the place was solved with here; `None` when it was not (by hand,
     /// or by someone else).
     pub fn tag(&self, p: Place) -> Option<Tag> {
-        self.tags.get(&self.key(p)?).copied()
+        let key = self.key(p)?;
+        if let Some(t) = self.tags.get(&key) {
+            return Some(*t);
+        }
+        self.reused(p.0).then_some(Tag::Reused)
+    }
+
+    /// Whether the file `i` of the one shown looks solved by rerere and was
+    /// not looked at: still unmerged, no place open, and nothing picked in it
+    /// here. (A file solved by hand in an editor looks the same.)
+    pub fn reused(&self, i: usize) -> bool {
+        let Some(c) = self.shown() else { return false };
+        let Some(f) = c.files.get(i) else { return false };
+        let Body::Text(blocks) = &f.body else { return false };
+        let wt = paths::key(&c.wt);
+        f.unmerged
+            && !blocks.is_empty()
+            && blocks.iter().all(|b| !b.is_open())
+            && !self.confirmed.contains(&(wt.clone(), f.path.clone()))
+            && !self.tags.keys().any(|(k, p, _)| *k == wt && *p == f.path)
+    }
+
+    /// How many files of the one shown rerere solved that are not looked at.
+    pub fn reused_left(&self) -> usize {
+        self.shown().map_or(0, |c| (0..c.files.len()).filter(|&i| self.reused(i)).count())
+    }
+
+    /// The file `i` of the one shown, looked at. Whether it was one to look at.
+    pub fn confirm(&mut self, i: usize) -> bool {
+        if !self.reused(i) {
+            return false;
+        }
+        let Some(c) = self.shown() else { return false };
+        let key = (paths::key(&c.wt), c.files[i].path.clone());
+        self.confirmed.insert(key);
+        true
     }
 
     /// Whether the place was picked and is not read again yet.
@@ -290,6 +331,7 @@ impl App {
             't' => self.conflict_pick(Pick::Theirs),
             'b' => self.conflict_pick(Pick::Both),
             'B' => self.conflict_pick(Pick::BothTheirsFirst),
+            'x' => self.conflict_forget(),
             _ => return false,
         }
         true
@@ -303,6 +345,7 @@ impl App {
             "ArrowUp" => cf.move_by(-1),
             "Home" => cf.move_to(false),
             "End" => cf.move_to(true),
+            "Enter" => return self.conflict_confirm(),
             "PageDown" => cf.pages += 1,
             "PageUp" => cf.pages -= 1,
             _ => return false,
@@ -404,6 +447,32 @@ impl App {
         self.act(task);
     }
 
+    /// Enter: the selected place's file, solved by rerere, looked at and
+    /// right. Whether it was one.
+    pub(crate) fn conflict_confirm(&mut self) -> bool {
+        let at = self.conflicts.at;
+        let Some(&(i, _)) = self.conflicts.places().get(at) else { return false };
+        if !self.conflicts.confirm(i) {
+            return false;
+        }
+        self.conflicts.next_open();
+        true
+    }
+
+    /// `x`: the selected place's file, which rerere solved, solved again
+    /// from the start and not remembered.
+    pub(crate) fn conflict_forget(&mut self) {
+        let at = self.conflicts.at;
+        let Some(c) = self.conflicts.shown() else { return };
+        let Some(&(i, _)) = places(c).get(at) else { return };
+        if !self.conflicts.reused(i) {
+            self.say(self.tr("cf.not_reused"));
+            return;
+        }
+        let (wt, path) = (c.wt.clone(), c.files[i].path.clone());
+        self.act(Task::Forget { wt, path });
+    }
+
     /// The file's button: its places back as git left them.
     pub(crate) fn conflict_restart(&mut self, file: usize) {
         let Some(c) = self.conflicts.shown() else { return };
@@ -468,6 +537,26 @@ pub(crate) mod tests {
         assert!(cf.pending.contains(&key("/r/feat")), "not read yet");
         cf.set_one(Path::new("/r/main"), None);
         assert_eq!(cf.all.iter().map(|c| c.wt.clone()).collect::<Vec<_>>(), [PathBuf::from("/r/feat")]);
+    }
+
+    #[test]
+    fn a_file_solved_without_a_pick_here_is_rerere_s_until_looked_at() {
+        let mut a = app();
+        let mut c = conflict("/r/main");
+        c.files[0].body = Body::Text(vec![block(false), block(false)]);
+        a.conflicts.set(vec![c]);
+        assert_eq!(a.conflicts.tag((0, Some(1))), Some(Tag::Reused));
+        assert_eq!((a.conflicts.reused(0), a.conflicts.reused(1), a.conflicts.reused_left()), (true, false, 1));
+        // x on a place that is not rerere's says so; Enter does nothing.
+        a.conflicts.at = 2;
+        assert!(!a.conflict_confirm());
+        a.conflict_key('x');
+        assert_eq!(toast(&a), a.tr("cf.not_reused"));
+        // Enter on rerere's file looks at it.
+        a.conflicts.at = 0;
+        assert!(a.conflict_confirm());
+        assert_eq!((a.conflicts.tag((0, Some(0))), a.conflicts.reused_left()), (None, 0));
+        assert!(!a.conflict_confirm(), "once");
     }
 
     #[test]

@@ -1056,7 +1056,12 @@ impl Draw<'_> {
         if button(ui, p, b, label, key, Look::Prime, "cf-commit", self.live, pointer) {
             out = Some(Act::Commit);
         }
-        let done = p.text(pos2(inner.left(), first), Align2::LEFT_CENTER, self.tr("cf.done"), FontId::proportional(12.5), c.fg);
+        let reused = self.app.conflicts.reused_left();
+        let mut said = self.tr("cf.done").to_owned();
+        if reused > 0 {
+            said = format!("{said} {}", self.tr("cf.reused_left").replace("{}", &reused.to_string()));
+        }
+        let done = p.text(pos2(inner.left(), first), Align2::LEFT_CENTER, said, FontId::proportional(12.5), c.fg);
         if rebase {
             return (out, None);
         }
@@ -1113,6 +1118,7 @@ fn tag_key(tag: Option<Tag>) -> &'static str {
         Some(Tag::Picked(Pick::Base)) => "cf.tag_base",
         Some(Tag::Took(true)) => "cf.tag_file_ours",
         Some(Tag::Took(false)) => "cf.tag_file_theirs",
+        Some(Tag::Reused) => "cf.tag_reused",
         None => "cf.hand",
     }
 }

@@ -3,7 +3,7 @@
 前の会話から次の会話への引き継ぎ。新しいセッションは `C:\dev\michi` で始め、CLAUDE.md・TODO.md・この文書の順に読む。
 設計の正は [design.md](design.md) とモック。大きなファイル（design.md・graph.rs・wt_ui.rs など）は全部読まず、要るところだけ読む。
 
-## いまの版（v0.19.0、2026-10-16）
+## いまの版（v0.20.0、2026-10-16）
 
 段 1「見る」は終わり、段 2「変える」は TODO.md の 2. のうち後回しにしたもの（各 question の issue の「後回し」）だけが残る。
 段 3「衝突」は衝突の画面とマージ中のロックが入った（v0.17.0）。別のセッションが `michi.com`（Windows のコンソールの前段）を
@@ -32,7 +32,11 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
 - マージ中の樹形図（v0.18.0〜0.18.1、TESTING 21.21〜21.22）: `Wip.theirs`（`MERGE_HEAD`）で最上段にマージの行（`Dot::Conflict`、「⚠ 衝突 残り N」）、
   `App::merging()` の間は衝突の予測（印・列・組）を隠して注記を出し、道具帯の `Pull`・`Stash` を薄くする。差分が無いマージ中の worktree には行が出ない。
 - rerere（v0.19.0、TESTING 21.23）: `michi-core/src/rerere.rs`（`enabled`・`set`）、`Task::{AskRerere, Rerere}`。`show_conflicts` が 1 セッションに 1 回聞き、
-  `y` で `rerere.enabled=true`（マージ中なら `git rerere` も）、`n` で `false`、Esc は書かない。当てた形の「↺ 前に解いた形」の札と `Enter`・忘れるは未実装。
+  `y` で `rerere.enabled=true`（マージ中なら `git rerere` も）、`n` で `false`、Esc は書かない。
+- rerere の当てた形（v0.20.0、TESTING 21.24）: `Conflicts::reused(file)`（まだ衝突のまま・箇所が全部解けている・こちらで選んだ印が無い・確かめていない）で `Tag::Reused` の札「↺ 前に解いた形」、
+  `Enter` で確かめた（`confirmed`、メモリだけ）、`x` で `Task::Forget`（`conflict::forget` = `git rerere forget` + `restart`）。下の帯に確かめていない数。
+  **git の癖**: `core.autocrlf=true`（この PC の全体設定）だと `git rerere forget` が `error: no remembered resolution` で失敗する（終了コードは 0。stderr の `error:` を見て断る）。
+  `false` で記録した解き方なら忘れられる。手でエディタで直したファイルも「前に解いた形」に見える（区別できない）。
 - 書く処理は `michi/src/act.rs` の `Task`（ワーカーで実行、Claude がいれば `work.rs` の `Band` で聞く）。読むスレッドは `repo.rs`。
 
 実機の確認は needs-pc の issue（#1, #3〜#9, #11, #13, #14, #17, #19, #21, #23）で PC のセッションに頼んである。#23 が v0.17.0 の 21.1〜21.20。
@@ -40,14 +44,14 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
 #18（stash・捨てる）・#20（片付け・分割・hook の出力）・#22（衝突の画面・ロック・cherry-pick・取り込み。作ってからの補足をコメントに書いた）。
 どれもまだ回答は無い。
 
-**まだ issue に積んでいない実機の確認**: TESTING 21.21〜21.23（v0.18.0〜v0.19.0: マージ中の樹形図の行・予測を隠す・`Pull`/`Stash` を薄くする・rerere を聞く帯）。
-`needs-pc` の issue を新しく立てて頼む（#23 は 21.1〜21.20 用）。いまの状態: main は origin/main と同じ（v0.19.0 を push 済み、verify は 294 passed）、作業中の変更は無い。
-rerere は「聞く」までで、当てた形の札（↺）・`Enter` で確かめた・忘れる（`git rerere forget`）は未実装。差分が無いマージ中の worktree にはマージの行が出ない制限がある。
+**まだ issue に積んでいない実機の確認**: TESTING 21.21〜21.24（v0.18.0〜v0.20.0: マージ中の樹形図の行・予測を隠す・`Pull`/`Stash` を薄くする・rerere を聞く帯・当てた形の札と忘れる）。
+`needs-pc` の issue を新しく立てて頼む（#23 は 21.1〜21.20 用）。いまの状態: 作業中の変更は無い。
+差分が無いマージ中の worktree にはマージの行が出ない制限がある。
 
 ## 次にやること
 
 1. モックの 2 回目はやらない（持ち主が 2026-10-15 に「実装を進めて」）。決めることは `question` の issue に文字で書き、推奨で進める。
-2. 段 3 の残り（TODO.md の 3. の `[ ]`）: rerere の当てた形の札（↺）と忘れる、意図の行（`git log -L`）、`e` で結果を直す、単語の差分、Claude に渡す、外部ツール、予測を gix-merge に（`git merge-tree --write-tree` と比べる）。
+2. 段 3 の残り（TODO.md の 3. の `[ ]`）: 意図の行（`git log -L`）、`e` で結果を直す、単語の差分、Claude に渡す、外部ツール、予測を gix-merge に（`git merge-tree --write-tree` と比べる）。
 3. 段 2 の後回し: レビューのメモ・マージ・PR（#10）、push 先のリモートを選ぶ（#15）、ブランチの名前の変更・upstream・rebase・樹形図の `m`（#16）。
 4. 段 4〜6 は TODO.md のとおり。段 4 は tsumugi の `new --worktree` と `focus` が要る（tsumugi の TODO.md に書いてある）。
 
