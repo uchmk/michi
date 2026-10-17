@@ -12,6 +12,7 @@ pub mod branch;
 pub mod change;
 pub mod clash;
 pub mod claude;
+pub mod clone;
 pub mod coauthor;
 pub mod conflict;
 pub mod density;
