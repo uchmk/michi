@@ -291,6 +291,14 @@ pub struct App {
     pub net: Option<Running>,
     /// When the repository last fetched (`FETCH_HEAD`'s time).
     pub last_fetch: Option<SystemTime>,
+    /// The fetch that runs was started by the timer (#70): it says nothing unless it fails.
+    pub auto_job: bool,
+    /// When the timer last started a fetch.
+    pub auto_try: Option<SystemTime>,
+    /// Fetches the timer started in a row that failed.
+    pub auto_failures: u32,
+    /// The last fetch failed: the keybar says so, small.
+    pub fetch_failed: bool,
     /// A job waiting for a yes, under the title bar.
     pub band: Option<Band>,
     /// The window's worktree is on no branch: what was read of it (#109).
@@ -371,6 +379,10 @@ impl App {
             toast: None,
             net: None,
             last_fetch: None,
+            auto_job: false,
+            auto_try: None,
+            auto_failures: 0,
+            fetch_failed: false,
             band: None,
             detached: None,
             rerere_asked: false,

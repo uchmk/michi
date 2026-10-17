@@ -64,6 +64,8 @@ pub struct Prefs {
     pub view_warn: Vec<String>,
     /// `[view] avatars` of config.toml: whether authors' pictures are fetched from GitHub.
     pub avatars: bool,
+    /// `[net] auto_fetch` of config.toml: how often to fetch by itself (#70).
+    pub auto_fetch: michi_core::autofetch::Every,
     /// The Notifications page's drafts (a webhook's address being typed).
     pub notify_drafts: ito_prefs::Drafts,
     /// The Keys page's search, filter and the keys being pressed.
@@ -98,6 +100,7 @@ impl Prefs {
             density: Default::default(),
             motion: Default::default(),
             avatars: true,
+            auto_fetch: Default::default(),
             view_warn: Vec::new(),
             notify_drafts: ito_prefs::Drafts::new(),
             keys_edit: ito_prefs::KeysEdit::default(),
@@ -265,6 +268,9 @@ impl Prefs {
         self.view_warn.extend(warn);
         let (on, warn) = crate::viewcfg::avatars(text);
         self.avatars = on;
+        self.view_warn.extend(warn);
+        let (every, warn) = crate::viewcfg::auto_fetch(text);
+        self.auto_fetch = every;
         self.view_warn.extend(warn);
     }
 

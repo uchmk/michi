@@ -649,10 +649,17 @@ fn net_status(ui: &Ui, app: &App, p: &egui::Painter, right: f32, mid: f32) -> f3
         paint_icon(p, pos2(t.left() - 9.0, mid), icon, c.wait);
         return t.left() - 18.0 - 14.0;
     }
-    let Some(at) = app.last_fetch else { return right };
-    let s = app.tr("net.last").replace("{}", &work::ago(app, at, SystemTime::now()));
-    let t = p.text(pos2(right, mid), Align2::RIGHT_CENTER, s, font, c.dim);
-    paint_icon(p, pos2(t.left() - 9.0, mid), Icon::Fetch, c.dim);
+    let s = match (app.last_fetch, app.fetch_failed) {
+        (Some(at), failed) => {
+            let key = if failed { "net.last_failed" } else { "net.last" };
+            app.tr(key).replace("{}", &work::ago(app, at, SystemTime::now()))
+        }
+        (None, true) => app.tr("net.never_failed").to_owned(),
+        (None, false) => return right,
+    };
+    let colour = if app.fetch_failed { c.wait } else { c.dim };
+    let t = p.text(pos2(right, mid), Align2::RIGHT_CENTER, s, font, colour);
+    paint_icon(p, pos2(t.left() - 9.0, mid), Icon::Fetch, colour);
     ui.ctx().request_repaint_after(Duration::from_secs(30));
     t.left() - 18.0 - 14.0
 }

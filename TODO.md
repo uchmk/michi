@@ -145,7 +145,7 @@ All wait for the owner; none is started.
 - [ ] Drag and drop (merge / rebase / cherry-pick)（要確認: #67）
 - [ ] Syntax highlighting in diffs（要確認: #68）
 - [ ] CI / PR state on the graph（要確認: #69）
-- [ ] Auto fetch: interval and failure（要確認: #70）
+- [x] Auto fetch (recommended option of #70): while the window is in front, fetch every 5 minutes (`[net] auto_fetch` in config.toml, minutes, 0 is off); a failure shows small on the keybar, no toast（要確認: #70）
 - [ ] Hide / solo branches（要確認: #71）
 - [ ] Tree view of changed files（要確認: #72）
 - [ ] Progress and cancel for long operations（要確認: #73）

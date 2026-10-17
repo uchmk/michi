@@ -267,10 +267,30 @@ impl App {
             self.busy();
             return;
         }
+        self.auto_job = false;
         let Some(r) = &self.reading else { return };
         let stop = Arc::new(AtomicBool::new(false));
         self.net = Some(Running { kind: job.kind(), progress: None, stop: stop.clone() });
         r.net(Order { job, stop });
+    }
+
+    /// Once a frame: start a fetch by itself when `[net] auto_fetch` says it is
+    /// time (#70). It only runs with the window in front and no net job, waits
+    /// longer after failures, and says nothing unless the keybar's "failed".
+    pub(crate) fn auto_fetch_tick(&mut self, now: SystemTime) {
+        let last = self.last_fetch.into_iter().chain(self.auto_try).max();
+        let since = last.map(|t| now.duration_since(t).unwrap_or(Duration::ZERO));
+        if self.reading.is_none() || !self.prefs.auto_fetch.due(since, self.auto_failures, self.front, self.net.is_some()) {
+            return;
+        }
+        self.auto_try = Some(now);
+        self.order(Job::Fetch);
+        self.auto_job = self.net.is_some();
+    }
+
+    /// How long until the timer needs a look again (for `request_repaint_after`).
+    pub(crate) fn auto_fetch_wake(&self) -> Option<Duration> {
+        self.prefs.auto_fetch.0.map(|_| Duration::from_secs(30))
     }
 
     pub(crate) fn busy(&mut self) {
@@ -436,6 +456,23 @@ impl App {
     pub(crate) fn net_done(&mut self, job: Job, result: Result<Done, git::Error>) {
         self.net = None;
         let kind = job.kind();
+        let auto = std::mem::take(&mut self.auto_job);
+        if kind == Kind::Fetch {
+            match &result {
+                Ok(Done::Fetched { .. }) => (self.fetch_failed, self.auto_failures) = (false, 0),
+                Err(_) => {
+                    self.fetch_failed = true;
+                    if auto {
+                        self.auto_failures += 1;
+                    }
+                }
+                _ => {}
+            }
+            // The timer's fetch is quiet: no toast, no notification, even when it fails.
+            if auto && matches!(result, Ok(Done::Fetched { .. }) | Ok(Done::Stopped) | Err(_)) {
+                return;
+            }
+        }
         let (text, secs) = match result {
             Ok(Done::Fetched { moved: 0, .. }) => (self.tr("net.fetched_none").to_owned(), 4),
             Ok(Done::Fetched { moved, .. }) => (self.tr("net.fetched").replace("{}", &moved.to_string()), 4),
@@ -556,6 +593,41 @@ mod tests {
     use super::*;
     use crate::app::tests::{app, toast};
     use michi_core::oid::Oid;
+
+    #[test]
+    fn a_failed_auto_fetch_is_quiet_and_marks_the_keybar() {
+        let mut a = app();
+        a.auto_job = true;
+        a.net_done(Job::Fetch, Err(git::Error::Git("could not resolve host".into())));
+        assert!(a.fetch_failed && a.auto_failures == 1);
+        assert!(a.toast.is_none() && a.last_error.is_none());
+        a.auto_job = true;
+        a.net_done(Job::Fetch, Err(git::Error::Git("x".into())));
+        assert_eq!(a.auto_failures, 2);
+        // A fetch that works clears it, still without a word.
+        a.auto_job = true;
+        a.net_done(Job::Fetch, Ok(Done::Fetched { remotes: 1, moved: 2 }));
+        assert!(!a.fetch_failed && a.auto_failures == 0 && a.toast.is_none());
+    }
+
+    #[test]
+    fn a_failed_manual_fetch_still_toasts_and_marks_the_keybar() {
+        let mut a = app();
+        a.net_done(Job::Fetch, Err(git::Error::Git("could not resolve host".into())));
+        assert!(a.fetch_failed);
+        assert!(toast(&a).starts_with("fetch failed"), "{}", toast(&a));
+        a.net_done(Job::Fetch, Ok(Done::Fetched { remotes: 1, moved: 1 }));
+        assert!(!a.fetch_failed);
+        assert_eq!(toast(&a), "Fetched: 1 refs moved");
+    }
+
+    #[test]
+    fn the_timer_does_nothing_without_a_repository_reading() {
+        let mut a = app();
+        a.front = true;
+        a.auto_fetch_tick(SystemTime::now());
+        assert!(a.net.is_none() && a.auto_try.is_none());
+    }
 
     fn lease() -> Lease {
         Lease {

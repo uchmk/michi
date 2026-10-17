@@ -471,6 +471,10 @@ impl eframe::App for Michi {
             }
         }
         self.app.pump();
+        self.app.auto_fetch_tick(std::time::SystemTime::now());
+        if let Some(wake) = self.app.auto_fetch_wake() {
+            ctx.request_repaint_after(wake);
+        }
         self.app.sync_detail();
         if let Some(title) = self.app.new_title.take() {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
