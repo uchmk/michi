@@ -8,6 +8,7 @@
 
 use egui::text::{LayoutJob, TextFormat, TextWrapping};
 use egui::{pos2, vec2, Align2, CornerRadius, CursorIcon, FontId, Id, Painter, Pos2, Rect, Sense, Stroke, StrokeKind, Ui};
+use michi_core::msghelp::Guide;
 use michi_core::paths;
 use michi_core::show::File;
 use michi_core::stage::{Lists, Side};
@@ -629,7 +630,7 @@ fn message(ui: &mut Ui, app: &mut App, br: Rect, live: bool, pointer: Option<Pos
     p.galley(pos2(br.left() + X, head - g.size().y / 2.0), g, c.dim);
 
     let foot = br.bottom() - 18.0;
-    let field = Rect::from_min_max(pos2(br.left() + X - 4.0, head + 12.0), pos2(br.right() - X + 4.0, foot - 16.0));
+    let field = Rect::from_min_max(pos2(br.left() + X - 4.0, head + 12.0), pos2(br.right() - X + 4.0, (foot - 32.0).max(head + 40.0)));
     let focused = ui.memory(|m| m.has_focus(message_id()));
     p.rect_filled(field, CornerRadius::same(5), c.bg);
     let border = if focused { c.border_strong() } else { c.border };
@@ -651,6 +652,19 @@ fn message(ui: &mut Ui, app: &mut App, br: Rect, live: bool, pointer: Option<Pos
     if std::mem::take(&mut app.changes.focus_message) {
         resp.request_focus();
     }
+
+    // The guide to writing it (#124): the first line's length, or an example.
+    let (guide, warn) = match michi_core::msghelp::guide(&app.changes.message) {
+        Guide::Empty => (app.tr("changes.guide_empty").to_owned(), false),
+        Guide::Long(n) => (app.tr("changes.guide_long").replace("{}", &n.to_string()), true),
+        Guide::Terse => (app.tr("changes.guide_terse").to_owned(), true),
+        Guide::Fine(n) => (app.tr("changes.guide_fine").replace("{}", &n.to_string()), false),
+    };
+    let ink = if warn { c.wait } else { c.dim };
+    let mut job = LayoutJob::single_section(guide, TextFormat { font_id: FontId::proportional(11.0), color: ink, ..Default::default() });
+    job.wrap = TextWrapping::truncate_at_width((br.width() - 2.0 * X).max(0.0));
+    let g = ui.fonts_mut(|f| f.layout_job(job));
+    p.galley(pos2(br.left() + X, field.bottom() + 9.0 - g.size().y / 2.0), g, ink);
 
     // Commit: Ctrl+Enter, or a click.
     let cap = kbd(ui, &p, pos2(br.right() - X, foot), "Ctrl+Enter");

@@ -215,9 +215,9 @@ All wait for the owner; none is started. Related: #64 (Undo), #74, #77, #80-#83.
 - [ ] Diagram of stage and commit in Changes（要確認: #120）
 - [ ] Beginner explanation of conflicts（要確認: #121）
 - [ ] Explain worktrees（要確認: #122）
-- [ ] Check that everything is reachable by mouse alone（要確認: #123）
-- [ ] Commit message writing guide（要確認: #124）
-- [ ] Unify Japanese and English terms（要確認: #125）
+- [x] Keybar entries are clickable (#123); gaps still open: drag-select in the diff, moving by row without `j k`（要確認: #123）
+- [x] Commit message writing guide（要確認: #124）
+- [x] Unify Japanese and English terms（要確認: #125）
 
 ## Owner
 

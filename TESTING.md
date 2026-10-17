@@ -1317,3 +1317,28 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 261.3 | Change the theme and a key, press Import once, then again | The first press only arms the button; the second reads the file back, a toast says what was read, and the theme and the key are as exported within a couple of seconds |
 | 261.4 | Import a file that is not a settings bundle | A toast gives the reason and nothing in the settings folder changes |
 | 261.5 | Search "backup" in the settings | The Advanced page is listed |
+
+## 262. Everything by mouse (#123)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 262.1 | In each view, hover an entry of the keybar at the bottom | The entry lights up, the cursor is a hand; a click does what the key does (`c`, `Space`, `?`, `Esc` ...) |
+| 262.2 | Click `?` in the keybar, then `Esc` in the keybar | The help opens and closes; the same for the settings (gear in the top bar) |
+| 262.3 | Click the entries that are several keys (`j k`) | Nothing happens (they are not buttons) |
+| 262.4 | Press `Space` in the palette list | `Space` is listed and runs the view's Space action |
+| 262.5 | Go through every view and overlay with the mouse only | Known gaps (moving by row, text selection by drag in the diff) are the ones listed in TODO.md; any other gap is a new finding |
+
+## 263. Commit message guide (#124)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 263.1 | Open Changes with an empty message | A dim line under the box: first line about 50 characters, with an example |
+| 263.2 | Type `fix` | The line turns to the warning color: the first line is very short |
+| 263.3 | Type a first line of 60 characters | The warning color, with the length; with 50 or fewer it is dim `First line N/50` |
+| 263.4 | Switch EN and JA; narrow the window | Both read well; the line is cut at the width and the commit still works |
+
+## 264. Terms (#125)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 264.1 | Read GLOSSARY.md, then walk the screens in JA and EN | Each idea uses the word in the table (branch/ブランチ, 衝突, 差分, 作業ツリー, 消す, 捨てる ...) |
