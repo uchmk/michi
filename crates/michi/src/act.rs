@@ -172,6 +172,13 @@ pub enum Task {
         rev: Option<Oid>,
         path: String,
     },
+    /// Reads, without changing anything, what a login depends on: the
+    /// remote's address (or the clone's `url`), the credential helper, the
+    /// ssh agent.
+    FindAuth {
+        here: PathBuf,
+        url: Option<String>,
+    },
     /// Lists HEAD's reflog (as the worktree at `here` has it) and the backups.
     FindReflog {
         here: PathBuf,
@@ -424,6 +431,7 @@ impl Task {
             Task::UpdateSubmodules { .. } => "submodule update",
             Task::FindTidy { .. } => "for-each-ref",
             Task::FindReflog { .. } => "reflog",
+            Task::FindAuth { .. } => "config credential.helper",
             Task::FindContent { content, .. } => match content.kind {
                 michi_core::find::Kind::Text => "log -S",
                 michi_core::find::Kind::Regex => "log -G",
@@ -494,6 +502,7 @@ pub enum Acted {
     Found(Found),
     Submodules(Vec<michi_core::submodule::Sub>),
     Reflog(Vec<michi_core::reflog::Entry>),
+    Auth(Box<michi_core::auth::Facts>),
     /// The commits a content search hits.
     Content(std::collections::HashSet<Oid>),
     Remotes(Vec<michi_core::remote::Remote>),
@@ -565,6 +574,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::UpdateSubmodules { wt } => michi_core::submodule::update(wt).map(Acted::Submodules),
         Task::FindTidy { here } => tidy::find(dir, here).map(Acted::Found),
         Task::FindReflog { here } => michi_core::reflog::list(here).map(Acted::Reflog),
+        Task::FindAuth { here, url } => Ok(Acted::Auth(Box::new(michi_core::auth::probe(here, url.as_deref())))),
         Task::FindContent { here, content } => michi_core::find::search(here, content).map(Acted::Content),
         Task::FindBlame { dir, rev, path } => michi_core::blame::read(dir, rev.as_ref(), path).map(|b| Acted::Blamed(Box::new(b))),
         Task::Trial { trunk, branches } => michi_core::trial::run(dir, trunk, branches).map(|t| Acted::Trialed(Box::new(t))),
@@ -948,6 +958,7 @@ impl App {
             (Task::UpdateSubmodules { wt }, Ok(Acted::Submodules(subs))) => self.submodules_updated(wt, &subs),
             (Task::FindTidy { .. }, Ok(Acted::Found(found))) => return self.tidy_found(found),
             (Task::FindReflog { .. }, Ok(Acted::Reflog(rows))) => return self.reflog_found(rows),
+            (Task::FindAuth { .. }, Ok(Acted::Auth(facts))) => return self.auth_found(*facts),
             (Task::FindContent { content, .. }, Ok(Acted::Content(ids))) => {
                 self.graph.set_content(content.clone(), ids);
                 return;

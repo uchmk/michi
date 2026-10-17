@@ -30,6 +30,8 @@ pub enum Row {
 /// A `git clone` running on a thread.
 pub struct Cloning {
     pub dest: PathBuf,
+    /// The address being cloned, for the sign-in help when it fails.
+    pub url: String,
     pub answer: Receiver<Result<(), michi_core::git::Error>>,
 }
 
@@ -189,12 +191,12 @@ impl App {
         let text = self.tr("repos.cloning").replace("{}", &url);
         self.say_for(text, 8);
         let (tx, answer) = mpsc::channel();
-        let (d, ctx) = (dest.clone(), ctx.clone());
+        let (d, ctx, u) = (dest.clone(), ctx.clone(), url.clone());
         std::thread::spawn(move || {
-            let _ = tx.send(clone::run(&url, &d));
+            let _ = tx.send(clone::run(&u, &d));
             ctx.request_repaint();
         });
-        self.cloning = Some(Cloning { dest, answer });
+        self.cloning = Some(Cloning { dest, url, answer });
     }
 
     pub fn forget_repo(&mut self, dir: &Path) {

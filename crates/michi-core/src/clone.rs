@@ -79,7 +79,7 @@ pub fn run(url: &str, dest: &Path) -> Result<(), git::Error> {
     if !existed {
         let _ = std::fs::remove_dir_all(dest);
     }
-    Err(git::refused(&String::from_utf8_lossy(&out.stderr)))
+    Err(git::refused_all(&String::from_utf8_lossy(&out.stderr)))
 }
 
 #[cfg(test)]

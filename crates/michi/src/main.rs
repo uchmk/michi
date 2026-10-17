@@ -8,6 +8,8 @@
 
 mod act;
 mod app;
+mod auth;
+mod auth_ui;
 mod avatar;
 mod blame;
 mod blame_ui;
@@ -150,7 +152,8 @@ impl Michi {
                         self.app.open_req = Some(c.dest);
                     }
                     Err(e) => {
-                        let text = self.app.tr("repos.clone_failed").replace("{}", &e.to_string());
+                        let mut text = self.app.tr("repos.clone_failed").replace("{}", &e.to_string());
+                        text.push_str(&self.app.auth_noted(&e, Some(c.url.clone())));
                         self.app.say_for(text, 10);
                     }
                 }
@@ -515,6 +518,7 @@ impl eframe::App for Michi {
         reply_ui::show(&ctx, &mut self.app);
         tidy_ui::show(&ctx, &mut self.app);
         reflog_ui::show(&ctx, &mut self.app);
+        auth_ui::show(&ctx, &mut self.app);
         blame_ui::show(&ctx, &mut self.app);
         trial_ui::show(&ctx, &mut self.app);
         reorder_ui::show(&ctx, &mut self.app);

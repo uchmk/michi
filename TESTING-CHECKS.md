@@ -869,3 +869,16 @@
 - [ ] **246.8** With a rebase or merge stopped in the worktree, paste a patch → A toast says the worktree is in the middle of it and to finish first 〔未訳〕
 - [ ] **246.9** Paste a patch while a Claude is working in the worktree → The question ends with the note that a Claude is working there 〔未訳〕
 - [ ] **246.10** Check the keybar and `?` over the graph; switch EN and JA → `Y` and Ctrl+V are listed with their words in both languages 〔未訳〕
+
+## 241. Sign-in help (#41)
+
+- [ ] **241.1** Point `origin` at an ssh address you have no key for (or stop ssh-agent) and press `f` → The failure toast ends with the cause ("the ssh key was refused") and "(K for the fix)" 〔未訳〕
+- [ ] **241.2** Press `K` after 241.1 → A panel names the cause, shows the remote, scheme, host, credential helper and ssh agent state, and lists numbered commands (`ssh-add`, `ssh -T git@<host>` ...) with a line on what each does 〔未訳〕
+- [ ] **241.3** Press `1`, then paste into a terminal → The toast says the command was copied and the clipboard holds exactly that command; michi ran nothing and nothing in `~/.ssh` or the agent changed 〔未訳〕
+- [ ] **241.4** Set `origin` to an https address with a wrong host or no helper (`git config --unset-all credential.helper`) and press `f` → The toast names the https sign-in failure; `K` lists `git config --global credential.helper ...`, `gh auth login`, `gh auth setup-git`; no terminal prompt appears and no password is asked 〔未訳〕
+- [ ] **241.5** Fetch from a host that does not resolve (`https://nohost.invalid/x.git`) and press `K` → The cause is "the host could not be reached"; the panel offers `git ls-remote --heads origin` and the proxy check 〔未訳〕
+- [ ] **241.6** With no failure since the start, press `K` (and use the palette entry "Sign-in help") → The panel opens with "No sign-in failure yet" and the checks for the remote's scheme 〔未訳〕
+- [ ] **241.7** Clone from the repository screen with an address that needs a login you lack, then press `K` → The failure toast has the cause and the hint; the panel shows the facts for the clone's address (not an existing repository) 〔未訳〕
+- [ ] **241.8** Put a token in an https remote URL (`https://user:token@github.com/o/r.git`) and open the panel → Neither the token nor the user name is shown anywhere in the panel or the toast 〔未訳〕
+- [ ] **241.9** Press `Esc`, or click outside the panel; open it again and press `?` → The panel closes; the keybar and `?` list `1-9` and `Esc` in the panel 〔未訳〕
+- [ ] **241.10** Switch EN and JA with the panel open → Every line (cause, help text, facts, command notes, keys) is in the chosen language; the commands stay as typed 〔未訳〕
