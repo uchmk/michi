@@ -775,6 +775,21 @@ fn number(p: &Painter, cell: Rect, n: u32) {
     );
 }
 
+/// The theme's colour for a kind of token.
+pub(crate) fn tok_color(tok: michi_core::syntax::Tok) -> Color32 {
+    use michi_core::syntax::Tok;
+    let c = ito_theme::colors();
+    match tok {
+        Tok::Keyword => c.magenta,
+        Tok::Str => c.done,
+        Tok::Comment => c.dim,
+        Tok::Number => c.wait,
+        Tok::Const => c.run,
+        Tok::Type => c.run,
+        Tok::Func => c.blue,
+    }
+}
+
 /// The text of a line, its changed words marked, wrapped at `width` in as
 /// many lines as `rows` has room for: `at` is the left of the first line's
 /// middle.
@@ -785,12 +800,13 @@ fn line_text(ui: &Ui, p: &Painter, at: Pos2, l: &Line, mark: Option<Color32>, wi
     let c = ito_theme::colors();
     let font = FontId::monospace(12.0);
     let mut job = LayoutJob::default();
-    for (text, marked) in l.pieces() {
+    for (text, marked, tok) in l.styled() {
+        let color = tok.map_or(c.fg, tok_color);
         let background = match (marked, mark) {
             (true, Some(m)) => m.gamma_multiply(0.34),
             _ => Color32::TRANSPARENT,
         };
-        job.append(&text, 0.0, TextFormat { font_id: font.clone(), color: c.fg, background, ..Default::default() });
+        job.append(&text, 0.0, TextFormat { font_id: font.clone(), color, background, ..Default::default() });
     }
     let first_h = ui.fonts_mut(|f| f.row_height(&font));
     let more = ((rows.bottom() - at.y - first_h / 2.0) / first_h).round().max(0.0) as usize;

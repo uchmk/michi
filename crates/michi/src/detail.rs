@@ -224,7 +224,14 @@ pub mod fixture {
     use michi_core::show::{Detail, File, Hunk, Kind, Line, Status};
 
     fn line(kind: Kind, old: u32, new: u32, text: &str) -> Line {
-        Line { kind, old, new, text: text.into(), marks: if kind == Kind::Context { Vec::new() } else { std::iter::once(0..1).collect() } }
+        Line {
+            kind,
+            old,
+            new,
+            text: text.into(),
+            marks: if kind == Kind::Context { Vec::new() } else { std::iter::once(0..1).collect() },
+            ink: Vec::new(),
+        }
     }
 
     pub fn detail(id: Oid, parents: Vec<Oid>, files: usize) -> Detail {
@@ -268,7 +275,7 @@ mod tests {
     use michi_core::show::{Hunk, Line, Status};
 
     fn line(kind: Kind, text: &str) -> Line {
-        Line { kind, old: 0, new: 0, text: text.into(), marks: Vec::new() }
+        Line { kind, old: 0, new: 0, text: text.into(), marks: Vec::new(), ink: Vec::new() }
     }
 
     fn file(lines: &[(Kind, &str)]) -> File {

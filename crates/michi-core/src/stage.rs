@@ -293,12 +293,13 @@ fn untracked_diff(dir: &Path, file: &File) -> File {
         let line = raw.strip_suffix(b"\n").unwrap_or(raw);
         let line = line.strip_suffix(b"\r").unwrap_or(line);
         f.not_utf8 |= !show::is_utf8(line, false);
-        lines.push(Line { kind: Kind::Add, old: 0, new: n, text: show::text(line, &LIMITS), marks: Vec::new() });
+        lines.push(Line { kind: Kind::Add, old: 0, new: n, text: show::text(line, &LIMITS), marks: Vec::new(), ink: Vec::new() });
     }
     f.counts = Some((file.counts.map_or(n, |(a, _)| a), 0));
     if !lines.is_empty() {
         f.hunks.push(Hunk { header: format!("@@ -0,0 +1,{n} @@"), lines });
     }
+    crate::syntax::paint(&mut f);
     f
 }
 

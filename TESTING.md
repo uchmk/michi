@@ -653,3 +653,14 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 47.7 | Start `git rebase -i` and stop it at an edit | The strip says it is a rebase, with no buttons; it goes when the rebase ends | | [ ] |
 | 47.8 | With a Claude working in the worktree press `R` | A yes is asked first, as for a switch | | [ ] |
 | 47.9 | Open the settings (`,`) or the key list (`?`) while the strip is up; switch EN and JA | The strip stays tidy at a narrow width (the text is cut with an ellipsis, the buttons stay); both languages read well | | [ ] |
+
+## 68. Syntax colours in diffs
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 68.1 | Open a commit that changes a `.rs` file (detail pane), then the Changes view of a worktree with a `.rs` edit | Keywords, strings, comments, numbers and names are coloured on context, added and deleted lines; the green/red line tint and the marked words (changed words) still show | | [ ] |
+| 68.2 | Look at a `.toml`, `.md`, `.ts`, `.py` and `Dockerfile` change | Each gets colours; a file of an unknown type (`.xyz`) and a binary file stay plain | | [ ] |
+| 68.3 | Switch the theme in settings between a dark and a light one | The colours follow the theme and stay readable on the added and deleted tints | | [ ] |
+| 68.4 | Open the diff side by side and unified (narrow the window) | Both layouts show the same colours; wrapped long lines keep them | | [ ] |
+| 68.5 | Open a big commit (hundreds of files, a huge generated file) | The window does not stall while it loads; a file of over 6000 diff lines, or a line of over 1500 characters, is left plain | | [ ] |
+| 68.6 | Select diff text with the mouse and copy it | The copied text is the plain text (no colour effects) | | [ ] |

@@ -824,7 +824,7 @@ pub(crate) mod tests {
     }
 
     fn line(kind: Kind, text: &str) -> Line {
-        Line { kind, old: 1, new: 1, text: text.into(), marks: Vec::new() }
+        Line { kind, old: 1, new: 1, text: text.into(), marks: Vec::new(), ink: Vec::new() }
     }
 
     /// `a.txt` with two hunks: a context line and two added lines, then a
