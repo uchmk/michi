@@ -66,6 +66,8 @@ pub struct Prefs {
     pub avatars: bool,
     /// `[net] auto_fetch` of config.toml: how often to fetch by itself (#70).
     pub auto_fetch: michi_core::autofetch::Every,
+    /// `[commit] co_author` of config.toml: the trailer added to michi's commits (#54).
+    pub co_author: michi_core::coauthor::CoAuthor,
     /// The Notifications page's drafts (a webhook's address being typed).
     pub notify_drafts: ito_prefs::Drafts,
     /// The Keys page's search, filter and the keys being pressed.
@@ -101,6 +103,7 @@ impl Prefs {
             motion: Default::default(),
             avatars: true,
             auto_fetch: Default::default(),
+            co_author: Default::default(),
             view_warn: Vec::new(),
             notify_drafts: ito_prefs::Drafts::new(),
             keys_edit: ito_prefs::KeysEdit::default(),
@@ -271,6 +274,9 @@ impl Prefs {
         self.view_warn.extend(warn);
         let (every, warn) = crate::viewcfg::auto_fetch(text);
         self.auto_fetch = every;
+        self.view_warn.extend(warn);
+        let (co, warn) = crate::viewcfg::co_author(text);
+        self.co_author = co;
         self.view_warn.extend(warn);
     }
 

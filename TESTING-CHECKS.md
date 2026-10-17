@@ -726,3 +726,10 @@
 - [ ] **70.7** With the network cut, press `f` yourself → The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` → | [ ] 〔未訳〕
 - [ ] **70.8** Start a pull or push while the timer is due → The timer waits; it never interrupts a job → | [ ] 〔未訳〕
 - [ ] **70.9** Switch EN and JA → The keybar's `· failed` / `· 失敗` reads well and fits → | [ ] 〔未訳〕
+
+## 54. Co-Authored-By on michi's commits
+
+- [ ] **54.1** With no `[commit]` in config.toml, commit from the `2` view with Ctrl+Enter, then look at the last commit's message → The message is exactly what you typed; no Co-Authored-By → | [ ] 〔未訳〕
+- [ ] **54.2** Write `[commit]` `co_author = "Claude <noreply@anthropic.com>"` in config.toml (no restart), commit again → The new commit ends with a blank line and `Co-Authored-By: Claude <noreply@anthropic.com>` → | [ ] 〔未訳〕
+- [ ] **54.3** Amend that commit (`A`, Ctrl+Enter) → The trailer is not doubled → | [ ] 〔未訳〕
+- [ ] **54.4** Write `co_author = "Claude"` (no address) → A warning toast about config.toml; no trailer is added → | [ ] 〔未訳〕
