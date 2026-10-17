@@ -1574,7 +1574,7 @@ pub(crate) mod tests {
         // Nothing has been drawn, so there is nothing to scroll.
         a.mode = Mode::Help;
         assert!(!a.named("ArrowDown"));
-        a.help_drawn.set(Some(ito_help::Drawn { visible: 10, max: 30, scroll: 0 }));
+        a.help_drawn.set(Some(ito_help::Drawn { visible: 10, max: 30, scroll: 0, above: 0, below: 0 }));
         assert!(a.named("PageDown"));
         assert_eq!(a.help_scroll, 9);
         assert!(a.named("End") && a.help_scroll == 30);
