@@ -451,7 +451,7 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 29.1 | In the graph press `t` on a commit (revert) | The window dims and a box in the middle asks `Are you sure?` / `よろしいですか` with the band's words, the buttons `Go ahead` and `Not now`, and `y Go ahead · Esc Not now` under them; nothing behind answers the mouse | | [ ] |
-| 29.2 | Press `y`; then ask again and press `Esc`, then `n`; then click each button | `y` and the first button run it; `Esc`, `n` and the second button drop it | | [ ] |
-| 29.3 | Revert a merge commit | One button per parent (`keep parent 1`, `keep parent 2`) and `Not now`; `1` / `2` and a click run it with that side; `y` does nothing | | [ ] |
-| 29.4 | Shrink the window to its smallest with the box up | The box narrows and its words wrap; every button stays clickable | | [ ] |
+| 29.1 | In the graph press `t` on a commit (revert) | The window dims and a box in the middle asks `Are you sure?` / `よろしいですか` with the band's words, the buttons `Go ahead` and `Not now`, and `y Go ahead · Esc Not now` under them; nothing behind answers the mouse | | [~] |
+| 29.2 | Press `y`; then ask again and press `Esc`, then `n`; then click each button | `y` and the first button run it; `Esc`, `n` and the second button drop it | | [x] |
+| 29.3 | Revert a merge commit | One button per parent (`keep parent 1`, `keep parent 2`) and `Not now`; `1` / `2` and a click run it with that side; `y` does nothing | | [x] |
+| 29.4 | Shrink the window to its smallest with the box up | The box narrows and its words wrap; every button stays clickable | | [~] |
