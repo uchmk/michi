@@ -45,6 +45,7 @@ use michi_core::conflict::{self, Conflict};
 use michi_core::discard;
 use michi_core::git::{self, Version};
 use michi_core::history::Setup;
+use michi_core::ignore;
 use michi_core::log::{self, Commit, Reader};
 use michi_core::net::{self, Progress};
 use michi_core::oid::Oid;
@@ -772,6 +773,10 @@ fn stagings(wishes: &Receiver<staging::Wish>, latest: &[AtomicU32; 3], send: imp
                 Op::Unstage(paths) => stage::unstage(&wt, &strs(&paths)).map(|()| Did::Staged),
                 Op::Apply { patch, reverse } => stage::apply(&wt, &patch, reverse).map(|()| Did::Staged),
                 Op::Commit { message, amend } => stage::commit(&wt, &message, amend).map(Did::Committed),
+                Op::Ignore { path } => ignore::add(&wt, &path).map(|added| match added {
+                    ignore::Added::Added(line) => Did::Ignored { path, line, already: false },
+                    ignore::Added::Already(line) => Did::Ignored { path, line, already: true },
+                }),
                 Op::Discard { path, untracked, patch, lines } => {
                     let saved = match &patch {
                         Some(patch) => discard::lines(&wt, &path, patch),

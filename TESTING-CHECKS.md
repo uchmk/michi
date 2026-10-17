@@ -391,3 +391,10 @@
 - [ ] **34.3** Single-click a diff line → The cursor moves to the line and its note can be written (`n`), as before → | [ ] 〔未訳〕
 - [ ] **34.4** Select a diff line, then pick another file or switch the wide view → The selection is gone → | [ ] 〔未訳〕
 - [ ] **34.5** Select diff text, close the review (Esc), select a commit's detail text → No stale selection shows in either place → | [ ] 〔未訳〕
+
+## 49. Ignoring an untracked file (`i`, #49)
+
+- [ ] **49.1** In the `2` view make an untracked file `x.log` in the worktree, select it in the unstaged list and press `i` → No question; a toast says `Added /x.log to .gitignore`; the file leaves the list after the next read and `.gitignore` in the worktree's root has the line (made if there was none) 〔未訳〕
+- [ ] **49.2** Press `i` on a tracked (modified) file, on a staged file; then on an untracked file with `[` `]` and `*` in its name → The first two toast that only an untracked file can be ignored and change nothing; the brackets and star are escaped in the line (`/a\[1\]\*.log`) and git ignores only that file 〔未訳〕
+- [ ] **49.3** Press `i` on a file whose line is already in `.gitignore` (an exact line, e.g. after a hand edit) → A toast says the line is in `.gitignore` already; the file is not changed; with a CRLF `.gitignore` the new line gets CRLF 〔未訳〕
+- [ ] **49.4** Open the help (`?`) in the `2` view → `i` is listed: Add the untracked file to .gitignore (JA: 追っていないファイルを .gitignore に足す) 〔未訳〕
