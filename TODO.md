@@ -118,7 +118,7 @@ All wait for the owner; none is started.
 - [ ] Issue tracker integration（要確認: #44）
 - [ ] Multi-repository tabs / workspaces（要確認: #45）
 - [x] Patch export / apply（要確認: #46）
-- [ ] Statistics and contributor graphs（要確認: #47）
+- [x] Statistics and contributor graphs（要確認: #47）
 - [ ] Diff extras (images, word diff, ignore whitespace, external tool)（要確認: #48）
 - [ ] .gitignore editing（要確認: #49）
 - [ ] reflog screen（要確認: #50）

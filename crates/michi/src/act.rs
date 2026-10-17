@@ -176,6 +176,13 @@ pub enum Task {
     FindReflog {
         here: PathBuf,
     },
+    /// Counts the commits of `range` per contributor and per week or month
+    /// (the statistics screen); `now` is the time the screen asked.
+    FindStats {
+        here: PathBuf,
+        range: michi_core::stats::Range,
+        now: i64,
+    },
     /// Asks git which commits the filter's content search (`s:` `g:`) hits,
     /// the window being on the worktree at `here`.
     FindContent {
@@ -424,6 +431,7 @@ impl Task {
             Task::UpdateSubmodules { .. } => "submodule update",
             Task::FindTidy { .. } => "for-each-ref",
             Task::FindReflog { .. } => "reflog",
+            Task::FindStats { .. } => "log",
             Task::FindContent { content, .. } => match content.kind {
                 michi_core::find::Kind::Text => "log -S",
                 michi_core::find::Kind::Regex => "log -G",
@@ -494,6 +502,7 @@ pub enum Acted {
     Found(Found),
     Submodules(Vec<michi_core::submodule::Sub>),
     Reflog(Vec<michi_core::reflog::Entry>),
+    Stats(Box<michi_core::stats::Stats>),
     /// The commits a content search hits.
     Content(std::collections::HashSet<Oid>),
     Remotes(Vec<michi_core::remote::Remote>),
@@ -565,6 +574,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::UpdateSubmodules { wt } => michi_core::submodule::update(wt).map(Acted::Submodules),
         Task::FindTidy { here } => tidy::find(dir, here).map(Acted::Found),
         Task::FindReflog { here } => michi_core::reflog::list(here).map(Acted::Reflog),
+        Task::FindStats { here, range, now } => michi_core::stats::read(here, *range, *now).map(|s| Acted::Stats(Box::new(s))),
         Task::FindContent { here, content } => michi_core::find::search(here, content).map(Acted::Content),
         Task::FindBlame { dir, rev, path } => michi_core::blame::read(dir, rev.as_ref(), path).map(|b| Acted::Blamed(Box::new(b))),
         Task::Trial { trunk, branches } => michi_core::trial::run(dir, trunk, branches).map(|t| Acted::Trialed(Box::new(t))),
@@ -723,6 +733,9 @@ impl App {
         }
         if let (Task::FindBlame { .. }, Err(_)) = (&task, &result) {
             self.blame = None;
+        }
+        if let (Task::FindStats { .. }, Err(_)) = (&task, &result) {
+            self.stats = None;
         }
         let (text, secs) = match (&task, result) {
             // Not being able to ask is not worth a toast.
@@ -948,6 +961,7 @@ impl App {
             (Task::UpdateSubmodules { wt }, Ok(Acted::Submodules(subs))) => self.submodules_updated(wt, &subs),
             (Task::FindTidy { .. }, Ok(Acted::Found(found))) => return self.tidy_found(found),
             (Task::FindReflog { .. }, Ok(Acted::Reflog(rows))) => return self.reflog_found(rows),
+            (Task::FindStats { range, .. }, Ok(Acted::Stats(data))) => return self.stats_found(*range, *data),
             (Task::FindContent { content, .. }, Ok(Acted::Content(ids))) => {
                 self.graph.set_content(content.clone(), ids);
                 return;

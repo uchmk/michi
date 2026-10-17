@@ -63,6 +63,7 @@ pub mod skeleton;
 pub mod sparse;
 pub mod stage;
 pub mod stash;
+pub mod stats;
 pub mod strength;
 pub mod submodule;
 pub mod summary;

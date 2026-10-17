@@ -869,3 +869,16 @@
 - [ ] **246.8** With a rebase or merge stopped in the worktree, paste a patch → A toast says the worktree is in the middle of it and to finish first 〔未訳〕
 - [ ] **246.9** Paste a patch while a Claude is working in the worktree → The question ends with the note that a Claude is working there 〔未訳〕
 - [ ] **246.10** Check the keybar and `?` over the graph; switch EN and JA → `Y` and Ctrl+V are listed with their words in both languages 〔未訳〕
+
+## 247. Statistics: contributors and activity (`I`)
+
+- [ ] **247.1** In the graph of a repository with some history, press `I` → A panel opens at once ("Reading…" for a moment), then shows a row of bars for commits per week (oldest at the left, newest at the right edge), and the contributors, most commits first, each with a bar, a count and a share 〔未訳〕
+- [ ] **247.2** Hover a bar → A tooltip gives the week and its commit count; empty weeks between are gaps, not skipped 〔未訳〕
+- [ ] **247.3** Press `j` `k`, PageDown, PageUp, Home, End; click a contributor row → The selection moves and stops at the ends; the selected row also shows the dates of their first and last commit 〔未訳〕
+- [ ] **247.4** Press `r` three times → The range goes: all branches and tags / last 90 days / current branch (HEAD) / all again; the title line names it, the numbers are read again and the old ones are not shown meanwhile 〔未訳〕
+- [ ] **247.5** Press `r` twice in quick succession on a large repository → The screen ends on the numbers of the last range, never the earlier one's 〔未訳〕
+- [ ] **247.6** Press `w` → The bars switch between weeks and months and the title says which 〔未訳〕
+- [ ] **247.7** Add a `.mailmap` joining two spellings of a person in a repository with both → They appear as one contributor 〔未訳〕
+- [ ] **247.8** Open it over the worktree table (`3`) and in a repository with no commit yet → It opens from both; with no commit it says there are no commits in the range 〔未訳〕
+- [ ] **247.9** Press Esc, or click outside the panel → The panel closes; no git index.lock is taken while it reads (a Claude committing in the same worktree is not blocked) 〔未訳〕
+- [ ] **247.10** Check the keybar and `?` over the graph and the worktree table, and over the panel; switch EN and JA → `I` is listed, the panel lists j k, r, w, Esc; text reads well in both languages and the bars stay inside the panel in a narrow window 〔未訳〕

@@ -54,6 +54,8 @@ mod select;
 mod settings;
 mod side_ui;
 mod sizes;
+mod stats;
+mod stats_ui;
 mod strip;
 mod submodule;
 mod tidy;
@@ -515,6 +517,7 @@ impl eframe::App for Michi {
         reply_ui::show(&ctx, &mut self.app);
         tidy_ui::show(&ctx, &mut self.app);
         reflog_ui::show(&ctx, &mut self.app);
+        stats_ui::show(&ctx, &mut self.app);
         blame_ui::show(&ctx, &mut self.app);
         trial_ui::show(&ctx, &mut self.app);
         reorder_ui::show(&ctx, &mut self.app);
