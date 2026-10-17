@@ -107,6 +107,7 @@ impl View {
                 ("u", "key.bisect_skip"),
                 ("r", "key.bisect_run"),
                 ("X", "key.bisect_reset"),
+                ("O", "key.image_mode"),
                 ("Esc", "key.back"),
             ],
             View::Changes => &[
@@ -121,6 +122,7 @@ impl View {
                 ("d", "key.discard"),
                 ("i", "key.ignore"),
                 ("w", "key.ignore_space"),
+                ("O", "key.image_mode"),
                 ("A", "key.amend"),
                 ("B", "key.blame"),
                 ("H", "key.file_history"),
@@ -269,6 +271,8 @@ pub struct App {
     pub sizes: crate::sizes::Sizes,
     /// The authors' pictures fetched so far.
     pub avatars: crate::avatar::Avatars,
+    /// The pictures of the image diff.
+    pub images: crate::images::Images,
     /// The language in force (`en`, `ja`), from common.toml or the OS.
     pub lang: String,
     /// The folder the window was opened on.
@@ -422,6 +426,7 @@ impl App {
             mode: Mode::Main,
             sizes: crate::sizes::Sizes::load(crate::prefs::window_dir(prefs.base.as_deref()).as_deref()),
             avatars: Default::default(),
+            images: Default::default(),
             prefs,
             lang: "en".into(),
             dir,
@@ -1008,6 +1013,10 @@ impl App {
             'i' => ch.ignore(claude),
             'w' => {
                 self.toggle_ignore_space();
+                return true;
+            }
+            'O' => {
+                self.images.cycle();
                 return true;
             }
             'B' | 'H' => {
@@ -1626,6 +1635,7 @@ impl App {
             'x' | 'g' | 'u' | 'X' | 'r' => return self.bisect_key(c),
             'G' => self.open_picker(PickKind::Flow),
             'I' => self.open_issue(),
+            'O' => self.images.cycle(),
             't' => self.ask_revert(),
             'R' => self.ask_reset(),
             'C' => self.ask_cherry(),
@@ -1864,7 +1874,12 @@ impl App {
         if self.tidy.take().is_some() {
             return true;
         }
-        if self.reflog.take().is_some() || self.stats.take().is_some() || self.blame.take().is_some() || self.ready.take().is_some() || self.auth.take().is_some() {
+        if self.reflog.take().is_some()
+            || self.stats.take().is_some()
+            || self.blame.take().is_some()
+            || self.ready.take().is_some()
+            || self.auth.take().is_some()
+        {
             return true;
         }
         if self.trial.take().is_some() {

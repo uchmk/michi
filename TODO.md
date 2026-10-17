@@ -123,9 +123,8 @@ All wait for the owner; none is started.
 - [ ] Multi-repository tabs / workspaces（要確認: #45）
 - [x] Patch export / apply（要確認: #46）
 - [ ] Statistics and contributor graphs（要確認: #47）
-- [x] Diff extras (word diff was there already; ignore whitespace with `w`; images and an external tool not done)（要確認: #48）
 - [x] Statistics and contributor graphs（要確認: #47）
-- [ ] Diff extras (images, word diff, ignore whitespace, external tool)（要確認: #48）
+- [x] Diff extras (word diff was there already; ignore whitespace with `w`; images: side by side, swipe, onion, difference with `O` in the detail and the `2` view; the external diff tool is not built, it waits on uchmk/ito#20)（要確認: #48）
 - [ ] .gitignore editing（要確認: #49）
 - [x] reflog screen（要確認: #50）
 - [x] Commit search scope in the `/` filter（要確認: #51）

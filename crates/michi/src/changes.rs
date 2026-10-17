@@ -160,6 +160,9 @@ pub struct Changes {
     file_gen: u32,
     file_waiting: bool,
     shown: Option<(Side, String, Read)>,
+    /// The wish the shown diff was read for: a new number each time it is
+    /// read, so a picture is read again when its file may have changed.
+    pub shown_gen: u32,
     /// The file whose hunks are cut into their runs of changes (`s`): it is
     /// cut again each time it is read.
     split: Option<(Side, String)>,
@@ -351,6 +354,7 @@ impl Changes {
             self.anchor = self.anchor.map(|a| a.min(lines - 1));
         }
         self.shown = Some((side, path, read));
+        self.shown_gen = gen;
     }
 
     /// The head's message and whether a remote has it, read for wish `gen`:
