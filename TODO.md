@@ -104,7 +104,7 @@ All wait for the owner; none is started.
 - [x] Git LFS: "not fetched" marker（要確認: #30）
 - [x] sparse checkout: notice only（要確認: #31）: a strip says it is on and how many files are left out (TESTING 31.5–31.9)
 - [ ] bisect（要確認: #32）
-- [ ] Non-GitHub hosts: links from the remote URL（要確認: #33）
+- [x] Non-GitHub hosts: PR page links for GitLab.com, Bitbucket and Azure DevOps from the remote URL (TESTING 101)（要確認: #33）
 - [ ] Creating PRs in michi（要確認: #34）
 - [x] Signature status (Verified) marker（要確認: #35）
 - [ ] Dedicated screens for conflicts a 3-way view cannot show（要確認: #36）

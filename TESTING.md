@@ -1006,3 +1006,13 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 54.2 | Write `[commit]` `co_author = "Claude <noreply@anthropic.com>"` in config.toml (no restart), commit again | The new commit ends with a blank line and `Co-Authored-By: Claude <noreply@anthropic.com>` | | [ ] |
 | 54.3 | Amend that commit (`A`, Ctrl+Enter) | The trailer is not doubled | | [ ] |
 | 54.4 | Write `co_author = "Claude"` (no address) | A warning toast about config.toml; no trailer is added | | [ ] |
+
+## 101. Pull request pages on GitLab, Bitbucket and Azure DevOps (#33)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 101.1 | On a worktree whose remote is a gitlab.com one (group/sub/proj) and branch `feat/x`, press `p` | The browser opens GitLab's new merge request page with the source branch `feat/x` already chosen | | [ ] |
+| 101.2 | Same with a Bitbucket remote (`https://bitbucket.org/ann/repo.git`) | Bitbucket's new pull request page opens with `feat/x` as the source | | [ ] |
+| 101.3 | Same with an Azure DevOps remote (`https://dev.azure.com/org/proj/_git/repo`, and the ssh form on `ssh.dev.azure.com` with `v3/org/proj/repo`) | Azure's create pull request page opens with `feat/x` as the source | | [ ] |
+| 101.4 | Same with a GitHub remote | The GitHub compare page opens as before | | [ ] |
+| 101.5 | Same with a self-hosted or unknown host (`https://git.example.com/a/b.git`) | An error toast says the remote is not on GitHub, GitLab, Bitbucket or Azure DevOps; nothing opens | | [ ] |
