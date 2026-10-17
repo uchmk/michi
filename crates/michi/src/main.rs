@@ -578,6 +578,18 @@ impl Michi {
                 {
                     self.app.named(if key == egui::Key::ArrowDown { "Shift+ArrowDown" } else { "Shift+ArrowUp" });
                 }
+                // Ctrl+D / Ctrl+U and Alt+J / Alt+K are PageDown / PageUp.
+                egui::Event::Key {
+                    key: key @ (egui::Key::D | egui::Key::U | egui::Key::J | egui::Key::K),
+                    pressed: true,
+                    modifiers,
+                    ..
+                } if !modifiers.shift
+                    && ((modifiers.ctrl && !modifiers.alt && matches!(key, egui::Key::D | egui::Key::U))
+                        || (modifiers.alt && !modifiers.command && matches!(key, egui::Key::J | egui::Key::K))) =>
+                {
+                    self.app.named(if matches!(key, egui::Key::D | egui::Key::J) { "PageDown" } else { "PageUp" });
+                }
                 egui::Event::Key { key, pressed: true, modifiers, .. } if modifiers.is_none() => {
                     if let Some((_, name)) = MOVES.iter().find(|(k, _)| *k == key) {
                         self.app.named(name);

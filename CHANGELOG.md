@@ -2,6 +2,12 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.72.2] - 2026-10-17
+
+### 追加
+
+- PageDown / PageUp に Ctrl+D / Ctrl+U と Alt+J / Alt+K も割り当てた（樹形図・変更・一覧・キー一覧など、PageDown / PageUp が効く所のすべて）。
+
 ## [0.72.1] - 2026-10-17
 
 ### 修正

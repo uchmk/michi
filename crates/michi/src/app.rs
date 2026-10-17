@@ -170,7 +170,7 @@ impl View {
                 ("E", "key.cf_editor"),
                 ("x", "key.cf_forget"),
                 ("Ctrl+Enter", "key.cf_commit"),
-                ("PageDown PageUp", "key.scroll"),
+                ("PageDown PageUp Ctrl+D Ctrl+U Alt+J Alt+K", "key.scroll"),
             ],
         }
     }
@@ -201,7 +201,7 @@ pub const REVIEW_KEYS: [(&str, &str); 12] = [
     ("y Y", "key.turns_step"),
     ("m", "key.take_main"),
     ("Enter", "key.side"),
-    ("PageDown PageUp", "key.scroll"),
+    ("PageDown PageUp Ctrl+D Ctrl+U Alt+J Alt+K", "key.scroll"),
     ("Esc", "key.back"),
 ];
 
@@ -225,7 +225,7 @@ pub const BLAME_KEYS: [(&str, &str); 6] = [
     ("B H Tab", "key.blame_tab"),
     ("e", "key.editor_line"),
     ("Enter", "key.in_graph_commit"),
-    ("PageDown PageUp", "key.page_rows"),
+    ("PageDown PageUp Ctrl+D Ctrl+U Alt+J Alt+K", "key.page_rows"),
     ("Esc", "key.back"),
 ];
 /// The keys of the trial-merge screen (`T`).

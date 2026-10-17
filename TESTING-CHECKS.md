@@ -1298,3 +1298,4 @@
 - [ ] **272.2** Select a commit and press `#`, then paste elsewhere; also Ctrl+C with no text picked → The full 40-character hash is pasted; a toast names its first 10 characters 〔未訳〕
 - [ ] **272.3** In the Worktrees view press `E` on a worktree → Explorer opens that worktree's folder, not the user folder 〔未訳〕
 - [ ] **272.4** Press F1 in a wide window, then in a narrow one; scroll with the wheel and the arrow keys → Two columns when wide, one when narrow; both scroll when the list is taller than the card 〔未訳〕
+- [ ] **272.5** In the graph, the Changes view and the F1 list press Ctrl+D, Ctrl+U, Alt+J, Alt+K → They move or scroll a page down and up like PageDown / PageUp; the key lists show them 〔未訳〕
