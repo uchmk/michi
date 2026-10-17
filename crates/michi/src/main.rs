@@ -54,6 +54,7 @@ mod tidy;
 mod tidy_ui;
 mod trial;
 mod trial_ui;
+mod turns;
 mod ui;
 mod viewcfg;
 mod work;

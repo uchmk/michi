@@ -127,6 +127,7 @@ impl View {
                 ("c", "key.tidy"),
                 ("T", "key.trial"),
                 ("L", "key.reflog"),
+                ("y", "key.turns"),
             ],
             View::Conflict => &[
                 ("] [", "key.place"),
@@ -158,7 +159,7 @@ pub const GLOBAL_KEYS: [(&str, &str); 8] = [
 ];
 
 /// The keys of the branch review, drawn over the worktree table.
-pub const REVIEW_KEYS: [(&str, &str); 11] = [
+pub const REVIEW_KEYS: [(&str, &str); 12] = [
     ("j k", "key.file"),
     ("J K", "key.line"),
     ("n", "key.note"),
@@ -166,6 +167,7 @@ pub const REVIEW_KEYS: [(&str, &str); 11] = [
     ("Space", "key.seen"),
     ("u", "key.uncommitted"),
     ("s", "key.since_last"),
+    ("y Y", "key.turns_step"),
     ("m", "key.take_main"),
     ("Enter", "key.side"),
     ("PageDown PageUp", "key.scroll"),
@@ -280,6 +282,9 @@ pub struct App {
     pub reply: Option<crate::reply::Reply>,
     /// The keys of the waits already told of; `None` until tsumugi was heard once.
     pub waits_told: Option<Vec<(u64, u64)>>,
+    /// The state each Claude session was last seen in, to tell a turn that
+    /// ended; `None` until tsumugi was heard once.
+    pub turn_states: Option<std::collections::HashMap<u64, michi_core::claude::State>>,
     /// The clean-up list, over the worktree table.
     pub tidy: Option<crate::tidy::Tidy>,
     pub reflog: Option<crate::reflog::Reflog>,
@@ -349,6 +354,7 @@ impl App {
             new_work: None,
             reply: None,
             waits_told: None,
+            turn_states: None,
             tidy: None,
             reflog: None,
             trial: None,
@@ -565,6 +571,7 @@ impl App {
                 self.claude = c;
                 self.handed_stopped();
                 self.waits_changed();
+                self.turns_changed();
             }
             Answer::Clashes(c) => self.clashes = c,
             Answer::Conflicts(c) => {
@@ -981,6 +988,10 @@ impl App {
 
     /// The branch review's own keys.
     fn review_key(&mut self, c: char) -> bool {
+        if matches!(c, 'y' | 'Y') {
+            self.turn_step(c == 'y');
+            return true;
+        }
         // A comparison has no worktree: no uncommitted changes, last look,
         // checks, notes or merge.
         if matches!(c, 'm' | 'n' | 'g' | ' ' | 'u' | 's') && self.review.as_ref().is_some_and(|r| r.cmp.is_some()) {
@@ -1377,6 +1388,7 @@ impl App {
             'c' => self.open_tidy(),
             'T' => self.open_trial(),
             'L' => self.open_reflog(),
+            'y' => self.open_turns(),
             'm' => self.ask_merge(),
             'l' => self.ask_land(),
             'x' => self.ask_remove(),

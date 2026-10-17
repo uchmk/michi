@@ -173,7 +173,7 @@ All wait for the owner; none is started.
 
 Worktrees and parallel Claude work are the base; no other client has them.
 
-- [ ] Snapshot and diff per Claude turn（要確認: #91）
+- [x] Snapshot and diff per Claude turn: `refs/michi/turn/<branch>/N` kept when a Claude stops, `y` / `Y` step through the diffs (TESTING 91)（要確認: #91）
 - [ ] Suggested order to land worktrees on main（要確認: #92）
 - [ ] Land a worktree (merge in, verify, ff, clean up)（要確認: #93）
 - [x] Review queue of finished Claude work: the worktree table's Review column (unreviewed / in review / flagged / approved) (TESTING 94)（要確認: #94）
