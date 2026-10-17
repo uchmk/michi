@@ -121,13 +121,13 @@ All wait for the owner; none is started.
 - [ ] Statistics and contributor graphs（要確認: #47）
 - [x] Diff extras (word diff was there already; ignore whitespace with `w`; images and an external tool not done)（要確認: #48）
 - [ ] .gitignore editing（要確認: #49）
-- [ ] reflog screen（要確認: #50）
+- [x] reflog screen（要確認: #50）
 - [x] Commit search scope in the `/` filter（要確認: #51）
 - [x] Per-file operations (restore a version from the detail; "open" not done)（要確認: #52）
 - [x] Per-worktree author / email display (display only, recommended option of #53)（要確認: #53）
 - [x] Co-Authored-By on michi commits (recommended option of #54: `[commit] co_author = "Name <email>"` in config.toml, off by default)（要確認: #54）
 - [x] Moving uncommitted changes between worktrees（要確認: #55）
-- [ ] Conflict-prediction marks on the graph（要確認: #56）
+- [x] Conflict-prediction marks on the graph（要確認: #56）
 - [ ] Pre-merge checklist (test / verify results)（要確認: #57）
 - [x] Hook output and rerun on failure (`r` over a refused commit's panel runs it again; recommended option of #58)（要確認: #58）
 - [x] Speed target for very large repositories (recommended option of #59: budget in `scale.rs`, `bench-large` in CI; first screen from a real repository is checked by hand, TESTING 259)（要確認: #59）
