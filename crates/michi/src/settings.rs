@@ -12,6 +12,7 @@ const GENERAL: usize = 0;
 const THEME: usize = 1;
 const KEYS: usize = 2;
 const NOTIFY: usize = 3;
+const EXTERNAL: usize = 4;
 
 /// The rows on each page, for the search.
 fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
@@ -27,7 +28,6 @@ fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
         (GENERAL, "language"),
         (GENERAL, "scale"),
         (GENERAL, "[clock]"),
-        (GENERAL, "[open]"),
         (GENERAL, "density"),
         (GENERAL, "motion"),
         (GENERAL, "avatars"),
@@ -42,10 +42,52 @@ fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
     v.extend(ito_prefs::keys_index(ito_prefs::KeyWords::of(lang)).into_iter().map(|t| (KEYS, t)));
     v.extend(ito_prefs::notify_index(w).into_iter().map(|t| (NOTIFY, t)));
     v.extend([(NOTIFY, "[notify]"), (NOTIFY, "focus_mode"), (NOTIFY, "[[notify.webhooks]]")]);
+    v.extend([
+        (EXTERNAL, "[open]"),
+        (EXTERNAL, "[line_args]"),
+        (EXTERNAL, "[diff_tools]"),
+        (EXTERNAL, "diff_tool"),
+        (EXTERNAL, "terminal"),
+        (EXTERNAL, "editor"),
+        (EXTERNAL, "explorer"),
+        (EXTERNAL, "diff"),
+        (EXTERNAL, "merge"),
+        (EXTERNAL, "WinMerge"),
+    ]);
+    v.extend(open_words(lang).tools.into_iter().map(|t| (EXTERNAL, t)));
     v
 }
 
+/// The external tools card's words in `lang`.
+fn open_words(lang: &str) -> ito_prefs::OpenWords<'static> {
+    let t = |k: &'static str| crate::i18n::tr(lang, k);
+    ito_prefs::OpenWords {
+        head: t("ext.head"),
+        tools: [t("open.terminal"), t("open.editor"), t("open.explorer"), t("open.diff"), t("open.merge")],
+        notes: [t("ext.note.terminal"), t("ext.note.editor"), t("ext.note.explorer"), t("ext.note.diff"), t("ext.note.merge")],
+        tool_label: t("ext.tool_label"),
+        tool_note: t("ext.tool_note"),
+        tool_default: t("ext.tool_default"),
+        tool_auto: t("ext.tool_auto"),
+        detecting: t("ext.detecting"),
+        detected: t("ext.detected"),
+        none: t("ext.none"),
+        own_head: t("ext.own_head"),
+        own_name: t("ext.own_name"),
+        own_diff: t("ext.own_diff"),
+        own_merge: t("ext.own_merge"),
+        line_head: t("ext.line_head"),
+        line_editor: t("ext.line_editor"),
+        line_template: t("ext.line_template"),
+        line_note: t("ext.line_note"),
+        add: t("ext.add"),
+        remove: t("ext.remove"),
+    }
+}
+
 pub fn show(ui: &mut Ui, app: &mut App) {
+    // The installed diff / merge tools are looked for once, on a thread.
+    app.prefs.find_tools();
     let w = Words::of(&app.lang);
     // The Keys page takes every key while it is setting one, Esc included.
     let keys = if app.prefs.keys_edit.busy() { ito_prefs::Keys::default() } else { ito_prefs::Keys::standard(ui, false) };
@@ -54,11 +96,12 @@ pub fn show(ui: &mut Ui, app: &mut App) {
         (app.tr("settings.theme"), app.tr("settings.theme_lead")),
         (app.tr("settings.keys"), app.tr("settings.keys_lead")),
         (w.notify, app.tr("settings.notify_lead")),
+        (app.tr("settings.external"), app.tr("settings.external_lead")),
     ];
     let index = index(w, &app.lang);
     let file = match app.prefs.state.page {
         KEYS => "keymap.toml",
-        NOTIFY => "config.toml",
+        NOTIFY | EXTERNAL => "config.toml",
         _ => "common.toml",
     };
     let nav = ito_prefs::Nav { pages: &pages, index: &index, words: w, file };
@@ -74,7 +117,10 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     let prefs = &mut app.prefs;
     let keys_edit = &mut prefs.keys_edit;
     let (notify, drafts) = (&prefs.notify, &mut prefs.notify_drafts);
-    let open = &prefs.open;
+    let (open, open_warn, found, found_known) = (&prefs.open, &prefs.open_warn, &prefs.found[..], prefs.found_known);
+    let (open_drafts, open_form) = (&mut prefs.open_drafts, &mut prefs.open_form);
+    let open_words = open_words(&lang);
+    let mut open_edits: Vec<ito_openin::Edit> = Vec::new();
     let density = prefs.density;
     let mut density_new = None;
     let motion = prefs.motion;
@@ -130,15 +176,6 @@ pub fn show(ui: &mut Ui, app: &mut App) {
                     avatars_new = Some(on);
                 }
             });
-            section(ui, l, tr("settings.open"), |ui| {
-                ui.label(egui::RichText::new(tr("settings.open_lead")).color(l.c.dim));
-                for t in michi_core::openin::Tool::ALL {
-                    ui.horizontal(|ui| {
-                        ui.label(tr(crate::act::open_word(t)));
-                        ui.label(egui::RichText::new(open.command(t)).monospace().color(l.c.dim));
-                    });
-                }
-            });
         }
         THEME => {
             let (t, d, li) = common.theme_choice(None);
@@ -178,6 +215,13 @@ pub fn show(ui: &mut Ui, app: &mut App) {
             webhooks = notify.webhooks_of(&n);
             notify_edits = notify.edits(&n);
         }
+        EXTERNAL => {
+            for w in open_warn {
+                ui.label(egui::RichText::new(w).color(l.c.err));
+            }
+            let known = found_known.then_some(found);
+            open_edits = ito_prefs::open_card(ui, l, &open_words, open, known, open_drafts, open_form);
+        }
         _ => {}
     });
     if out.close {
@@ -202,6 +246,7 @@ pub fn show(ui: &mut Ui, app: &mut App) {
         app.prefs.avatars_set(on, no_folder);
     }
     app.prefs.notify_edit(notify_edits, webhooks, no_folder);
+    app.prefs.open_edit(open_edits, no_folder);
     if !key_edits.is_empty() {
         app.prefs.keymap_edit(key_edits, no_folder);
     }

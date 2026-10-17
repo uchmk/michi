@@ -38,7 +38,6 @@ mod motion;
 mod newwork;
 mod newwork_ui;
 mod notify;
-mod opencfg;
 mod patch;
 mod picker;
 mod picker_ui;

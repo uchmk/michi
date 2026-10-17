@@ -795,8 +795,16 @@ fn help(ui: &mut Ui, app: &App, r: Rect) {
     p.rect_stroke(card, CornerRadius::same(10), Stroke::new(1.0, c.border_strong()), StrokeKind::Inside);
     p.text(pos2(card.left() + 20.0, card.top() + 18.0), Align2::LEFT_TOP, app.tr("help.title"), FontId::proportional(16.0), c.fg);
     let body = Rect::from_min_max(pos2(card.left() + 20.0, card.top() + 50.0), pos2(card.right() - 20.0, card.bottom() - 36.0));
-    let style =
-        ito_help::Style { font: FontId::monospace(12.0), row_h: LINE, head: accent(), keys: c.fg, desc: c.dim, bar: c.border_strong() };
+    let style = ito_help::Style {
+        font: FontId::monospace(12.0),
+        row_h: LINE,
+        head: accent(),
+        keys: c.fg,
+        desc: c.dim,
+        warn: c.err,
+        dim: c.dim,
+        bar: c.border_strong(),
+    };
     let drawn = ito_help::draw(&p, body, &lines, app.help_scroll, &style);
     app.help_drawn.set(Some(drawn));
     p.text(pos2(card.left() + 20.0, card.bottom() - 22.0), Align2::LEFT_CENTER, app.tr("help.close"), FontId::proportional(11.5), c.dim);

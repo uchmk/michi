@@ -409,6 +409,7 @@ impl App {
             'a' if self.conflicts.stage().is_some() => self.conflict_offer(Offer::Adopt),
             'r' if self.conflicts.stage().is_some() => self.conflict_offer(Offer::SendBack),
             'w' => self.conflict_external(None),
+            'E' => self.conflict_editor(),
             _ => return false,
         }
         true
@@ -671,7 +672,27 @@ impl App {
         let Some(i) = file.or_else(|| places(c).get(cf.at).map(|p| p.0)) else { return };
         let Some(f) = c.files.get(i) else { return };
         let (wt, path) = (c.wt.clone(), f.path.clone());
-        self.act(Task::External { wt, path });
+        // A merge tool set in `[open]` (or found for `diff_tool`) first; else git's.
+        if self.prefs.open.can_open(ito_openin::Tool::Merge, &self.prefs.found) {
+            let command = self.prefs.open.command(ito_openin::Tool::Merge, &self.prefs.found);
+            self.act(Task::MergeTool { wt, path, command });
+        } else {
+            self.act(Task::External { wt, path });
+        }
+    }
+
+    /// `E`: the selected place's file in the editor, at the place's line.
+    pub(crate) fn conflict_editor(&mut self) {
+        let cf = &self.conflicts;
+        let Some(c) = cf.shown() else { return };
+        let Some(&p) = places(c).get(cf.at) else { return };
+        let Some(f) = c.files.get(p.0) else { return };
+        let line = match (&f.body, p.1) {
+            (Body::Text(blocks), Some(j)) => blocks.get(j).and_then(|b| b.line),
+            _ => None,
+        };
+        let (wt, path) = (c.wt.clone(), f.path.clone());
+        self.open_file_at(wt, path, line);
     }
 
     /// The file's button: its places back as git left them.

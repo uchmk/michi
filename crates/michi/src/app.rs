@@ -5,11 +5,11 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 
+use ito_openin::Tool;
 use michi_core::clash::{Clashes, Outcome, Side};
 use michi_core::claude::{Session, State};
 use michi_core::git::{self, Version};
 use michi_core::oid::Oid;
-use michi_core::openin::Tool;
 use michi_core::paths;
 use michi_core::queue::Reviews;
 use michi_core::summary::{self, Summary};
@@ -126,6 +126,8 @@ impl View {
                 ("A", "key.amend"),
                 ("B", "key.blame"),
                 ("H", "key.file_history"),
+                ("e", "key.editor_line"),
+                ("x", "key.ext_diff"),
                 ("[ ]", "key.worktree"),
                 ("Enter", "key.side"),
                 ("Esc", "key.back"),
@@ -164,6 +166,7 @@ impl View {
                 ("g", "key.cf_handoff"),
                 ("d a r", "key.cf_strip"),
                 ("w", "key.cf_external"),
+                ("E", "key.cf_editor"),
                 ("x", "key.cf_forget"),
                 ("Ctrl+Enter", "key.cf_commit"),
                 ("PageDown PageUp", "key.scroll"),
@@ -215,9 +218,10 @@ pub const REFLOG_KEYS: [(&str, &str); 3] = [("j k", "key.move"), ("Enter", "key.
 /// The keys of the statistics screen (`I`).
 pub const STATS_KEYS: [(&str, &str); 4] = [("j k", "key.move"), ("r", "key.stats_range"), ("w", "key.stats_grain"), ("Esc", "key.back")];
 /// The keys of the blame screen (`B` over the graph or the changes).
-pub const BLAME_KEYS: [(&str, &str); 5] = [
+pub const BLAME_KEYS: [(&str, &str); 6] = [
     ("j k", "key.move"),
     ("B H Tab", "key.blame_tab"),
+    ("e", "key.editor_line"),
     ("Enter", "key.in_graph_commit"),
     ("PageDown PageUp", "key.page_rows"),
     ("Esc", "key.back"),
@@ -1023,6 +1027,10 @@ impl App {
                 self.open_blame(if c == 'B' { crate::blame::Tab::Blame } else { crate::blame::Tab::History });
                 return true;
             }
+            'e' | 'x' => {
+                self.changes_external(c == 'x');
+                return true;
+            }
             '[' | ']' => {
                 self.changes_step(if c == ']' { 1 } else { -1 });
                 return true;
@@ -1721,8 +1729,39 @@ impl App {
     pub(crate) fn open_in(&mut self, tool: Tool, table: bool) {
         let wt = if table { self.wt_selected().map(|t| t.wt.path.clone()) } else { self.repo_top() };
         let Some(wt) = wt else { return self.say(self.tr("act.no_tree")) };
-        let command = self.prefs.open.command(tool);
+        let command = self.prefs.open.command(tool, &self.prefs.found);
         self.act(crate::act::Task::OpenIn { wt, tool, command });
+    }
+
+    /// Opens the file `path` of the worktree `wt` in the editor `[open]`
+    /// names, at `line` when it takes one (#43). Off the UI thread.
+    pub(crate) fn open_file_at(&mut self, wt: PathBuf, path: String, line: Option<usize>) {
+        let command = self.prefs.open.command(ito_openin::Tool::Editor, &self.prefs.found);
+        let line_args = self.prefs.open.line_args.clone();
+        self.act(crate::act::Task::OpenFile { wt, path, line, command, line_args });
+    }
+
+    /// Opens the diff of the file `path` of `wt` in the external diff tool (#43).
+    pub(crate) fn open_diff_tool(&mut self, wt: PathBuf, path: String, staged: bool) {
+        let command = self.prefs.open.command(ito_openin::Tool::Diff, &self.prefs.found);
+        self.act(crate::act::Task::OpenDiff { wt, path, staged, command });
+    }
+
+    /// `e` (the editor at the cursor's line) or `x` (the external diff tool)
+    /// on the `2` view's selected file.
+    fn changes_external(&mut self, diff: bool) {
+        let wt = self.changes.wt.clone().or_else(|| self.repo_top());
+        let sel = self.changes.selected().map(|(side, f)| (side, f.path.clone(), f.status == michi_core::show::Status::Deleted));
+        let (Some(wt), Some((side, path, deleted))) = (wt, sel) else { return self.say(self.tr("blame.no_file")) };
+        if diff {
+            return self.open_diff_tool(wt, path, side == michi_core::stage::Side::Staged);
+        }
+        if deleted {
+            let text = self.tr("blame.deleted").replace("{path}", &path);
+            return self.say(text);
+        }
+        let line = self.changes.editor_line();
+        self.open_file_at(wt, path, line);
     }
 
     /// The window's own worktree, once the repository is read.
