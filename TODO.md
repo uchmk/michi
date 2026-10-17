@@ -124,7 +124,7 @@ All wait for the owner; none is started.
 - [ ] reflog screen（要確認: #50）
 - [ ] Commit search scope in the `/` filter（要確認: #51）
 - [x] Per-file operations (restore a version from the detail; "open" not done)（要確認: #52）
-- [ ] Per-worktree author / email display（要確認: #53）
+- [x] Per-worktree author / email display (display only, recommended option of #53)（要確認: #53）
 - [x] Co-Authored-By on michi commits (recommended option of #54: `[commit] co_author = "Name <email>"` in config.toml, off by default)（要確認: #54）
 - [ ] Moving uncommitted changes between worktrees（要確認: #55）
 - [ ] Conflict-prediction marks on the graph（要確認: #56）

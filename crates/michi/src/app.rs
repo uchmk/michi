@@ -267,6 +267,9 @@ pub struct App {
     /// Each worktree's uncommitted change, those with only files too big to
     /// count too (the graph shows the others).
     pub wips: Vec<Wip>,
+    /// `Name <email>` of the worktrees that commit as someone other than the
+    /// rest (empty when all are the same).
+    pub identities: Vec<(PathBuf, String)>,
     /// Which worktrees would conflict with which.
     pub clashes: Clashes,
     /// The commits not seen yet, per worktree.
@@ -381,6 +384,7 @@ impl App {
             claude_asked: false,
             trees: Trees::default(),
             wips: Vec::new(),
+            identities: Vec::new(),
             clashes: Clashes::default(),
             unseen: Unseen::default(),
             reviews: Reviews::default(),
@@ -604,6 +608,7 @@ impl App {
                 self.graph.failed(gen, error);
             }
             Answer::Detail { id, result } => self.detail.take(id, result),
+            Answer::Identities(all) => self.identities = all,
             Answer::Wips(wips) => {
                 self.graph.set_wips(wips.iter().filter(|w| !w.files.is_empty()).cloned().collect());
                 self.wips = wips;

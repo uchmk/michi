@@ -827,3 +827,10 @@
 - [ ] **37.10** Select a worktree's uncommitted row in the graph and press `B` → The file is blamed as that worktree has it 〔未訳〕
 - [ ] **37.11** Check the keybar and `?` over the screen; switch EN and JA → The keybar names j k, B H Tab, Enter, PageDown PageUp, Esc; global keys are not listed; text reads well in both languages and long lines end in `…` 〔未訳〕
 - [ ] **37.12** With Claude writing in the worktree, press `B` → Nothing changes in the worktree and no `index.lock` appears (a read only) 〔未訳〕
+
+## 253. Per-worktree author and email (#53)
+
+- [ ] **253.1** With every worktree committing as the same `user.name` / `user.email`, look at the worktree table → No "Commits as" line under any name 〔未訳〕
+- [ ] **253.2** In one worktree run `git config extensions.worktreeConfig true` then `git config --worktree user.name Other` and `user.email other@example.com`; wait for the next reread → Every worktree row gets a `Commits as Name <email>` line (JA `作者: …`) under its folder; the changed one shows `Other <other@example.com>` 〔未訳〕
+- [ ] **253.3** Set the name back in that worktree (`git config --worktree --unset user.name`) so it matches the others again → The lines disappear again without restarting michi 〔未訳〕
+- [ ] **253.4** Switch EN and JA → The line reads well in both; long values do not overflow the card 〔未訳〕

@@ -16,6 +16,7 @@ use egui::{
 use michi_core::clash::Outcome;
 use michi_core::claude::{Session, State};
 use michi_core::oid::Oid;
+use michi_core::paths;
 use michi_core::queue::Stage;
 use michi_core::track::Tree;
 
@@ -203,6 +204,9 @@ fn name_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
         let key = if k > 0 { "wt.order_resolve" } else { "wt.order" };
         let words = app.tr(key).replace("{n}", &n.to_string()).replace("{m}", &m.to_string()).replace("{k}", &k.to_string());
         note(words, if k > 0 { c.wait } else { c.done });
+    }
+    if let Some((_, who)) = app.identities.iter().find(|(p, _)| paths::key(p) == paths::key(&t.wt.path)) {
+        note(app.tr("wt.author").replace("{}", who), c.dim);
     }
     if t.wt.locked.is_some() {
         note(app.tr("wt.locked").to_owned(), c.wait);
