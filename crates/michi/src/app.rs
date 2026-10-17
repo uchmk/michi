@@ -305,6 +305,9 @@ pub struct App {
     pub band: Option<Band>,
     /// The window's worktree is on no branch: what was read of it (#109).
     pub detached: Option<crate::strip::Strip>,
+    /// The window's worktree is a sparse checkout (#31); None when it is not
+    /// (or not read yet).
+    pub sparse: Option<michi_core::sparse::Info>,
     /// rerere was asked about (or read as said) in this session.
     pub rerere_asked: bool,
     /// The branch, tag or stash palette, over the graph.
@@ -388,6 +391,7 @@ impl App {
             fetch_failed: false,
             band: None,
             detached: None,
+            sparse: None,
             rerere_asked: false,
             picker: None,
             new_work: None,
@@ -604,6 +608,7 @@ impl App {
                 }
                 self.trees = trees;
                 self.detached_sync();
+                self.sparse_sync();
                 self.review_sync();
             }
             Answer::Claude(c) => {

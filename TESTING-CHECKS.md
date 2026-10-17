@@ -741,3 +741,11 @@
 - [ ] **72.4** Select a commit whose signature is bad (a commit object edited after signing) or whose key expired → A red `✗ Bad signature` mark → | [ ] 〔未訳〕
 - [ ] **72.5** Click through many commits quickly in a repository where most are signed → The detail still follows the selection; the mark may arrive with the diff but never blocks the UI → | [ ] 〔未訳〕
 - [ ] **72.6** Switch EN and JA → `✓ 署名あり` / `✗ 署名が不正` / `? 署名は未確認` read well and wrap with the meta line → | [ ] 〔未訳〕
+
+## 31. Sparse checkout notice (#31; the mcp section above uses the same number from #101)
+
+- [ ] **31.5** In a repository run `git sparse-checkout set --cone <one folder>`, open it in michi → A strip under the title bar says `Sparse checkout: N tracked files are left out of this folder...` with N the files not on disk; there are no buttons → | [ ] 〔未訳〕
+- [ ] **31.6** Run `git sparse-checkout disable` while michi is open → The strip goes away on the next refresh (no restart) → | [ ] 〔未訳〕
+- [ ] **31.7** Run `git sparse-checkout set --no-cone '/*' '!/some-folder'` → The strip says `Sparse checkout (patterns): ...` → | [ ] 〔未訳〕
+- [ ] **31.8** Sparse checkout on and a detached HEAD together → One strip: the detached HEAD's words first, then the sparse sentence; the `R` / `B` buttons stay → | [ ] 〔未訳〕
+- [ ] **31.9** Switch EN and JA; narrow the window → The sentence reads well in both and is cut with an ellipsis rather than overflowing → | [ ] 〔未訳〕

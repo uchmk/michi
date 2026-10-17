@@ -287,6 +287,10 @@ pub enum Task {
     ReadDetached {
         wt: PathBuf,
     },
+    /// Reads whether the worktree at `wt` is a sparse checkout (#31).
+    ReadSparse {
+        wt: PathBuf,
+    },
     /// The worktree at `wt` back onto the branch `name` it left, keeping
     /// what only its detached HEAD held.
     Back {
@@ -384,6 +388,7 @@ impl Task {
             Task::AskRerere { .. } => "config --get",
             Task::Rerere { .. } => "config",
             Task::ReadDetached { .. } => "rev-list",
+            Task::ReadSparse { .. } => "ls-files",
             Task::Back { .. } => "switch",
             Task::Turn { .. } => "commit-tree",
             Task::FindTurns { .. } => "for-each-ref",
@@ -426,6 +431,8 @@ pub enum Acted {
     Markers(Option<usize>),
     /// Why a worktree is on no branch.
     Detached(michi_core::detached::Info),
+    /// A worktree's sparse checkout (none: it is off).
+    Sparse(Option<michi_core::sparse::Info>),
     /// The turns kept for a branch, the oldest first.
     Turns(Vec<michi_core::turn::Turn>),
 }
@@ -502,6 +509,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::AskRerere { wt } => rerere::enabled(wt).map(Acted::Rerere),
         Task::Rerere { wt, on } => rerere::set(wt, *on).map(|()| Acted::Done),
         Task::ReadDetached { wt } => michi_core::detached::read(wt).map(Acted::Detached),
+        Task::ReadSparse { wt } => michi_core::sparse::read(wt).map(Acted::Sparse),
         Task::Back { wt, name } => michi_core::detached::back(wt, name).map(Acted::Kept),
         Task::Turn { wt, branch } => michi_core::turn::snapshot(wt, branch).map(|_| Acted::Done),
         Task::FindTurns { wt, branch, .. } => michi_core::turn::list(wt, branch).map(Acted::Turns),
@@ -608,10 +616,17 @@ impl App {
         let (text, secs) = match (&task, result) {
             // Not being able to ask is not worth a toast.
             // A turn kept in the background is not worth a toast either way.
-            (Task::AskRerere { .. } | Task::Markers { .. } | Task::ReadDetached { .. } | Task::Turn { .. }, Err(_)) => return,
+            (
+                Task::AskRerere { .. } | Task::Markers { .. } | Task::ReadDetached { .. } | Task::ReadSparse { .. } | Task::Turn { .. },
+                Err(_),
+            ) => return,
             (Task::Turn { .. }, Ok(_)) => return,
             (Task::FindTurns { wt, branch, back }, Ok(Acted::Turns(turns))) => {
                 self.turns_found(wt, branch, *back, turns);
+                return;
+            }
+            (Task::ReadSparse { wt }, Ok(Acted::Sparse(i))) => {
+                self.sparse_read(wt, i);
                 return;
             }
             (Task::ReadDetached { wt }, Ok(Acted::Detached(i))) => {

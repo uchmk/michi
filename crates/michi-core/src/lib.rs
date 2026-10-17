@@ -52,6 +52,7 @@ pub mod review;
 pub mod show;
 pub mod signature;
 pub mod skeleton;
+pub mod sparse;
 pub mod stage;
 pub mod stash;
 pub mod strength;
