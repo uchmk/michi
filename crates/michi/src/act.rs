@@ -87,6 +87,12 @@ pub enum Task {
         id: Oid,
         mode: michi_core::reset::Mode,
     },
+    /// The file `path` of the worktree at `wt` made as the commit `id` has it.
+    Restore {
+        wt: PathBuf,
+        id: Oid,
+        path: String,
+    },
     /// Starts a worktree and a Claude in it for each of `plans`, through tsumugi.
     NewWork {
         repo: PathBuf,
@@ -346,6 +352,7 @@ impl Task {
                 michi_core::reset::Mode::Mixed => "reset --mixed",
                 michi_core::reset::Mode::Hard => "reset --hard",
             },
+            Task::Restore { .. } => "restore",
             Task::Stash { .. } => "stash",
             Task::Unstash { pop: false, .. } => "stash apply",
             Task::Unstash { pop: true, .. } => "stash pop",
@@ -403,6 +410,7 @@ pub enum Acted {
     Upstream(String),
     Reverted(Reverted),
     Reset(michi_core::reset::Reset),
+    Restored(michi_core::restore::Restored),
     Stashed(Saved),
     /// Switched; with the changes that were stashed around it, if any.
     Switched(Option<Autostashed>),
@@ -458,6 +466,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Untag { name } => tag::delete(dir, name).map(|saved| Acted::Kept(Some(saved))),
         Task::Revert { wt, id, mainline } => revert::revert(wt, id, *mainline).map(Acted::Reverted),
         Task::Reset { wt, id, mode } => michi_core::reset::reset(wt, id, *mode).map(Acted::Reset),
+        Task::Restore { wt, id, path } => michi_core::restore::file(wt, id, path).map(Acted::Restored),
         Task::Stash { wt, message } => stash::save(wt, message).map(Acted::Stashed),
         Task::Unstash { wt, id, pop } => stash::apply(wt, id, *pop).map(Acted::Unstashed),
         Task::DropStash { id } => stash::drop(dir, id).map(|saved| Acted::Kept(Some(saved))),
@@ -751,6 +760,15 @@ impl App {
                     .replace("{tip}", tip)
                     .replace("{changes}", changes);
                 (text, 10)
+            }
+            (Task::Restore { wt, id, path }, Ok(Acted::Restored(r))) => {
+                let (key, saved) = match &r {
+                    michi_core::restore::Restored::Same => ("act.restore_same", ""),
+                    michi_core::restore::Restored::Done(None) => ("act.restored", ""),
+                    michi_core::restore::Restored::Done(Some(s)) => ("act.restored_kept", backup::short(s)),
+                };
+                let text = self.tr(key).replace("{file}", path).replace("{id}", &id.short()).replace("{wt}", &self::name(wt));
+                (text.replace("{saved}", saved), 10)
             }
             (Task::Revert { wt, id, .. }, Ok(Acted::Reverted(r))) => match r {
                 Reverted::Made(new) => (

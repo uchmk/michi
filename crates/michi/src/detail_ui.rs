@@ -73,6 +73,9 @@ enum Act {
     Wide(bool),
     /// Go to the tsumugi tab of this session.
     Claude(u64),
+    /// Bring this file back as the shown commit has it (the path; whether
+    /// the commit deletes it).
+    Restore(String, bool),
 }
 
 /// The blocks for `d`, whose trunk merge brought in `merged`.
@@ -319,6 +322,11 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         Act::AllFiles => app.detail.all_files = true,
         Act::Wide(w) => app.detail.wide = w,
         Act::Claude(session) => app.act(crate::act::Task::Focus { session }),
+        Act::Restore(path, deleted) => {
+            if let Some(id) = app.detail.asked() {
+                app.ask_restore(id, path, deleted);
+            }
+        }
     }
     ctx.request_repaint();
 }
@@ -662,6 +670,20 @@ fn title(ui: &Ui, p: &Painter, app: &App, f: &File, rr: Rect, first: bool, live:
         }
         if live && resp.clicked() {
             out = Some(Act::Wide(!wide));
+        }
+        end = hit.left() - 10.0;
+    }
+    // Not on the uncommitted row: that is the worktree itself.
+    if app.graph.selected_wip().is_none() || app.stash_shown().is_some() {
+        let word = p.text(pos2(end, mid), Align2::RIGHT_CENTER, app.tr("detail.restore"), FontId::proportional(12.0), c.dim);
+        let hit = word.expand(3.0);
+        let resp = ui.interact(hit.intersect(p.clip_rect()), Id::new(("detail-restore", &f.path)), Sense::CLICK);
+        if live && pointer.is_some_and(|at| hit.contains(at)) {
+            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+            p.line_segment([word.left_bottom(), word.right_bottom()], Stroke::new(1.0, c.dim));
+        }
+        if live && resp.clicked() {
+            out = Some(Act::Restore(f.path.clone(), f.status == Status::Deleted));
         }
         end = hit.left() - 10.0;
     }

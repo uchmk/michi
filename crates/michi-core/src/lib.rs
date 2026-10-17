@@ -46,6 +46,7 @@ pub mod reflog;
 pub mod refs;
 pub mod rerere;
 pub mod reset;
+pub mod restore;
 pub mod revert;
 pub mod review;
 pub mod show;

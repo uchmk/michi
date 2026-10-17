@@ -726,3 +726,15 @@
 - [ ] **70.7** With the network cut, press `f` yourself → The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` → | [ ] 〔未訳〕
 - [ ] **70.8** Start a pull or push while the timer is due → The timer waits; it never interrupts a job → | [ ] 〔未訳〕
 - [ ] **70.9** Switch EN and JA → The keybar's `· failed` / `· 失敗` reads well and fits → | [ ] 〔未訳〕
+
+## 52. Restore a file's version from a commit
+
+- [ ] **52.1** Select `first` in the graph and look at the title bar of `a.txt` in the detail → A dim `Restore this version` at the right of the title (left of the wide toggle), underlined with a hand cursor on hover; not shown on the uncommitted row → | [ ] 〔未訳〕
+- [ ] **52.2** Click `Restore this version`, then press Esc → A band asks whether to bring `a.txt` back as `<hash>` has it and says the current file is kept in refs/michi/backup; Esc leaves the file as it was → | [ ] 〔未訳〕
+- [ ] **52.3** With `a.txt` as the head has it, click it and press `y` → A 10-second toast says it is as `<hash>` has it now (unstaged); the file reads `one`, Changes lists it as unstaged, `git diff --cached` is empty, no new backup ref → | [ ] 〔未訳〕
+- [ ] **52.4** Change `a.txt` to `mine`, restore `first`'s version, press `y` → The toast names the backup; `git show refs/michi/backup/<time>:a.txt` gives `mine` and the file reads `one` → | [ ] 〔未訳〕
+- [ ] **52.5** Restore the same version again → The toast says it is as `<hash>` has it already; nothing changes → | [ ] 〔未訳〕
+- [ ] **52.6** Stage a change to `a.txt`, then restore an older version → The worktree file is the old version; `git diff --cached` still shows the staged change → | [ ] 〔未訳〕
+- [ ] **52.7** Select a commit that deletes a file and click its `Restore this version` → A toast says there is no version to bring back; no band → | [ ] 〔未訳〕
+- [ ] **52.8** With a Claude working in the worktree, click it; then with the worktree mid-merge → The band also notes that a Claude is working there; mid-merge a toast says to finish the merge first and no band appears → | [ ] 〔未訳〕
+- [ ] **52.9** Switch EN and JA; narrow the window; switch to the light theme → The link, band and toasts read well in both languages; the file name is cut with `…` before it collides with the link; readable in both themes → | [ ] 〔未訳〕
