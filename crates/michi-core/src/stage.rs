@@ -74,6 +74,7 @@ fn diff_command(dir: &Path, side: Side, patch: bool, paths: &[&str]) -> Command 
     }
     c.args(["-z", "--raw", "--no-abbrev", "--numstat", "--no-color", "--no-ext-diff", "--no-textconv", "--no-relative"]);
     c.args(["--src-prefix=a/", "--dst-prefix=b/"]);
+    crate::space::apply(&mut c, patch);
     if patch {
         c.arg("--patch");
     }
@@ -189,11 +190,16 @@ pub fn diff(dir: &Path, side: Side, file: &File) -> Result<Option<Diff>, git::Er
     }
     drop(git);
     let (changes, patch) = show::parse_changes(&out);
-    let Some(mut f) = changes.files.into_iter().find(|f| f.path == file.path) else { return Ok(None) };
+    let ignoring = crate::space::ignoring();
+    let found = changes.files.into_iter().find(|f| f.path == file.path);
+    // With whitespace ignored, a change of whitespace alone leaves nothing to show.
+    let Some(mut f) = found.or_else(|| ignoring.then(|| file.clone())) else { return Ok(None) };
     if !whole {
         f.cut = true;
     }
-    let patch = (f.status == Status::Modified && !f.is_binary() && !f.cut).then(|| Patch::parse(patch)).filter(|p| !p.submodule);
+    // Lines picked from a diff that ignores whitespace would not fit the file.
+    let patch =
+        (f.status == Status::Modified && !f.is_binary() && !f.cut && !ignoring).then(|| Patch::parse(patch)).filter(|p| !p.submodule);
     Ok(Some(Diff { file: f, patch }))
 }
 

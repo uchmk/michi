@@ -242,6 +242,7 @@ fn read_with(dir: &Path, id: &Oid, patch: bool, limits: &Limits, stop: &dyn Fn()
     c.arg("-C").arg(dir).args(["-c", "core.quotePath=false", "show", FORMAT, "-z", "--raw", "--no-abbrev", "--numstat", "-M", "--root"]);
     c.args(["--diff-merges=first-parent", "--no-color", "--no-ext-diff", "--no-relative", "--no-show-signature"]);
     c.args(["--encoding=UTF-8", "--src-prefix=a/", "--dst-prefix=b/"]);
+    crate::space::apply(&mut c, patch);
     if patch {
         c.arg("--patch");
     }
@@ -284,6 +285,7 @@ pub fn changes_in(dir: &Path, from: &Oid, to: &Oid, paths: &[&str], patch: bool,
     c.env("GIT_LITERAL_PATHSPECS", "1");
     c.arg("-C").arg(dir).args(["-c", "core.quotePath=false", "diff", "-z", "--raw", "--no-abbrev", "--numstat", "-M"]);
     c.args(["--no-color", "--no-ext-diff", "--no-relative", "--src-prefix=a/", "--dst-prefix=b/"]);
+    crate::space::apply(&mut c, patch);
     if patch {
         c.arg("--patch");
     }
