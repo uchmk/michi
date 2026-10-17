@@ -511,3 +511,12 @@
 - [ ] **47.7** Start `git rebase -i` and stop it at an edit → The strip says it is a rebase, with no buttons; it goes when the rebase ends → | [ ] 〔未訳〕
 - [ ] **47.8** With a Claude working in the worktree press `R` → A yes is asked first, as for a switch → | [ ] 〔未訳〕
 - [ ] **47.9** Open the settings (`,`) or the key list (`?`) while the strip is up; switch EN and JA → The strip stays tidy at a narrow width (the text is cut with an ellipsis, the buttons stay); both languages read well → | [ ] 〔未訳〕
+
+## 86. Row density (compact / standard / cozy)
+
+- [ ] **86.1** Open the settings (`,`), General: look for "Row density" → Three choices, Compact / Standard / Cozy; Standard is lit by default → | [ ] 〔未訳〕
+- [ ] **86.2** Pick Compact → The graph rows, the side column's rows and the reflog / tidy / reorder lists shrink at once (about 20% shorter); text stays readable and nothing is clipped; config.toml has `[view]` `density = "compact"` → | [ ] 〔未訳〕
+- [ ] **86.3** Pick Cozy → The same rows grow (about 20% taller); the graph dots and lines stay joined across rows; the scrollbar marks still sit at their rows → | [ ] 〔未訳〕
+- [ ] **86.4** Click a row, scroll with the wheel and drag the scrollbar in each density → Clicks land on the row under the pointer; the selected row stays in view → | [ ] 〔未訳〕
+- [ ] **86.5** Edit `density` in config.toml by hand (also a wrong word) → The rows change within a few seconds without restart; a wrong word gives a toast warning and the standard rows → | [ ] 〔未訳〕
+- [ ] **86.6** Switch EN and JA in the settings → The section and its three choices read well in both → | [ ] 〔未訳〕

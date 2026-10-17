@@ -57,6 +57,9 @@ pub struct Prefs {
     /// `[open]` of config.toml: the commands that open a worktree's folder.
     pub open: crate::opencfg::OpenCfg,
     pub open_warn: Vec<String>,
+    /// `[view] density` of config.toml: the height of the graph's and the lists' rows.
+    pub density: michi_core::density::Density,
+    pub view_warn: Vec<String>,
     /// The Notifications page's drafts (a webhook's address being typed).
     pub notify_drafts: ito_prefs::Drafts,
     /// The Keys page's search, filter and the keys being pressed.
@@ -88,6 +91,8 @@ impl Prefs {
             notify_warn: Vec::new(),
             open: Default::default(),
             open_warn: Vec::new(),
+            density: Default::default(),
+            view_warn: Vec::new(),
             notify_drafts: ito_prefs::Drafts::new(),
             keys_edit: ito_prefs::KeysEdit::default(),
             tx,
@@ -113,6 +118,7 @@ impl Prefs {
             let config = read_config(b);
             (p.notify, p.notify_warn) = NotifyCfg::read(config.as_deref());
             (p.open, p.open_warn) = crate::opencfg::OpenCfg::read(config.as_deref());
+            (p.density, p.view_warn) = crate::viewcfg::read(config.as_deref());
         }
         p.base = base;
         p
@@ -171,6 +177,7 @@ impl Prefs {
                 Reload::Config(text) => {
                     (self.notify, self.notify_warn) = NotifyCfg::read(text.as_deref());
                     (self.open, self.open_warn) = crate::opencfg::OpenCfg::read(text.as_deref());
+                    (self.density, self.view_warn) = crate::viewcfg::read(text.as_deref());
                 }
                 Reload::Failed(e) => self.failed = Some(e),
             }
@@ -236,7 +243,23 @@ impl Prefs {
             return;
         };
         std::thread::spawn(move || {
-            let r = match write_config(&config_path(&base), &edits, webhooks.as_deref()) {
+            let r = match write_config(&config_path(&base), &edits, &[], webhooks.as_deref()) {
+                Ok(()) => Reload::Config(read_config(&base)),
+                Err(e) => Reload::Failed(e),
+            };
+            Self::send_back(&tx, &wake, r);
+        });
+    }
+
+    /// Write `[view] density` into config.toml on a thread, then read it again.
+    pub fn density_set(&self, d: michi_core::density::Density, no_folder: &str) {
+        let (tx, wake) = (self.tx.clone(), self.wake.clone());
+        let Some(base) = self.base.clone() else {
+            Self::send_back(&tx, &wake, Reload::Failed(no_folder.into()));
+            return;
+        };
+        std::thread::spawn(move || {
+            let r = match write_config(&config_path(&base), &[], &[("density", ito_common::quote(d.key()))], None) {
                 Ok(()) => Reload::Config(read_config(&base)),
                 Err(e) => Reload::Failed(e),
             };
@@ -307,7 +330,7 @@ fn read_config(base: &Path) -> Option<String> {
 /// Set `edits` (`[notify]` keys, already TOML) and `webhooks` in the
 /// config.toml at `path`, written only when that changes it. Call it off the
 /// UI thread.
-pub fn write_config(path: &Path, edits: &[(&str, String)], webhooks: Option<&[Place]>) -> Result<(), String> {
+pub fn write_config(path: &Path, edits: &[(&str, String)], view: &[(&str, String)], webhooks: Option<&[Place]>) -> Result<(), String> {
     static ONE_AT_A_TIME: std::sync::Mutex<()> = std::sync::Mutex::new(());
     let _one = ONE_AT_A_TIME.lock().unwrap_or_else(|e| e.into_inner());
     let at = |e: String| format!("{}: {e}", path.display());
@@ -319,6 +342,9 @@ pub fn write_config(path: &Path, edits: &[(&str, String)], webhooks: Option<&[Pl
     let mut new = text.clone();
     for (key, value) in edits {
         new = ito_common::set_key(&new, Some("notify"), key, value).map_err(at)?;
+    }
+    for (key, value) in view {
+        new = ito_common::set_key(&new, Some("view"), key, value).map_err(at)?;
     }
     if let Some(places) = webhooks {
         new = ito_prefs::write_webhooks(&new, places, true).map_err(at)?;

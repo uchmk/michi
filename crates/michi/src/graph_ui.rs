@@ -268,7 +268,7 @@ enum Act {
 
 fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
     let c = ito_theme::colors();
-    let m = Metrics::default();
+    let m = Metrics { row: app.prefs.density.px(Metrics::default().row), ..Metrics::default() };
     let row_h = m.row;
     let ctx = ui.ctx().clone();
     let mut scroll = ctx.data(|d| d.get_temp::<f32>(scroll_id())).unwrap_or(0.0);
@@ -618,7 +618,7 @@ fn fold_toggle(ui: &mut Ui, app: &App, right_center: Pos2, left: f32, live: bool
 fn scrollbar(ui: &mut Ui, app: &App, list: Rect, total: f32, view: f32, scroll: &mut f32, live: bool) -> Option<Act> {
     let c = ito_theme::colors();
     let g = &app.graph;
-    let row_h = Metrics::default().row;
+    let row_h = app.prefs.density.px(Metrics::default().row);
     let bar = Rect::from_min_max(pos2(list.right() - 1.0 - BAR_W, list.top()), pos2(list.right() - 1.0, list.bottom() - 2.0));
     let bh = bar.height().max(1.0);
     let resp = ui.interact(bar, Id::new("graph-bar"), Sense::CLICK | Sense::DRAG);

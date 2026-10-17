@@ -28,6 +28,8 @@ fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
         (GENERAL, "scale"),
         (GENERAL, "[clock]"),
         (GENERAL, "[open]"),
+        (GENERAL, "density"),
+        (GENERAL, "[view]"),
         (THEME, w.mode),
         (THEME, w.themes),
         (THEME, w.preview),
@@ -71,6 +73,8 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     let keys_edit = &mut prefs.keys_edit;
     let (notify, drafts) = (&prefs.notify, &mut prefs.notify_drafts);
     let open = &prefs.open;
+    let density = prefs.density;
+    let mut density_new = None;
     let (common, themes, base) = (&prefs.common, &prefs.themes, prefs.base.as_deref());
     let out = ito_prefs::show(ui, ito_theme::colors(), &mut prefs.state, &nav, keys, |ui, page, l| match page {
         GENERAL => {
@@ -81,6 +85,27 @@ pub fn show(ui: &mut Ui, app: &mut App) {
                 asked.extend(ito_prefs::scale_row(ui, l, w, common.scale_or_one(), ""));
             });
             asked.extend(ito_prefs::clock_card(ui, l, w, &common.clock_or(None)));
+            section(ui, l, tr("settings.density"), |ui| {
+                ui.label(egui::RichText::new(tr("settings.density_lead")).color(l.c.dim));
+                ui.horizontal(|ui| {
+                    for d in michi_core::density::Density::ALL {
+                        if ui
+                            .selectable_label(
+                                d == density,
+                                tr(match d {
+                                    michi_core::density::Density::Compact => "density.compact",
+                                    michi_core::density::Density::Standard => "density.standard",
+                                    michi_core::density::Density::Cozy => "density.cozy",
+                                }),
+                            )
+                            .clicked()
+                            && d != density
+                        {
+                            density_new = Some(d);
+                        }
+                    }
+                });
+            });
             section(ui, l, tr("settings.open"), |ui| {
                 ui.label(egui::RichText::new(tr("settings.open_lead")).color(l.c.dim));
                 for t in michi_core::openin::Tool::ALL {
@@ -142,6 +167,9 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     app.prefs.common_change(asked, no_folder);
     if let Some((what, n)) = test {
         crate::notify::test(&n, what, tr("notify.test_title"), tr("notify.test_body"));
+    }
+    if let Some(d) = density_new {
+        app.prefs.density_set(d, no_folder);
     }
     app.prefs.notify_edit(notify_edits, webhooks, no_folder);
     if !key_edits.is_empty() {

@@ -51,6 +51,7 @@ mod strip;
 mod tidy;
 mod tidy_ui;
 mod ui;
+mod viewcfg;
 mod work;
 mod wt_ui;
 
@@ -429,7 +430,11 @@ impl eframe::App for Michi {
         }
         // What keymap.toml and config.toml could not be read as, said once each time it changes.
         let warn: Vec<String> =
-            [&self.app.prefs.keymap_warn, &self.app.prefs.notify_warn, &self.app.prefs.open_warn].into_iter().flatten().cloned().collect();
+            [&self.app.prefs.keymap_warn, &self.app.prefs.notify_warn, &self.app.prefs.open_warn, &self.app.prefs.view_warn]
+                .into_iter()
+                .flatten()
+                .cloned()
+                .collect();
         if warn != self.warned {
             if let Some(first) = warn.first().filter(|_| !warn.iter().all(|w| self.warned.contains(w))) {
                 let text = self.app.tr("toast.config_warn").replace("{}", &warn.len().to_string()).replace("{1}", first);
