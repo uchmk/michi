@@ -2,6 +2,15 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.63.0] - 2026-10-17
+
+### 追加
+
+- リポジトリの画面（Ctrl+O）にアドレスを貼ると clone する（#39）。init は作らない。
+- 作者の名前・メールが worktree でちがうとき、worktree の表に「作者: …」を出す（#53）。
+- worktree の表で `v` を押すと、未コミットの変更を別の worktree に移す。バックアップを `refs/michi/backup/` に残す（#55）。
+- グラフで `Y` で選んだコミット（WIP 行なら差分）のパッチをクリップボードへ。Ctrl+V でパッチを貼って `git apply` する（#46）。
+
 ## [0.62.0] - 2026-10-17
 
 ### 追加

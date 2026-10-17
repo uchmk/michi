@@ -34,6 +34,7 @@ mod newwork;
 mod newwork_ui;
 mod notify;
 mod opencfg;
+mod patch;
 mod picker;
 mod picker_ui;
 mod prefs;
@@ -380,6 +381,9 @@ impl Michi {
                         ctx.copy_text(text);
                     }
                 }
+                egui::Event::Paste(text) => {
+                    self.app.pasted(&text);
+                }
                 egui::Event::Key { key: egui::Key::Escape, pressed: true, .. } if !let_go => {
                     self.app.escape();
                 }
@@ -489,6 +493,9 @@ impl eframe::App for Michi {
             }
         }
         self.app.pump();
+        if let Some(text) = self.app.clipboard.take() {
+            ctx.copy_text(text);
+        }
         self.app.auto_fetch_tick(std::time::SystemTime::now());
         if let Some(wake) = self.app.auto_fetch_wake() {
             ctx.request_repaint_after(wake);

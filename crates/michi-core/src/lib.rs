@@ -42,6 +42,7 @@ pub mod oid;
 pub mod openin;
 pub mod order;
 pub mod overlap;
+pub mod patch;
 pub mod paths;
 pub mod pr;
 pub mod predict;

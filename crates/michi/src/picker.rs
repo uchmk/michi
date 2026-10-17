@@ -1085,6 +1085,45 @@ mod tests {
     }
 
     #[test]
+    fn a_pasted_patch_waits_for_a_yes_and_other_text_is_let_be() {
+        let mut a = on("m1");
+        assert!(!a.pasted("feat/x\n"), "not a patch");
+        assert!(a.band.is_none());
+        let patch = "diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n+b\n";
+        assert!(a.pasted(patch));
+        let band = a.band.take().unwrap();
+        assert_eq!(band.then, Then::Act(Task::ApplyPatch { wt: PathBuf::from("C:/r/repo"), patch: patch.into() }));
+        assert!(band.text.starts_with("Apply the pasted patch (6 lines) to the files of repo?"), "{}", band.text);
+
+        // Something else has the keys: the paste is not ours.
+        a.band = Some(Band::new("x".into(), Then::Act(Task::Stash { wt: PathBuf::from("C:/r/repo"), message: String::new() })));
+        assert!(!a.pasted(patch));
+
+        // Only over the graph.
+        let mut a = on("m1");
+        assert!(a.feed('3'));
+        assert!(!a.pasted(patch));
+        assert!(a.band.is_none());
+
+        // In the middle of a rebase: not now.
+        let mut a = on("m1");
+        let mut trees = fixture::trees();
+        trees.trees[0].doing = Some(Doing::Rebase);
+        a.take(crate::repo::Answer::Trees(trees));
+        assert!(a.pasted(patch));
+        assert!(a.band.is_none());
+        assert!(toast(&a).contains("in the middle of a rebase"), "{}", toast(&a));
+    }
+
+    #[test]
+    fn y_over_the_graph_is_taken_and_says_nothing_wrong() {
+        // Nothing reads without a reading thread, so there is nothing to wait for here.
+        let mut a = on("m1");
+        assert!(a.feed('Y'));
+        assert!(a.toast.is_none());
+    }
+
+    #[test]
     fn t_asks_before_it_reverts() {
         let mut a = on("m1");
         assert!(a.feed('t'));
