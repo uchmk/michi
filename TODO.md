@@ -100,7 +100,7 @@
 
 All wait for the owner; none is started.
 
-- [ ] submodule: status and update (not entering)（要確認: #29）
+- [x] submodule: status and update (not entering): `u` on the worktree table, TESTING 129（要確認: #29）
 - [x] Git LFS: "not fetched" marker（要確認: #30）
 - [x] sparse checkout: notice only（要確認: #31）: a strip says it is on and how many files are left out (TESTING 31.5–31.9)
 - [ ] bisect（要確認: #32）

@@ -56,6 +56,7 @@ pub mod sparse;
 pub mod stage;
 pub mod stash;
 pub mod strength;
+pub mod submodule;
 pub mod summary;
 pub mod syntax;
 pub mod tag;
