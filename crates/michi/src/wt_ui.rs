@@ -957,7 +957,10 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let foot_w = width.min(900.0);
     let feet: Vec<Arc<Galley>> =
         if claude { vec![layout(ui, app.tr("wt.foot_claude"), FontId::proportional(11.5), c.dim, foot_w)] } else { Vec::new() };
-    let foot_top = boxes_bottom + 14.0;
+    // One line pointing at the next step: one worktree, no tsumugi... (#81).
+    let next: Option<Arc<Galley>> = app.next_step().map(|s| layout(ui, app.tr(s.key()), FontId::proportional(12.5), c.fg, foot_w));
+    let next_h = next.as_ref().map_or(0.0, |g| g.size().y + 14.0);
+    let foot_top = boxes_bottom + 14.0 + next_h;
     let total = foot_top + feet.iter().map(|g| g.size().y + 4.0).sum::<f32>() + 16.0;
 
     let mut scroll = ctx.data(|d| d.get_temp::<f32>(scroll_id())).unwrap_or(0.0);
@@ -1099,6 +1102,9 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
 
     let pair = draw_pairs(ui, &p, app, &pairs, pos2(left, at(pairs_top)), live);
     let picked_new = draw_news(ui, &p, &news, pos2(left + news_at.0, at(news_at.1)), live);
+    if let Some(g) = next {
+        p.galley(pos2(left, at(foot_top - next_h)), g, c.fg);
+    }
     let mut y = at(foot_top);
     for g in feet {
         let h = g.size().y;
