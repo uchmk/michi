@@ -95,6 +95,7 @@ pub mod track;
 pub mod tree;
 pub mod trial;
 pub mod turn;
+pub mod undo;
 pub mod unseen;
 pub mod wip;
 pub mod words;

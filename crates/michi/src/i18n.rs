@@ -255,7 +255,18 @@ const EN: &[(&str, &str)] = &[
     ("keydesc.Search commands", "Search commands"),
     ("keydesc.Report a bug", "Report a bug"),
 ("keydesc.Quit", "Quit"),
-    ("keydesc.Zoom in", "Zoom in"),
+    ("undo.nothing_undo", "Nothing to undo"),
+("undo.nothing_redo", "Nothing to do again"),
+("undo.undone", "Undid {what}"),
+("undo.redone", "Did {what} again"),
+("undo.cannot_undo", "Cannot undo {what}: {why}"),
+("undo.cannot_redo", "Cannot do {what} again: {why}"),
+("undo.what_reset", "the reset of {wt} ({mode})"),
+("undo.what_delete", "deleting the branch {name}"),
+("undo.what_rename", "renaming the branch {name}"),
+("keydesc.Undo", "Undo"),
+("keydesc.Redo", "Redo"),
+("keydesc.Zoom in", "Zoom in"),
     ("keydesc.Zoom out", "Zoom out"),
     ("keydesc.Back to 100%", "Back to 100%"),
     ("settings.theme_lead", "The colours, shared by every uchmk app."),
@@ -1554,7 +1565,18 @@ const JA: &[(&str, &str)] = &[
     ("keydesc.Search commands", "コマンドを探す"),
     ("keydesc.Report a bug", "バグを報告する"),
 ("keydesc.Quit", "終わる"),
-    ("keydesc.Zoom in", "大きくする"),
+    ("undo.nothing_undo", "元に戻すものがありません"),
+("undo.nothing_redo", "やり直すものがありません"),
+("undo.undone", "{what} を元に戻しました"),
+("undo.redone", "{what} をやり直しました"),
+("undo.cannot_undo", "{what} を元に戻せません: {why}"),
+("undo.cannot_redo", "{what} をやり直せません: {why}"),
+("undo.what_reset", "{wt} の reset（{mode}）"),
+("undo.what_delete", "ブランチ {name} を消したこと"),
+("undo.what_rename", "ブランチ {name} の改名"),
+("keydesc.Undo", "元に戻す"),
+("keydesc.Redo", "やり直す"),
+("keydesc.Zoom in", "大きくする"),
     ("keydesc.Zoom out", "小さくする"),
     ("keydesc.Back to 100%", "100% に戻す"),
     ("settings.theme_lead", "色。uchmk のどのアプリでも共通です。"),
@@ -2604,7 +2626,21 @@ pub const AVAILABLE: [&str; 2] = ["en", "ja"];
 /// there are none.
 pub fn tr(lang: &str, key: &'static str) -> &'static str {
     let table = if lang == "ja" { JA } else { EN };
-    table.iter().chain(EN).find(|(k, _)| *k == key).map_or(key, |(_, v)| v)
+    let text = table.iter().chain(EN).find(|(k, _)| *k == key).map_or(key, |(_, v)| v);
+    mac_spelling(text)
+}
+
+/// On macOS the words say Cmd where the table says Ctrl (#61); the spelled
+/// copy is made once per string. Elsewhere the table's own text.
+fn mac_spelling(text: &'static str) -> &'static str {
+    if !cfg!(target_os = "macos") || !text.contains("Ctrl+") {
+        return text;
+    }
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+    static SPELLED: OnceLock<Mutex<HashMap<&'static str, &'static str>>> = OnceLock::new();
+    let mut seen = SPELLED.get_or_init(Default::default).lock().unwrap();
+    seen.entry(text).or_insert_with(|| Box::leak(michi_core::keyhelp::spelled(text, true).into_owned().into_boxed_str()))
 }
 
 /// A keymap layer's name in `lang`; the name itself when there are no words.

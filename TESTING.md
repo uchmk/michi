@@ -1510,3 +1510,46 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 262.7 | Open the `3` view | A four-line card says what a worktree is and how it relates to Claude working in parallel; the table sits below it with nothing hidden |
 | 262.8 | Dismiss it, then run "Show the explanations again" from the command palette | A toast says they are back; all three explanations show again |
 | 262.9 | Narrow the window; switch EN and JA | The cards wrap without overlapping the cross or pager; both languages read well |
+
+## 265. Undo and Redo of a branch's move (#64)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 265.1 | In the graph reset a worktree to an older commit (any mode) and press Ctrl+Z | The branch is back on the commit it was; a toast says `Undid the reset of ...`; the graph and the table follow |
+| 265.2 | Press Ctrl+Shift+Z | The reset is done again; a toast says so; a new reset or delete after an Undo ends the Redo line (Ctrl+Shift+Z says there is nothing to do again) |
+| 265.3 | Delete a branch (`d` in the branch palette, yes), press Ctrl+Z, then Ctrl+Shift+Z | The branch is back at the same commit, then gone again |
+| 265.4 | Rename a branch, press Ctrl+Z | The old name is back |
+| 265.5 | Reset hard, then edit a file, then Ctrl+Z | A toast refuses: uncommitted changes; nothing moves. Commit on the branch and Ctrl+Z again: it refuses, the branch has moved on |
+| 265.6 | Click into the commit message box, type, press Ctrl+Z | The typing is undone in the box; no branch moves |
+| 265.7 | Press Ctrl+Z with nothing done in this window | A toast: `Nothing to undo` |
+| 265.8 | Open `?` and the Keys page of the settings | Undo (Ctrl+Z) and Redo (Ctrl+Shift+Z) are listed; rebinding them works; JA reads `元に戻す` and `やり直す` |
+
+## 266. Cmd on a Mac (#61)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 266.1 | On macOS press `?` | The keys read `Cmd+...` (not `Ctrl+...`) in the global list, the keybar and the palette field's key cap; `Ctrl+Tab` stays |
+| 266.2 | On macOS press Cmd+Enter in the `2` view with a message and a file staged, then Cmd+Z after a reset | The commit is made; the reset is taken back |
+| 266.3 | On Windows or Linux press `?` | The keys still read `Ctrl+...` |
+
+## 267. Other operating systems (#62)
+
+Every row of this file is meant to be pressed on macOS and Linux too, unless it names Windows (the title bar's buttons are michi's own on all three).
+`cargo run -p michi --example make-testcheck -- --lane macos` and `-- --lane linux` write `TESTING-MACOS.md` and `TESTING-LINUX.md`, one box per row: `[x]` checked there, `[-]` does not apply there.
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 267.1 | Start michi on macOS and on Linux in a repository | The window opens with the tabs, the chip and the graph; the title reads `<repo> — michi` |
+| 267.2 | Resize, maximise and drag the window by its bar | The same as 1.4 to 1.7 |
+| 267.3 | Run `michi --version` and `michi --help` from a terminal | Text on the terminal, no window |
+| 267.4 | Open a folder or a worktree with a Japanese name | The Japanese draws, not boxes |
+
+## 268. Accessibility (#60)
+
+Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and the themes of the settings (the contrast of each built-in theme is held by ito-theme's tests). A screen reader and a high-contrast theme are not michi's alone: see the crate request in the issue.
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 268.1 | Press Ctrl+= five times, then Ctrl+0 | The whole window grows with each press (text, rows, key caps) and a toast names the size; Ctrl+0 is back at 100%; nothing overlaps at the largest size |
+| 268.2 | Choose each built-in theme in the settings and look at the graph, the table, the changes and a diff | The text reads on its ground; the selected row, a focus ring and a conflict mark are told apart without colour alone (a symbol or a word comes with the colour) |
+| 268.3 | Use only the keyboard from start to a commit (`2`, `j`, Space, `c`, type, Ctrl+Enter) | Every step works without the pointer; the focus is always visible |

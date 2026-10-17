@@ -35,6 +35,9 @@ pub enum Act {
     /// The nth tab (from 1) to the front.
     Tab(usize),
     Quit,
+    /// Take back the last move of a branch, or do it again (#64).
+    Undo,
+    Redo,
     Scale(ScaleTo),
     /// Does nothing: a key taken away from a built-in operation.
     Noop,
@@ -54,6 +57,8 @@ pub fn parse(s: &str) -> Result<Act, String> {
         (Some("closetab"), None) => Act::CloseTab,
         (Some("tab"), Some(n)) => Act::Tab(n.parse::<usize>().ok().filter(|n| *n >= 1).ok_or_else(|| format!("`{s}` is not a command"))?),
         (Some("quit"), None) => Act::Quit,
+        (Some("undo"), None) => Act::Undo,
+        (Some("redo"), None) => Act::Redo,
         (Some("noop"), None) => Act::Noop,
         (Some("scale"), Some("in")) => Act::Scale(ScaleTo::In),
         (Some("scale"), Some("out")) => Act::Scale(ScaleTo::Out),

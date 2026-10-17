@@ -140,15 +140,15 @@ All wait for the owner; none is started.
 - [x] Pre-merge checklist (test / verify results)（要確認: #57）
 - [ ] Hook output and rerun on failure（要確認: #58）
 - [ ] Speed target for very large repositories（要確認: #59）
-- [ ] Accessibility（要確認: #60）
-- [ ] Key list (`?`) and macOS Cmd check（要確認: #61）
-- [ ] Real-machine checks off Windows（要確認: #62）
+- [x] Accessibility（要確認: #60） — text size and themes come from ito; rows in TESTING.md 268; high-contrast/screen-reader crate-request noted
+- [x] Key list (`?`) and macOS Cmd check（要確認: #61） — Cmd spelling on macOS (keyhelp::native), TESTING.md 266
+- [x] Real-machine checks off Windows（要確認: #62） — macos and linux lanes, TESTING.md 267
 
 ## Gaps against other Git clients, round 2: features, operability, looks (2026-10-17)
 
 All wait for the owner; none is started.
 
-- [ ] Undo / Redo on one key（要確認: #64）
+- [x] Undo / Redo on one key（要確認: #64） — michi-core undo.rs (reset, delete, rename), Ctrl+Z / Ctrl+Shift+Z, TESTING.md 265
 - [x] Compare any two commits or branches（要確認: #65）
 - [ ] Context menus (commit, branch, file)（要確認: #66）
 - [ ] Drag and drop (merge / rebase / cherry-pick)（要確認: #67）
