@@ -135,17 +135,8 @@ impl View {
 }
 
 /// The keys that work in every view.
-pub const GLOBAL_KEYS: [(&str, &str); 9] = [
-    ("1 2 3 4", "key.views"),
-    ("N", "key.new_work"),
-    ("f", "key.fetch"),
-    ("p", "key.pull"),
-    ("P", "key.push"),
-    ("F", "key.push_over"),
-    (",", "key.settings"),
-    ("Ctrl+Shift+P", "key.palette"),
-    ("?", "key.help"),
-];
+pub const GLOBAL_KEYS: [(&str, &str); 6] =
+    [("1 2 3 4", "key.views"), ("N", "key.new_work"), ("f", "key.fetch"), ("p", "key.pull"), ("P", "key.push"), ("F", "key.push_over")];
 
 /// The keys of the branch review, drawn over the worktree table.
 pub const REVIEW_KEYS: [(&str, &str); 11] = [
@@ -263,6 +254,9 @@ pub struct App {
     /// selected then: the detail shows the stash until that moves.
     pub side_stash: Option<(Oid, Option<Oid>)>,
     pub quit: bool,
+    /// The key list's first line, and how much of it the last frame showed.
+    pub help_scroll: usize,
+    pub help_drawn: std::cell::Cell<Option<ito_help::Drawn>>,
 }
 
 impl App {
@@ -305,6 +299,8 @@ impl App {
             reorder: None,
             side_stash: None,
             quit: false,
+            help_scroll: 0,
+            help_drawn: std::cell::Cell::new(None),
         };
         app.set_language();
         app
@@ -1113,7 +1109,10 @@ impl App {
         use crate::keymap::Act;
         match a {
             Act::Settings => self.mode = if self.mode == Mode::Settings { Mode::Main } else { Mode::Settings },
-            Act::Help => self.mode = if self.mode == Mode::Help { Mode::Main } else { Mode::Help },
+            Act::Help => {
+                self.help_scroll = 0;
+                self.mode = if self.mode == Mode::Help { Mode::Main } else { Mode::Help };
+            }
             Act::Palette => {
                 let text = self.tr("later").replace("{}", self.tr("key.palette"));
                 self.say(text);
@@ -1134,11 +1133,45 @@ impl App {
         self.say(text);
     }
 
+    /// The key list: every key the keymap binds (as it is now, so a changed
+    /// key shows), the fixed keys of every view, then those of the view in front.
+    pub fn help_lines(&self) -> Vec<ito_help::Line> {
+        use ito_help::Line;
+        let mut lines = vec![Line::Head(self.tr("help.global").to_owned())];
+        let bind = |k: &str, w: &str| Line::Bind { keys: k.to_owned(), desc: w.to_owned() };
+        lines.extend(GLOBAL_KEYS.iter().map(|(k, w)| bind(k, self.tr(w))));
+        lines.extend(ito_keymap::help_lines(&self.prefs.keymap.main, "noop").into_iter().map(|l| {
+            let desc = if l.desc.is_empty() { l.run.to_owned() } else { crate::i18n::tr_desc(&self.lang, l.desc) };
+            Line::Bind { keys: l.keys, desc }
+        }));
+        let view = if self.keys() == self.view.keys() { self.view.label() } else { "key.branch_diff" };
+        lines.push(Line::Blank);
+        lines.push(Line::Head(self.tr(view).to_owned()));
+        lines.extend(self.keys().iter().map(|(k, w)| bind(k, self.tr(w))));
+        lines
+    }
+
+    /// The arrows, pages, Home and End scroll the key list.
+    fn help_named(&mut self, name: &str) -> bool {
+        let Some(d) = self.help_drawn.get() else { return false };
+        let page = d.visible.saturating_sub(1).max(1) as i64;
+        self.help_scroll = match name {
+            "ArrowDown" => ito_help::scrolled(d.scroll, 1, d.max),
+            "ArrowUp" => ito_help::scrolled(d.scroll, -1, d.max),
+            "PageDown" => ito_help::scrolled(d.scroll, page, d.max),
+            "PageUp" => ito_help::scrolled(d.scroll, -page, d.max),
+            "Home" => 0,
+            "End" => d.max,
+            _ => return false,
+        };
+        true
+    }
+
     /// A character typed (not a key with Ctrl or Alt: those are the
     /// shortcuts). Returns whether it was used.
     pub fn feed(&mut self, c: char) -> bool {
         match (self.mode, c) {
-            (Mode::Help, '?') => self.mode = Mode::Main,
+            (Mode::Help, c) if self.bare_act(c) => {}
             (Mode::Settings, _) | (Mode::Help, _) => return false,
             (Mode::Main, _) if self.picker.is_some() || self.new_work.is_some() => return false,
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
@@ -1259,6 +1292,9 @@ impl App {
     /// A key with a name (`Enter`, `ArrowDown`), outside the help and the
     /// settings.
     pub fn named(&mut self, name: &str) -> bool {
+        if self.mode == Mode::Help {
+            return self.help_named(name);
+        }
         if self.mode != Mode::Main {
             return false;
         }
@@ -1474,6 +1510,26 @@ pub(crate) mod tests {
         assert!(!a.named("Enter"));
         assert!(a.feed('?'));
         assert_eq!(a.mode, Mode::Main);
+    }
+
+    #[test]
+    fn the_key_list_shows_the_keymap_and_scrolls() {
+        use ito_help::Line;
+        let mut a = App::new(crate::prefs::Prefs::empty(), std::env::temp_dir());
+        let lines = a.help_lines();
+        let has =
+            |keys: &str, desc: &str| lines.iter().any(|l| matches!(l, Line::Bind { keys: k, desc: d } if k.contains(keys) && d == desc));
+        let t = |d: &str| crate::i18n::tr_desc(&a.lang, d);
+        assert!(has("<C-q>", &t("Quit")) && has("<C-S-p>", &t("Search commands")), "{lines:?}");
+        assert!(has("1 2 3 4", a.tr("key.views")));
+        // Nothing has been drawn, so there is nothing to scroll.
+        a.mode = Mode::Help;
+        assert!(!a.named("ArrowDown"));
+        a.help_drawn.set(Some(ito_help::Drawn { visible: 10, max: 30, scroll: 0 }));
+        assert!(a.named("PageDown"));
+        assert_eq!(a.help_scroll, 9);
+        assert!(a.named("End") && a.help_scroll == 30);
+        assert!(a.named("Home") && a.help_scroll == 0);
     }
 
     #[test]

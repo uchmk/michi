@@ -32,6 +32,7 @@ What text can check (reading the repository, the git version, the command line) 
 | 2.4 | Press `N` in any view (Enter spreads the diff: 8.5; `f` `p` `P`: 15; `b` `T` `t`: 16; `s`: 17) | A toast at the foot names the key's work and says it comes in a later stage; it goes after 4 seconds |
 | 2.5 | Press Ctrl+Shift+P, or click the palette field | The same toast for the command search; the field lights under the pointer with a text cursor |
 | 2.6 | Press a key with no work (`q`, `4`) | Nothing happens |
+| 2.7 | Press `?` (or `F1`), in a window short enough that the list does not fit; then `Down`, `PageDown`, `End`, `Home`; then bind another key to Quit on the Keys page and press `?` again | The list has the global keys and the keymap's keys (`Ctrl+Q`, `Ctrl+Shift+P`, ...), then the keys of the view in front; the keys move the list and a thin bar shows where it is; the new Quit key shows in the list; `?` or Esc closes it | [ ] |
 
 ## 3. Keybar and clock
 

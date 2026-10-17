@@ -1643,6 +1643,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ito-help"
+version = "0.55.0"
+source = "git+https://github.com/uchmk/ito?rev=4c7db9e2254386cd362f7e6d4e6afc9452e95652#4c7db9e2254386cd362f7e6d4e6afc9452e95652"
+dependencies = [
+ "egui",
+ "ito-keymap",
+]
+
+[[package]]
 name = "ito-i18n"
 version = "0.55.0"
 source = "git+https://github.com/uchmk/ito?rev=4c7db9e2254386cd362f7e6d4e6afc9452e95652#4c7db9e2254386cd362f7e6d4e6afc9452e95652"
@@ -1977,7 +1986,7 @@ dependencies = [
 
 [[package]]
 name = "michi"
-version = "0.38.0"
+version = "0.39.0"
 dependencies = [
  "chrono",
  "eframe",
@@ -1985,6 +1994,7 @@ dependencies = [
  "ito-common",
  "ito-console",
  "ito-graph",
+ "ito-help",
  "ito-i18n",
  "ito-keymap",
  "ito-keys",
@@ -2000,7 +2010,7 @@ dependencies = [
 
 [[package]]
 name = "michi-core"
-version = "0.38.0"
+version = "0.39.0"
 dependencies = [
  "chrono",
  "serde",

@@ -5,14 +5,14 @@
 
 use std::time::{Duration, SystemTime};
 
-use egui::text::{LayoutJob, TextFormat, TextWrapping};
+use egui::text::{LayoutJob, TextFormat};
 use egui::{pos2, vec2, Align2, Color32, CornerRadius, CursorIcon, FontId, Id, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, ViewportCommand};
 use ito_common::Clock;
 use michi_core::branch::Doing;
 use michi_core::git;
 use michi_core::summary::Head;
 
-use crate::app::{failed_word, App, Mode, Repo, View, GLOBAL_KEYS};
+use crate::app::{failed_word, App, Mode, Repo, View};
 use crate::graph_ui::{paint_icon, Icon};
 use crate::work::{self, Kind};
 
@@ -592,43 +592,20 @@ fn key_bar(ui: &mut Ui, app: &App, r: Rect) {
 /// the left and its keys at the right.
 fn help(ui: &mut Ui, app: &App, r: Rect) {
     const LINE: f32 = 20.0;
-    const GAP: f32 = 26.0;
     let c = ito_theme::colors();
     let p = ui.painter().clone();
-    let w = r.width().min(640.0);
-    let cols = if w >= 440.0 { 2 } else { 1 };
-    let view = if app.keys() == app.view.keys() { app.view.label() } else { "key.branch_diff" };
-    let sections = [(app.tr("help.global"), &GLOBAL_KEYS[..]), (app.tr(view), app.keys())];
-    let lines: usize = sections.iter().map(|(_, rows)| rows.len().div_ceil(cols)).sum();
-    let need = 50.0 + sections.len() as f32 * (LINE + 8.0) + lines as f32 * LINE + 28.0;
-    let card = Rect::from_center_size(r.center(), vec2(w, need.min(r.height() - 24.0).max(80.0)));
+    let lines = app.help_lines();
+    let w = r.width().min(720.0);
+    let need = 50.0 + lines.len() as f32 * LINE + 36.0;
+    let card = Rect::from_center_size(r.center(), vec2(w, need.min(r.height() - 24.0).max(120.0)));
     p.rect_filled(card, CornerRadius::same(10), c.raised());
     p.rect_stroke(card, CornerRadius::same(10), Stroke::new(1.0, c.border_strong()), StrokeKind::Inside);
-    let mut y = card.top() + 18.0;
-    p.text(pos2(card.left() + 20.0, y), Align2::LEFT_TOP, app.tr("help.title"), FontId::proportional(16.0), c.fg);
-    y += 32.0;
-    let col_w = (w - 40.0 - GAP * (cols - 1) as f32) / cols as f32;
-    'sections: for (title, rows) in sections {
-        p.text(pos2(card.left() + 20.0, y), Align2::LEFT_TOP, title, FontId::proportional(11.5), accent());
-        y += LINE;
-        for line in rows.chunks(cols) {
-            if y + 18.0 > card.bottom() - 28.0 {
-                break 'sections;
-            }
-            let mid = y + LINE / 2.0 - 1.0;
-            for (k, (key, word)) in line.iter().enumerate() {
-                let x = card.left() + 20.0 + k as f32 * (col_w + GAP);
-                let kg = p.layout_no_wrap((*key).to_owned(), FontId::monospace(12.0), c.fg);
-                let mut job = LayoutJob::simple_singleline(app.tr(word).to_owned(), FontId::proportional(12.5), c.dim);
-                job.wrap = TextWrapping::truncate_at_width((col_w - kg.size().x - 12.0).max(24.0));
-                let wg = p.layout_job(job);
-                p.galley(pos2(x, mid - wg.size().y / 2.0), wg, c.dim);
-                p.galley(pos2(x + col_w - kg.size().x, mid - kg.size().y / 2.0), kg, c.fg);
-            }
-            y += LINE;
-        }
-        y += 8.0;
-    }
+    p.text(pos2(card.left() + 20.0, card.top() + 18.0), Align2::LEFT_TOP, app.tr("help.title"), FontId::proportional(16.0), c.fg);
+    let body = Rect::from_min_max(pos2(card.left() + 20.0, card.top() + 50.0), pos2(card.right() - 20.0, card.bottom() - 36.0));
+    let style =
+        ito_help::Style { font: FontId::monospace(12.0), row_h: LINE, head: accent(), keys: c.fg, desc: c.dim, bar: c.border_strong() };
+    let drawn = ito_help::draw(&p, body, &lines, app.help_scroll, &style);
+    app.help_drawn.set(Some(drawn));
     p.text(pos2(card.left() + 20.0, card.bottom() - 22.0), Align2::LEFT_CENTER, app.tr("help.close"), FontId::proportional(11.5), c.dim);
 }
 
