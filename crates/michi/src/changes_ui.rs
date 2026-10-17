@@ -11,6 +11,7 @@ use egui::{pos2, vec2, Align2, CornerRadius, CursorIcon, FontId, Id, Painter, Po
 use michi_core::paths;
 use michi_core::show::File;
 use michi_core::stage::{Lists, Side};
+use michi_core::tree::Row;
 
 use crate::app::App;
 use crate::changes::{Changes, Focus, Op, Shown, Told};
@@ -28,6 +29,8 @@ const LIST_MIN: f32 = 240.0;
 const LIST_MAX: f32 = 380.0;
 /// A list's heading.
 const HEAD_H: f32 = 26.0;
+/// How far each folder level of the tree is indented.
+const INDENT: f32 = 14.0;
 /// The commit message's box under the files.
 const BOX_H: f32 = 168.0;
 /// The room the path keeps in the title over the diff before the hint.
@@ -69,6 +72,10 @@ enum Act {
     /// A file double-clicked: staged or unstaged.
     Toggle(usize),
     Wide(bool),
+    /// A folder of the tree folded, or opened.
+    Fold(Side, String),
+    /// A folder of the tree staged whole, or taken out whole.
+    Dir(Side, String),
     Commit,
     No,
     /// What git said is put away.
@@ -98,6 +105,10 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let (l, hit) = switch(ui, &p, r.right() - PAD_X, mid, app.tr("changes.amend"), 'A', app.changes.amend, live);
     if hit {
         act = Some(Act::Key('A'));
+    }
+    let (l, hit) = switch(ui, &p, l - 8.0, mid, app.tr("changes.tree"), 't', app.changes.tree, live);
+    if hit {
+        act = Some(Act::Key('t'));
     }
     if let Some(a) = worktrees(ui, app, &p, r.left() + PAD_X, l - 16.0, mid, live, pointer) {
         act = Some(a);
@@ -157,6 +168,8 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             app.feed(' ');
         }
         Act::Wide(w) => app.changes.wide = w,
+        Act::Fold(side, dir) => app.changes.fold(side, &dir),
+        Act::Dir(side, dir) => app.changes_dir(side, &dir),
         Act::Commit => app.changes_commit(),
         Act::No => {
             app.escape();
@@ -334,7 +347,7 @@ fn note(ui: &Ui, p: &Painter, r: Rect, text: &str) {
 }
 
 /// A piece of the file list, top to bottom.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 enum Item {
     Head(Side, usize),
     /// The `k`th file, counted over the staged ones then the unstaged.
@@ -342,19 +355,42 @@ enum Item {
     /// A side with no files.
     Empty(Side),
     Cut,
+    /// A folder of the tree.
+    Dir {
+        side: Side,
+        path: String,
+        name: String,
+        depth: usize,
+        files: usize,
+        folded: bool,
+    },
+    /// The `k`th file in the tree, under its folders.
+    Leaf {
+        k: usize,
+        name: String,
+        depth: usize,
+    },
 }
 
 impl Item {
-    fn height(self) -> f32 {
+    fn height(&self) -> f32 {
         match self {
             Item::Head(..) => HEAD_H,
-            Item::File(_) | Item::Empty(_) => FILE_H,
+            Item::File(_) | Item::Empty(_) | Item::Dir { .. } | Item::Leaf { .. } => FILE_H,
             Item::Cut => NOTE_H,
+        }
+    }
+
+    /// The file the row is, counted as `Changes::at` does.
+    fn file(&self) -> Option<usize> {
+        match self {
+            Item::File(k) | Item::Leaf { k, .. } => Some(*k),
+            _ => None,
         }
     }
 }
 
-fn items(l: &Lists) -> Vec<Item> {
+fn items(ch: &Changes, l: &Lists) -> Vec<Item> {
     let mut out = Vec::new();
     let mut k = 0;
     for side in [Side::Staged, Side::Unstaged] {
@@ -363,9 +399,19 @@ fn items(l: &Lists) -> Vec<Item> {
         if files.is_empty() {
             out.push(Item::Empty(side));
         }
-        for _ in files {
-            out.push(Item::File(k));
-            k += 1;
+        if ch.tree {
+            for row in ch.tree_rows(side) {
+                out.push(match row {
+                    Row::Dir { path, name, depth, files, folded } => Item::Dir { side, path, name, depth, files, folded },
+                    Row::File { index, name, depth } => Item::Leaf { k: k + index, name, depth },
+                });
+            }
+            k += files.len();
+        } else {
+            for _ in files {
+                out.push(Item::File(k));
+                k += 1;
+            }
         }
     }
     if l.cut {
@@ -385,7 +431,7 @@ fn list(ui: &Ui, app: &App, lr: Rect, live: bool, pointer: Option<Pos2>, act: &m
         Some(Err(e)) => return note(ui, &p, lr, &app.tr("changes.failed_list").replace("{}", &e.to_string())),
         Some(Ok(l)) => l,
     };
-    let items = items(l);
+    let items = items(ch, l);
     let pad = 4.0;
     let tops: Vec<f32> = items
         .iter()
@@ -402,7 +448,7 @@ fn list(ui: &Ui, app: &App, lr: Rect, live: bool, pointer: Option<Pos2>, act: &m
     }
     // A selection moved by the keys comes into sight.
     if ctx.data(|d| d.get_temp::<usize>(list_seen_id())) != Some(ch.sel) {
-        let at = items.iter().position(|it| matches!(it, Item::File(k) if *k == ch.sel));
+        let at = items.iter().position(|it| it.file() == Some(ch.sel));
         if let Some(top) = at.map(|i| tops[i]) {
             if top < scroll + pad {
                 // The heading over the first file comes along.
@@ -425,7 +471,7 @@ fn list(ui: &Ui, app: &App, lr: Rect, live: bool, pointer: Option<Pos2>, act: &m
         if rr.top() > lr.bottom() {
             break;
         }
-        match *it {
+        match it.clone() {
             Item::Head(side, n) => {
                 let word = if side == Side::Staged { "changes.staged" } else { "changes.unstaged" };
                 let text = format!("{} · {n}", app.tr(word));
@@ -436,7 +482,41 @@ fn list(ui: &Ui, app: &App, lr: Rect, live: bool, pointer: Option<Pos2>, act: &m
                 p.text(pos2(rr.left() + X + 14.0, rr.center().y), Align2::LEFT_CENTER, app.tr(word), FontId::proportional(12.0), c.dim);
             }
             Item::Cut => note(ui, &p, rr, app.tr("changes.cut")),
-            Item::File(k) => {
+            Item::Dir { side, path, name, depth, files, folded } => {
+                let hot = pointer.is_some_and(|at| rr.contains(at));
+                if hot {
+                    p.rect_filled(rr, 0.0, c.fg.gamma_multiply(0.03));
+                }
+                let mid = rr.center().y;
+                let x = rr.left() + X + 4.0 + depth as f32 * INDENT;
+                let caret = if folded { "▸" } else { "▾" };
+                p.text(pos2(x, mid), Align2::LEFT_CENTER, caret, FontId::proportional(11.0), c.dim);
+                // The button that stages the whole folder, or takes it out.
+                let btn = Rect::from_center_size(pos2(rr.right() - X - 8.0, mid), vec2(22.0, rr.height()));
+                let word = if side == Side::Staged { "−" } else { "+" };
+                let on = live && pointer.is_some_and(|at| btn.contains(at));
+                let ink = if on { accent() } else { c.dim };
+                p.text(btn.center(), Align2::CENTER_CENTER, word, FontId::monospace(13.0), ink);
+                let count = p.text(pos2(btn.left() - 4.0, mid), Align2::RIGHT_CENTER, files.to_string(), FontId::proportional(11.5), c.dim);
+                let text = left_cut(ui, &format!("{name}/"), FontId::proportional(12.5), count.left() - 8.0 - (x + 14.0));
+                p.text(pos2(x + 14.0, mid), Align2::LEFT_CENTER, text, FontId::proportional(12.5), c.fg);
+                let bid = ui.interact(btn.intersect(lr), Id::new(("changes-dir-stage", side == Side::Staged, &path)), Sense::CLICK);
+                let rid = ui.interact(rr.intersect(lr), Id::new(("changes-dir", side == Side::Staged, &path)), Sense::CLICK);
+                if live && (hot || bid.hovered()) {
+                    ctx.set_cursor_icon(CursorIcon::PointingHand);
+                }
+                if live && bid.clicked() {
+                    *act = Some(Act::Dir(side, path));
+                } else if live && rid.clicked() {
+                    *act = Some(Act::Fold(side, path));
+                }
+            }
+            Item::File(_) | Item::Leaf { .. } => {
+                let (Some(k), leaf) =
+                    (it.file(), if let Item::Leaf { name, depth, .. } = it { Some((name.as_str(), *depth)) } else { None })
+                else {
+                    continue;
+                };
                 let Some((_, f)) = ch.at(k) else { continue };
                 let hot = pointer.is_some_and(|at| rr.contains(at));
                 if k == ch.sel {
@@ -447,7 +527,7 @@ fn list(ui: &Ui, app: &App, lr: Rect, live: bool, pointer: Option<Pos2>, act: &m
                 } else if hot {
                     p.rect_filled(rr, 0.0, c.fg.gamma_multiply(0.03));
                 }
-                list_row(ui, &p, app, f, rr);
+                list_row(ui, &p, app, f, rr, leaf);
                 let resp = ui.interact(rr.intersect(lr), Id::new(("changes-row", k)), Sense::CLICK);
                 if live && hot {
                     ctx.set_cursor_icon(CursorIcon::PointingHand);
@@ -464,7 +544,7 @@ fn list(ui: &Ui, app: &App, lr: Rect, live: bool, pointer: Option<Pos2>, act: &m
 
 /// A row of the file list: the status, the path (cut from the left) and the
 /// counts.
-fn list_row(ui: &Ui, p: &Painter, app: &App, f: &File, rr: Rect) {
+fn list_row(ui: &Ui, p: &Painter, app: &App, f: &File, rr: Rect, leaf: Option<(&str, usize)>) {
     let c = ito_theme::colors();
     let mid = rr.center().y;
     let x = rr.left() + X;
@@ -477,8 +557,12 @@ fn list_row(ui: &Ui, p: &Painter, app: &App, f: &File, rr: Rect) {
         }
         None => p.text(pos2(right, mid), Align2::RIGHT_CENTER, app.tr("detail.binary"), FontId::proportional(11.5), c.dim).left(),
     };
-    let px = x + 16.0;
-    let path = left_cut(ui, &f.path, FontId::proportional(12.5), counts_left - 8.0 - px);
+    let (label, indent) = match leaf {
+        Some((name, depth)) => (name, (depth as f32 + 1.0) * INDENT),
+        None => (f.path.as_str(), 0.0),
+    };
+    let px = x + 16.0 + indent;
+    let path = left_cut(ui, label, FontId::proportional(12.5), counts_left - 8.0 - px);
     p.text(pos2(px, mid), Align2::LEFT_CENTER, path, FontId::proportional(12.5), c.fg);
 }
 
@@ -818,6 +902,23 @@ mod tests {
             _ => None,
         };
         out.shapes.iter().filter_map(|c| text(&c.shape)).collect()
+    }
+
+    #[test]
+    fn the_tree_draws_its_folders_and_t_switches_it() {
+        let ctx = egui::Context::default();
+        let mut app = opened();
+        take_list(&mut app, lists(&["d/s.txt"], &["d/e/a.txt", "d/e/b.txt", "top.txt"]));
+        assert!(app.feed('t'));
+        assert!(app.changes.tree);
+        let drawn = frame(&ctx, &mut app, 900.0, Vec::new());
+        assert!(drawn.iter().any(|t| t == "d/e/"), "the folder row: {drawn:?}");
+        assert!(drawn.iter().any(|t| t == "a.txt"), "the file under it: {drawn:?}");
+        app.changes.fold(Side::Unstaged, "d/e");
+        let drawn = frame(&ctx, &mut app, 900.0, Vec::new());
+        assert!(!drawn.iter().any(|t| t == "a.txt"), "folded away: {drawn:?}");
+        assert!(app.feed('t'));
+        assert!(!app.changes.tree);
     }
 
     #[test]
