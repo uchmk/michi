@@ -27,6 +27,7 @@ mod fonts;
 mod fswatch;
 mod graph;
 mod graph_ui;
+mod guide_ui;
 mod i18n;
 mod icon;
 mod images;
@@ -673,6 +674,7 @@ impl eframe::App for Michi {
         stats_ui::show(&ctx, &mut self.app);
         ready_ui::show(&ctx, &mut self.app);
         auth_ui::show(&ctx, &mut self.app);
+        guide_ui::show(&ctx, &mut self.app);
         blame_ui::show(&ctx, &mut self.app);
         trial_ui::show(&ctx, &mut self.app);
         reorder_ui::show(&ctx, &mut self.app);

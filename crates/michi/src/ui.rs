@@ -763,7 +763,7 @@ fn key_bar(ui: &mut Ui, app: &App, r: Rect) {
     let keys: Vec<(&str, &'static str)> = match app.mode {
         Mode::Settings => vec![("Esc", "key.back"), ("Ctrl+Tab", "key.page")],
         Mode::Help => vec![("? Esc", "key.back")],
-        Mode::Main => app.keys().iter().take(KEYBAR_KEYS).copied().chain([("?", "key.help")]).collect(),
+        Mode::Main => app.listed(app.keys()).into_iter().take(KEYBAR_KEYS).chain([("?", "key.help")]).collect(),
     };
     let mut x = r.left() + 10.0;
     for (k, (key, word)) in keys.iter().enumerate() {

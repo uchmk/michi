@@ -5,6 +5,7 @@
 use michi_core::autofetch::Every;
 use michi_core::coauthor::CoAuthor;
 use michi_core::density::Density;
+use michi_core::level::Level;
 use michi_core::motion::Motion;
 use serde::Deserialize;
 
@@ -13,6 +14,7 @@ use serde::Deserialize;
 struct View {
     density: Option<String>,
     motion: Option<String>,
+    level: Option<String>,
     avatars: Option<toml::Value>,
 }
 
@@ -71,6 +73,20 @@ pub fn read_motion(text: Option<&str>) -> (Motion, Vec<String>) {
             },
         },
         _ => (Motion::default(), Vec::new()),
+    }
+}
+
+/// `[view] level = "basic" | "full"` (full when not written), with what to warn of.
+pub fn read_level(text: Option<&str>) -> (Level, Vec<String>) {
+    match text.map(toml::from_str::<File>) {
+        Some(Ok(f)) => match f.view.level {
+            None => (Level::default(), Vec::new()),
+            Some(s) => match s.parse() {
+                Ok(l) => (l, Vec::new()),
+                Err(()) => (Level::default(), vec![format!("config.toml: [view] level `{s}` is not basic or full")]),
+            },
+        },
+        _ => (Level::default(), Vec::new()),
     }
 }
 
@@ -286,6 +302,15 @@ density = \"cozy\"
         let (d, w) = read(Some("[view]\ndensity = \"huge\"\n"));
         assert_eq!(d, Density::Standard);
         assert_eq!(w.len(), 1);
+    }
+
+    #[test]
+    fn level_is_full_unless_written() {
+        assert_eq!(read_level(None), (Level::Full, vec![]));
+        assert_eq!(read_level(Some("[view]\nlevel = \"basic\"\n")).0, Level::Basic);
+        assert_eq!(read_level(Some("[view]\ndensity = \"cozy\"\n")), (Level::Full, vec![]));
+        let (l, w) = read_level(Some("[view]\nlevel = \"expert\"\n"));
+        assert_eq!((l, w.len()), (Level::Full, 1));
     }
 
     #[test]

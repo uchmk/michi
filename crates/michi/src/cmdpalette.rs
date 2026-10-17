@@ -18,6 +18,8 @@ pub enum Pick {
     Key(char),
     /// Open the worktree's folder in a terminal, an editor or the file manager.
     Open(Tool),
+    /// Show the first-run guide again (#116).
+    Guide,
 }
 
 /// The entries the palette offers now: the keymap's commands, then those of
@@ -36,6 +38,9 @@ pub fn entries(app: &App) -> Vec<Entry<Pick>> {
     let in_table = app.view == crate::app::View::Worktree;
     for (t, key) in [(Tool::Terminal, "t"), (Tool::Editor, "e"), (Tool::Explorer, "E")] {
         out.push(Entry::new(app.tr(crate::act::open_word_cmd(t)), if in_table { key } else { "" }, Pick::Open(t)));
+    }
+    if !app.problems.is_empty() {
+        out.push(Entry::new(app.tr("guide.title"), "", Pick::Guide));
     }
     let mut seen = Vec::new();
     for (keys, word) in app.keys().iter().chain(GLOBAL_KEYS.iter().skip(1)) {
@@ -104,6 +109,7 @@ impl App {
         match p {
             Pick::Act(a) => self.run_key(a),
             Pick::Open(t) => self.open_in(t, self.view == crate::app::View::Worktree),
+            Pick::Guide => self.guide_open = true,
             Pick::Key(c) => {
                 self.mode = crate::app::Mode::Main;
                 self.feed(c);
@@ -124,6 +130,30 @@ mod tests {
         assert!(e.iter().any(|e| e.pick == Pick::Key('3')), "a tab");
         assert!(e.iter().any(|e| e.pick == Pick::Key('b')), "the graph's branch palette");
         assert!(!e.iter().any(|e| e.pick == Pick::Key('j')), "moving is not a command");
+    }
+
+    #[test]
+    fn the_basic_level_keeps_every_command_in_the_palette() {
+        let mut p = crate::prefs::Prefs::empty();
+        p.level = michi_core::level::Level::Basic;
+        let a = App::new(p, std::env::temp_dir());
+        let e = entries(&a);
+        assert!(e.iter().any(|e| e.pick == Pick::Key('b')));
+        // Every key of every view is still offered when it is one character, whatever the level.
+        let full = entries(&App::new(crate::prefs::Prefs::empty(), std::env::temp_dir()));
+        assert_eq!(e.len(), full.len());
+    }
+
+    #[test]
+    fn the_guide_is_offered_only_when_something_is_wrong() {
+        let mut a = App::new(crate::prefs::Prefs::empty(), std::env::temp_dir());
+        assert!(!entries(&a).iter().any(|e| e.pick == Pick::Guide));
+        a.problems = vec![michi_core::setup::Problem::NoName];
+        assert!(entries(&a).iter().any(|e| e.pick == Pick::Guide));
+        a.run_pick(Pick::Guide);
+        assert!(a.guide_open);
+        assert!(a.escape(), "Esc closes it");
+        assert!(!a.guide_open);
     }
 
     #[test]

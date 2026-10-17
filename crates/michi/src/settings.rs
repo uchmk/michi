@@ -32,6 +32,8 @@ fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
         (GENERAL, "density"),
         (GENERAL, "motion"),
         (GENERAL, "avatars"),
+        (GENERAL, "level"),
+        (GENERAL, "basic"),
         (GENERAL, "[view]"),
         (THEME, w.mode),
         (THEME, w.themes),
@@ -133,6 +135,8 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     let mut motion_new = None;
     let avatars = prefs.avatars;
     let mut avatars_new = None;
+    let level = prefs.level;
+    let mut level_new = None;
     let (common, themes, base) = (&prefs.common, &prefs.themes, prefs.base.as_deref());
     let out = ito_prefs::show(ui, ito_theme::colors(), &mut prefs.state, &nav, keys, |ui, page, l| match page {
         GENERAL => {
@@ -181,6 +185,20 @@ pub fn show(ui: &mut Ui, app: &mut App) {
                 if ui.checkbox(&mut on, tr("settings.avatars_check")).changed() {
                     avatars_new = Some(on);
                 }
+            });
+            section(ui, l, tr("settings.level"), |ui| {
+                ui.label(egui::RichText::new(tr("settings.level_lead")).color(l.c.dim));
+                ui.horizontal(|ui| {
+                    for v in michi_core::level::Level::ALL {
+                        let word = tr(match v {
+                            michi_core::level::Level::Basic => "level.basic",
+                            michi_core::level::Level::Full => "level.full",
+                        });
+                        if ui.selectable_label(v == level, word).clicked() && v != level {
+                            level_new = Some(v);
+                        }
+                    }
+                });
             });
         }
         THEME => {
@@ -251,6 +269,9 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     }
     if let Some(on) = avatars_new {
         app.prefs.avatars_set(on, no_folder);
+    }
+    if let Some(v) = level_new {
+        app.prefs.level_set(v, no_folder);
     }
     app.prefs.notify_edit(notify_edits, webhooks, no_folder);
     app.prefs.open_edit(open_edits, no_folder);

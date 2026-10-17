@@ -1067,3 +1067,26 @@
 - [ ] **261.3** Change the theme and a key, press Import once, then again → The first press only arms the button; the second reads the file back, a toast says what was read, and the theme and the key are as exported within a couple of seconds 〔未訳〕
 - [ ] **261.4** Import a file that is not a settings bundle → A toast gives the reason and nothing in the settings folder changes 〔未訳〕
 - [ ] **261.5** Search "backup" in the settings → The Advanced page is listed 〔未訳〕
+
+## 115. Basic and full levels
+
+- [ ] **115.1** Open settings (`,`), General page: find "How much to show" → Basic and Full buttons, Full selected by default; EN and JA both read well 〔未訳〕
+- [ ] **115.2** Choose Basic → Within a couple of seconds `[view] level = "basic"` is in config.toml; the key bar loses reset, discard, rebase and force push and keeps the everyday keys 〔未訳〕
+- [ ] **115.3** In Basic, press `?` → The list leaves out the same keys and ends with a line saying how many more commands are in the command palette 〔未訳〕
+- [ ] **115.4** In Basic, open the command palette (`Ctrl+Shift+P`) and search "reset" or "discard" → The command is found and picking it works as the key does 〔未訳〕
+- [ ] **115.5** In Basic, press a hidden key directly (e.g. the discard key in the `2` view) → It still works, and still asks before it destroys anything 〔未訳〕
+- [ ] **115.6** Choose Full → Key bar and `?` list every key again 〔未訳〕
+- [ ] **115.7** Write `level = "expert"` in `[view]` by hand → A warning says it is not basic or full, and Full is used 〔未訳〕
+- [ ] **115.8** Search "basic" in the settings → The General page is listed 〔未訳〕
+
+## 116. First-run guide
+
+- [ ] **116.1** Run michi with an empty home (no `user.name`, no `user.email`; e.g. `GIT_CONFIG_GLOBAL` pointing at an empty file) → A "Getting ready" panel opens at the top naming the missing name and email, with the `git config --global` commands to copy 〔未訳〕
+- [ ] **116.2** Click a command in the panel → It is copied (a toast says so) and the panel stays 〔未訳〕
+- [ ] **116.3** With the panel open, move around (`j`, `k`, `3`) → Keys still work under the panel; it does not take them 〔未訳〕
+- [ ] **116.4** Press `Esc`, then open the command palette and pick "Getting ready" → Esc closes the panel; the palette entry brings it back 〔未訳〕
+- [ ] **116.5** Click outside the panel → It closes 〔未訳〕
+- [ ] **116.6** Start michi with git off the PATH → The panel says git is not installed and offers the install command for the OS (winget / brew / apt) and the download page 〔未訳〕
+- [ ] **116.7** Start michi with git 2.38 or newer and a name and email set → No panel opens and the palette has no "Getting ready" entry 〔未訳〕
+- [ ] **116.8** Read the panel's last lines → It points to `K` for the sign-in check; `K` still opens the sign-in help 〔未訳〕
+- [ ] **116.9** Switch EN and JA → The panel reads well in both 〔未訳〕

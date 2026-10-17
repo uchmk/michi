@@ -72,6 +72,8 @@ use crate::work::{Job, Order};
 pub enum Answer {
     /// The git on the PATH.
     Version(Result<Version, git::Error>),
+    /// What the first-run guide has to tell: git missing or old, no name or email (#116).
+    Problems(Vec<michi_core::setup::Problem>),
     /// The repository the window is on.
     Summary(Result<Summary, git::Error>),
     /// `(owner, repo)` of the GitHub remote, for linking `#123` (#44).
@@ -367,7 +369,9 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
             ctx.request_repaint();
         };
         let (version, summary, setup) = first(&dir);
+        let problems = michi_core::setup::check(&dir, &version);
         send(Answer::Version(version));
+        send(Answer::Problems(problems));
         let ok = summary.is_ok();
         send(Answer::Summary(summary));
         if ok {

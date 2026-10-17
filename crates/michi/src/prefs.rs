@@ -75,6 +75,8 @@ pub struct Prefs {
     pub density: michi_core::density::Density,
     /// `[view] motion` of config.toml: the short fades and slides (#88).
     pub motion: michi_core::motion::Motion,
+    /// `[view] level` of config.toml: how many keys the keybar and `?` list (#115).
+    pub level: michi_core::level::Level,
     pub view_warn: Vec<String>,
     /// `[view] avatars` of config.toml: whether authors' pictures are fetched from GitHub.
     pub avatars: bool,
@@ -123,6 +125,7 @@ impl Prefs {
             open_form: ito_prefs::OpenForm::default(),
             density: Default::default(),
             motion: Default::default(),
+            level: Default::default(),
             avatars: true,
             auto_fetch: Default::default(),
             co_author: Default::default(),
@@ -370,6 +373,9 @@ impl Prefs {
         let (motion, warn) = crate::viewcfg::read_motion(text);
         self.motion = motion;
         self.view_warn.extend(warn);
+        let (level, warn) = crate::viewcfg::read_level(text);
+        self.level = level;
+        self.view_warn.extend(warn);
         let (on, warn) = crate::viewcfg::avatars(text);
         self.avatars = on;
         self.view_warn.extend(warn);
@@ -397,6 +403,11 @@ impl Prefs {
     /// Write `[view] motion` into config.toml on a thread, then read it again.
     pub fn motion_set(&self, m: michi_core::motion::Motion, no_folder: &str) {
         self.view_set(("motion", ito_common::quote(m.key())), no_folder);
+    }
+
+    /// Write `[view] level` into config.toml on a thread, then read it again.
+    pub fn level_set(&self, l: michi_core::level::Level, no_folder: &str) {
+        self.view_set(("level", ito_common::quote(l.key())), no_folder);
     }
 
     /// Write one `[view]` key (the value already TOML) on a thread, then read config.toml again.
