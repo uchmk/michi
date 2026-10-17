@@ -54,13 +54,47 @@ impl App {
         }
     }
 
+    /// The worktrees were read: the window's worktree is asked whether it is
+    /// a sparse checkout (#31). The answer replaces the last one.
+    pub(crate) fn sparse_sync(&mut self) {
+        let Repo::Ready(s) = &self.repo else { return };
+        let wt = s.top.clone();
+        self.act(Task::ReadSparse { wt });
+    }
+
+    /// The reading is back (none: sparse checkout is off).
+    pub(crate) fn sparse_read(&mut self, wt: &std::path::Path, info: Option<michi_core::sparse::Info>) {
+        let Repo::Ready(s) = &self.repo else { return };
+        if crate::picker::same(&s.top, wt) {
+            self.sparse = info;
+        }
+    }
+
     /// Whether the strip is up.
     pub(crate) fn strip_shown(&self) -> bool {
-        self.detached.as_ref().is_some_and(|d| d.info.is_some())
+        self.detached.as_ref().is_some_and(|d| d.info.is_some()) || self.sparse.is_some()
+    }
+
+    /// The sentence about a sparse checkout: it is on, and how many files
+    /// are left out of the folder.
+    fn sparse_text(&self) -> Option<String> {
+        let i = self.sparse.as_ref()?;
+        let key = if i.cone { "strip.sparse_cone" } else { "strip.sparse" };
+        Some(self.tr(key).replace("{n}", &i.left_out.to_string()))
     }
 
     /// What the strip says.
     pub(crate) fn strip_text(&self) -> Option<String> {
+        let sparse = self.sparse_text();
+        let Some(detached) = self.detached_text() else { return sparse };
+        Some(match sparse {
+            Some(s) => format!("{detached} {s}"),
+            None => detached,
+        })
+    }
+
+    /// What the strip says of a detached HEAD.
+    fn detached_text(&self) -> Option<String> {
         let d = self.detached.as_ref()?;
         let i = d.info.as_ref()?;
         let mut text = match &i.why {
@@ -180,6 +214,47 @@ mod tests {
         assert!(a.strip_actions().is_empty());
         assert!(!a.strip_key('R') && !a.strip_key('B'));
         assert!(!a.strip_text().unwrap().contains("no branch yet"));
+    }
+
+    fn sparse(cone: bool, left_out: usize) -> Option<michi_core::sparse::Info> {
+        Some(michi_core::sparse::Info { cone, left_out })
+    }
+
+    #[test]
+    fn a_sparse_checkout_gets_the_strip_with_no_buttons() {
+        let mut a = detached_app();
+        assert!(!a.strip_shown());
+        let top = top(&a);
+        a.sparse_read(&top, sparse(true, 12));
+        assert!(a.strip_shown());
+        let text = a.strip_text().unwrap();
+        assert!(text.contains("Sparse checkout") && text.contains("12"), "{text}");
+        assert!(a.strip_actions().is_empty());
+        a.sparse_read(&top, sparse(false, 3));
+        assert!(a.strip_text().unwrap().contains("patterns"));
+        // Turned off: the strip goes.
+        a.sparse_read(&top, None);
+        assert!(!a.strip_shown() && a.strip_text().is_none());
+    }
+
+    #[test]
+    fn a_reading_for_another_worktree_is_dropped() {
+        let mut a = detached_app();
+        a.sparse_read(std::path::Path::new("C:/elsewhere"), sparse(true, 1));
+        assert!(a.sparse.is_none());
+    }
+
+    #[test]
+    fn sparse_and_detached_say_both() {
+        let mut a = detached_app();
+        a.detached_sync();
+        let top = top(&a);
+        a.detached_read(&top, info(Why::Checkout, None, 0));
+        a.sparse_read(&top, sparse(true, 5));
+        let text = a.strip_text().unwrap();
+        assert!(text.contains("Not on a branch") && text.contains("Sparse checkout"), "{text}");
+        // The buttons are the detached HEAD's.
+        assert_eq!(a.strip_actions().len(), 1);
     }
 
     #[test]

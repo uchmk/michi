@@ -102,7 +102,7 @@ All wait for the owner; none is started.
 
 - [ ] submodule: status and update (not entering)（要確認: #29）
 - [ ] Git LFS: "not fetched" marker（要確認: #30）
-- [ ] sparse checkout: notice only（要確認: #31）
+- [x] sparse checkout: notice only（要確認: #31）: a strip says it is on and how many files are left out (TESTING 31.5–31.9)
 - [ ] bisect（要確認: #32）
 - [ ] Non-GitHub hosts: links from the remote URL（要確認: #33）
 - [ ] Creating PRs in michi（要確認: #34）

@@ -908,3 +908,13 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 70.7 | With the network cut, press `f` yourself | The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` | | [ ] |
 | 70.8 | Start a pull or push while the timer is due | The timer waits; it never interrupts a job | | [ ] |
 | 70.9 | Switch EN and JA | The keybar's `· failed` / `· 失敗` reads well and fits | | [ ] |
+
+## 31. Sparse checkout notice (#31; the mcp section above uses the same number from #101)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 31.5 | In a repository run `git sparse-checkout set --cone <one folder>`, open it in michi | A strip under the title bar says `Sparse checkout: N tracked files are left out of this folder...` with N the files not on disk; there are no buttons | | [ ] |
+| 31.6 | Run `git sparse-checkout disable` while michi is open | The strip goes away on the next refresh (no restart) | | [ ] |
+| 31.7 | Run `git sparse-checkout set --no-cone '/*' '!/some-folder'` | The strip says `Sparse checkout (patterns): ...` | | [ ] |
+| 31.8 | Sparse checkout on and a detached HEAD together | One strip: the detached HEAD's words first, then the sparse sentence; the `R` / `B` buttons stay | | [ ] |
+| 31.9 | Switch EN and JA; narrow the window | The sentence reads well in both and is cut with an ellipsis rather than overflowing | | [ ] |

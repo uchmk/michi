@@ -726,3 +726,11 @@
 - [ ] **70.7** With the network cut, press `f` yourself → The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` → | [ ] 〔未訳〕
 - [ ] **70.8** Start a pull or push while the timer is due → The timer waits; it never interrupts a job → | [ ] 〔未訳〕
 - [ ] **70.9** Switch EN and JA → The keybar's `· failed` / `· 失敗` reads well and fits → | [ ] 〔未訳〕
+
+## 31. Sparse checkout notice (#31; the mcp section above uses the same number from #101)
+
+- [ ] **31.5** In a repository run `git sparse-checkout set --cone <one folder>`, open it in michi → A strip under the title bar says `Sparse checkout: N tracked files are left out of this folder...` with N the files not on disk; there are no buttons → | [ ] 〔未訳〕
+- [ ] **31.6** Run `git sparse-checkout disable` while michi is open → The strip goes away on the next refresh (no restart) → | [ ] 〔未訳〕
+- [ ] **31.7** Run `git sparse-checkout set --no-cone '/*' '!/some-folder'` → The strip says `Sparse checkout (patterns): ...` → | [ ] 〔未訳〕
+- [ ] **31.8** Sparse checkout on and a detached HEAD together → One strip: the detached HEAD's words first, then the sparse sentence; the `R` / `B` buttons stay → | [ ] 〔未訳〕
+- [ ] **31.9** Switch EN and JA; narrow the window → The sentence reads well in both and is cut with an ellipsis rather than overflowing → | [ ] 〔未訳〕
