@@ -39,6 +39,9 @@ ito-keyscript = { git = "https://github.com/uchmk/ito", rev = "2c82056fc6da21003
 ito-bugreport = { git = "https://github.com/uchmk/ito", rev = "2c82056fc6da21003b77d27b562eb509d7adf309" }
 ito-notify = { git = "https://github.com/uchmk/ito", rev = "2c82056fc6da21003b77d27b562eb509d7adf309" }
 ito-console = { git = "https://github.com/uchmk/ito", rev = "2c82056fc6da21003b77d27b562eb509d7adf309" }
+# `michi mcp` (src/mcp.rs).
+ito-mcp = { git = "https://github.com/uchmk/ito", rev = "2c82056fc6da21003b77d27b562eb509d7adf309" }
+ito-ipc = { git = "https://github.com/uchmk/ito", rev = "2c82056fc6da21003b77d27b562eb509d7adf309" }
 # eframe's own defaults, but for `winit/default` (see tsumugi): the Wayland
 # frame is drawn without the title's text, which brings an unmaintained crate.
 eframe = { version = "0.36", default-features = false, features = ["accesskit", "default_fonts", "links", "wayland", "web_screen_reader", "wgpu", "x11"] }

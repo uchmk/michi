@@ -16,7 +16,11 @@
 fn answers_in_text(args: &[std::ffi::OsString]) -> bool {
     // The word after `--keys` is its script, never an option: `--keys -x`
     // is not read here (`parse_args` does the same).
-    let mut args = args.iter().map(|a| a.to_str().unwrap_or(""));
+    let mut args = args.iter().map(|a| a.to_str().unwrap_or("")).peekable();
+    // `mcp` talks on the standard handles until its client closes them.
+    if args.peek() == Some(&"mcp") {
+        return true;
+    }
     while let Some(a) = args.next() {
         if a == "--keys" {
             // No script: `michi.exe` refuses in text.
@@ -45,12 +49,22 @@ mod tests {
     /// An option is answered in text; a folder or nothing opens the window.
     #[test]
     fn it_waits_only_for_what_answers_in_text() {
-        for waits in
-            [&["--version"][..], &["-V"], &["--help"], &["-h"], &["--bogus"], &["repo", "--help"], &["--keys", "j", "-V"], &["--keys"]]
-        {
+        for waits in [
+            &["--version"][..],
+            &["-V"],
+            &["--help"],
+            &["-h"],
+            &["--bogus"],
+            &["repo", "--help"],
+            &["--keys", "j", "-V"],
+            &["--keys"],
+            &["mcp"],
+        ] {
             assert!(answers_in_text(&line(waits)), "{waits:?}");
         }
-        for opens in [&[][..], &["repo"], &["-"], &["a", "b"], &["--keys", "j"], &["--keys", "-x"], &["repo", "--keys", "<C-q>"]] {
+        for opens in
+            [&[][..], &["repo"], &["-"], &["a", "b"], &["--keys", "j"], &["--keys", "-x"], &["repo", "--keys", "<C-q>"], &["repo", "mcp"]]
+        {
             assert!(!answers_in_text(&line(opens)), "{opens:?}");
         }
     }
