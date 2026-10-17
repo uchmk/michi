@@ -551,6 +551,14 @@ impl Graph {
         self.history.find(id).map(|i| &self.history.rows()[i as usize].commit)
     }
 
+    /// A commit's parents and whether it is on the trunk's first-parent line,
+    /// once it is read (for [`michi_core::claude::made_in`]).
+    pub fn node(&self, id: &Oid) -> Option<michi_core::claude::Node> {
+        let i = self.history.find(id)?;
+        let r = &self.history.rows()[i as usize];
+        Some(michi_core::claude::Node { parents: r.commit.parents.clone(), trunk: r.main })
+    }
+
     /// What the history is read against: the refs, the worktrees, the trunk.
     pub fn setup(&self) -> &Setup {
         self.history.setup()

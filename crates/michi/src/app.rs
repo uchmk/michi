@@ -1132,6 +1132,26 @@ impl App {
         self.claude.iter().flatten().find(|(p, _)| p == path).map_or(&[], |(_, s)| s.as_slice())
     }
 
+    /// The Claude sessions that may have made the commit `id`: the agents in
+    /// the worktrees whose own work it is ([`michi_core::claude::made_in`]),
+    /// the one to show first first in each. Tsumugi keeps no record of which
+    /// session wrote which commit, so this is the worktree's Claude now.
+    pub fn claude_of(&self, id: &Oid) -> Vec<&Session> {
+        if self.claude.iter().flatten().all(|(_, s)| !s.iter().any(Session::is_agent)) {
+            return Vec::new();
+        }
+        let tips: Vec<michi_core::claude::Tip> = self
+            .trees
+            .trees
+            .iter()
+            .filter_map(|t| Some(michi_core::claude::Tip { wt: t.wt.path.clone(), head: Oid::parse(&t.wt.head)? }))
+            .collect();
+        michi_core::claude::made_in(id, &tips, |o| self.graph.node(o))
+            .iter()
+            .flat_map(|wt| self.claude_in(wt).iter().filter(|s| s.is_agent()))
+            .collect()
+    }
+
     /// The uncommitted change of the worktree at `path`, if it has one.
     pub fn wip_in(&self, path: &Path) -> Option<&Wip> {
         self.wips.iter().find(|w| w.path == path)

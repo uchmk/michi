@@ -71,6 +71,8 @@ enum Act {
     Scroll(usize),
     AllFiles,
     Wide(bool),
+    /// Go to the tsumugi tab of this session.
+    Claude(u64),
 }
 
 /// The blocks for `d`, whose trunk merge brought in `merged`.
@@ -316,6 +318,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         Act::Scroll(f) => app.detail.scroll_to = Some(f),
         Act::AllFiles => app.detail.all_files = true,
         Act::Wide(w) => app.detail.wide = w,
+        Act::Claude(session) => app.act(crate::act::Task::Focus { session }),
     }
     ctx.request_repaint();
 }
@@ -414,6 +417,48 @@ fn header(ui: &Ui, app: &App, d: &Detail, at: Pos2, width: f32, paint: Option<(&
             x += w + 4.0;
         }
         y += 22.0 + 4.0;
+    }
+
+    // The Claude of the worktree this commit is the work of: its tab and title,
+    // a click goes to the tab (`tsumugi focus`). Not for the uncommitted rows.
+    let made = app.claude_of(&d.id);
+    if !made.is_empty() {
+        let shown = made.len().min(2);
+        let mut x = x0;
+        let mut runs = vec![(app.tr("detail.claude").to_owned(), c.dim, None)];
+        for s in &made[..shown] {
+            let text = app.tr("detail.claude_tab").replace("{tab}", &s.id.to_string()).replace("{title}", s.title.trim());
+            runs.push((text, c.blue, Some(s.id)));
+        }
+        if shown < made.len() {
+            runs.push((app.tr("claude.more").replace("{}", &(made.len() - shown).to_string()), c.dim, None));
+        }
+        for (k, (text, color, link)) in runs.into_iter().enumerate() {
+            let g = ui.fonts_mut(|f| f.layout_no_wrap(text, prop.clone(), color));
+            let gap = if k == 0 { 0.0 } else { 10.0 };
+            if x > x0 && x + gap + g.size().x > right {
+                x = x0;
+                y += line_h;
+            } else {
+                x += gap;
+            }
+            let at = Rect::from_min_size(pos2(x, y + (line_h - g.size().y) / 2.0), g.size());
+            if let Some((p, live)) = paint {
+                p.galley(at.min, g.clone(), color);
+                if let Some(id) = link {
+                    let resp = ui.interact(at.intersect(p.clip_rect()), Id::new(("detail-claude", id)), Sense::CLICK);
+                    if live && resp.hovered() {
+                        p.line_segment([at.left_bottom(), at.right_bottom()], Stroke::new(1.0, color));
+                        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+                    }
+                    if live && resp.clicked() {
+                        *act = Some(Act::Claude(id));
+                    }
+                }
+            }
+            x += g.size().x;
+        }
+        y += line_h + 6.0;
     }
 
     let body = d.body.trim();
