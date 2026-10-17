@@ -175,7 +175,8 @@ fn strength_of(then: &Then) -> Strength {
             | Task::DropStash { .. }
             | Task::RemoveWorktree { .. }
             | Task::Tidy { .. }
-            | Task::Reset { .. },
+            | Task::Reset { .. }
+            | Task::FlowFinish { .. },
         ) => Strength::Loud,
         _ => Strength::Easy,
     }

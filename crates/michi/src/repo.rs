@@ -351,7 +351,8 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
             }
             // A stash gone from the middle of the list leaves the refs as
             // they were: the history is read again all the same.
-            if matches!(task, Task::Unstash { pop: true, .. } | Task::MoveChanges { .. } | Task::DropStash { .. }) {
+            if matches!(task, Task::Unstash { pop: true, .. } | Task::MoveChanges { .. } | Task::FlowFinish { .. } | Task::DropStash { .. })
+            {
                 let _ = act_asks.send(Ask::Reload);
             }
             send(Answer::ActDone { task, result });

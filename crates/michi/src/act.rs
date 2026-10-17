@@ -148,6 +148,17 @@ pub enum Task {
         from: PathBuf,
         to: PathBuf,
     },
+    /// Gitflow: starts the branch of `kind` called `name` off its base and
+    /// switches the worktree at `wt` to it.
+    FlowStart {
+        wt: PathBuf,
+        kind: michi_core::flow::Kind,
+        name: String,
+    },
+    /// Gitflow: finishes the flow branch the worktree at `wt` is on.
+    FlowFinish {
+        wt: PathBuf,
+    },
     /// Drops the stash `id`.
     DropStash {
         id: Oid,
@@ -440,6 +451,8 @@ impl Task {
             Task::Unstash { pop: false, .. } => "stash apply",
             Task::Unstash { pop: true, .. } => "stash pop",
             Task::MoveChanges { .. } => "stash push",
+            Task::FlowStart { .. } => "switch",
+            Task::FlowFinish { .. } => "merge",
             Task::DropStash { .. } => "stash drop",
             Task::FindSubmodules { .. } => "submodule status",
             Task::UpdateSubmodules { .. } => "submodule update",
@@ -520,6 +533,9 @@ pub enum Acted {
     Switched(Option<Autostashed>),
     Unstashed(Applied),
     Moved(Carried),
+    /// The name of the branch Gitflow started.
+    FlowStarted(String),
+    FlowFinished(michi_core::flow::Finished),
     Found(Found),
     Submodules(Vec<michi_core::submodule::Sub>),
     Reflog(Vec<michi_core::reflog::Entry>),
@@ -592,6 +608,14 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Stash { wt, message } => stash::save(wt, message).map(Acted::Stashed),
         Task::Unstash { wt, id, pop } => stash::apply(wt, id, *pop).map(Acted::Unstashed),
         Task::MoveChanges { from, to } => michi_core::carry::changes(from, to).map(Acted::Moved),
+        Task::FlowStart { wt, kind, name } => {
+            let cfg = michi_core::flow::config(wt)?;
+            michi_core::flow::start(wt, &cfg, *kind, name).map(Acted::FlowStarted)
+        }
+        Task::FlowFinish { wt } => {
+            let cfg = michi_core::flow::config(wt)?;
+            michi_core::flow::finish(wt, &cfg).map(Acted::FlowFinished)
+        }
         Task::DropStash { id } => stash::drop(dir, id).map(|saved| Acted::Kept(Some(saved))),
         Task::FindSubmodules { wt } => michi_core::submodule::list(wt).map(Acted::Submodules),
         Task::UpdateSubmodules { wt } => michi_core::submodule::update(wt).map(Acted::Submodules),
@@ -990,6 +1014,20 @@ impl App {
                     .replace("{saved}", backup::short(&saved)),
                 14,
             ),
+            (Task::FlowStart { wt, .. }, Ok(Acted::FlowStarted(name))) => {
+                (self.tr("flow.started").replace("{name}", &name).replace("{wt}", &self::name(wt)), 5)
+            }
+            (Task::FlowFinish { .. }, Ok(Acted::FlowFinished(f))) => {
+                let key = if f.tag.is_some() { "flow.finished_tagged" } else { "flow.finished" };
+                (
+                    self.tr(key)
+                        .replace("{branch}", &f.branch)
+                        .replace("{into}", &f.into.join(", "))
+                        .replace("{tag}", f.tag.as_deref().unwrap_or(""))
+                        .replace("{saved}", backup::short(&f.saved)),
+                    10,
+                )
+            }
             (Task::DropStash { id }, Ok(Acted::Kept(saved))) => {
                 let saved = saved.as_deref().map_or("", backup::short);
                 (self.tr("act.dropped").replace("{id}", &id.short()).replace("{saved}", saved), 10)
@@ -1219,6 +1257,28 @@ mod tests {
             "Moved the changes of feat to other; kept in michi/backup/x"
         );
         assert!(moved(Carried::Clash { saved: "refs/michi/backup/x".into(), files: vec!["a".into()] }).contains("clashed in other in a"));
+        let kind = michi_core::flow::Kind::Release;
+        assert_eq!(
+            said(Task::FlowStart { wt: wt.clone(), kind, name: "1.0".into() }, Ok(Acted::FlowStarted("release/1.0".into()))),
+            "Started release/1.0 in feat"
+        );
+        let finished = |tag: Option<&str>| {
+            Acted::FlowFinished(michi_core::flow::Finished {
+                kind,
+                branch: "release/1.0".into(),
+                into: vec!["main".into(), "develop".into()],
+                tag: tag.map(str::to_owned),
+                saved: "refs/michi/backup/x".into(),
+            })
+        };
+        assert_eq!(
+            said(Task::FlowFinish { wt: wt.clone() }, Ok(finished(Some("v1.0")))),
+            "Finished release/1.0: merged into main, develop, tagged v1.0; kept in michi/backup/x"
+        );
+        assert_eq!(
+            said(Task::FlowFinish { wt: wt.clone() }, Ok(finished(None))),
+            "Finished release/1.0: merged into main, develop; kept in michi/backup/x"
+        );
         assert_eq!(
             said(Task::DropStash { id: oid('e') }, Ok(Acted::Kept(Some("refs/michi/backup/20261016-120000".into())))),
             "Dropped stash eeeeeee; kept in michi/backup/20261016-120000"

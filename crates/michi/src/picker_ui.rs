@@ -7,7 +7,7 @@ use ito_palette::{Answer, Entry, Style, Tone, Words};
 
 use crate::act;
 use crate::app::App;
-use crate::picker::{same, Item, Kind, Picker};
+use crate::picker::{same, Item, Kind, Picker, Step};
 
 /// The palette while it is open: what is typed narrows it, a click on a
 /// row is Enter on it, a click outside closes it.
@@ -35,12 +35,14 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
         Kind::Move => ("picker.move", "picker.move_keys"),
         Kind::Remote => ("picker.remote", "picker.remote_keys"),
         Kind::Remotes => ("picker.remotes", "picker.remotes_keys"),
+        Kind::Flow => ("picker.flow", "picker.flow_keys"),
     };
     let header = match p.kind {
         Kind::Stash => app.tr("picker.stash_for").replace("{wt}", &act::name(&p.wt)),
         Kind::Move => app.tr("picker.move_for").replace("{wt}", &act::name(&p.wt)),
         Kind::Remote => app.tr("picker.remote_for").replace("{wt}", &act::name(&p.wt)),
         Kind::Remotes => app.tr("picker.remotes_for").to_owned(),
+        Kind::Flow => app.tr("picker.flow_for").replace("{wt}", &act::name(&p.wt)),
         _ => app.tr("picker.for").replace("{wt}", &act::name(&p.wt)).replace("{at}", &p.at.short()),
     };
     // While renaming the box is the new name: one row stands for it, so that
@@ -94,12 +96,21 @@ fn entry(app: &App, p: &Picker, k: usize) -> Entry<usize> {
     let title = match &r.item {
         Item::Save if p.message().is_empty() => app.tr("picker.save").to_owned(),
         Item::Save => app.tr("picker.save_as").replace("{}", p.message()),
+        Item::Step { step: Step::Start(k), .. } => {
+            let key = match k {
+                michi_core::flow::Kind::Feature => "flow.start_feature",
+                michi_core::flow::Kind::Release => "flow.start_release",
+                michi_core::flow::Kind::Hotfix => "flow.start_hotfix",
+            };
+            app.tr(key).replace("{}", p.name())
+        }
+        Item::Step { step: Step::Finish, branch } => app.tr("flow.finish_of").replace("{}", branch.as_deref().unwrap_or("")),
         item => item.title(),
     };
     let mut e = Entry::new(title, id.unwrap_or_default(), k);
     e.detail = detail;
     e.hits = r.hits.clone();
-    if matches!(r.item, Item::Create { .. } | Item::Save) {
+    if matches!(r.item, Item::Create { .. } | Item::Save | Item::Step { .. }) {
         e.tone = Tone::Accent;
     }
     e
@@ -141,6 +152,8 @@ fn describe(app: &App, p: &Picker, item: &Item) -> (String, Option<String>) {
         Item::Stash { id, place, .. } => (format!("stash@{{{place}}}"), Some(id.short())),
         Item::Address { url, .. } => (url.clone(), None),
         Item::Place { branch, .. } => (branch.clone().unwrap_or_else(|| app.tr("picker.detached").to_owned()), None),
+        Item::Step { step: Step::Start(_), .. } => (app.tr("flow.start_detail").to_owned(), None),
+        Item::Step { step: Step::Finish, .. } => (app.tr("flow.finish_detail").to_owned(), None),
         Item::Save | Item::Target { .. } => (String::new(), None),
     }
 }

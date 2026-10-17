@@ -22,6 +22,7 @@ pub mod detached;
 pub mod discard;
 pub mod external;
 pub mod find;
+pub mod flow;
 pub mod git;
 pub mod handoff;
 pub mod history;
