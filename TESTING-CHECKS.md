@@ -363,10 +363,10 @@
 
 ## 31. michi mcp（Claude Code に worktree の様子を渡す）
 
-- [ ] **31.1** With michi open on a repository with two worktrees, run `claude mcp add michi -- michi.com mcp`, then ask Claude Code "which worktrees are behind main?" → Claude calls `michi_worktrees` and answers with each worktree's branch, ahead / behind and uncommitted files → | [ ] 〔未訳〕
-- [ ] **31.2** Make two worktrees edit the same file, wait for michi's prediction, ask "which worktrees would conflict?" → `michi_conflicts` names the pair and the file → | [ ] 〔未訳〕
-- [ ] **31.3** Close michi and ask again → The tool answers "michi is not running; start michi and ask again" → | [ ] 〔未訳〕
-- [ ] **31.4** Open two michi windows, close the first, ask again after half a minute → The second window answers → | [ ] 〔未訳〕
+- [ ] **31.1** With michi open on a repository with two worktrees, run `claude mcp add michi -- michi.com mcp`, then ask Claude Code "which worktrees are behind main?" → Claude calls `michi_worktrees` and answers with each worktree's branch, ahead / behind and uncommitted files → | [x] 〔未訳〕
+- [ ] **31.2** Make two worktrees edit the same file, wait for michi's prediction, ask "which worktrees would conflict?" → `michi_conflicts` names the pair and the file → | [x] 〔未訳〕
+- [ ] **31.3** Close michi and ask again → The tool answers "michi is not running; start michi and ask again" → | [x] 〔未訳〕
+- [ ] **31.4** Open two michi windows, close the first, ask again after half a minute → The second window answers → | [x] 〔未訳〕
 
 ## 32. 変更の画面の diff の選択とコピー（ito-select）
 
