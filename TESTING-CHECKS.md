@@ -633,7 +633,6 @@
 - [ ] **68.5** Open a big commit (hundreds of files, a huge generated file) → The window does not stall while it loads; a file of over 6000 diff lines, or a line of over 1500 characters, is left plain → | [ ] 〔未訳〕
 - [ ] **68.6** Select diff text with the mouse and copy it → The copied text is the plain text (no colour effects) → | [ ] 〔未訳〕
 
-<<<<<<< HEAD
 ## 92. Suggested order to land the worktrees
 
 - [ ] **92.1** With three worktrees ahead of main, two of which edit the same lines and one which touches other files: open the worktree table → The name cell of each shows a note `Land 1 of 3` / `2 of 3` / `3 of 3`; the one that conflicts with nothing is `1 of 3` → | [ ] 〔未訳〕
@@ -642,7 +641,28 @@
 - [ ] **92.4** Commit in a worktree so the order would change; wait for the table to refresh → The numbers follow the new predictions without a restart → | [ ] 〔未訳〕
 - [ ] **92.5** Start a merge in one worktree → The notes go away while the merge is under way and come back after → | [ ] 〔未訳〕
 - [ ] **92.6** Switch to JA → The notes read `main へ入れる順 1 / 3`, and the yellow one adds `先に入れた分との衝突 N 箇所` → | [ ] 〔未訳〕
-=======
+
+## 90. Loading skeletons in the graph
+
+- [ ] **90.1** Open a big repository (tens of thousands of commits) in the graph view → Until the first rows come, thin grey bars with a dot (rows of the graph's height) pulse softly in place of an empty screen; no text yet → | [ ] 〔未訳〕
+- [ ] **90.2** Make the read slow (a huge repository or a network drive) and keep looking → After 2 seconds a line `Still reading the history… N s` joins the bars and the seconds count up → | [ ] 〔未訳〕
+- [ ] **90.3** Wait for the first batch → The bars and the text go at once and the real rows take their place, with no flicker → | [ ] 〔未訳〕
+- [ ] **90.4** Open an empty repository (no commit) → No skeleton stays; the screen says `No commits yet.` → | [ ] 〔未訳〕
+- [ ] **90.5** Switch the theme (dark and light), density (compact, cozy) and EN/JA while the bars show → The bars follow the theme and the row height; the text reads in the chosen language → | [ ] 〔未訳〕
+- [ ] **90.6** Watch the CPU while the bars pulse → The window repaints about 15 times a second only while waiting and stops when the rows come → | [ ] 〔未訳〕
+
+## 99. Handing a clash to a Claude and reviewing the result
+
+- [ ] **99.1** In a worktree with a Claude and a merge conflict, press `4` then `g` → A row appears under the bar: "Asked the Claude in ...; waiting for it to stop..."; no buttons yet; `a` and `r` say the Claude is still working → | [ ] 〔未訳〕
+- [ ] **99.2** Let the Claude solve everything (git add) and stop → The toast and notification say it stopped; the row turns green: "... stopped and solved everything", with "Look at the diff" `d`, "Adopt" `a`, "Send back" `r` → | [ ] 〔未訳〕
+- [ ] **99.3** Press `d` (or click the button) → The Changes view opens on that worktree and shows what the Claude did → | [ ] 〔未訳〕
+- [ ] **99.4** Back in `4`, press `a` → The usual commit flow runs (message check, Claude-working check); the merge is committed and the row goes away with the conflict → | [ ] 〔未訳〕
+- [ ] **99.5** Hand over again, let the Claude leave one place marked, stop it → The row is red with "N places still have markers"; only "Look at the diff" and "Send back" show; `a` says places are left → | [ ] 〔未訳〕
+- [ ] **99.6** Press `r` → The line "Your solution was not accepted ..." is typed into the Claude; the row goes back to waiting; when it stops, the row updates again → | [ ] 〔未訳〕
+- [ ] **99.7** Press `r` with no Claude session open in the worktree → A new tsumugi tab with a Claude starts with the same line → | [ ] 〔未訳〕
+- [ ] **99.8** Abort the merge, or finish it by hand → The row goes away; `d`, `a`, `r` do nothing → | [ ] 〔未訳〕
+- [ ] **99.9** Switch EN and JA; narrow the window → The row reads well in both and wraps without hiding the buttons → | [ ] 〔未訳〕
+
 ## 80. How hard a question asks (three steps)
 
 - [ ] **80.1** Press `m` on a branch to merge, or rebase: look at the band → A plain band titled `Are you sure?` in the waiting colour; `y` goes on, Esc stops → | [ ] 〔未訳〕
@@ -652,4 +672,3 @@
 - [ ] **80.5** Press Enter with a wrong or half-typed name; then Backspace over it and type the whole `origin/<b>`, Enter → The first Enter only toasts `Type origin/<b> first, then Enter`; the full name pushes (with the lease) → | [ ] 〔未訳〕
 - [ ] **80.6** In the same band press Esc, or click No → The band closes and nothing is pushed → | [ ] 〔未訳〕
 - [ ] **80.7** Switch to JA and repeat 80.2 and 80.3 → Titles, the typing note and the toast read in Japanese → | [ ] 〔未訳〕
->>>>>>> worktree-agent-ac98932a54de0ddeb

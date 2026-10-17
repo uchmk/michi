@@ -797,7 +797,6 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 68.5 | Open a big commit (hundreds of files, a huge generated file) | The window does not stall while it loads; a file of over 6000 diff lines, or a line of over 1500 characters, is left plain | | [ ] |
 | 68.6 | Select diff text with the mouse and copy it | The copied text is the plain text (no colour effects) | | [ ] |
 
-<<<<<<< HEAD
 ## 92. Suggested order to land the worktrees
 
 | # | Do | Expect |
@@ -833,7 +832,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 99.7 | Press `r` with no Claude session open in the worktree | A new tsumugi tab with a Claude starts with the same line | | [ ] |
 | 99.8 | Abort the merge, or finish it by hand | The row goes away; `d`, `a`, `r` do nothing | | [ ] |
 | 99.9 | Switch EN and JA; narrow the window | The row reads well in both and wraps without hiding the buttons | | [ ] |
-=======
+
 ## 80. How hard a question asks (three steps)
 
 | # | Do | Expect |
@@ -845,4 +844,3 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 80.5 | Press Enter with a wrong or half-typed name; then Backspace over it and type the whole `origin/<b>`, Enter | The first Enter only toasts `Type origin/<b> first, then Enter`; the full name pushes (with the lease) | | [ ] |
 | 80.6 | In the same band press Esc, or click No | The band closes and nothing is pushed | | [ ] |
 | 80.7 | Switch to JA and repeat 80.2 and 80.3 | Titles, the typing note and the toast read in Japanese | | [ ] |
->>>>>>> worktree-agent-ac98932a54de0ddeb
