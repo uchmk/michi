@@ -869,3 +869,20 @@
 - [ ] **246.8** With a rebase or merge stopped in the worktree, paste a patch → A toast says the worktree is in the middle of it and to finish first 〔未訳〕
 - [ ] **246.9** Paste a patch while a Claude is working in the worktree → The question ends with the note that a Claude is working there 〔未訳〕
 - [ ] **246.10** Check the keybar and `?` over the graph; switch EN and JA → `Y` and Ctrl+V are listed with their words in both languages 〔未訳〕
+
+## 242. Gitflow (`G`)
+
+- [ ] **242.1** In a repository with `main` and `develop`, press `G` over the graph (or over the `3` view with a worktree row selected) → A palette opens: `Gitflow`, `in <worktree>`, rows to start a feature, a release and a hotfix, and `Finish <branch>` for the worktree's branch; typing a name does not hide the rows 〔未訳〕
+- [ ] **242.2** Press Enter on a start row with nothing typed → A toast says to type a name first; the palette stays 〔未訳〕
+- [ ] **242.3** Type `login`, select the feature row, press Enter (no uncommitted change) → A toast says it started `feature/login`; the worktree is on it, made off `develop` 〔未訳〕
+- [ ] **242.4** Start a hotfix and a release the same way → The hotfix is off `main`, the release off `develop`; a name already taken is refused with a toast 〔未訳〕
+- [ ] **242.5** Commit on `feature/login`, press `G`, select the finish row, Enter → A bar asks first and says the tips are kept under `refs/michi/backup/`; `y` merges it into `develop` with a merge commit (`--no-ff`), deletes `feature/login`, leaves the worktree on `develop`; nothing is pushed 〔未訳〕
+- [ ] **242.6** Finish a `release/1.0` and a `hotfix/1.0.1` → Each is merged into `main`, tagged (annotated), then merged into `develop`, then deleted; the toast names the tag 〔未訳〕
+- [ ] **242.7** Set `gitflow.branch.master`, `gitflow.branch.develop` and `gitflow.prefix.*` (as `git flow init` writes), start and finish → The configured names and prefixes are used 〔未訳〕
+- [ ] **242.8** Edit a tracked file or add an untracked file, then start or finish → A toast says the worktree has uncommitted changes; nothing changed 〔未訳〕
+- [ ] **242.9** Check `develop` out in another worktree, then finish a feature → A toast says `develop` is checked out there; nothing changed, and that worktree is untouched 〔未訳〕
+- [ ] **242.10** Make `main` and a release branch change the same line, then finish the release → A toast says the merge would clash; no branch moved, no backup was made 〔未訳〕
+- [ ] **242.11** Finish a release whose tag already exists → A toast says the tag is already there; nothing changed 〔未訳〕
+- [ ] **242.12** Stop in the middle of a rebase or merge, then use a row → A toast says it is in the middle of it 〔未訳〕
+- [ ] **242.13** Finish while a Claude is working in the worktree → The question ends with a note that a Claude is working there 〔未訳〕
+- [ ] **242.14** Check the keybar and `?` over the graph and the `3` view; switch EN and JA → `G` Gitflow is listed; the palette and toasts read well in both languages 〔未訳〕

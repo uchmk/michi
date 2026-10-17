@@ -31,6 +31,16 @@ pub enum Kind {
     Move,
     /// The remotes, to add one or remove one (`M`).
     Remotes,
+    /// Gitflow (`G`): start a feature, release or hotfix, or finish the
+    /// worktree's flow branch. What is typed is the new branch's name.
+    Flow,
+}
+
+/// What a row of the Gitflow palette does.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Step {
+    Start(michi_core::flow::Kind),
+    Finish,
 }
 
 /// A row of the palette.
@@ -76,6 +86,11 @@ pub enum Item {
         name: String,
         branch: Option<String>,
     },
+    /// A Gitflow action; `branch` is the one `Finish` finishes.
+    Step {
+        step: Step,
+        branch: Option<String>,
+    },
     /// A stash, `stash@{place}`.
     Stash {
         id: Oid,
@@ -97,6 +112,8 @@ impl Item {
             | Item::Address { name, .. } => name.clone(),
             Item::Remote { remote, name, .. } => format!("{remote}/{name}"),
             Item::Stash { subject, .. } => subject.clone(),
+            Item::Step { step: Step::Start(k), .. } => k.word().to_owned(),
+            Item::Step { step: Step::Finish, branch } => branch.clone().unwrap_or_default(),
             Item::Save => String::new(),
         }
     }
@@ -149,6 +166,11 @@ pub struct Picker {
     pub job: Option<Job>,
 }
 
+/// What is typed in the open palette.
+fn p_name(app: &App) -> String {
+    app.picker.as_ref().map(|p| p.name().to_owned()).unwrap_or_default()
+}
+
 /// The worktrees other than `wt`, as rows to move changes to.
 fn places(worktrees: &[Worktree], wt: &Path) -> Vec<Item> {
     worktrees
@@ -181,6 +203,12 @@ impl Picker {
             }
             Kind::Tag => refs.tags.iter().map(|r| Item::Tag { name: r.name.clone(), id: r.id }).collect(),
             Kind::Remote | Kind::Remotes => Vec::new(),
+            Kind::Flow => {
+                let branch = worktrees.iter().find(|w| same(&w.path, &wt)).and_then(|w| w.branch.clone());
+                let starts = michi_core::flow::Kind::ALL.map(|k| Item::Step { step: Step::Start(k), branch: None });
+                let finish = branch.map(|b| Item::Step { step: Step::Finish, branch: Some(b) });
+                starts.into_iter().chain(finish).collect()
+            }
             Kind::Move => places(worktrees, &wt),
             Kind::Stash => {
                 refs.stashes.iter().enumerate().map(|(place, s)| Item::Stash { id: s.id, subject: s.subject.clone(), place }).collect()
@@ -252,7 +280,7 @@ impl Picker {
     /// stashes), the first word for a tag.
     pub fn name(&self) -> &str {
         match self.kind {
-            Kind::Branch | Kind::Stash | Kind::Remote | Kind::Move => self.query.trim(),
+            Kind::Branch | Kind::Stash | Kind::Remote | Kind::Move | Kind::Flow => self.query.trim(),
             Kind::Tag | Kind::Remotes => self.query.split_whitespace().next().unwrap_or(""),
         }
     }
@@ -276,6 +304,12 @@ impl Picker {
             return;
         }
         self.matched = Some(self.query.clone());
+        if self.kind == Kind::Flow {
+            // The box is the new branch's name, not a filter: every action stays.
+            self.rows = self.items.iter().map(|item| Row { item: item.clone(), hits: Vec::new() }).collect();
+            self.sel = 0;
+            return;
+        }
         let name = self.name().to_owned();
         let case = fuzzy::is_case_sensitive(&name, true, false);
         let mut hits: Vec<(i32, usize, Row)> = self
@@ -349,6 +383,42 @@ impl App {
         }
         let Some(at) = head.or(self.graph.selected()) else { return self.say(self.tr("act.pick_commit")) };
         self.picker = Some(Picker::new(Kind::Move, self.graph.setup(), &worktrees, wt, at));
+    }
+
+    /// `G` over the worktree table: Gitflow for the selected worktree.
+    pub(crate) fn open_flow(&mut self) {
+        let Some(t) = self.wt_selected() else {
+            self.say(self.tr("act.no_tree"));
+            return;
+        };
+        let (wt, head) = (t.wt.path.clone(), Oid::parse(&t.wt.head));
+        let Some(at) = head.or(self.graph.selected()) else { return self.say(self.tr("act.pick_commit")) };
+        let worktrees = self.worktrees();
+        self.picker = Some(Picker::new(Kind::Flow, self.graph.setup(), &worktrees, wt, at));
+    }
+
+    /// Enter on a start row of the Gitflow palette: the branch is made (and
+    /// switched to) after the name is typed.
+    fn flow_start(&mut self, wt: PathBuf, kind: michi_core::flow::Kind, name: String) {
+        if name.is_empty() {
+            return self.say(self.tr("flow.need_name"));
+        }
+        self.guarded(Task::FlowStart { wt: wt.clone(), kind, name }, &wt, "flow.doing", "flow.claude");
+    }
+
+    /// Enter on the finish row of the Gitflow palette: asks first.
+    fn flow_finish(&mut self, wt: PathBuf, branch: String) {
+        if let Some(d) = self.doing_in(&wt) {
+            let text = self.tr("flow.doing").replace("{wt}", &act::name(&wt)).replace("{doing}", &self.doing_word(d));
+            return self.say_for(text, 8);
+        }
+        self.picker = None;
+        let mut text = self.tr("flow.ask").replace("{branch}", &branch).replace("{wt}", &act::name(&wt));
+        if self.claude_working(&wt) {
+            text.push(' ');
+            text.push_str(&self.tr("flow.claude").replace("{wt}", &act::name(&wt)));
+        }
+        self.band = Some(Band::new(text, Then::Act(Task::FlowFinish { wt })));
     }
 
     /// Enter on a worktree in the move palette: asks before the changes of
@@ -457,6 +527,11 @@ impl App {
                 self.say_for(text, 6);
             }
             (Kind::Move, Item::Place { path, .. }) => self.ask_move_changes(wt, path),
+            (Kind::Flow, Item::Step { step: Step::Start(k), .. }) => {
+                let name = p_name(self);
+                self.flow_start(wt, k, name);
+            }
+            (Kind::Flow, Item::Step { step: Step::Finish, branch: Some(b) }) => self.flow_finish(wt, b),
             (Kind::Stash, Item::Save) => self.guarded(Task::Stash { wt: wt.clone(), message }, &wt, "act.stash_doing", "act.claude_stash"),
             (Kind::Stash, Item::Stash { id, .. }) => {
                 self.guarded(Task::Unstash { wt: wt.clone(), id, pop: shift }, &wt, "act.stash_doing", "act.claude_unstash");
@@ -641,7 +716,7 @@ impl App {
                 let text = self.tr("remote.ask_remove").replace("{name}", &name).replace("{url}", &url);
                 self.band = Some(Band::new(text, Then::Act(Task::RemoveRemote { name })));
             }
-            Item::Create { .. } | Item::Save | Item::Target { .. } | Item::Place { .. } => {}
+            Item::Create { .. } | Item::Save | Item::Target { .. } | Item::Place { .. } | Item::Step { .. } => {}
         }
     }
 
@@ -1349,6 +1424,34 @@ mod tests {
         let band = a.band.as_ref().unwrap();
         assert_eq!(band.then, Then::Act(Task::MoveChanges { from: from.clone(), to }));
         assert!(band.text.starts_with("Move the uncommitted changes of "), "{}", band.text);
+    }
+
+    #[test]
+    fn g_lists_the_flow_actions_and_a_start_needs_a_name() {
+        let mut a = stashed();
+        assert!(a.feed('G'));
+        let p = a.picker.as_ref().unwrap();
+        assert_eq!(p.kind, Kind::Flow);
+        let wt = p.wt.clone();
+        assert!(matches!(p.rows[0].item, Item::Step { step: Step::Start(michi_core::flow::Kind::Feature), .. }));
+        assert!(matches!(p.rows.last().unwrap().item, Item::Step { step: Step::Finish, .. }), "the worktree is on a branch");
+        assert_eq!(p.rows.len(), 4);
+        // No name: said, and the palette stays.
+        a.picker_enter(false);
+        assert!(a.picker.is_some());
+        assert!(toast(&a).contains("Type a name"), "{}", toast(&a));
+        // What is typed does not narrow the actions.
+        typed(&mut a, "login");
+        assert_eq!(a.picker.as_ref().unwrap().rows.len(), 4);
+        assert_eq!(a.picker.as_ref().unwrap().name(), "login");
+        // Finish asks first.
+        let p = a.picker.as_mut().unwrap();
+        p.sel = 3;
+        a.picker_enter(false);
+        assert!(a.picker.is_none());
+        let band = a.band.as_ref().unwrap();
+        assert_eq!(band.then, Then::Act(Task::FlowFinish { wt }));
+        assert!(band.text.starts_with("Finish "), "{}", band.text);
     }
 
     #[test]

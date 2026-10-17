@@ -113,7 +113,7 @@ All wait for the owner; none is started.
 - [x] clone: paste an address in the repository screen (Ctrl+O) to clone beside the open repository, TESTING 239; init later（要確認: #39）
 - [x] Remote management: `M` in the graph lists the remotes, adds one (name then address) and removes one after a yes (TESTING 40)（要確認: #40）
 - [ ] Authentication guidance（要確認: #41）
-- [ ] Gitflow（要確認: #42）
+- [x] Gitflow: `G` starts a feature, release or hotfix and finishes the worktree flow branch with plain git (TESTING 242)（要確認: #42）
 - [ ] Built-in editor（要確認: #43）
 - [ ] Issue tracker integration（要確認: #44）
 - [ ] Multi-repository tabs / workspaces（要確認: #45）

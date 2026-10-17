@@ -58,6 +58,7 @@ impl App {
                 Some(Kind::Remote) => "remotes",
                 Some(Kind::Remotes) => "manage-remotes",
                 Some(Kind::Move) => "move-changes",
+                Some(Kind::Flow) => "gitflow",
                 _ => "branches",
             }
             .to_owned(),
