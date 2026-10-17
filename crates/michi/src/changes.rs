@@ -144,6 +144,8 @@ pub type Read = Result<Option<Box<Shown>>, git::Error>;
 
 #[derive(Default)]
 pub struct Changes {
+    /// `[commit] co_author`: the trailer added to the message committed (#54).
+    pub co_author: michi_core::coauthor::CoAuthor,
     /// The worktree shown; `None` until the window picks one.
     pub wt: Option<PathBuf>,
     list_gen: u32,
@@ -807,7 +809,7 @@ impl Changes {
         if self.amend && self.pushed.is_none() {
             return Err("changes.reading");
         }
-        Ok(self.act(Op::Commit { message: self.message.clone(), amend: self.amend }, claude))
+        Ok(self.act(Op::Commit { message: self.co_author.apply(&self.message), amend: self.amend }, claude))
     }
 
     /// The write `op`, or a question first: a Claude writes in the worktree

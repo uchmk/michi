@@ -997,3 +997,12 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 52.7 | Select a commit that deletes a file and click its `Restore this version` | A toast says there is no version to bring back; no band | | [ ] |
 | 52.8 | With a Claude working in the worktree, click it; then with the worktree mid-merge | The band also notes that a Claude is working there; mid-merge a toast says to finish the merge first and no band appears | | [ ] |
 | 52.9 | Switch EN and JA; narrow the window; switch to the light theme | The link, band and toasts read well in both languages; the file name is cut with `…` before it collides with the link; readable in both themes | | [ ] |
+
+## 54. Co-Authored-By on michi's commits
+
+| # | Do | Should | Notes | OK |
+|---|----|--------|-------|----|
+| 54.1 | With no `[commit]` in config.toml, commit from the `2` view with Ctrl+Enter, then look at the last commit's message | The message is exactly what you typed; no Co-Authored-By | | [ ] |
+| 54.2 | Write `[commit]` `co_author = "Claude <noreply@anthropic.com>"` in config.toml (no restart), commit again | The new commit ends with a blank line and `Co-Authored-By: Claude <noreply@anthropic.com>` | | [ ] |
+| 54.3 | Amend that commit (`A`, Ctrl+Enter) | The trailer is not doubled | | [ ] |
+| 54.4 | Write `co_author = "Claude"` (no address) | A warning toast about config.toml; no trailer is added | | [ ] |

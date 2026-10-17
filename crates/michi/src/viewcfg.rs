@@ -3,6 +3,7 @@
 //! is warned of and keeps the standard.
 
 use michi_core::autofetch::Every;
+use michi_core::coauthor::CoAuthor;
 use michi_core::density::Density;
 use michi_core::motion::Motion;
 use serde::Deserialize;
@@ -23,9 +24,16 @@ struct Net {
 
 #[derive(Deserialize, Default)]
 #[serde(default)]
+struct Commit {
+    co_author: Option<toml::Value>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
 struct File {
     view: View,
     net: Net,
+    commit: Commit,
 }
 
 /// `[view] density` of the config.toml `text` (none: no file), with what to warn of.
@@ -80,6 +88,18 @@ pub fn auto_fetch(text: Option<&str>) -> (Every, Vec<String>) {
     }
 }
 
+/// `[commit] co_author = "Name <email>"`: the trailer added to michi's commits
+/// (none when not written), with what to warn of.
+pub fn co_author(text: Option<&str>) -> (CoAuthor, Vec<String>) {
+    match text.map(toml::from_str::<File>) {
+        Some(Ok(File { commit: Commit { co_author: Some(v) }, .. })) => match v.as_str().map(CoAuthor::parse) {
+            Some(Some(c)) => (c, Vec::new()),
+            _ => (CoAuthor::default(), vec!["config.toml: [commit] co_author is not \"Name <email>\"".to_owned()]),
+        },
+        _ => (CoAuthor::default(), Vec::new()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -121,6 +141,25 @@ auto_fetch = {bad}
 "
             )));
             assert!(e == Every::minutes(5) && warn.len() == 1, "{bad}");
+        }
+    }
+
+    #[test]
+    fn co_author_is_none_unless_written_well() {
+        assert_eq!(co_author(None), (CoAuthor::default(), vec![]));
+        let (c, w) = co_author(Some(
+            "[commit]
+co_author = \"Claude <noreply@anthropic.com>\"
+",
+        ));
+        assert_eq!((c.value(), w.len()), (Some("Claude <noreply@anthropic.com>"), 0));
+        for bad in ["\"Claude\"", "3", "true"] {
+            let (c, w) = co_author(Some(&format!(
+                "[commit]
+co_author = {bad}
+"
+            )));
+            assert!(!c.is_set() && w.len() == 1, "{bad}");
         }
     }
 
