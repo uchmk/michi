@@ -216,6 +216,13 @@ pub enum Task {
         wt: PathBuf,
         branch: String,
     },
+    /// Opens the folder of the worktree at `wt` with the command line `command`
+    /// (a terminal, an editor or the file manager).
+    OpenIn {
+        wt: PathBuf,
+        tool: michi_core::openin::Tool,
+        command: String,
+    },
     /// Brings the tsumugi session `session` to the front (`tsumugi focus`).
     Focus {
         session: u64,
@@ -241,6 +248,26 @@ pub enum Task {
         wt: PathBuf,
         on: bool,
     },
+}
+
+/// The word-table key of what a tool is called.
+pub fn open_word(tool: michi_core::openin::Tool) -> &'static str {
+    use michi_core::openin::Tool;
+    match tool {
+        Tool::Terminal => "open.terminal",
+        Tool::Editor => "open.editor",
+        Tool::Explorer => "open.explorer",
+    }
+}
+
+/// The word-table key of the command that opens a worktree in a tool.
+pub fn open_word_cmd(tool: michi_core::openin::Tool) -> &'static str {
+    use michi_core::openin::Tool;
+    match tool {
+        Tool::Terminal => "key.open_terminal",
+        Tool::Editor => "key.open_editor",
+        Tool::Explorer => "key.open_explorer",
+    }
 }
 
 impl Task {
@@ -281,6 +308,7 @@ impl Task {
             Task::Markers { .. } => "conflict",
             Task::Handoff { .. } | Task::HandNotes { .. } | Task::Focus { .. } | Task::Reply { .. } | Task::NewWork { .. } => "tsumugi",
             Task::OpenPr { .. } => "remote",
+            Task::OpenIn { .. } => "open",
             Task::External { .. } => "mergetool",
             Task::AskRerere { .. } => "config --get",
             Task::Rerere { .. } => "config",
@@ -369,6 +397,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::External { wt, path } => external::open(wt, path).map(Acted::Opened),
         Task::NewWork { repo, plans } => plans.iter().try_for_each(|p| handoff::new_work(repo, p)).map(|()| Acted::Done),
         Task::OpenPr { wt, branch } => michi_core::pr::open(wt, branch).map(|_| Acted::Done),
+        Task::OpenIn { wt, command, .. } => michi_core::openin::open(command, wt).map(|()| Acted::Done),
         Task::Focus { session } => handoff::focus(*session).map(|()| Acted::Done),
         Task::Reply { session, text } => handoff::send(*session, text).map(|()| Acted::Done),
         Task::Handoff { conflict, session } => hand_off(conflict, *session).map(|()| Acted::Done),
@@ -459,7 +488,13 @@ impl App {
                 (self.tr(key).replace("{path}", path), 6)
             }
             (Task::OpenPr { branch, .. }, Ok(_)) => (self.tr("act.pr_opened").replace("{b}", branch), 4),
+<<<<<<< HEAD
             (Task::Reply { session, .. }, Ok(_)) => (self.tr("reply.sent").replace("{n}", &session.to_string()), 4),
+=======
+            (Task::OpenIn { wt, tool, .. }, Ok(_)) => {
+                (self.tr("act.open_in").replace("{wt}", &self::name(wt)).replace("{tool}", self.tr(open_word(*tool))), 3)
+            }
+>>>>>>> worktree-agent-a42757d3fc03671c3
             (Task::Focus { session }, Ok(_)) => (self.tr("act.focused").replace("{n}", &session.to_string()), 3),
             (Task::Handoff { conflict, session }, Ok(_)) => {
                 let key = if session.is_some() { "act.handed" } else { "act.handed_new" };
@@ -789,6 +824,17 @@ mod tests {
         assert!(toast(&a).starts_with("Started a Claude in a new tab"), "{}", toast(&a));
         a.act_done(Task::Handoff { conflict: c, session: None }, Err(git::Error::Git("tsumugi: gone".into())));
         assert_eq!(toast(&a), "tsumugi failed: tsumugi: gone");
+    }
+
+    #[test]
+    fn opening_a_folder_says_where_and_what_failed() {
+        use michi_core::openin::Tool;
+        let mut a = app();
+        let t = || Task::OpenIn { wt: PathBuf::from("/r/main"), tool: Tool::Editor, command: "code {path}".into() };
+        a.act_done(t(), Ok(Acted::Done));
+        assert_eq!(toast(&a), "Opened main in the Editor");
+        a.act_done(t(), Err(git::Error::Io("code: gone".into())));
+        assert!(toast(&a).starts_with("open failed"), "{}", toast(&a));
     }
 
     #[test]

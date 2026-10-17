@@ -528,3 +528,15 @@ files under `refs/michi/backup/<time>` first.
 | 36.3 | Type an instruction with no file or folder name, or names no worktree is changing | No warning shows | | [ ] |
 | 36.4 | With the warning showing, press Ctrl+Enter | The work starts as usual (the warning does not stop it) | | [ ] |
 | 36.5 | Two worktrees change the same file | Both are named in the warning | | [ ] |
+
+## 37. Open a worktree's folder in a terminal, editor or file manager (#75)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 37.1 | In the worktree tab select a row; press `t` | A tsumugi tab opens in that worktree's folder; a toast says it was opened | | [ ] |
+| 37.2 | Press `e`, then `E` | VS Code opens on the folder; the file manager shows the folder (Explorer on Windows) | | [ ] |
+| 37.3 | Click the Terminal, Editor and Explorer buttons on a row (also on the main worktree's row) | Same as the keys, for the clicked row | | [ ] |
+| 37.4 | Open the palette (Ctrl+Shift+P) and type "worktree in" | Three entries (terminal, editor, file manager); picking one opens the window's worktree (the selected row when the worktree tab is in front) | | [ ] |
+| 37.5 | Write `[open]` `editor = "notepad {path}"` into config.toml, wait 2 s, press `e` | Notepad is started with the folder as its argument; Settings > General shows the line | | [ ] |
+| 37.6 | Write `editor = "no-such-program"`, press `e` | A toast "open failed: ..." with the program's name; michi keeps running and does not freeze | | [ ] |
+| 37.7 | Write `editor = "a \"b"` (unclosed quote) | A warning about config.toml names the key; `e` still uses the default | | [ ] |

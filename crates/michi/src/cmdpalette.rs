@@ -7,6 +7,7 @@ use ito_palette::{Entry, Style, View, Words};
 
 use crate::app::{App, GLOBAL_KEYS};
 use crate::keymap::Act;
+use michi_core::openin::Tool;
 
 /// What picking an entry does.
 #[derive(Clone, Debug, PartialEq)]
@@ -15,6 +16,8 @@ pub enum Pick {
     Act(Act),
     /// A character typed in the main window.
     Key(char),
+    /// Open the worktree's folder in a terminal, an editor or the file manager.
+    Open(Tool),
 }
 
 /// The entries the palette offers now: the keymap's commands, then those of
@@ -29,6 +32,10 @@ pub fn entries(app: &App) -> Vec<Entry<Pick>> {
     }
     for v in crate::app::View::ALL {
         out.push(Entry::new(format!("{} {}", app.tr("key.tab"), app.tr(v.label())), v.digit().to_string(), Pick::Key(v.digit())));
+    }
+    let in_table = app.view == crate::app::View::Worktree;
+    for (t, key) in Tool::ALL.into_iter().zip(["t", "e", "E"]) {
+        out.push(Entry::new(app.tr(crate::act::open_word_cmd(t)), if in_table { key } else { "" }, Pick::Open(t)));
     }
     let mut seen = Vec::new();
     for (keys, word) in app.keys().iter().chain(GLOBAL_KEYS.iter().skip(1)) {
@@ -89,6 +96,7 @@ impl App {
     pub fn run_pick(&mut self, p: Pick) {
         match p {
             Pick::Act(a) => self.run_key(a),
+            Pick::Open(t) => self.open_in(t, self.view == crate::app::View::Worktree),
             Pick::Key(c) => {
                 self.mode = crate::app::Mode::Main;
                 self.feed(c);

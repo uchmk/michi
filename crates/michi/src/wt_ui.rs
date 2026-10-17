@@ -396,6 +396,18 @@ fn buttons(ui: &Ui, app: &App, t: &Tree, k: usize, trunk: &str) -> Vec<Button> {
         act,
         danger,
     };
+    let mut out = buttons_of(app, t, k, trunk, &b);
+    out.extend([
+        b(app.tr("open.terminal").to_owned(), Some("t"), Act::Key('t'), false),
+        b(app.tr("open.editor").to_owned(), Some("e"), Act::Key('e'), false),
+        b(app.tr("open.explorer").to_owned(), Some("E"), Act::Key('E'), false),
+    ]);
+    out
+}
+
+type MakeButton<'a> = dyn Fn(String, Option<&str>, Act, bool) -> Button + 'a;
+
+fn buttons_of(app: &App, t: &Tree, k: usize, trunk: &str, b: &MakeButton) -> Vec<Button> {
     if t.wt.branch.as_deref() == Some(trunk) {
         return vec![
             b(app.tr("key.pull").to_owned(), Some("p"), Act::Key('p'), false),

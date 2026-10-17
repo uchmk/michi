@@ -19,7 +19,11 @@ pub mod net;
 pub mod newwork;
 pub mod notes;
 pub mod oid;
+<<<<<<< HEAD
 pub mod overlap;
+=======
+pub mod openin;
+>>>>>>> worktree-agent-a42757d3fc03671c3
 pub mod paths;
 pub mod pr;
 pub mod predict;
