@@ -278,6 +278,36 @@ enum Act {
     Fold,
 }
 
+/// Thin placeholder rows while the first batch of the history has not come
+/// (issue #90); past two seconds a line of progress text joins them.
+fn skeleton(ui: &mut Ui, app: &App, list: Rect, row_h: f32, waited: std::time::Duration) {
+    use michi_core::skeleton as sk;
+    let c = ito_theme::colors();
+    let p = ui.painter_at(list);
+    let m = Metrics::default();
+    let subj_x = list.left() + m.width(2);
+    let room = (list.right() - BAR_W - 4.0 - subj_x).max(40.0);
+    for k in 0..sk::rows(list.height(), row_h) {
+        let mid = list.top() + (k as f32 + 0.5) * row_h;
+        let a = sk::pulse(waited, k);
+        let dot = pos2(list.left() + m.x(0), mid);
+        p.circle_filled(dot, 3.0, c.dim.gamma_multiply(0.35 * a));
+        let w = room * sk::bar(k);
+        let bar = Rect::from_min_size(pos2(subj_x, mid - 4.0), vec2(w, 8.0));
+        p.rect_filled(bar, 3.0, c.dim.gamma_multiply(0.25 * a));
+    }
+    ui.ctx().request_repaint_after(std::time::Duration::from_millis(60));
+    if !sk::text_due(waited) {
+        return;
+    }
+    let text = app.tr("history.reading_for").replace("{}", &sk::seconds(waited).to_string());
+    let galley = ui.fonts_mut(|f| f.layout_no_wrap(text.clone(), FontId::proportional(13.0), c.dim));
+    let at = list.center();
+    let back = Rect::from_center_size(at, galley.size() + vec2(24.0, 12.0));
+    p.rect_filled(back, 6.0, c.bg.gamma_multiply(0.85));
+    p.text(at, Align2::CENTER_CENTER, text, FontId::proportional(13.0), c.dim);
+}
+
 fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
     let c = ito_theme::colors();
     let m = Metrics { row: app.prefs.density.px(Metrics::default().row), ..Metrics::default() };
@@ -287,6 +317,16 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
     let view = list.height().max(0.0);
     app.graph.page = ((view / row_h).floor() as u32).max(1);
 
+    let g = &app.graph;
+    let waiting = g.is_empty() && g.error().is_none() && !g.done();
+    let since_id = Id::new("graph-loading-since");
+    if waiting {
+        let since = ctx
+            .data_mut(|d| *d.get_temp_mut_or_default::<Option<std::time::Instant>>(since_id).get_or_insert_with(std::time::Instant::now));
+        skeleton(ui, app, list, row_h, since.elapsed());
+        return;
+    }
+    ctx.data_mut(|d| d.insert_temp(since_id, None::<std::time::Instant>));
     let g = &app.graph;
     if g.is_empty() {
         let (text, color) = match g.error() {

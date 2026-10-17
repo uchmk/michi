@@ -613,3 +613,12 @@
 - [ ] **68.4** Open the diff side by side and unified (narrow the window) → Both layouts show the same colours; wrapped long lines keep them → | [ ] 〔未訳〕
 - [ ] **68.5** Open a big commit (hundreds of files, a huge generated file) → The window does not stall while it loads; a file of over 6000 diff lines, or a line of over 1500 characters, is left plain → | [ ] 〔未訳〕
 - [ ] **68.6** Select diff text with the mouse and copy it → The copied text is the plain text (no colour effects) → | [ ] 〔未訳〕
+
+## 90. Loading skeletons in the graph
+
+- [ ] **90.1** Open a big repository (tens of thousands of commits) in the graph view → Until the first rows come, thin grey bars with a dot (rows of the graph's height) pulse softly in place of an empty screen; no text yet → | [ ] 〔未訳〕
+- [ ] **90.2** Make the read slow (a huge repository or a network drive) and keep looking → After 2 seconds a line `Still reading the history… N s` joins the bars and the seconds count up → | [ ] 〔未訳〕
+- [ ] **90.3** Wait for the first batch → The bars and the text go at once and the real rows take their place, with no flicker → | [ ] 〔未訳〕
+- [ ] **90.4** Open an empty repository (no commit) → No skeleton stays; the screen says `No commits yet.` → | [ ] 〔未訳〕
+- [ ] **90.5** Switch the theme (dark and light), density (compact, cozy) and EN/JA while the bars show → The bars follow the theme and the row height; the text reads in the chosen language → | [ ] 〔未訳〕
+- [ ] **90.6** Watch the CPU while the bars pulse → The window repaints about 15 times a second only while waiting and stops when the rows come → | [ ] 〔未訳〕

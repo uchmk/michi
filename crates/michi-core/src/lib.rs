@@ -43,6 +43,7 @@ pub mod reset;
 pub mod revert;
 pub mod review;
 pub mod show;
+pub mod skeleton;
 pub mod stage;
 pub mod stash;
 pub mod summary;
