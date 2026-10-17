@@ -435,7 +435,7 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 27.1 | Open `b`, `T`, `s` and the remote choice of a push; type, move with the arrows and `Ctrl+N` / `Ctrl+P`, click a row, press Esc, click outside | The same box as before: the matched letters lit, the make / save rows in the accent colour, the `for <worktree> at <commit>` line above and the keys below; a click on a row is Enter on it; Esc and a click outside close it | [ ] |
+| 27.1 | Open `b`, `T`, `s` and the remote choice of a push; type, move with the arrows and `Ctrl+N` / `Ctrl+P`, click a row, press Esc, click outside | The same box as before: the matched letters lit, the make / save rows in the accent colour, the `for <worktree> at <commit>` line above and the keys below; a click on a row is Enter on it; Esc and a click outside close it | [~] |
 | 27.2 | In `b`: `Shift+Enter`, `Delete`, `F2` (type a name, Enter; Esc cancels), `Ctrl+U`, `Ctrl+R` on a row | Each does what it did in v0.48.0; during a rename only the box shows | [ ] |
 
 ## 28. The repository screen
