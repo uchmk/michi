@@ -504,3 +504,14 @@ files under `refs/michi/backup/<time>` first.
 | 34.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] |
 | 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] |
 | 34.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] |
+
+## 82. Key hints on hover
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 82.1 | Hover the gear at the top right and the search field beside it | The tooltips read `Settings (,)` and `Search commands (Ctrl+Shift+P)` | | [ ] |
+| 82.2 | Bind another key to `palette` in keymap.toml (prepend), restart, hover the search field | The tooltip shows the new key | | [ ] |
+| 82.3 | Hover each view tab (Graph, Changes, Worktrees) | The tooltip names the view and its digit, for example `Graph (1)` | | [ ] |
+| 82.4 | In the graph view hover Fetch, Pull, Push, Branch, Stash and New work | Each tooltip shows its key, for example `Fetch (f)`, `New work (N)` | | [ ] |
+| 82.5 | During a merge hover Pull and Stash | The tooltip still says they are held, not the key | | [ ] |
+| 82.6 | In the worktree view hover New work and the re-read button | `New work (N)`; the re-read button shows just its name | | [ ] |
