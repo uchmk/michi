@@ -53,6 +53,13 @@ impl Conflict {
 /// the repository `repo` (any of its worktrees). `None` when it merges clean.
 /// Fails when a revision is unknown or the histories are unrelated.
 pub fn predict(repo: &Path, a: &str, b: &str) -> Prediction {
+    merge(repo, a, b).map(|(_, conflict)| conflict)
+}
+
+/// [`predict`] with the tree the merge wrote: clean, or with the conflict
+/// markers in the conflicted files. The tree is an object only; no ref
+/// points to it.
+pub(crate) fn merge(repo: &Path, a: &str, b: &str) -> Result<(Oid, Option<Conflict>), git::Error> {
     for rev in [a, b] {
         if rev.starts_with('-') {
             return Err(git::Error::Git(format!("bad revision '{rev}'")));
@@ -61,13 +68,16 @@ pub fn predict(repo: &Path, a: &str, b: &str) -> Prediction {
     let args = ["--no-optional-locks", "merge-tree", "--write-tree", "--name-only", "-z", "--no-messages", a, b];
     let out = git::command().arg("-C").arg(repo).args(args).output().map_err(git::started)?;
     match out.status.code() {
-        Some(0) => Ok(None),
+        Some(0) => match parse(&out.stdout) {
+            Some((tree, _)) => Ok((tree, None)),
+            None => Err(git::refused(&String::from_utf8_lossy(&out.stderr))),
+        },
         // An unknown revision exits 1 as well, with nothing on standard output.
         Some(1) => match parse(&out.stdout) {
             Some((tree, paths)) => {
                 let mut hunks = count_hunks(repo, tree, &paths);
                 let files = paths.into_iter().map(|path| ConflictFile { hunks: hunks.remove(&path), path }).collect();
-                Ok(Some(Conflict { files }))
+                Ok((tree, Some(Conflict { files })))
             }
             None => Err(git::refused(&String::from_utf8_lossy(&out.stderr))),
         },

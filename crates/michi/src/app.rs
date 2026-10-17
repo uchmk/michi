@@ -122,6 +122,7 @@ impl View {
                 ("x", "key.remove"),
                 ("d", "key.branch_diff"),
                 ("c", "key.tidy"),
+                ("T", "key.trial"),
                 ("L", "key.reflog"),
             ],
             View::Conflict => &[
@@ -276,6 +277,8 @@ pub struct App {
     /// The clean-up list, over the worktree table.
     pub tidy: Option<crate::tidy::Tidy>,
     pub reflog: Option<crate::reflog::Reflog>,
+    /// The trial-merge screen (`T` over the worktree table), while open.
+    pub trial: Option<crate::trial::TrialScreen>,
     pub reorder: Option<crate::reorder::Reorder>,
     /// The stash clicked in the side column, and the commit the graph had
     /// selected then: the detail shows the stash until that moves.
@@ -341,6 +344,7 @@ impl App {
             waits_told: None,
             tidy: None,
             reflog: None,
+            trial: None,
             reorder: None,
             side_stash: None,
             quit: false,
@@ -1292,6 +1296,7 @@ impl App {
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
             (Mode::Main, c) if self.tidy.is_some() => return self.tidy_key(c),
             (Mode::Main, c) if self.reflog.is_some() => return self.reflog_key(c),
+            (Mode::Main, c) if self.trial.is_some() => return self.trial_key(c),
             (Mode::Main, c) if self.reorder.is_some() => return self.reorder_key(c),
             (Mode::Main, c) if self.bare_act(c) => {}
             (Mode::Main, c) => match View::from_digit(c) {
@@ -1348,6 +1353,7 @@ impl App {
             'd' => self.open_review(),
             'o' => self.focus_claude(true),
             'c' => self.open_tidy(),
+            'T' => self.open_trial(),
             'L' => self.open_reflog(),
             'm' => self.ask_merge(),
             'x' => self.ask_remove(),
@@ -1434,6 +1440,9 @@ impl App {
         }
         if self.tidy.is_some() {
             return self.tidy_named(name);
+        }
+        if self.trial.is_some() {
+            return self.trial_named(name);
         }
         if self.reflog.is_some() {
             return self.reflog_named(name);
@@ -1532,6 +1541,9 @@ impl App {
             return true;
         }
         if self.reflog.take().is_some() {
+            return true;
+        }
+        if self.trial.take().is_some() {
             return true;
         }
         if self.view == View::Graph && self.picker.is_none() && self.stash_shown().is_some() {

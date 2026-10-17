@@ -124,6 +124,11 @@ pub enum Task {
     FindReflog {
         here: PathBuf,
     },
+    /// Merges `branches` into `trunk` in memory, in their order (the trial merge).
+    Trial {
+        trunk: String,
+        branches: Vec<String>,
+    },
     /// Brings the commit `id` back as a new branch.
     Recover {
         id: Oid,
@@ -319,6 +324,7 @@ impl Task {
             Task::DropStash { .. } => "stash drop",
             Task::FindTidy { .. } => "for-each-ref",
             Task::FindReflog { .. } => "reflog",
+            Task::Trial { .. } => "merge-tree",
             Task::Recover { .. } => "branch",
             Task::FindReorder { .. } => "log",
             Task::Reorder { .. } => "rebase -i",
@@ -368,6 +374,7 @@ pub enum Acted {
     Unstashed(Applied),
     Found(Found),
     Reflog(Vec<michi_core::reflog::Entry>),
+    Trialed(Box<michi_core::trial::Trial>),
     Recovered(String),
     Planned(michi_core::rebase::Plan),
     Reordered(michi_core::rebase::Outcome),
@@ -418,6 +425,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::DropStash { id } => stash::drop(dir, id).map(|saved| Acted::Kept(Some(saved))),
         Task::FindTidy { here } => tidy::find(dir, here).map(Acted::Found),
         Task::FindReflog { here } => michi_core::reflog::list(here).map(Acted::Reflog),
+        Task::Trial { trunk, branches } => michi_core::trial::run(dir, trunk, branches).map(|t| Acted::Trialed(Box::new(t))),
         Task::Recover { id } => michi_core::reflog::recover(dir, id).map(Acted::Recovered),
         Task::FindReorder { wt, trunk } => michi_core::rebase::plan(wt, trunk).map(Acted::Planned),
         Task::Reorder { wt, base, list } => michi_core::rebase::run(wt, base, list).map(Acted::Reordered),
@@ -521,6 +529,9 @@ impl App {
             if let Some(read) = &s.read {
                 self.conflicts.set_one(wt, read.clone());
             }
+        }
+        if let (Task::Trial { .. }, Err(_)) = (&task, &result) {
+            self.trial_failed();
         }
         let (text, secs) = match (&task, result) {
             // Not being able to ask is not worth a toast.
@@ -677,6 +688,7 @@ impl App {
             }
             (Task::FindTidy { .. }, Ok(Acted::Found(found))) => return self.tidy_found(found),
             (Task::FindReflog { .. }, Ok(Acted::Reflog(rows))) => return self.reflog_found(rows),
+            (Task::Trial { branches, .. }, Ok(Acted::Trialed(found))) => return self.trial_done(branches, *found),
             (Task::Recover { id }, Ok(Acted::Recovered(name))) => {
                 (self.tr("reflog.done").replace("{id}", &id.short()).replace("{name}", &name), 6)
             }

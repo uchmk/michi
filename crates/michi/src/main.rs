@@ -50,6 +50,8 @@ mod sizes;
 mod strip;
 mod tidy;
 mod tidy_ui;
+mod trial;
+mod trial_ui;
 mod ui;
 mod work;
 mod wt_ui;
@@ -462,6 +464,7 @@ impl eframe::App for Michi {
         reply_ui::show(&ctx, &mut self.app);
         tidy_ui::show(&ctx, &mut self.app);
         reflog_ui::show(&ctx, &mut self.app);
+        trial_ui::show(&ctx, &mut self.app);
         reorder_ui::show(&ctx, &mut self.app);
         // A tab leaves the settings and the key list for its view; the gear
         // opens the settings and closes them.
