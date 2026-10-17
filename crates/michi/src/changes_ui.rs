@@ -599,6 +599,9 @@ fn message(ui: &mut Ui, app: &mut App, br: Rect, live: bool, pointer: Option<Pos
         .interactive(live);
     let resp = ui.put(field, edit);
     app.changes.typing = resp.has_focus();
+    if resp.has_focus() {
+        app.changes_help();
+    }
     if std::mem::take(&mut app.changes.focus_message) {
         resp.request_focus();
     }

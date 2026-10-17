@@ -303,6 +303,15 @@ impl Michi {
         if commit {
             self.app.changes_commit();
         }
+        // Alt+Up and Alt+Down in the box: the messages of earlier commits.
+        if typing {
+            let (older, newer) = ctx.input_mut(|i| {
+                (i.consume_key(egui::Modifiers::ALT, egui::Key::ArrowUp), i.consume_key(egui::Modifiers::ALT, egui::Key::ArrowDown))
+            });
+            if older || newer {
+                self.app.changes.step_history(older);
+            }
+        }
         // The same in the 4 view, for what stopped on a clash.
         let concluding = ctx.memory(|m| m.has_focus(conflict_ui::message_id()));
         let conclude =
