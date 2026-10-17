@@ -1323,3 +1323,4 @@
 - [ ] **275.3** Press `,` anywhere in the main screen; press Ctrl+, → The comma does nothing; Ctrl+, opens and closes the settings 〔未訳〕
 - [ ] **275.4** With `[view] dates` unwritten, look at the graph's date column → `YYYY/MM/DD hh:mm`, as the settings' clock format at the bottom right; `dates = "relative"` brings the short form back 〔未訳〕
 - [ ] **275.5** Open `2` → The commit message box is under the diff on the right, not under the file list; the file list runs to the bottom on the left 〔未訳〕
+- [ ] **275.6** With two repository tabs open, press Ctrl+, then Ctrl+Tab → The tab bar is gone while the settings are open; Ctrl+Tab steps the settings' pages, not the repositories; Ctrl+, closes the settings and the bar returns 〔未訳〕

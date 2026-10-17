@@ -1546,6 +1546,12 @@ impl App {
     /// was bound.
     pub fn key(&mut self, k: ito_keys::Key) -> bool {
         match self.prefs.keymap.act(k) {
+            // The settings page steps with Ctrl+Tab and the like: not the tabs.
+            Some(crate::keymap::Act::NextTab | crate::keymap::Act::PrevTab | crate::keymap::Act::CloseTab | crate::keymap::Act::Tab(_))
+                if self.mode == Mode::Settings =>
+            {
+                false
+            }
             Some(a) => {
                 self.run_key(a);
                 true
@@ -2603,6 +2609,17 @@ pub(crate) mod tests {
             a.run_key(act);
             assert_eq!(a.tab_req.take(), Some(op));
         }
+    }
+
+    #[test]
+    fn the_settings_leave_the_tab_keys_to_their_pages() {
+        let mut a = app();
+        a.mode = Mode::Settings;
+        assert!(!a.key(ito_keys::Key::parse("<C-Tab>").unwrap()));
+        assert_eq!(a.tab_req, None);
+        a.mode = Mode::Main;
+        assert!(a.key(ito_keys::Key::parse("<C-Tab>").unwrap()));
+        assert!(a.tab_req.is_some());
     }
 
     #[test]

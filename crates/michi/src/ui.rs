@@ -91,7 +91,8 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     let keybar = Rect::from_min_max(pos2(rect.left(), rect.bottom() - KEYBAR_H), rect.max);
     // Not on a branch: the strip under the title bar (#109).
     // Two tabs or more: the bar of the window's repositories (#45).
-    let tabs = (app.tab_labels.len() > 1).then(|| Rect::from_min_size(title.left_bottom(), vec2(rect.width(), TABS_H)));
+    let tabs = (app.tab_labels.len() > 1 && app.mode != Mode::Settings)
+        .then(|| Rect::from_min_size(title.left_bottom(), vec2(rect.width(), TABS_H)));
     let under = title.left_bottom() + vec2(0.0, tabs.map_or(0.0, |t| t.height()));
     let strip = (app.mode != Mode::Settings && app.strip_shown()).then(|| Rect::from_min_size(under, vec2(rect.width(), STRIP_H)));
     // Otherwise a plain line on where the worktree stands (#107).
