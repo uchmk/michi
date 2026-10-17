@@ -2,6 +2,21 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.53.1] - 2026-10-17
+
+### 変更
+
+- ito を v0.65.0（4e4d8b8）に上げた。
+
+## [0.53.0] - 2026-10-17
+
+### 追加
+
+- `michi mcp`: Claude Code が、動いている michi の窓の worktree の様子を読める（kura の `kura mcp` と同じ形。`ito-mcp`・`ito-ipc`）。読むだけで、何も書かない。
+  ツールは `michi_worktrees`（各 worktree のブランチ・trunk との ahead / behind・upstream・merge や rebase の途中・未コミットのファイル）と
+  `michi_conflicts`（どの worktree の組がどのファイルで衝突するか、ブランチごとの trunk との衝突）。窓が無ければ「michi is not running」を返す。
+  `michi.com mcp` も同じ。 (#102)
+
 ## [0.52.0] - 2026-10-17
 
 ### 追加

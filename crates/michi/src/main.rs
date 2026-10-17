@@ -23,6 +23,7 @@ mod graph_ui;
 mod i18n;
 mod icon;
 mod keymap;
+mod mcp;
 mod newwork;
 mod newwork_ui;
 mod notify;
@@ -72,11 +73,14 @@ const USAGE: &str = "\
 michi — a keyboard-driven Git client
 
 usage: michi [<path>] [--keys SCRIPT] [--version | --help]
+       michi mcp
 
   <path>         a folder in the repository to open (default: the current folder)
   --keys SCRIPT  press these keys once the window is up, as kura's --keys
                  (`jj<Enter>`, `<C-S-p>`, `<Wait:200>`, `<State:name>`, `<Quit>`);
                  MICHI_KEYS_DONE names the file that says how it ended
+  mcp            serve MCP on standard input and output, for Claude Code
+                 to read the worktrees and conflicts of the running window
 ";
 
 struct Michi {
@@ -90,9 +94,19 @@ struct Michi {
     todo: Vec<Do>,
     /// The keymap.toml / config.toml warnings already said in a toast.
     warned: Vec<String>,
+    /// Requests from `michi mcp`; none under `--keys`.
+    mcp: Option<std::sync::mpsc::Receiver<mcp::Ask>>,
 }
 
 impl Michi {
+    /// Answers what `michi mcp` asked, from the state in memory.
+    fn answer_mcp(&mut self) {
+        let Some(rx) = &self.mcp else { return };
+        while let Ok(ask) = rx.try_recv() {
+            let _ = ask.reply.send(Ok(mcp::answer_json(&self.app, ask.request)));
+        }
+    }
+
     fn write_state(&self, path: PathBuf, tail: &str) {
         let text = format!("{}{tail}", self.app.report());
         if let Err(e) = std::fs::write(&path, text) {
@@ -376,6 +390,7 @@ impl eframe::App for Michi {
             t.follow(&ctx);
         }
         self.switch(&ctx);
+        self.answer_mcp();
         self.keymap_keys(&ctx);
         if self.app.mode != Mode::Settings {
             self.keys(&ctx);
@@ -464,6 +479,8 @@ impl eframe::App for Michi {
 enum Cli {
     Version,
     Help,
+    /// Serve MCP on the standard handles for Claude Code (`michi mcp`).
+    Mcp,
     /// Open a window on this folder, or on the current one.
     Open(Option<PathBuf>, Option<Vec<Step>>),
 }
@@ -471,7 +488,14 @@ enum Cli {
 fn parse_args(args: impl IntoIterator<Item = OsString>) -> Result<Cli, String> {
     let mut path = None;
     let mut script = None;
-    let mut args = args.into_iter();
+    let mut args = args.into_iter().peekable();
+    if args.peek().and_then(|a| a.to_str()) == Some("mcp") {
+        args.next();
+        return match args.next() {
+            None => Ok(Cli::Mcp),
+            Some(a) => Err(format!("`mcp` takes no argument: `{}`", a.to_string_lossy())),
+        };
+    }
     while let Some(a) = args.next() {
         match a.to_str() {
             Some("--keys") => {
@@ -534,6 +558,7 @@ fn main() -> eframe::Result {
             say(USAGE, false);
             return Ok(());
         }
+        Ok(Cli::Mcp) => mcp::run(),
         Ok(Cli::Open(path, script)) => (path, script),
         Err(e) => {
             say(&format!("michi: {e}\n\n{USAGE}"), true);
@@ -563,6 +588,7 @@ fn main() -> eframe::Result {
         // Alt+Tab and the taskbar; build.rs bakes the same drawing into
         // michi.exe for Explorer.
         .with_icon(std::sync::Arc::new(egui::IconData { rgba: icon::pixels(ICON_PX), width: ICON_PX, height: ICON_PX }));
+    let script_is_none = script.is_none();
     let viewport = saved.viewport(viewport);
     let options = eframe::NativeOptions { viewport, ..Default::default() };
     eframe::run_native(
@@ -579,12 +605,13 @@ fn main() -> eframe::Result {
             cc.egui_ctx.set_zoom_factor(prefs.common.scale_or_one());
             let mut app = App::new(prefs, dir.clone());
             app.reading = Some(repo::start(dir, cc.egui_ctx.clone()));
+            let mcp = script_is_none.then(|| mcp::listen(cc.egui_ctx.clone()));
             let script = script.map(|steps| {
                 let mut r = Runner::new(steps, done);
                 r.watch(cc.egui_ctx.clone());
                 r
             });
-            Ok(Box::new(Michi { app, front: true, script, place: saved.tracker(), todo: Vec::new(), warned: Vec::new() }))
+            Ok(Box::new(Michi { app, front: true, script, place: saved.tracker(), todo: Vec::new(), warned: Vec::new(), mcp }))
         }),
     )
 }
@@ -602,6 +629,9 @@ mod tests {
         assert_eq!(parse(&[]), Ok(Cli::Open(None, None)));
         assert_eq!(parse(&["C:/dev/x"]), Ok(Cli::Open(Some(PathBuf::from("C:/dev/x")), None)));
         assert_eq!(parse(&["--version"]), Ok(Cli::Version));
+        assert_eq!(parse(&["mcp"]), Ok(Cli::Mcp));
+        assert!(parse(&["mcp", "x"]).is_err());
+        assert!(matches!(parse(&["./mcp"]), Ok(Cli::Open(Some(_), None))), "a folder named mcp is still reachable");
         assert_eq!(parse(&["-V"]), Ok(Cli::Version));
         assert_eq!(parse(&["x", "-h"]), Ok(Cli::Help));
         assert_eq!(parse(&["-"]), Ok(Cli::Open(Some(PathBuf::from("-")), None)));

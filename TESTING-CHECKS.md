@@ -360,3 +360,10 @@
 - [ ] **30.3** Put a web address in a commit message; double-click it; Ctrl+click it → The whole address is picked up; Ctrl+click shows the pointing hand and opens it in the browser → | [~] 〔未訳〕
 - [ ] **30.4** Click a parent hash, a file row and a merged commit; click an empty place → The click still does what it did (go to the commit, scroll to the file); an empty click lets the selection go → | [x] 〔未訳〕
 - [ ] **30.5** Select a diff line and move to another commit → The selection is gone → | [x] 〔未訳〕
+
+## 31. michi mcp（Claude Code に worktree の様子を渡す）
+
+- [ ] **31.1** With michi open on a repository with two worktrees, run `claude mcp add michi -- michi.com mcp`, then ask Claude Code "which worktrees are behind main?" → Claude calls `michi_worktrees` and answers with each worktree's branch, ahead / behind and uncommitted files → | [ ] 〔未訳〕
+- [ ] **31.2** Make two worktrees edit the same file, wait for michi's prediction, ask "which worktrees would conflict?" → `michi_conflicts` names the pair and the file → | [ ] 〔未訳〕
+- [ ] **31.3** Close michi and ask again → The tool answers "michi is not running; start michi and ask again" → | [ ] 〔未訳〕
+- [ ] **31.4** Open two michi windows, close the first, ask again after half a minute → The second window answers → | [ ] 〔未訳〕
