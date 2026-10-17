@@ -2,6 +2,12 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.69.0] - 2026-10-17
+
+### 追加
+
+- 等幅フォントに ito 0.79.0 の同梱フォント（JetBrains Mono）を使う。外観のページの「等幅フォント」で `bundled`（既定）か `system` を選べる（common.toml の `mono_font`）。システムのフォントが見つからなくても同梱のフォントで描く。同じページにライセンス（OFL）を出す（#85、uchmk/ito#25）。
+
 ## [0.68.1] - 2026-10-17
 
 ### 変更

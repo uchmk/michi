@@ -44,6 +44,7 @@ fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
         (THEME, "dark_theme"),
         (THEME, "light_theme"),
     ];
+    v.extend(ito_prefs::mono_font_index(ito_prefs::MoreWords::of(lang)).into_iter().map(|t| (THEME, t)));
     v.extend(ito_prefs::keys_index(ito_prefs::KeyWords::of(lang)).into_iter().map(|t| (KEYS, t)));
     v.extend(ito_prefs::notify_index(w).into_iter().map(|t| (NOTIFY, t)));
     v.extend([(NOTIFY, "[notify]"), (NOTIFY, "focus_mode"), (NOTIFY, "[[notify.webhooks]]")]);
@@ -220,6 +221,20 @@ pub fn show(ui: &mut Ui, app: &mut App) {
             };
             let tabs = [tr("view.graph"), tr("view.changes"), tr("view.worktree")];
             asked.extend(ito_prefs::theme_page(ui, l, w, themes, (&t, &d, &li), &note, |ui| preview(ui, tr("settings.sample"), tabs)));
+            asked.extend(ito_prefs::mono_font_card(ui, l, mw, common.mono_font_or_default()));
+            egui::CollapsingHeader::new(tr("settings.font_license")).show(ui, |ui| {
+                ui.label(
+                    egui::RichText::new(format!(
+                        "{}
+
+{}",
+                        ito_fonts::AUTHORS,
+                        ito_fonts::LICENSE
+                    ))
+                    .color(l.c.dim)
+                    .small(),
+                );
+            });
         }
         KEYS => {
             let layer_name = |n: &str| crate::i18n::tr_layer(&lang, n);

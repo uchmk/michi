@@ -16,12 +16,9 @@ const EMOJI: &[&str] = &["/usr/share/fonts/truetype/noto/NotoEmoji-Regular.ttf",
 /// Read the candidates on a thread (the files are tens of megabytes) and put
 /// them behind the monospace and proportional faces. Until they are in, a CJK
 /// character draws as a box for a frame or two.
-pub fn load_in_background(ctx: egui::Context) {
+pub fn load_in_background(ctx: egui::Context, mono: ito_fonts::MonoFont) {
     let _ = std::thread::Builder::new().name("fonts".into()).spawn(move || {
         let found: Vec<_> = [ito_common::fonts::JAPANESE, EMOJI].into_iter().filter_map(ito_common::fonts::read_first).collect();
-        if found.is_empty() {
-            return;
-        }
         let mut fonts = egui::FontDefinitions::default();
         for (path, bytes) in found {
             let name = format!("system:{}", path.display());
@@ -30,6 +27,8 @@ pub fn load_in_background(ctx: egui::Context) {
                 fonts.families.entry(family).or_default().push(name.clone());
             }
         }
+        // The bundled monospace face goes first, ahead of the system faces added above.
+        ito_fonts::register(&mut fonts, mono);
         ctx.set_fonts(fonts);
         ctx.request_repaint();
     });

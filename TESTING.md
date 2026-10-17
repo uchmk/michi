@@ -1580,3 +1580,10 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 268.1 | Press Ctrl+= five times, then Ctrl+0 | The whole window grows with each press (text, rows, key caps) and a toast names the size; Ctrl+0 is back at 100%; nothing overlaps at the largest size |
 | 268.2 | Choose each built-in theme in the settings and look at the graph, the table, the changes and a diff | The text reads on its ground; the selected row, a focus ring and a conflict mark are told apart without colour alone (a symbol or a word comes with the colour) |
 | 268.3 | Use only the keyboard from start to a commit (`2`, `j`, Space, `c`, type, Ctrl+Enter) | Every step works without the pointer; the focus is always visible |
+
+## 269. Bundled monospace font (#85)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 269.1 | Open the settings, Appearance; look at the monospace font card and switch bundled / system | Hashes and paths redraw in JetBrains Mono for bundled and in the system face for system, without a restart; common.toml gets `mono_font` |
+| 269.2 | Open "Licence of the bundled font" under the card | The authors and the SIL Open Font License text are shown |

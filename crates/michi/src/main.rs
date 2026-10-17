@@ -124,6 +124,8 @@ struct Michi {
     app: App,
     /// Whether the window was in front at the last frame.
     front: bool,
+    /// The monospace face the fonts were last built for.
+    mono: ito_fonts::MonoFont,
     script: Option<Runner>,
     /// Writes the window's place to window.toml; none under `--keys`.
     place: Option<ito_common::window::Tracker>,
@@ -642,6 +644,11 @@ impl eframe::App for Michi {
         self.app.prefs.apply_theme(&ctx);
         motion::apply(&ctx, self.app.prefs.motion);
         ctx.set_zoom_factor(self.app.prefs.common.scale_or_one());
+        let mono = self.app.prefs.common.mono_font_or_default();
+        if mono != self.mono {
+            self.mono = mono;
+            fonts::load_in_background(ctx.clone(), mono);
+        }
         if let Some(e) = self.app.prefs.failed.take() {
             self.app.say(e);
         }
@@ -879,8 +886,9 @@ fn main() -> eframe::Result {
         options,
         Box::new(move |cc| {
             saved.put(cc);
-            fonts::load_in_background(cc.egui_ctx.clone());
             let mut prefs = prefs::Prefs::load(ito_common::base_dir());
+            let prefs_mono = prefs.common.mono_font_or_default();
+            fonts::load_in_background(cc.egui_ctx.clone(), prefs_mono);
             prefs.watch(&cc.egui_ctx);
             prefs.apply_theme(&cc.egui_ctx);
             // The scale is common.toml's, so egui's own Ctrl+= / Ctrl+- stay out of it.
@@ -911,6 +919,7 @@ fn main() -> eframe::Result {
             Ok(Box::new(Michi {
                 app,
                 front: true,
+                mono: prefs_mono,
                 script,
                 place: saved.tracker(),
                 todo: Vec::new(),
