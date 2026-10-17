@@ -182,6 +182,33 @@ Worktrees and parallel Claude work are the base; no other client has them.
 - [ ] Trial merge of several worktrees in a chosen order（要確認: #100）
 - [ ] Ideas from the other uchmk apps (2026-10-17): drag-select copy through `ito-select` （要確認: #101）; `michi mcp` through `ito-mcp` / `ito-ipc`, shared pattern asked of ito (ito#11) （要確認: #102）; PR / CI state from minato （要確認: #103）
 
+## Easy for beginners (2026-10-17)
+
+All wait for the owner; none is started. Related: #64 (Undo), #74, #77, #80-#83.
+
+- [ ] Plain-language display for Git terms（要確認: #104）
+- [ ] Hover glossary for terms on screen（要確認: #105）
+- [ ] Say what an operation will do before it runs（要確認: #106）
+- [ ] Always say where you are in plain words（要確認: #107）
+- [ ] Translate git errors into cause and next step（要確認: #108）
+- [ ] Explain detached HEAD and the way back（要確認: #109）
+- [ ] Stop commits on the wrong branch（要確認: #110）
+- [ ] Warn about large files and secrets before committing（要確認: #111）
+- [ ] Show what a push will send（要確認: #112）
+- [ ] A "calm down" button that saves the current state（要確認: #113）
+- [ ] Operation history（要確認: #114）
+- [ ] Basic and full modes（要確認: #115）
+- [ ] First-run setup guidance (git, name/email, auth)（要確認: #116）
+- [ ] Practice repository（要確認: #117）
+- [ ] Legend for the graph symbols（要確認: #118）
+- [ ] Next-step suggestion from the current state（要確認: #119）
+- [ ] Diagram of stage and commit in Changes（要確認: #120）
+- [ ] Beginner explanation of conflicts（要確認: #121）
+- [ ] Explain worktrees（要確認: #122）
+- [ ] Check that everything is reachable by mouse alone（要確認: #123）
+- [ ] Commit message writing guide（要確認: #124）
+- [ ] Unify Japanese and English terms（要確認: #125）
+
 ## Owner
 
 - 【人】 After the skeleton: run the rows of TESTING-CHECKS.md on the real machine (window, title bar, icon, fonts).
