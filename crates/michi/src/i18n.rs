@@ -213,7 +213,7 @@ const EN: &[(&str, &str)] = &[
     ("wt.foot_claude", "The Claude column reads tsumugi ls --json every 2 s (10 s while the window is behind). When tsumugi is not running, the column goes."),
     ("wt.col.unseen", "Unseen"),
     ("wt.unseen", "{} new"),
-    ("new.title", "Unseen changes ({})"),
+    ("wt.unseen_title", "Unseen changes ({})"),
     ("new.none", "All seen."),
     ("new.more", "… {} more"),
     ("new.foot", "The commits the worktrees have gained since you last looked. Selecting one in the graph marks it seen."),
@@ -832,7 +832,7 @@ const JA: &[(&str, &str)] = &[
     ),
     ("wt.col.unseen", "見ていない"),
     ("wt.unseen", "{} コミット"),
-    ("new.title", "見ていない変更（{}）"),
+    ("wt.unseen_title", "見ていない変更（{}）"),
     ("new.none", "全部見ました。"),
     ("new.more", "… ほか {} コミット"),
     ("new.foot", "この表を最後に開いたときから増えたコミット。樹形図で選ぶと消えます。"),
@@ -1266,6 +1266,17 @@ mod tests {
             t.iter().map(|(k, _)| *k).collect()
         }
         assert_eq!(keys(EN), keys(JA));
+    }
+
+    /// The first definition of a key wins, so a second one is never read (#96).
+    #[test]
+    fn no_key_is_defined_twice() {
+        for (name, t) in [("EN", EN), ("JA", JA)] {
+            let mut seen = std::collections::HashSet::new();
+            for (k, _) in t {
+                assert!(seen.insert(*k), "{name} defines `{k}` twice");
+            }
+        }
     }
 
     #[test]

@@ -765,7 +765,7 @@ fn news_box(ui: &Ui, app: &App, w: f32) -> News {
     let c = ito_theme::colors();
     let inner = w - 2.0 * BOX_PAD;
     let all = app.unseen.all();
-    let title = layout(ui, app.tr("new.title").replace("{}", &all.len().to_string()), FontId::proportional(12.5), c.fg, inner);
+    let title = layout(ui, app.tr("wt.unseen_title").replace("{}", &all.len().to_string()), FontId::proportional(12.5), c.fg, inner);
     let now = chrono::Local::now();
     let lines: Vec<_> = all
         .iter()
