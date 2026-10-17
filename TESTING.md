@@ -799,6 +799,19 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 78.9 | Press `S` while a Claude works in the worktree, or in the middle of a merge | The Claude case asks `Sync there anyway?` (y/n); the merge case says sync waits (and the button is greyed) | | [ ] |
 | 78.10 | Press `S` in the 2, 3 and 4 views; open `?`; switch EN and JA | `S` works in each; the key list has a `S` line; both languages read well | | [ ] |
 
+## 67. Drag and drop onto a worktree
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 67.1 | In the graph (`1`) press on a commit row, drag it a little and watch | The pointer turns to a grabbing hand and the hash and subject follow it; a click without moving still only selects the row |
+| 67.2 | Drag that commit over a worktree row in the side column | The worktree's row gets an outline in the run colour while the pointer is on it |
+| 67.3 | Let go over the worktree row | A small menu at the pointer reads `<hash> onto <branch>` and offers Merge into it and Cherry-pick onto it; nothing has run yet |
+| 67.4 | Pick Merge into it; then do the same and pick Cherry-pick onto it | The same band as `m` and `C` (plan lines, the backup note, the Claude warning) asks first, for that worktree and not for the one the window is on; y runs it |
+| 67.5 | Drag a branch row of the side column onto another worktree's row | The menu offers Merge into it and Rebase it onto the dropped branch; Rebase asks the band of the palette's Ctrl+R for that worktree |
+| 67.6 | Drag a branch onto the worktree that has it checked out; drop a commit outside the side column | The first says nothing can be done and opens no menu; the second does nothing |
+| 67.7 | Open the menu, press Esc; open it again and click outside it | Both close it without doing anything |
+| 67.8 | Drag onto a worktree in the middle of a merge, and onto one where a Claude works; switch EN and JA | The band says the worktree is busy / warns about the Claude, as the keys do; both languages read well |
+
 ## 68. Syntax colours in diffs
 
 | # | Do | Expect |

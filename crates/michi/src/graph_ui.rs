@@ -357,7 +357,7 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
 
     // The rows take the clicks the chips, the toggle and the bar leave:
     // those are registered after them.
-    let list_resp = ui.interact(list, Id::new("graph-list"), Sense::CLICK);
+    let list_resp = ui.interact(list, Id::new("graph-list"), Sense::click_and_drag());
     if live && ui.rect_contains_pointer(list) {
         scroll -= ui.input(|i| i.smooth_scroll_delta.y);
     }
@@ -623,6 +623,13 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
                 acts.insert(0, if pick { Act::Pick(k as u32) } else { Act::Select(k as u32) });
             }
         }
+    }
+    // A row dragged toward a worktree in the side column (#67); the drop is
+    // handled after the columns (`dnd_ui::finish`).
+    if live && list_resp.drag_started_by(egui::PointerButton::Primary) {
+        let press = ui.input(|i| i.pointer.press_origin());
+        let id = press.and_then(|p| crate::dnd_ui::row_at(top, row_h, len, p.y)).and_then(|k| app.graph.commit(k).map(|c| c.id));
+        app.dnd = id.map(michi_core::dnd::Source::Commit);
     }
     // A right-click selects the row and opens its menu; a pick is the key
     // typed on that row.

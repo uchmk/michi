@@ -373,6 +373,7 @@ fn columns(r: Rect, wide: bool, s: &Sizes) -> Columns {
 fn graph_view(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let c = ito_theme::colors();
     let cols = columns(r, app.detail.wide, &app.sizes);
+    crate::dnd_ui::begin(ui.ctx());
     if let Some(side) = cols.side {
         crate::side_ui::show(ui, app, side, live);
     }
@@ -380,6 +381,7 @@ fn graph_view(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         crate::graph_ui::show(ui, app, graph, live);
     }
     crate::detail_ui::show(ui, app, cols.detail, live);
+    crate::dnd_ui::finish(ui, app, live);
     for line in &cols.lines {
         ui.painter().rect_filled(*line, 0.0, c.border);
     }

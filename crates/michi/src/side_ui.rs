@@ -244,8 +244,27 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             continue;
         }
         let clickable = row.id.is_some() || matches!(row.kind, Kind::Group { .. });
-        let resp = ui.interact(rr.intersect(r), Id::new(("side-row", k)), if clickable { Sense::CLICK } else { Sense::hover() });
+        let draggable = matches!(row.kind, Kind::Branch { .. }) && row.id.is_some();
+        let sense = if draggable {
+            Sense::click_and_drag()
+        } else if clickable {
+            Sense::CLICK
+        } else {
+            Sense::hover()
+        };
+        let resp = ui.interact(rr.intersect(r), Id::new(("side-row", k)), sense);
         let hot = live && pointer.is_some_and(|p| rr.contains(p));
+        // A branch is dragged onto a worktree (#67); a worktree's row takes the drop.
+        if let (true, true, Some(tip)) = (live, draggable && resp.drag_started_by(egui::PointerButton::Primary), row.id) {
+            let name = row.tip.clone().unwrap_or_else(|| row.text.clone());
+            app.dnd = Some(michi_core::dnd::Source::Branch { name, tip });
+        }
+        if let (Kind::Worktree { .. }, Some(path)) = (&row.kind, &row.tip) {
+            crate::dnd_ui::target(&ctx, rr.intersect(r), std::path::PathBuf::from(path));
+            if hot && app.dnd.is_some() {
+                p.rect_stroke(rr.shrink(1.0), 3.0, Stroke::new(1.5, c.run), StrokeKind::Inside);
+            }
+        }
         if let Kind::Worktree { cur: true, .. } = row.kind {
             p.rect_filled(rr, 0.0, c.run.gamma_multiply(0.12));
         } else if row.kind == Kind::Stash && shown.is_some() && row.id == shown {

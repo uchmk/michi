@@ -24,6 +24,7 @@ mod conflicts;
 mod ctxmenu;
 mod detail;
 mod detail_ui;
+mod dnd_ui;
 mod fonts;
 mod fswatch;
 mod graph;
