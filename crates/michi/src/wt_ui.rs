@@ -979,34 +979,38 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             p.text(pos2(left + x + CELL_X, top + HEAD_H / 2.0), Align2::LEFT_CENTER, word, FontId::proportional(11.0), c.dim);
         }
         p.line_segment([pos2(left, top + HEAD_H - 0.5), pos2(left + width, top + HEAD_H - 0.5)], Stroke::new(1.0, c.border));
-        // The edge between two columns drags: the left edge of a fixed column
-        // widens it as it goes left, the edge after the name shares the rest.
+        // The edge between two columns drags (ito-layout's grips): the left
+        // edge of a fixed column widens it as it goes left, the edge after the
+        // name trades with the Claude column.
         let base = 1 + usize::from(claude);
-        let mut resized = false;
-        for n in (if claude { 0 } else { 1 })..=(base + 4) {
-            if n == 0 {
-                continue;
-            }
-            let share = claude && n == 1;
-            let x = left + cols[n].0;
-            let strip = Rect::from_center_size(pos2(x, top + HEAD_H / 2.0), vec2(8.0, HEAD_H));
-            let resp = ui.interact(strip.intersect(r), Id::new(("wt-col-drag", n)), Sense::drag());
-            if live && (resp.hovered() || resp.dragged()) {
-                ctx.set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
-            }
-            if live && resp.dragged() {
-                let dx = resp.drag_delta().x;
-                if share {
-                    let both = cols[0].1 + cols[1].1;
-                    app.sizes.name_share = ((cols[0].1 + dx) / both).clamp(0.2, 0.8);
-                } else if n >= base {
-                    app.sizes.table[n - base] = (cols[n].1 - dx).clamp(COL_MIN, 600.0);
+        let ns: Vec<usize> = (1..=(base + 4)).collect();
+        let edges: Vec<f32> = ns.iter().map(|n| left + cols[*n].0).collect();
+        if let Some(g) = ito_layout::ui::grips(ui, Id::new("wt-cols"), &edges, top..top + HEAD_H, 8.0).filter(|_| live) {
+            let n = ns[g.index];
+            if claude && n == 1 {
+                let both = cols[0].1 + cols[1].1;
+                let mut w = [cols[0].1, cols[1].1];
+                if g.reset {
+                    app.sizes.name_share = Sizes::default().name_share;
+                } else {
+                    ito_layout::columns::trade(&mut w, 0, g.delta, both * 0.2);
+                    app.sizes.name_share = (w[0] / both).clamp(0.2, 0.8);
                 }
+            } else {
+                let i = n - base;
+                let mut w = app.sizes.table;
+                if g.reset {
+                    w[i] = Sizes::default().table[i];
+                } else {
+                    // `cols` holds the widths as drawn, which the window may have squeezed.
+                    w[i] = cols[n].1;
+                    ito_layout::columns::resize(&mut w, i, g.delta, COL_MIN, 600.0, ito_layout::columns::Edge::Left);
+                }
+                app.sizes.table = w;
             }
-            resized |= live && resp.drag_stopped();
-        }
-        if resized {
-            app.sizes.save();
+            if g.released || g.reset {
+                app.sizes.save();
+            }
         }
     }
 

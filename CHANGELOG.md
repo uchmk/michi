@@ -2,6 +2,14 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.48.0] - 2026-10-17
+
+### 変更
+
+- ito を v0.59.0 に上げた（全部のクレートを同じ rev に）。
+- 樹形図の見出しの列と worktree の表の列の幅の掴みを、自前の処理から `ito-layout` の `grips` と `columns` に替えた
+  （ダブルクリックで初期の幅に戻る。離したときに `layout.toml` へ保存）。
+
 ## [0.47.0] - 2026-10-17
 
 ### 変更

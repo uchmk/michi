@@ -47,12 +47,20 @@ pub fn entries(app: &App) -> Vec<Entry<Pick>> {
 pub fn show(ctx: &egui::Context, app: &mut App) -> Option<Pick> {
     let mut view: View = app.cmd.take()?;
     let c = ito_theme::colors();
-    let style =
-        Style { panel: c.panel, border: c.border, text: c.fg, dim: c.dim, selected_bg: c.border, selected_text: crate::ui::accent() };
-    let words = Words { hint: app.tr("palette.hint"), none: app.tr("palette.none") };
+    let style = Style {
+        panel: c.panel,
+        border: c.border,
+        text: c.fg,
+        dim: c.dim,
+        selected_bg: c.border,
+        selected_text: crate::ui::accent(),
+        hit: crate::ui::accent(),
+        accent: crate::ui::accent(),
+    };
+    let words = Words { hint: app.tr("palette.hint"), none: app.tr("palette.none"), header: "", footer: "" };
     match ito_palette::show(ctx, &mut view, &entries(app), &style, &words) {
         Some(ito_palette::Answer::Pick(p)) => Some(p),
-        Some(ito_palette::Answer::Close) => None,
+        Some(ito_palette::Answer::Close | ito_palette::Answer::Key(..)) => None,
         None => {
             app.cmd = Some(view);
             None

@@ -66,7 +66,7 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
 - ブランチ・タグ・stash の `Picker` を `ito-palette` に替える件は ito-7e に頼んである: 選んだ行への別のキー（Shift+Enter・Delete・F2・Ctrl+U・Ctrl+R）が要るので
   `Answer::Key(key, T)` を ito-palette に足してもらい、rev が出たら 1 度に替える（picker.rs・picker_ui.rs）。`Band` の確認は持ち主の回答が来てから（#26）。
 - `keymap_warn` / `notify_warn` はトーストで見せる（v0.45.0、TESTING 25.1）。残り: 実機で `--keys` を回す（TESTING 20.7 は `[ ]` のまま）。
-- ito を上げるときは**全部のクレートを同じ rev に**（今は 2891fb20d2ec32681490c8f99752bb21b6588079、ito v0.56.1。v0.56.0 は雛形の Cargo.toml で git 依存が読めない: ito#6）。
+- ito を上げるときは**全部のクレートを同じ rev に**（今は 2c82056fc6da21003b77d27b562eb509d7adf309、ito v0.59.0）。
 - 動いている `michi.exe` があると `cargo build`（`verify.sh` の中も）が失敗する。clippy・test は通る。
 
 ## 次にやること
@@ -109,7 +109,7 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
   - 撮ったあと `michi.exe`・`git.exe` が残っていないか見る（閉じる途中の数秒は残って見える。ほかのセッションの git は触らない）。
 - 大きな履歴は `scripts/make-history.py` で作り、`MICHI_BENCH_REPO=<そのフォルダ> cargo test --release -p michi big_history -- --ignored --nocapture`。
 - 単体テストは本物のリポジトリに触らない（`michi-core/src/testrepo.rs` の `TempRepo`）。
-- ito の rev は 2891fb20d2ec32681490c8f99752bb21b6588079（ito v0.56.1）。
+- ito の rev は 2c82056fc6da21003b77d27b562eb509d7adf309（ito v0.59.0）。
 - egui 0.36 の `TextEdit` は、`.frame()` を自分で付けると `margin` が効かない。余白は Frame の `inner_margin` に書く。
 - `scripts/verify.sh` は手元の clippy に加えて、もう一方の CI のターゲット（Windows では Linux）の clippy も回す（acd02a9 から）。
 - tsumugi・yagura・kura・lane の worktree のファイルは直さない。tsumugi で michi を開いて試さない（git の掃除が走って重くなった）。

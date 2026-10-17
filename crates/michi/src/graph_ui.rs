@@ -500,24 +500,24 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
         }
     }
 
-    // The left edge of the author, date and commit columns drags: the column
-    // gets wider as the edge goes left.
-    let mut resized = false;
-    let edges = if compact { vec![] } else { vec![(0, author_x, author_w), (1, date_x, date_w)] };
-    for (n, x, w) in edges.into_iter().chain([(2, hash_x, hash_w)]) {
-        let strip = Rect::from_center_size(pos2(x - 2.0, hm), vec2(8.0, HEAD_H));
-        let resp = ui.interact(strip, Id::new(("graph-col-drag", n)), Sense::drag());
-        if live && (resp.hovered() || resp.dragged()) {
-            ctx.set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
+    // The left edge of the author, date and commit columns drags (ito-layout's
+    // grips): the column gets wider as the edge goes left.
+    let which: Vec<usize> = if compact { vec![2] } else { vec![0, 1, 2] };
+    let xs = [author_x, date_x, hash_x];
+    let edges: Vec<f32> = which.iter().map(|n| xs[*n] - 2.0).collect();
+    if let Some(g) = ito_layout::ui::grips(ui, Id::new("graph-cols"), &edges, head.top()..head.bottom(), 8.0).filter(|_| live) {
+        let n = which[g.index];
+        let mut w = [app.sizes.author, app.sizes.date, app.sizes.hash];
+        if g.reset {
+            let d = crate::sizes::Sizes::default();
+            w[n] = [d.author, d.date, d.hash][n];
+        } else {
+            ito_layout::columns::resize(&mut w, n, g.delta, COL_MIN, 300.0, ito_layout::columns::Edge::Left);
         }
-        if live && resp.dragged() {
-            let to = (w - resp.drag_delta().x).clamp(COL_MIN, 300.0);
-            *[&mut app.sizes.author, &mut app.sizes.date, &mut app.sizes.hash][n] = to;
+        (app.sizes.author, app.sizes.date, app.sizes.hash) = (w[0], w[1], w[2]);
+        if g.released || g.reset {
+            app.sizes.save();
         }
-        resized |= live && resp.drag_stopped();
-    }
-    if resized {
-        app.sizes.save();
     }
 
     // The scrollbar, when the rows do not all fit.
