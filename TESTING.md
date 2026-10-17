@@ -730,3 +730,20 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 100.8 | After a run, check `git status`, `git branch -v` and the worktree folders in a terminal | Nothing moved: no branch, index, HEAD or file changed | | [ ] |
 | 100.9 | Change the picks after a run; press Esc; try Ctrl+Shift+P over the list | The old result goes when the picks change; Esc closes the list; the palette does not open over it | | [ ] |
 | 100.10 | Switch EN and JA; use a narrow window | Both languages read well; long paths are cut with an ellipsis | | [ ] |
+
+## 93. Landing a worktree (merge in, check, fast-forward, clean up)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 93.1 | In the `3` view select a worktree that is ahead of main and press `l` | A band asks "Land <branch> on main?" with four rows (take main in, run the check, move main forward, remove the worktree) and buttons `1` to `4`; `y` does nothing, Esc closes it |
+| 93.2 | Press `l` on the main worktree, on a detached one, on one with uncommitted changes, on one mid-rebase and on one with nothing ahead | Each answers with a toast saying why and no band opens |
+| 93.3 | Press `l`, then `4`, on a clean branch whose main is already in it | The toast reads "Landed <branch> on main: …"; main now points at the branch tip (`git log main`), the worktree folder and the branch are gone, a Claude tab of that worktree is closed |
+| 93.4 | Let main move on (commit on it), press `l`, then `4` | main is taken into the branch first (a merge commit), the check runs, then main moves forward to that merge; no `git push` happens |
+| 93.5 | Press `l`, then `1` | Only main is taken in; the toast says so ("Land it again to go on") and nothing else moved |
+| 93.6 | Press `l`, then `2`, in a repository with `scripts/verify.sh` that fails | The toast says "Stopped at the check: it failed (exit N)" with the last lines of its output; main did not move and the worktree is still there |
+| 93.7 | Press `l`, then `4`, when main clashes with the branch | The `4` view opens on the clash and the toast says "Stopped at taking main in"; after solving and committing there, `l` `4` goes on from there |
+| 93.8 | Press `l`, then `3`, then `l`, then `4` on the same branch | The second run skips what was done ("main was in … already") and only cleans up |
+| 93.9 | Use a repository without a verify script | The toast says "no check found (skipped)" and the landing goes on |
+| 93.10 | Select the window's own worktree and press `l` | Only `1` to `3` are offered and a note says it cannot be removed from here |
+| 93.11 | Land with a Claude working in the worktree | The band notes a Claude is working there and that its tabs close at the last stage |
+| 93.12 | Switch to JA and press `l` | The band, the buttons and every toast read in Japanese; `?` lists `l` among the worktree keys |

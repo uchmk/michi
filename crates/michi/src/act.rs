@@ -154,6 +154,13 @@ pub enum Task {
         wt: PathBuf,
         rev: String,
     },
+    /// Lands the branch of `req` on the trunk as far as `until`; the Claude
+    /// tabs `sessions` close just before the worktree goes.
+    Land {
+        req: michi_core::land::Request,
+        until: michi_core::land::Stage,
+        sessions: Vec<u64>,
+    },
     /// Picks `id` onto the branch of the worktree at `wt`; a merge against
     /// the parent (from 1) given.
     CherryPick {
@@ -329,7 +336,7 @@ impl Task {
             Task::FindReorder { .. } => "log",
             Task::Reorder { .. } => "rebase -i",
             Task::Tidy { .. } | Task::RemoveWorktree { .. } => "worktree remove",
-            Task::Merge { .. } => "merge",
+            Task::Merge { .. } | Task::Land { .. } => "merge",
             Task::CherryPick { .. } => "cherry-pick",
             Task::Resolve { .. } | Task::ResolveWith { .. } => "add",
             Task::Take { .. } => "checkout",
@@ -380,6 +387,7 @@ pub enum Acted {
     Reordered(michi_core::rebase::Outcome),
     Tidied(Outcome),
     Merged(conflict::Outcome),
+    Landed(michi_core::land::Outcome),
     /// The head after the commit.
     Committed(Oid),
     Solved(Box<Solved>),
@@ -437,6 +445,11 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         }
         Task::Tidy { picks } => Ok(Acted::Tidied(tidy::remove(dir, picks))),
         Task::Merge { wt, rev } => conflict::merge(wt, rev).map(Acted::Merged),
+        Task::Land { req, until, sessions } => Ok(Acted::Landed(michi_core::land::run(dir, req, *until, || {
+            for id in sessions {
+                let _ = handoff::close(*id);
+            }
+        }))),
         Task::CherryPick { wt, id, mainline } => conflict::cherry_pick(wt, id, *mainline).map(Acted::Merged),
         Task::Resolve { wt, path, block, pick } => conflict::resolve(wt, path, block, *pick).map(|_| solved(wt, None)),
         Task::ResolveWith { wt, path, block, lines } => conflict::resolve_with(wt, path, block, lines).map(|_| solved(wt, None)),
@@ -736,6 +749,7 @@ impl App {
                     }
                 }
             }
+            (Task::Land { req, until, .. }, Ok(Acted::Landed(out))) => self.landed(req, *until, &out),
             (Task::CherryPick { wt, id, .. }, Ok(Acted::Merged(out))) => {
                 let tr = |key: &'static str| self.tr(key).replace("{id}", &id.short()).replace("{wt}", &self::name(wt));
                 match out {
@@ -773,7 +787,7 @@ impl App {
 
     /// A merge, a pick or a revert stopped on a clash in the worktree at
     /// `wt`: the `4` view shows it, once read.
-    fn show_conflicts(&mut self, wt: &Path) {
+    pub(crate) fn show_conflicts(&mut self, wt: &Path) {
         self.conflicts.wt = Some(wt.to_path_buf());
         self.conflicts.show(wt);
         self.view = View::Conflict;

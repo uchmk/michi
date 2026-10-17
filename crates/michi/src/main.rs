@@ -24,6 +24,7 @@ mod graph_ui;
 mod i18n;
 mod icon;
 mod keymap;
+mod land;
 mod mcp;
 mod newwork;
 mod newwork_ui;
