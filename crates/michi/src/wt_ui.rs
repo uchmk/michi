@@ -22,7 +22,9 @@ use michi_core::track::Tree;
 
 use crate::app::{failed_word, App, Repo};
 use crate::graph_ui::{claude_look, paint_icon, Icon};
+use crate::guide_ui;
 use crate::sizes::Sizes;
+use michi_core::guide::Topic;
 
 const PAD_X: f32 = 18.0;
 const PAD_TOP: f32 = 14.0;
@@ -950,7 +952,10 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         )
         .collect();
     let gap = if cards { 10.0 } else { 0.0 };
-    let table_top = PAD_TOP + TOP_H + 14.0;
+    // What a worktree is (#122): a card over the table until it is dismissed.
+    let guide = app.prefs.guides.shown(Topic::Worktree);
+    let guide_h = if guide { guide_ui::worktree_h(ui, app, width) + 8.0 } else { 0.0 };
+    let table_top = PAD_TOP + TOP_H + 14.0 + guide_h;
     let rows_top = table_top + if cards { 0.0 } else { HEAD_H };
     let mut tops = Vec::with_capacity(blocks.len());
     let mut y = rows_top;
@@ -1013,8 +1018,21 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     }
     let (new_left, new) = top_button(ui, &p, left + width, mid, Icon::Plus, app.tr("tool.new_work"), Some("N"), live);
     let (again_left, again) = top_button(ui, &p, new_left - 6.0, mid, Icon::Fetch, app.tr("wt.reread"), None, live);
+    let pointer_at = if live { ui.input(|i| i.pointer.hover_pos()).filter(|q| r.contains(*q)) } else { None };
+    let mut room_right = again_left - 10.0;
+    let mut guide_act = None;
+    if !guide {
+        let (l, hit) = guide_ui::link(ui, &p, room_right, mid, app.tr("guide.link.worktree"), "worktree", live, pointer_at);
+        if hit {
+            guide_act = Some(guide_ui::Act::Dismiss);
+        }
+        room_right = l - 10.0;
+    } else {
+        let (a, _) = guide_ui::worktree_card(ui, app, &p, pos2(left, at(PAD_TOP + TOP_H + 6.0)), width, live, pointer_at);
+        guide_act = a;
+    }
     let count_x = left + title.size().x + 10.0;
-    let count = cut_end(ui, &count, FontId::proportional(12.0), again_left - 10.0 - count_x);
+    let count = cut_end(ui, &count, FontId::proportional(12.0), room_right - count_x);
     p.text(pos2(count_x, mid), Align2::LEFT_CENTER, count, FontId::proportional(12.0), c.dim);
 
     // The table's header.
@@ -1141,6 +1159,11 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         app.view = crate::app::View::Graph;
         app.go_to(id);
         ctx.request_repaint();
+    }
+    match (guide_act, guide) {
+        (Some(guide_ui::Act::Dismiss), true) => app.prefs.dismiss_guide(Topic::Worktree),
+        (Some(guide_ui::Act::Dismiss), false) => app.prefs.restore_guides(Some(Topic::Worktree)),
+        _ => {}
     }
     if again {
         app.reread();

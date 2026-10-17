@@ -18,6 +18,8 @@ pub enum Pick {
     Key(char),
     /// Open the worktree's folder in a terminal, an editor or the file manager.
     Open(Tool),
+    /// Show the beginners' explanations again (#120 #121 #122).
+    Guides,
 }
 
 /// The entries the palette offers now: the keymap's commands, then those of
@@ -37,6 +39,7 @@ pub fn entries(app: &App) -> Vec<Entry<Pick>> {
     for (t, key) in [(Tool::Terminal, "t"), (Tool::Editor, "e"), (Tool::Explorer, "E")] {
         out.push(Entry::new(app.tr(crate::act::open_word_cmd(t)), if in_table { key } else { "" }, Pick::Open(t)));
     }
+    out.push(Entry::new(app.tr("guide.again"), "", Pick::Guides));
     let mut seen = Vec::new();
     for (keys, word) in app.keys().iter().chain(GLOBAL_KEYS.iter().skip(1)) {
         let mut chars = keys.chars();
@@ -104,6 +107,11 @@ impl App {
         match p {
             Pick::Act(a) => self.run_key(a),
             Pick::Open(t) => self.open_in(t, self.view == crate::app::View::Worktree),
+            Pick::Guides => {
+                self.prefs.restore_guides(None);
+                let said = self.tr("guide.restored").to_owned();
+                self.say(said);
+            }
             Pick::Key(c) => {
                 self.mode = crate::app::Mode::Main;
                 self.feed(c);

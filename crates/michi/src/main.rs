@@ -27,6 +27,7 @@ mod fonts;
 mod fswatch;
 mod graph;
 mod graph_ui;
+mod guide_ui;
 mod i18n;
 mod icon;
 mod images;

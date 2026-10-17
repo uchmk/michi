@@ -1317,3 +1317,17 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 261.3 | Change the theme and a key, press Import once, then again | The first press only arms the button; the second reads the file back, a toast says what was read, and the theme and the key are as exported within a couple of seconds |
 | 261.4 | Import a file that is not a settings bundle | A toast gives the reason and nothing in the settings folder changes |
 | 261.5 | Search "backup" in the settings | The Advanced page is listed |
+
+## 262. Beginners' explanations: stage, conflict, worktree (#120, #121, #122)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 262.1 | Open the `2` view with changed files and nothing staged | A band under the top bar shows three steps (changed, put in the next commit, commit) with the first lit, and a line saying where the files are |
+| 262.2 | Stage a file with `Space`; then write a commit message | The second step lights up after staging, the third once the message is written |
+| 262.3 | Click the cross on the band; restart michi and open the `2` view | The band is gone and a small "? ..." link takes its place; it stays gone after the restart |
+| 262.4 | Click the "? ..." link | The band comes back |
+| 262.5 | Start a merge that conflicts and open the conflict view | A card explains what a conflict is, with a pager `1/3`; `‹` `›` go to the cards on ours and theirs and on how to go on |
+| 262.6 | Dismiss the conflict card, restart, open a conflict again; then click its link | Stays dismissed across the restart; the link brings the cards back |
+| 262.7 | Open the `3` view | A four-line card says what a worktree is and how it relates to Claude working in parallel; the table sits below it with nothing hidden |
+| 262.8 | Dismiss it, then run "Show the explanations again" from the command palette | A toast says they are back; all three explanations show again |
+| 262.9 | Narrow the window; switch EN and JA | The cards wrap without overlapping the cross or pager; both languages read well |
