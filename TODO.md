@@ -108,7 +108,7 @@ All wait for the owner; none is started.
 - [ ] Creating PRs in michi（要確認: #34）
 - [x] Signature status (Verified) marker（要確認: #35）
 - [ ] Dedicated screens for conflicts a 3-way view cannot show（要確認: #36）
-- [ ] blame and per-file history（要確認: #37）
+- [x] blame and per-file history（要確認: #37）
 - [x] Content search (pickaxe `s:`, regex `g:`) in the `/` filter, asked with Enter（要確認: #38）
 - [ ] clone / init (with #26)（要確認: #39）
 - [x] Remote management: `M` in the graph lists the remotes, adds one (name then address) and removes one after a yes (TESTING 40)（要確認: #40）

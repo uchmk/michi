@@ -7,6 +7,7 @@ pub mod autofetch;
 pub mod autostash;
 pub mod avatar;
 pub mod backup;
+pub mod blame;
 pub mod branch;
 pub mod change;
 pub mod clash;

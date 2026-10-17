@@ -95,6 +95,8 @@ impl View {
                 ("s", "key.stash"),
                 ("M", "key.remotes"),
                 ("L", "key.reflog"),
+                ("B", "key.blame"),
+                ("H", "key.file_history"),
                 ("Esc", "key.back"),
             ],
             View::Changes => &[
@@ -109,6 +111,8 @@ impl View {
                 ("d", "key.discard"),
                 ("i", "key.ignore"),
                 ("A", "key.amend"),
+                ("B", "key.blame"),
+                ("H", "key.file_history"),
                 ("[ ]", "key.worktree"),
                 ("Enter", "key.side"),
                 ("Esc", "key.back"),
@@ -184,6 +188,14 @@ pub const TIDY_KEYS: [(&str, &str); 5] =
     [("j k", "key.move"), ("Space", "key.pick"), ("a", "key.pick_all"), ("Enter", "key.run"), ("Esc", "key.back")];
 /// The keys of the reflog list (`L`).
 pub const REFLOG_KEYS: [(&str, &str); 3] = [("j k", "key.move"), ("Enter", "key.bring_back"), ("Esc", "key.back")];
+/// The keys of the blame screen (`B` over the graph or the changes).
+pub const BLAME_KEYS: [(&str, &str); 5] = [
+    ("j k", "key.move"),
+    ("B H Tab", "key.blame_tab"),
+    ("Enter", "key.in_graph_commit"),
+    ("PageDown PageUp", "key.page_rows"),
+    ("Esc", "key.back"),
+];
 /// The keys of the trial-merge screen (`T`).
 pub const TRIAL_KEYS: [(&str, &str); 5] =
     [("j k", "key.move"), ("Space", "key.pick"), ("u", "key.unpick"), ("Enter", "key.run"), ("Esc", "key.back")];
@@ -326,6 +338,7 @@ pub struct App {
     /// The clean-up list, over the worktree table.
     pub tidy: Option<crate::tidy::Tidy>,
     pub reflog: Option<crate::reflog::Reflog>,
+    pub blame: Option<crate::blame::Blame>,
     /// The trial-merge screen (`T` over the worktree table), while open.
     pub trial: Option<crate::trial::TrialScreen>,
     pub reorder: Option<crate::reorder::Reorder>,
@@ -402,6 +415,7 @@ impl App {
             turn_states: None,
             tidy: None,
             reflog: None,
+            blame: None,
             trial: None,
             reorder: None,
             side_stash: None,
@@ -898,6 +912,10 @@ impl App {
             }
             'd' => ch.discard(claude),
             'i' => ch.ignore(claude),
+            'B' | 'H' => {
+                self.open_blame(if c == 'B' { crate::blame::Tab::Blame } else { crate::blame::Tab::History });
+                return true;
+            }
             '[' | ']' => {
                 self.changes_step(if c == ']' { 1 } else { -1 });
                 return true;
@@ -1140,6 +1158,8 @@ impl App {
             (&TIDY_KEYS, "key.tidy")
         } else if self.reflog.is_some() {
             (&REFLOG_KEYS, "key.reflog")
+        } else if self.blame.is_some() {
+            (&BLAME_KEYS, "key.blame_screen")
         } else if self.trial.is_some() {
             (&TRIAL_KEYS, "key.trial")
         } else if self.reorder.is_some() {
@@ -1403,7 +1423,12 @@ impl App {
         // The keys of the screen in front are tried first, and a screen over a
         // view takes every key: the list names only the global ones that work.
         let (keys, head) = self.keys_of();
-        let over = self.band.is_some() || self.tidy.is_some() || self.reflog.is_some() || self.trial.is_some() || self.reorder.is_some();
+        let over = self.band.is_some()
+            || self.tidy.is_some()
+            || self.reflog.is_some()
+            || self.blame.is_some()
+            || self.trial.is_some()
+            || self.reorder.is_some();
         if !over {
             lines.extend(michi_core::keyhelp::global_here(&GLOBAL_KEYS, keys).iter().map(|(k, w)| bind(k, self.tr(w))));
         }
@@ -1443,6 +1468,7 @@ impl App {
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
             (Mode::Main, c) if self.tidy.is_some() => return self.tidy_key(c),
             (Mode::Main, c) if self.reflog.is_some() => return self.reflog_key(c),
+            (Mode::Main, c) if self.blame.is_some() => return self.blame_key(c),
             (Mode::Main, c) if self.trial.is_some() => return self.trial_key(c),
             (Mode::Main, c) if self.reorder.is_some() => return self.reorder_key(c),
             (Mode::Main, c) if self.bare_act(c) => {}
@@ -1475,6 +1501,8 @@ impl App {
             's' => self.open_picker(PickKind::Stash),
             'M' => self.open_remotes(),
             'L' => self.open_reflog(),
+            'B' => self.open_blame(crate::blame::Tab::Blame),
+            'H' => self.open_blame(crate::blame::Tab::History),
             't' => self.ask_revert(),
             'R' => self.ask_reset(),
             'C' => self.ask_cherry(),
@@ -1601,6 +1629,9 @@ impl App {
         if self.reflog.is_some() {
             return self.reflog_named(name);
         }
+        if self.blame.is_some() {
+            return self.blame_named(name);
+        }
         if self.reorder.is_some() {
             return self.reorder_named(name);
         }
@@ -1694,7 +1725,7 @@ impl App {
         if self.tidy.take().is_some() {
             return true;
         }
-        if self.reflog.take().is_some() {
+        if self.reflog.take().is_some() || self.blame.take().is_some() {
             return true;
         }
         if self.trial.take().is_some() {
@@ -1878,6 +1909,7 @@ pub(crate) mod tests {
             ("key.asking", &BAND_KEYS[..]),
             ("key.tidy", &TIDY_KEYS[..]),
             ("key.reflog", &REFLOG_KEYS[..]),
+            ("key.blame_screen", &BLAME_KEYS[..]),
             ("key.trial", &TRIAL_KEYS[..]),
             ("key.reorder", &REORDER_KEYS[..]),
         ]);

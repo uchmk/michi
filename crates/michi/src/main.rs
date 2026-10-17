@@ -9,6 +9,8 @@
 mod act;
 mod app;
 mod avatar;
+mod blame;
+mod blame_ui;
 mod bugreport;
 mod changes;
 mod changes_ui;
@@ -491,6 +493,7 @@ impl eframe::App for Michi {
         reply_ui::show(&ctx, &mut self.app);
         tidy_ui::show(&ctx, &mut self.app);
         reflog_ui::show(&ctx, &mut self.app);
+        blame_ui::show(&ctx, &mut self.app);
         trial_ui::show(&ctx, &mut self.app);
         reorder_ui::show(&ctx, &mut self.app);
         // A tab leaves the settings and the key list for its view; the gear

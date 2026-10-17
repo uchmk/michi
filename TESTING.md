@@ -1016,3 +1016,20 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 101.3 | Same with an Azure DevOps remote (`https://dev.azure.com/org/proj/_git/repo`, and the ssh form on `ssh.dev.azure.com` with `v3/org/proj/repo`) | Azure's create pull request page opens with `feat/x` as the source | | [ ] |
 | 101.4 | Same with a GitHub remote | The GitHub compare page opens as before | | [ ] |
 | 101.5 | Same with a self-hosted or unknown host (`https://git.example.com/a/b.git`) | An error toast says the remote is not on GitHub, GitLab, Bitbucket or Azure DevOps; nothing opens | | [ ] |
+
+## 37. Blame and per-file history (`B`, `H`)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 37.1 | In the graph, select a commit and press `B` | A screen opens over the graph: `Blame: <first file of the commit>`, `As of <id>`, one row per line with the commit, who, how long ago, the line number and the line; it reads at once and the window stays responsive on a long file | [ ] |
+| 37.2 | Click a file in the detail (so it is the one scrolled to), select another commit that has it, press `B` | The screen is of the file the detail was on | [ ] |
+| 37.3 | Press `j` `k`, PageDown, PageUp, Home, End | The selection moves and stops at the ends; the screen follows it (22 rows) and shows `n / total` | [ ] |
+| 37.4 | Press `Tab` (or `H`, then `B`) | The list switches between blame and the file's history (commit, who, ago, subject, newest first); each tab keeps its own selection | [ ] |
+| 37.5 | Open the history of a file that was renamed in the past | The commits from before the rename are listed too; the blame rows of old lines name the commit that wrote them | [ ] |
+| 37.6 | Press Enter on a row | The screen closes, the graph is in front and that row's commit is selected (reading on to it when it is far down) | [ ] |
+| 37.7 | Click a row once, then again | The first click selects, the second goes to the commit; a click outside closes the screen; Esc closes it | [ ] |
+| 37.8 | In the `2` view, change a file on disk (add a line, do not commit), select it and press `B` | The new line reads `-------` / `not committed` in the waiting colour; Enter on it says `This line is not committed yet` and stays | [ ] |
+| 37.9 | Press `B` on a file deleted by the commit, then with nothing selected | A toast says there is nothing to blame (`... was deleted here`) or that no file is selected; no screen opens | [ ] |
+| 37.10 | Select a worktree's uncommitted row in the graph and press `B` | The file is blamed as that worktree has it | [ ] |
+| 37.11 | Check the keybar and `?` over the screen; switch EN and JA | The keybar names j k, B H Tab, Enter, PageDown PageUp, Esc; global keys are not listed; text reads well in both languages and long lines end in `…` | [ ] |
+| 37.12 | With Claude writing in the worktree, press `B` | Nothing changes in the worktree and no `index.lock` appears (a read only) | [ ] |
