@@ -85,6 +85,8 @@ struct Michi {
     place: Option<ito_common::window::Tracker>,
     /// What the script asked for in `raw_input_hook`, done in the frame.
     todo: Vec<Do>,
+    /// The keymap.toml / config.toml warnings already said in a toast.
+    warned: Vec<String>,
 }
 
 impl Michi {
@@ -397,6 +399,15 @@ impl eframe::App for Michi {
             let text = self.app.tr("toast.keymap_saved").replace("{}", &n.to_string());
             self.app.say(text);
         }
+        // What keymap.toml and config.toml could not be read as, said once each time it changes.
+        let warn: Vec<String> = [&self.app.prefs.keymap_warn, &self.app.prefs.notify_warn].into_iter().flatten().cloned().collect();
+        if warn != self.warned {
+            if let Some(first) = warn.first().filter(|_| !warn.iter().all(|w| self.warned.contains(w))) {
+                let text = self.app.tr("toast.config_warn").replace("{}", &warn.len().to_string()).replace("{1}", first);
+                self.app.say(text);
+            }
+            self.warned = warn;
+        }
         // In front, the worktrees are watched closely; behind, now and then.
         let front = ctx.input(|i| i.viewport().focused).unwrap_or(true);
         self.app.front = front;
@@ -578,7 +589,7 @@ fn main() -> eframe::Result {
                 r.watch(cc.egui_ctx.clone());
                 r
             });
-            Ok(Box::new(Michi { app, front: true, script, place: saved.tracker(), todo: Vec::new() }))
+            Ok(Box::new(Michi { app, front: true, script, place: saved.tracker(), todo: Vec::new(), warned: Vec::new() }))
         }),
     )
 }

@@ -323,3 +323,7 @@
 ## 24. Command palette
 
 - [ ] **24.1** Press `Ctrl+Shift+P` (or click the field in the title bar); type `fet`, `branch`, `wor`; arrows or `Ctrl+N` / `Ctrl+P` move, Enter picks; press Esc; open it over the Settings; open it while the branch box is open → A box at the top lists the keymap's commands, the tabs and the keys of the view in front, each with its key at the right; typing narrows and lights the letters; Enter does what the key does (a fetch starts, the branch box opens, the Worktrees tab shows); Esc or a click outside closes it; over the settings a pick returns to the main window; with the branch box open it does not open 〔未訳〕
+
+## 25. Warnings from keymap.toml / config.toml
+
+- [ ] **25.1** Write a bad line into keymap.toml (an unknown key name), save it while michi is open; then fix it → A toast names the number of warnings and the first one; it is not said again until the warnings change; fixing the file says nothing 〔未訳〕

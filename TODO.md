@@ -90,7 +90,7 @@
   (`ito-keymap`, `ito-keys`), the key list (`ito-help`), notifications and the Notifications page (`ito-notify`), F12 bug report
   (`ito-bugreport`), window place saved (`ito_common::window`), TESTING-CHECKS.md by `ito-testcheck`, command palette `Ctrl+Shift+P` (`ito-palette`).
   - [ ] The branch / tag / stash `Picker` and the `Band` confirmation are not moved onto `ito-palette` / ito's confirm: only after the owner answers （要確認: #26）
-  - [ ] Show `keymap_warn` / `notify_warn` (the warnings read from keymap.toml and config.toml) to the user, not only to the log
+  - [x] Show `keymap_warn` / `notify_warn` (the warnings read from keymap.toml and config.toml) to the user as a toast (v0.45.0, TESTING 25.1)
 
 ## Owner
 
