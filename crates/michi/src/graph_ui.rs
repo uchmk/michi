@@ -283,6 +283,8 @@ enum Act {
     More,
     /// The header's toggle clicked.
     Fold,
+    /// The header's "Legend" button clicked (#118).
+    Legend,
 }
 
 /// Thin placeholder rows while the first batch of the history has not come
@@ -574,9 +576,16 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
         hp.text(pos2(date_x, hm), Align2::LEFT_CENTER, app.tr("col.date"), font.clone(), c.dim);
     }
     hp.text(pos2(hash_x, hm), Align2::LEFT_CENTER, app.tr("col.commit"), font, c.dim);
+    let mut legend_right = author_x - PAD;
     if let Some(resp) = fold_toggle(ui, app, pos2(author_x - PAD, hm), subj_x + 80.0, live) {
+        legend_right = resp.rect.left() - 6.0;
         if live && resp.clicked() {
             acts.push(Act::Fold);
+        }
+    }
+    if let Some(resp) = legend_button(ui, app, pos2(legend_right, hm), subj_x + 80.0, live) {
+        if live && resp.clicked() {
+            acts.push(Act::Legend);
         }
     }
 
@@ -649,6 +658,7 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
             Act::Toggle(k) => app.graph.toggle_group(k),
             Act::More => app.more(),
             Act::Fold => app.fold(),
+            Act::Legend => app.legend = true,
         }
     }
     if let Some((k, key)) = menu_pick {
@@ -677,6 +687,27 @@ pub fn reveal(scroll: f32, view: f32, row: f32, k: u32) -> f32 {
     } else {
         scroll
     }
+}
+
+/// The header's "Legend" button (#118), right-aligned to `right_center`;
+/// `None` when it would run left of `left`.
+fn legend_button(ui: &mut Ui, app: &App, right_center: Pos2, left: f32, live: bool) -> Option<Response> {
+    let c = ito_theme::colors();
+    let label = ui.fonts_mut(|f| f.layout_no_wrap(app.tr("legend.button").to_owned(), FontId::proportional(11.0), c.dim));
+    let w = 7.0 + label.size().x + 7.0;
+    let r = Rect::from_min_max(pos2(right_center.x - w, right_center.y - 9.0), pos2(right_center.x, right_center.y + 9.0));
+    if r.left() < left {
+        return None;
+    }
+    let resp = ui.interact(r, Id::new("graph-legend"), Sense::CLICK);
+    let hot = live && resp.hovered();
+    let p = ui.painter();
+    p.rect_stroke(r, CornerRadius::same(9), Stroke::new(1.0, if hot { c.run } else { c.border }), StrokeKind::Inside);
+    p.galley(pos2(r.left() + 7.0, right_center.y - label.size().y / 2.0), label, if hot { c.run } else { c.dim });
+    if hot {
+        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+    }
+    Some(resp)
 }
 
 /// The header's "Fold PRs" toggle, right-aligned to `right_center`; `None`

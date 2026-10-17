@@ -50,6 +50,7 @@ pub mod overlap;
 pub mod patch;
 pub mod paths;
 pub mod pr;
+pub mod practice;
 pub mod prcreate;
 pub mod predict;
 pub mod queue;

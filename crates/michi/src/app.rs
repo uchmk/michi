@@ -384,6 +384,10 @@ pub struct App {
     pub tidy: Option<crate::tidy::Tidy>,
     pub reflog: Option<crate::reflog::Reflog>,
     pub stats: Option<crate::stats::Statistics>,
+    /// The graph's legend (#118), while open; any key closes it.
+    pub legend: bool,
+    /// The practice repository being made (#117): its folder, or why not.
+    pub practicing: Option<std::sync::mpsc::Receiver<Result<std::path::PathBuf, String>>>,
     pub ready: Option<crate::ready::Ready>,
     /// The sign-in help panel (`K`), while open.
     pub auth: Option<crate::auth::Auth>,
@@ -486,6 +490,8 @@ impl App {
             tidy: None,
             reflog: None,
             stats: None,
+            legend: false,
+            practicing: None,
             ready: None,
             auth: None,
             auth_failed: None,
@@ -1595,6 +1601,10 @@ impl App {
             (Mode::Main, _) if self.picker.is_some() || self.new_work.is_some() || self.pr_form.is_some() || self.reply.is_some() => {
                 return false
             }
+            (Mode::Main, _) if self.legend => {
+                self.legend = false;
+                return true;
+            }
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
             (Mode::Main, c) if self.tidy.is_some() => return self.tidy_key(c),
             (Mode::Main, c) if self.ready.is_some() => return self.ready_key(c),
@@ -1810,6 +1820,10 @@ impl App {
         if self.reflog.is_some() {
             return self.reflog_named(name);
         }
+        if self.legend {
+            self.legend = false;
+            return true;
+        }
         if self.stats.is_some() {
             return self.stats_named(name);
         }
@@ -1902,6 +1916,9 @@ impl App {
         }
         if self.pr_form.as_ref().is_some_and(|f| !f.busy) {
             self.pr_form = None;
+            return true;
+        }
+        if std::mem::take(&mut self.legend) {
             return true;
         }
         if self.band.take().is_some() {

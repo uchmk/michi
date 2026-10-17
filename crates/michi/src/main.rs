@@ -33,6 +33,7 @@ mod images;
 mod issues;
 mod keymap;
 mod land;
+mod legend_ui;
 mod mcp;
 mod motion;
 mod newwork;
@@ -173,6 +174,23 @@ impl Michi {
                         self.app.say_for(text, 10);
                     }
                 }
+            }
+        }
+        if let Some(rx) = &self.app.practicing {
+            match rx.try_recv() {
+                Ok(Ok(dir)) => {
+                    self.app.practicing = None;
+                    let text = self.app.tr("practice.done").replace("{}", &dir.display().to_string());
+                    self.app.say_for(text, 8);
+                    self.app.open_req = Some(dir);
+                }
+                Ok(Err(e)) => {
+                    self.app.practicing = None;
+                    let text = self.app.tr("practice.failed").replace("{}", &e);
+                    self.app.say_for(text, 10);
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => ctx.request_repaint_after(std::time::Duration::from_millis(100)),
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => self.app.practicing = None,
             }
         }
         if let Some(dir) = self.app.open_req.take() {
@@ -671,6 +689,7 @@ impl eframe::App for Michi {
         tidy_ui::show(&ctx, &mut self.app);
         reflog_ui::show(&ctx, &mut self.app);
         stats_ui::show(&ctx, &mut self.app);
+        legend_ui::show(&ctx, &mut self.app);
         ready_ui::show(&ctx, &mut self.app);
         auth_ui::show(&ctx, &mut self.app);
         blame_ui::show(&ctx, &mut self.app);
