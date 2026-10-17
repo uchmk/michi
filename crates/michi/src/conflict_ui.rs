@@ -20,7 +20,6 @@ use crate::act;
 use crate::app::App;
 use crate::conflicts::{places, Place, Tag};
 use crate::detail_ui::left_cut;
-use crate::graph_ui::clipped;
 use crate::ui::kbd;
 
 const BAR_H: f32 = 40.0;
@@ -775,6 +774,10 @@ impl Draw<'_> {
         let pointer = self.pointer.filter(|at| br.contains(*at));
         let mut out = None;
         let mut field = None;
+        // Runs are numbered by their order in the frame, so a scroll or a change of the places lets the selection go.
+        crate::select::begin(&format!("{}|{}|{}|{}", paths::key(&self.cf.wt), scroll as i32, items.len(), total as i32));
+        // Under the places' own clicks: a drag over their text picks it up.
+        let grab = ui.interact(br, Id::new("cf-select"), Sense::click_and_drag());
         for it in &items {
             let r = Rect::from_min_size(pos2(br.left() + PAD_X, br.top() + it.y - scroll), vec2(width, it.h));
             if let Kind::Done = it.kind {
@@ -809,6 +812,12 @@ impl Draw<'_> {
                 out = a;
             }
         }
+        if self.live {
+            if let Some(text) = crate::select::drive(&grab, br).copy {
+                ctx.copy_text(text);
+            }
+        }
+        crate::select::paint();
         (out, field)
     }
 
@@ -1285,7 +1294,22 @@ fn marked(ui: &Ui, p: &Painter, left_center: Pos2, text: &str, ranges: &[Range<u
     put(&mut job, &text[at..], Color32::TRANSPARENT);
     job.wrap = TextWrapping::truncate_at_width(width);
     let g = ui.fonts_mut(|f| f.layout_job(job));
-    p.galley(pos2(left_center.x, left_center.y - g.size().y / 2.0), g, c.fg);
+    let at = pos2(left_center.x, left_center.y - g.size().y / 2.0);
+    crate::select::note(p, at, &g);
+    p.galley(at, g, c.fg);
+}
+
+/// `text` from `left_center`, cut to `width`; it can be picked up with the mouse.
+fn clipped(ui: &Ui, p: &Painter, left_center: Pos2, text: &str, font: FontId, color: Color32, width: f32) {
+    if width < 8.0 || text.is_empty() {
+        return;
+    }
+    let mut job = LayoutJob::simple_singleline(text.to_owned(), font, color);
+    job.wrap = TextWrapping::truncate_at_width(width);
+    let g = ui.fonts_mut(|f| f.layout_job(job));
+    let at = pos2(left_center.x, left_center.y - g.size().y / 2.0);
+    crate::select::note(p, at, &g);
+    p.galley(at, g, color);
 }
 
 /// A note in italics from `left_center`, cut to `width`.
@@ -1391,6 +1415,23 @@ fn flow_h<T>(ui: &Ui, buttons: &[(&str, &str, T)], width: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn texts_are_noted_for_a_selection_only_in_the_body() {
+        let ctx = egui::Context::default();
+        let mut out = ctx.run_ui(Default::default(), |ui| {
+            let p = ui.painter().clone();
+            // Outside a frame of the body nothing is kept.
+            clipped(ui, &p, pos2(10.0, 10.0), "side", FontId::monospace(12.0), Color32::WHITE, 200.0);
+            crate::select::begin("t");
+            clipped(ui, &p, pos2(10.0, 30.0), "line", FontId::monospace(12.0), Color32::WHITE, 200.0);
+            marked(ui, &p, pos2(10.0, 50.0), "marked", &[0..2], Color32::RED, 200.0);
+            crate::select::paint();
+            clipped(ui, &p, pos2(10.0, 70.0), "after", FontId::monospace(12.0), Color32::WHITE, 200.0);
+        });
+        out.textures_delta.clear();
+        assert_eq!(crate::select::text(), None);
+    }
 
     #[test]
     fn rich_text_colours_each_part() {

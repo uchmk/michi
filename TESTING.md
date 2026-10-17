@@ -483,3 +483,14 @@ files under `refs/michi/backup/<time>` first.
 | 32.2 | Double-click a word, then triple-click a line; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] |
 | 32.3 | Click a file row, a worktree chip, the amend switch and Commit | Each still does what it did; an empty click in the diff lets the selection go | | [ ] |
 | 32.4 | Select a diff line and pick another file or switch the worktree | The selection is gone; the commit view's selection is not drawn here | | [ ] |
+
+## 33. 衝突の画面の文字の選択とコピー（ito-select、`4`）
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 33.1 | Open a conflict (`4`); drag the mouse over some lines of the ours and theirs columns, and the result | The text under the drag is lit in the selection colour; letting go copies it (paste it in a terminal); line numbers are not picked up | | [ ] |
+| 33.2 | Double-click a word, then triple-click a line in a side, in the context lines and in the result; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] |
+| 33.3 | In a rebase, drag over the ours / theirs commit lines of the intent | The subject and author are picked up | | [ ] |
+| 33.4 | Click a place, a side's pick button, `base` and the buttons of the result; click an empty place | Each click still does what it did (select the place, choose a side, show the base); an empty click lets the selection go | | [ ] |
+| 33.5 | Start writing a result by hand; drag and double-click inside the text box | The text box selects its own text as before; nothing outside it is lit | | [ ] |
+| 33.6 | Select some lines, then scroll the places or solve a place | The selection is gone (no wrong text stays lit) | | [ ] |
