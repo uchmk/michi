@@ -726,3 +726,11 @@
 - [ ] **70.7** With the network cut, press `f` yourself → The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` → | [ ] 〔未訳〕
 - [ ] **70.8** Start a pull or push while the timer is due → The timer waits; it never interrupts a job → | [ ] 〔未訳〕
 - [ ] **70.9** Switch EN and JA → The keybar's `· failed` / `· 失敗` reads well and fits → | [ ] 〔未訳〕
+
+## 101. Pull request pages on GitLab, Bitbucket and Azure DevOps (#33)
+
+- [ ] **101.1** On a worktree whose remote is a gitlab.com one (group/sub/proj) and branch `feat/x`, press `p` → The browser opens GitLab's new merge request page with the source branch `feat/x` already chosen → | [ ] 〔未訳〕
+- [ ] **101.2** Same with a Bitbucket remote (`https://bitbucket.org/ann/repo.git`) → Bitbucket's new pull request page opens with `feat/x` as the source → | [ ] 〔未訳〕
+- [ ] **101.3** Same with an Azure DevOps remote (`https://dev.azure.com/org/proj/_git/repo`, and the ssh form on `ssh.dev.azure.com` with `v3/org/proj/repo`) → Azure's create pull request page opens with `feat/x` as the source → | [ ] 〔未訳〕
+- [ ] **101.4** Same with a GitHub remote → The GitHub compare page opens as before → | [ ] 〔未訳〕
+- [ ] **101.5** Same with a self-hosted or unknown host (`https://git.example.com/a/b.git`) → An error toast says the remote is not on GitHub, GitLab, Bitbucket or Azure DevOps; nothing opens → | [ ] 〔未訳〕
