@@ -60,6 +60,8 @@ pub struct Prefs {
     /// `[view] density` of config.toml: the height of the graph's and the lists' rows.
     pub density: michi_core::density::Density,
     pub view_warn: Vec<String>,
+    /// `[view] avatars` of config.toml: whether authors' pictures are fetched from GitHub.
+    pub avatars: bool,
     /// The Notifications page's drafts (a webhook's address being typed).
     pub notify_drafts: ito_prefs::Drafts,
     /// The Keys page's search, filter and the keys being pressed.
@@ -92,6 +94,7 @@ impl Prefs {
             open: Default::default(),
             open_warn: Vec::new(),
             density: Default::default(),
+            avatars: true,
             view_warn: Vec::new(),
             notify_drafts: ito_prefs::Drafts::new(),
             keys_edit: ito_prefs::KeysEdit::default(),
@@ -118,7 +121,7 @@ impl Prefs {
             let config = read_config(b);
             (p.notify, p.notify_warn) = NotifyCfg::read(config.as_deref());
             (p.open, p.open_warn) = crate::opencfg::OpenCfg::read(config.as_deref());
-            (p.density, p.view_warn) = crate::viewcfg::read(config.as_deref());
+            p.read_view(config.as_deref());
         }
         p.base = base;
         p
@@ -177,7 +180,7 @@ impl Prefs {
                 Reload::Config(text) => {
                     (self.notify, self.notify_warn) = NotifyCfg::read(text.as_deref());
                     (self.open, self.open_warn) = crate::opencfg::OpenCfg::read(text.as_deref());
-                    (self.density, self.view_warn) = crate::viewcfg::read(text.as_deref());
+                    self.read_view(text.as_deref());
                 }
                 Reload::Failed(e) => self.failed = Some(e),
             }
@@ -251,15 +254,33 @@ impl Prefs {
         });
     }
 
+    /// `[view]` of the config.toml `text`: the density and the avatars.
+    fn read_view(&mut self, text: Option<&str>) {
+        (self.density, self.view_warn) = crate::viewcfg::read(text);
+        let (on, warn) = crate::viewcfg::avatars(text);
+        self.avatars = on;
+        self.view_warn.extend(warn);
+    }
+
+    /// Write `[view] avatars` into config.toml on a thread, then read it again.
+    pub fn avatars_set(&self, on: bool, no_folder: &str) {
+        self.view_set(("avatars", on.to_string()), no_folder);
+    }
+
     /// Write `[view] density` into config.toml on a thread, then read it again.
     pub fn density_set(&self, d: michi_core::density::Density, no_folder: &str) {
+        self.view_set(("density", ito_common::quote(d.key())), no_folder);
+    }
+
+    /// Write one `[view]` key (the value already TOML) on a thread, then read config.toml again.
+    fn view_set(&self, edit: (&'static str, String), no_folder: &str) {
         let (tx, wake) = (self.tx.clone(), self.wake.clone());
         let Some(base) = self.base.clone() else {
             Self::send_back(&tx, &wake, Reload::Failed(no_folder.into()));
             return;
         };
         std::thread::spawn(move || {
-            let r = match write_config(&config_path(&base), &[], &[("density", ito_common::quote(d.key()))], None) {
+            let r = match write_config(&config_path(&base), &[], &[edit], None) {
                 Ok(()) => Reload::Config(read_config(&base)),
                 Err(e) => Reload::Failed(e),
             };

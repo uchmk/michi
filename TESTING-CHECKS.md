@@ -613,3 +613,14 @@
 - [ ] **68.4** Open the diff side by side and unified (narrow the window) → Both layouts show the same colours; wrapped long lines keep them → | [ ] 〔未訳〕
 - [ ] **68.5** Open a big commit (hundreds of files, a huge generated file) → The window does not stall while it loads; a file of over 6000 diff lines, or a line of over 1500 characters, is left plain → | [ ] 〔未訳〕
 - [ ] **68.6** Select diff text with the mouse and copy it → The copied text is the plain text (no colour effects) → | [ ] 〔未訳〕
+
+## 84. Author avatars
+
+- [ ] **84.1** In the graph view (a repository with GitHub commits), look at the author column → Each author has a 16 px round avatar before their name: the GitHub picture for an author whose commit e-mail is a `...@users.noreply.github.com` address (it appears a moment after the rows), else a circle with their initials on a steady colour → | [ ] 〔未訳〕
+- [ ] **84.2** Look at a commit by `github-actions[bot]` or `dependabot[bot]` → The bot shows its GitHub picture and the short `⚙ name` text → | [ ] 〔未訳〕
+- [ ] **84.3** Drag the author column narrower than about 100 px → The avatar goes and the name keeps the whole column; widen it and the avatar comes back → | [ ] 〔未訳〕
+- [ ] **84.4** Open Settings, General, and untick `Fetch pictures from GitHub` → Every picture turns into initials at once, `config.toml` gets `[view]` `avatars = false`, and no `curl` process starts when scrolling (check the task manager) → | [ ] 〔未訳〕
+- [ ] **84.5** Tick it again; or write `avatars = true` in config.toml by hand → Pictures come back without a restart; a non-boolean value shows a warning and counts as on → | [ ] 〔未訳〕
+- [ ] **84.6** Disconnect the network, restart michi and scroll the graph → The window stays responsive (no stall on the UI thread); initials show and the pictures are not retried in a loop → | [ ] 〔未訳〕
+- [ ] **84.7** Switch the theme dark/light and EN/JA in Settings → The initials stay readable on their colours; the Settings text reads in both languages → | [ ] 〔未訳〕
+- [ ] **84.8** Scroll a long history fast → Scrolling stays smooth while pictures arrive; the same author's picture is not fetched twice → | [ ] 〔未訳〕

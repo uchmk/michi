@@ -851,6 +851,7 @@ pub(crate) mod fixture {
             id: id(n),
             parents: parents.iter().map(|&p| id(p)).collect(),
             author: if n == 4 { "github-actions[bot]".into() } else { "michi".into() },
+            email: String::new(),
             time: 1_767_225_600 + n as i64 * 60,
             subject: subject.into(),
         }

@@ -161,7 +161,7 @@ All wait for the owner; none is started.
 - [ ] First-run tour and empty states（要確認: #81）
 - [ ] Key hints on hover（要確認: #82）
 - [ ] Keys whose meaning changes per screen（要確認: #83）
-- [ ] Author avatars（要確認: #84）
+- [x] Author avatars（要確認: #84）
 - [ ] Bundled monospace font（要確認: #85）
 - [ ] Row density (compact / cozy)（要確認: #86）
 - [ ] Diff minimap and next change（要確認: #87）

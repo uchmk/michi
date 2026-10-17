@@ -1629,6 +1629,8 @@ dependencies = [
  "num-traits",
  "png",
  "tiff",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -2116,6 +2118,7 @@ dependencies = [
  "chrono",
  "eframe",
  "egui",
+ "image",
  "ito-bugreport",
  "ito-common",
  "ito-confirm",

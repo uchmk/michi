@@ -124,6 +124,7 @@ mod tests {
             id: Oid::parse(&"ab".repeat(20)).unwrap(),
             parents: Vec::new(),
             author: "Ann".into(),
+            email: String::new(),
             time: 0,
             subject: "Hello".into(),
         };

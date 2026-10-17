@@ -16,13 +16,15 @@ pub struct Commit {
     pub id: Oid,
     pub parents: Vec<Oid>,
     pub author: String,
+    /// The author's e-mail address (what names their GitHub avatar).
+    pub email: String,
     /// When it was written (the author's date), in seconds since 1970 UTC.
     pub time: i64,
     /// The first line of the message.
     pub subject: String,
 }
 
-const FORMAT: &str = "--format=%H%n%P%n%an%n%at%n%s";
+const FORMAT: &str = "--format=%H%n%P%n%an%n%ae%n%at%n%s";
 
 /// Where the history starts: every branch, remote branch and tag, and the
 /// commits `tips` (the worktrees' heads, detached ones too).
@@ -82,13 +84,14 @@ fn parse(record: &[u8]) -> Option<Commit> {
     if text.is_empty() {
         return None;
     }
-    let mut lines = text.splitn(5, '\n');
+    let mut lines = text.splitn(6, '\n');
     let id = Oid::parse(lines.next()?)?;
     let parents = lines.next()?.split(' ').filter(|p| !p.is_empty()).filter_map(Oid::parse).collect();
     let author = lines.next()?.to_owned();
+    let email = lines.next()?.to_owned();
     let time = lines.next()?.trim().parse().unwrap_or(0);
     let subject = lines.next().unwrap_or("").trim_end_matches('\n').to_owned();
-    Some(Commit { id, parents, author, time, subject })
+    Some(Commit { id, parents, author, email, time, subject })
 }
 
 /// How many commits the whole history has (what [`Reader`] would read).
@@ -159,13 +162,15 @@ mod tests {
     fn records_are_read() {
         let a = "a".repeat(40);
         let b = "b".repeat(40);
-        let c = parse(format!("{a}\n{b} {b}\nyuu\\x 名前\n1767225600\nMerge branch 'feat' — ok").as_bytes()).unwrap();
+        let c = parse(format!("{a}\n{b} {b}\nyuu\\x 名前\nyuu@users.noreply.github.com\n1767225600\nMerge branch 'feat' — ok").as_bytes())
+            .unwrap();
         assert_eq!(c.id.to_string(), a);
         assert_eq!(c.parents.len(), 2);
         assert_eq!(c.author, "yuu\\x 名前");
+        assert_eq!(c.email, "yuu@users.noreply.github.com");
         assert_eq!(c.time, 1_767_225_600);
         assert_eq!(c.subject, "Merge branch 'feat' — ok");
-        let root = parse(format!("\n{a}\n\nx\n0\n").as_bytes()).unwrap();
+        let root = parse(format!("\n{a}\n\nx\n\n0\n").as_bytes()).unwrap();
         assert!(root.parents.is_empty());
         assert_eq!(root.subject, "");
         assert_eq!(parse(b""), None);

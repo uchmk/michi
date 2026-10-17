@@ -29,6 +29,7 @@ fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
         (GENERAL, "[clock]"),
         (GENERAL, "[open]"),
         (GENERAL, "density"),
+        (GENERAL, "avatars"),
         (GENERAL, "[view]"),
         (THEME, w.mode),
         (THEME, w.themes),
@@ -75,6 +76,8 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     let open = &prefs.open;
     let density = prefs.density;
     let mut density_new = None;
+    let avatars = prefs.avatars;
+    let mut avatars_new = None;
     let (common, themes, base) = (&prefs.common, &prefs.themes, prefs.base.as_deref());
     let out = ito_prefs::show(ui, ito_theme::colors(), &mut prefs.state, &nav, keys, |ui, page, l| match page {
         GENERAL => {
@@ -105,6 +108,13 @@ pub fn show(ui: &mut Ui, app: &mut App) {
                         }
                     }
                 });
+            });
+            section(ui, l, tr("settings.avatars"), |ui| {
+                ui.label(egui::RichText::new(tr("settings.avatars_lead")).color(l.c.dim));
+                let mut on = avatars;
+                if ui.checkbox(&mut on, tr("settings.avatars_check")).changed() {
+                    avatars_new = Some(on);
+                }
             });
             section(ui, l, tr("settings.open"), |ui| {
                 ui.label(egui::RichText::new(tr("settings.open_lead")).color(l.c.dim));
@@ -170,6 +180,9 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     }
     if let Some(d) = density_new {
         app.prefs.density_set(d, no_folder);
+    }
+    if let Some(on) = avatars_new {
+        app.prefs.avatars_set(on, no_folder);
     }
     app.prefs.notify_edit(notify_edits, webhooks, no_folder);
     if !key_edits.is_empty() {

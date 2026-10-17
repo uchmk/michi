@@ -24,6 +24,10 @@ use michi_core::wip::Wip;
 const TOOL_H: f32 = 38.0;
 /// The columns' names.
 const HEAD_H: f32 = 24.0;
+/// The diameter of an author's avatar, and the narrowest author column that has one.
+const AVATAR: f32 = 16.0;
+const AVATAR_MIN_COL: f32 = 100.0;
+
 /// The narrowest an author, date or commit column can be dragged to.
 const COL_MIN: f32 = 40.0;
 const PAD: f32 = 8.0;
@@ -470,7 +474,14 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
         if !compact {
             let author = bot(&commit.author);
             let shown = author.as_deref().unwrap_or(&commit.author);
-            clipped(ui, &p, pos2(author_x, mid), shown, FontId::proportional(12.0), dim, author_w - PAD);
+            // A round avatar before the name when the column is wide enough for both.
+            let pic = author_w >= AVATAR_MIN_COL;
+            let text_x = if pic { author_x + AVATAR + 5.0 } else { author_x };
+            if pic {
+                let picture = if app.prefs.avatars { app.avatars.picture(&ctx, &commit.email) } else { None };
+                crate::avatar::draw(&p, pos2(author_x + AVATAR / 2.0, mid), AVATAR, picture, &commit.author);
+            }
+            clipped(ui, &p, pos2(text_x, mid), shown, FontId::proportional(12.0), dim, author_w - PAD - (text_x - author_x));
             if author.is_some() {
                 let ar = Rect::from_min_max(pos2(author_x, rr.top()), pos2(date_x - PAD, rr.bottom()));
                 ui.interact(ar, Id::new(("graph-bot", k)), Sense::hover()).on_hover_text(&commit.author);

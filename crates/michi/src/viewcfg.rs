@@ -9,6 +9,7 @@ use serde::Deserialize;
 #[serde(default)]
 struct View {
     density: Option<String>,
+    avatars: Option<toml::Value>,
 }
 
 #[derive(Deserialize, Default)]
@@ -32,9 +33,67 @@ pub fn read(text: Option<&str>) -> (Density, Vec<String>) {
     }
 }
 
+/// `[view] avatars` (true unless the file says `false`), with what to warn of.
+pub fn avatars(text: Option<&str>) -> (bool, Vec<String>) {
+    match text.map(toml::from_str::<File>) {
+        Some(Ok(File { view: View { avatars: Some(v), .. } })) => match v.as_bool() {
+            Some(b) => (b, Vec::new()),
+            None => (true, vec!["config.toml: [view] avatars is not true or false".to_owned()]),
+        },
+        _ => (true, Vec::new()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn avatars_are_on_unless_turned_off() {
+        assert_eq!(avatars(None), (true, vec![]));
+        assert_eq!(
+            avatars(Some(
+                "[view]
+density = \"cozy\"
+"
+            )),
+            (true, vec![])
+        );
+        assert_eq!(
+            avatars(Some(
+                "[view]
+avatars = false
+"
+            )),
+            (false, vec![])
+        );
+        assert!(
+            avatars(Some(
+                "[view]
+avatars = true
+density = \"cozy\"
+"
+            ))
+            .0
+        );
+        let (on, warn) = avatars(Some(
+            "[view]
+avatars = \"no\"
+",
+        ));
+        assert!(on && warn.len() == 1);
+        // A bad value for avatars does not hide the density.
+        assert_eq!(
+            read(Some(
+                "[view]
+avatars = 3
+density = \"cozy\"
+"
+            ))
+            .0,
+            Density::Cozy
+        );
+    }
 
     #[test]
     fn density_is_read_or_defaulted() {
