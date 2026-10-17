@@ -36,6 +36,7 @@ impl App {
             && self.band.is_none()
             && self.picker.is_none()
             && self.new_work.is_none()
+            && self.pr_form.is_none()
             && self.reply.is_none()
             && self.tidy.is_none()
             && self.reflog.is_none()

@@ -1010,3 +1010,17 @@
 - [ ] **241.8** Put a token in an https remote URL (`https://user:token@github.com/o/r.git`) and open the panel → Neither the token nor the user name is shown anywhere in the panel or the toast 〔未訳〕
 - [ ] **241.9** Press `Esc`, or click outside the panel; open it again and press `?` → The panel closes; the keybar and `?` list `1-9` and `Esc` in the panel 〔未訳〕
 - [ ] **241.10** Switch EN and JA with the panel open → Every line (cause, help text, facts, command notes, keys) is in the chosen language; the commands stay as typed 〔未訳〕
+
+## 234. Creating a pull request (`P`, #34)
+
+- [ ] **234.1** In the `3` view select a worktree whose branch has commits trunk lacks and press `P` → A form opens at the top: the title is the last commit subject, the body lists the commit subjects, the base is the trunk, the draft box is off; the title box has focus 〔未訳〕
+- [ ] **234.2** Select a branch with no upstream → The form says the branch will be pushed to `<remote>` first; Ctrl+Enter shows a second line asking to confirm and the button turns to `Push and create`; `Cancel` goes back; nothing was pushed yet 〔未訳〕
+- [ ] **234.3** Confirm with a second Ctrl+Enter (or the button) on a throwaway branch of a repository you own → The window stays responsive while it works; the branch is pushed with `-u`, a pull request is made, and the form shows its address with Open, Copy and Close; a toast names the address and it is on the clipboard 〔未訳〕
+- [ ] **234.4** Click Open, then Copy, then Close → The browser opens the pull request; a toast says copied; the form closes 〔未訳〕
+- [ ] **234.5** Tick draft, make a pull request on a branch that already has an upstream → No push line; the pull request on GitHub is a draft 〔未訳〕
+- [ ] **234.6** Empty the title or the base and press Ctrl+Enter → A toast says one is needed; nothing runs 〔未訳〕
+- [ ] **234.7** Run with `gh` off the PATH → A toast says gh was not found and where to get it; the form stays open and editable 〔未訳〕
+- [ ] **234.8** Run after `gh auth logout` → A toast points to `gh auth login`; the form stays open 〔未訳〕
+- [ ] **234.9** Make a pull request for a branch that already has one → A toast carries gh's first line; the form stays open 〔未訳〕
+- [ ] **234.10** Press Esc, or click outside, while the form is open and idle; press `P` on a row without a branch → The form closes; the toast says the row has no branch 〔未訳〕
+- [ ] **234.11** Check the keybar and `?` in the `3` view; switch EN and JA → `P` Create a pull request is listed; the form reads well in both 〔未訳〕

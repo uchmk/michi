@@ -334,6 +334,18 @@ pub enum Task {
     Markers {
         wt: PathBuf,
     },
+    /// Reads what the pull request form of `branch` starts with.
+    PrDraft {
+        wt: PathBuf,
+        branch: String,
+        base: String,
+    },
+    /// Creates the pull request `req` with `gh` (pushing the branch first when
+    /// the request says so).
+    CreatePr {
+        wt: PathBuf,
+        req: michi_core::prcreate::Request,
+    },
     /// Opens the pull request page of `branch` on GitHub in the browser.
     OpenPr {
         wt: PathBuf,
@@ -514,6 +526,8 @@ impl Task {
             | Task::Reply { .. }
             | Task::NewWork { .. } => "tsumugi",
             Task::OpenPr { .. } => "remote",
+            Task::PrDraft { .. } => "log",
+            Task::CreatePr { .. } => "gh pr create",
             Task::OpenIn { .. } => "open",
             Task::External { .. } => "mergetool",
             Task::AskRerere { .. } => "config --get",
@@ -546,6 +560,10 @@ pub enum Acted {
     Reverted(Reverted),
     /// A patch, to go to the clipboard.
     Patch(String),
+    /// What the pull request form starts with.
+    PrDraft(michi_core::prcreate::Draft),
+    /// The address of the pull request that was made.
+    PrUrl(String),
     /// What an applied patch changed.
     Patched(michi_core::patch::Summary),
     Reset(michi_core::reset::Reset),
@@ -679,6 +697,8 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Abort { wt, .. } => conflict::abort(wt).map(Acted::Kept),
         Task::External { wt, path } => external::open(wt, path).map(Acted::Opened),
         Task::NewWork { repo, plans } => plans.iter().try_for_each(|p| handoff::new_work(repo, p)).map(|()| Acted::Done),
+        Task::PrDraft { wt, branch, base } => michi_core::prcreate::defaults(wt, branch, base).map(Acted::PrDraft),
+        Task::CreatePr { wt, req } => michi_core::prcreate::create(wt, req).map(Acted::PrUrl),
         Task::OpenPr { wt, branch } => michi_core::pr::open(wt, branch).map(|_| Acted::Done),
         Task::OpenIn { wt, command, .. } => michi_core::openin::open(command, wt).map(|()| Acted::Done),
         Task::Focus { session } => handoff::focus(*session).map(|()| Acted::Done),
@@ -908,6 +928,10 @@ impl App {
                 self.conflict_unpick(wt, path);
                 (failed(self, &e), 10)
             }
+            (Task::PrDraft { .. }, Err(e)) => (failed(self, &e), 8),
+            (Task::CreatePr { .. }, Err(e)) => self.pr_failed(&e),
+            (Task::PrDraft { wt, branch, base }, Ok(Acted::PrDraft(d))) => return self.pr_draft_found(wt, branch, base, d),
+            (Task::CreatePr { .. }, Ok(Acted::PrUrl(url))) => self.pr_created(url),
             (_, Err(e)) => {
                 let text = failed(self, &e);
                 self.last_error = Some(text.clone());
