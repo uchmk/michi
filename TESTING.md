@@ -784,3 +784,14 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 92.4 | Commit in a worktree so the order would change; wait for the table to refresh | The numbers follow the new predictions without a restart | | [ ] |
 | 92.5 | Start a merge in one worktree | The notes go away while the merge is under way and come back after | | [ ] |
 | 92.6 | Switch to JA | The notes read `main へ入れる順 1 / 3`, and the yellow one adds `先に入れた分との衝突 N 箇所` | | [ ] |
+
+## 90. Loading skeletons in the graph
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 90.1 | Open a big repository (tens of thousands of commits) in the graph view | Until the first rows come, thin grey bars with a dot (rows of the graph's height) pulse softly in place of an empty screen; no text yet | | [ ] |
+| 90.2 | Make the read slow (a huge repository or a network drive) and keep looking | After 2 seconds a line `Still reading the history… N s` joins the bars and the seconds count up | | [ ] |
+| 90.3 | Wait for the first batch | The bars and the text go at once and the real rows take their place, with no flicker | | [ ] |
+| 90.4 | Open an empty repository (no commit) | No skeleton stays; the screen says `No commits yet.` | | [ ] |
+| 90.5 | Switch the theme (dark and light), density (compact, cozy) and EN/JA while the bars show | The bars follow the theme and the row height; the text reads in the chosen language | | [ ] |
+| 90.6 | Watch the CPU while the bars pulse | The window repaints about 15 times a second only while waiting and stops when the rows come | | [ ] |

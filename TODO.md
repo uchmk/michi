@@ -167,7 +167,7 @@ All wait for the owner; none is started.
 - [ ] Diff minimap and next change（要確認: #87）
 - [ ] Short animations（要確認: #88）
 - [ ] HiDPI and Windows 11 frame checks（要確認: #89）
-- [ ] Loading skeletons（要確認: #90）
+- [x] Loading skeletons（要確認: #90）
 
 ## What only michi can do (2026-10-17)
 
