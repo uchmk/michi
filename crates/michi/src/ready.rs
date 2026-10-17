@@ -134,14 +134,31 @@ mod tests {
     }
 
     #[test]
+    fn gg_goes_to_the_first_row_and_capital_g_to_the_last() {
+        let mut a = on_table();
+        let last = a.trees.trees.len() - 1;
+        assert!(a.feed('G'));
+        assert_eq!(a.wt_sel, last);
+        assert!(a.feed('g'));
+        assert_eq!(a.wt_sel, last, "one g waits for the second");
+        assert!(a.feed('g'));
+        assert_eq!(a.wt_sel, 0);
+        a.feed('G');
+        a.feed('g');
+        a.feed('j');
+        a.feed('g');
+        assert_ne!(a.wt_sel, 0, "a g and another key are not gg");
+    }
+
+    #[test]
     fn g_says_why_the_trunk_and_a_detached_head_have_no_list() {
         let mut a = on_table();
-        assert!(a.feed('g'));
+        assert!(a.feed('R'));
         assert!(a.ready.is_none());
         assert_eq!(toast(&a), "repo is on main itself: there is nothing to check before merging it");
         a.feed('j');
         a.feed('j');
-        a.feed('g');
+        a.feed('R');
         assert!(a.ready.is_none());
         assert_eq!(toast(&a), "old is on no branch: switch it to one before checking it");
     }
@@ -150,7 +167,7 @@ mod tests {
     fn g_on_a_branch_asks_and_the_facts_open_the_list() {
         let mut a = on_table();
         a.feed('j');
-        assert!(a.feed('g'));
+        assert!(a.feed('R'));
         assert_eq!(toast(&a), "Checking wt against main…");
         let input = Input {
             wt: PathBuf::from("C:/r/wt"),

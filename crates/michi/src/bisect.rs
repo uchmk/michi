@@ -116,14 +116,14 @@ impl App {
         let word = |c: char, key: &'static str| (c, self.tr(key).to_owned());
         match &self.bisect {
             Some(s) if s.testing() => vec![
-                word('g', "strip.bisect_good"),
+                word('y', "strip.bisect_good"),
                 word('x', "strip.bisect_bad"),
                 word('u', "strip.bisect_skip"),
                 word('r', "strip.bisect_run"),
                 word('X', "strip.bisect_reset"),
             ],
             Some(s) if s.first_bad.is_none() => {
-                vec![word('g', "strip.bisect_good"), word('x', "strip.bisect_bad"), word('X', "strip.bisect_reset")]
+                vec![word('y', "strip.bisect_good"), word('x', "strip.bisect_bad"), word('X', "strip.bisect_reset")]
             }
             Some(_) => vec![word('X', "strip.bisect_reset")],
             None if self.bisect_marks.both().is_some() => vec![word('r', "strip.bisect_run"), word('X', "strip.bisect_clear")],
@@ -132,7 +132,7 @@ impl App {
         }
     }
 
-    /// `x` `g` `u` `X` `r` in the graph. Always used.
+    /// `x` `y` `u` `X` `r` in the graph. Always used.
     pub(crate) fn bisect_key(&mut self, c: char) -> bool {
         let Repo::Ready(s) = &self.repo else {
             self.say(self.tr("act.no_tree"));
@@ -141,7 +141,7 @@ impl App {
         let wt = s.top.clone();
         match c {
             'x' => self.bisect_mark(&wt, Mark::Bad),
-            'g' => self.bisect_mark(&wt, Mark::Good),
+            'y' => self.bisect_mark(&wt, Mark::Good),
             'u' => self.bisect_skip(&wt),
             'X' => self.bisect_end(&wt),
             _ => self.bisect_copy(&wt),
@@ -301,7 +301,7 @@ mod tests {
         select_other(&mut a);
         let second = a.graph.selected().unwrap();
         assert_ne!(first, second);
-        assert!(a.feed('g'));
+        assert!(a.feed('y'));
         let band = a.band.as_ref().expect("asks");
         assert!(band.text.contains("checks out"), "{}", band.text);
         let Then::Act(Task::BisectStart { bad, good, .. }) = &band.then else { panic!("{:?}", band.then) };
@@ -312,7 +312,7 @@ mod tests {
     fn the_same_commit_cannot_be_both() {
         let mut a = ready();
         assert!(a.feed('x'));
-        assert!(a.feed('g'));
+        assert!(a.feed('y'));
         assert!(a.band.is_none());
         assert_eq!(a.bisect_marks.good, None);
         assert!(toast(&a).contains("same"), "{}", toast(&a));
@@ -350,7 +350,7 @@ mod tests {
         let text = a.strip_text().unwrap();
         assert!(text.contains("middle") && text.contains('3'), "{text}");
         let keys: Vec<char> = a.strip_actions().iter().map(|(k, _)| *k).collect();
-        assert_eq!(keys, ['g', 'x', 'u', 'r', 'X']);
+        assert_eq!(keys, ['y', 'x', 'u', 'r', 'X']);
         let mut s = state(true);
         s.first_bad = Some(oid('d'));
         s.first_subject = "the culprit".into();
@@ -358,7 +358,7 @@ mod tests {
         assert!(a.strip_text().unwrap().contains("the culprit"));
         assert_eq!(a.strip_actions().iter().map(|(k, _)| *k).collect::<Vec<_>>(), ['X']);
         a.bisect = Some(state(false));
-        assert_eq!(a.strip_actions().iter().map(|(k, _)| *k).collect::<Vec<_>>(), ['g', 'x', 'X']);
+        assert_eq!(a.strip_actions().iter().map(|(k, _)| *k).collect::<Vec<_>>(), ['y', 'x', 'X']);
     }
 
     #[test]

@@ -300,7 +300,7 @@ mod tests {
         let two = Oid::parse(&r.out(&r.repo, &["rev-parse", "HEAD"])).unwrap();
         let by_path = search(&r.repo, &Content { kind: Kind::Path, text: "DOCS".into() }).unwrap();
         assert!(by_path.len() == 1 && by_path.contains(&two), "a part of the path, any case");
-        let all = search(&r.repo, &Content { kind: Kind::Date, text: "2000-01-01..2100-01-01".into() }).unwrap();
+        let all = search(&r.repo, &Content { kind: Kind::Date, text: "2000-01-01..2090-01-01".into() }).unwrap();
         assert!(all.len() >= 2 && all.contains(&two));
         let none = search(&r.repo, &Content { kind: Kind::Date, text: "..2000-01-01".into() }).unwrap();
         assert!(none.is_empty());

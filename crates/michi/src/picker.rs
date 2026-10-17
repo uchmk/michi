@@ -1456,7 +1456,7 @@ mod tests {
     #[test]
     fn g_lists_the_flow_actions_and_a_start_needs_a_name() {
         let mut a = stashed();
-        assert!(a.feed('G'));
+        assert!(a.feed('U'));
         let p = a.picker.as_ref().unwrap();
         assert_eq!(p.kind, Kind::Flow);
         let wt = p.wt.clone();

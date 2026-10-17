@@ -930,6 +930,8 @@ fn help(ui: &mut Ui, app: &mut App, r: Rect) {
 pub fn toast(ui: &mut Ui, app: &App, r: Rect) {
     let (Some((text, _)), Some(left)) = (&app.toast, app.toast_left()) else { return };
     ui.ctx().request_repaint_after(left);
+    // In the graph view the message sits under the detail pane, where the eye is.
+    let r = if app.view == View::Graph && app.mode == Mode::Main { columns(r, app.detail.wide, &app.sizes).detail } else { r };
     let c = ito_theme::colors();
     let p = ui.painter().clone();
     let galley = ui.fonts_mut(|f| f.layout_no_wrap(text.clone(), FontId::proportional(12.5), c.fg));

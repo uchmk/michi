@@ -1612,3 +1612,11 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 272.4 | Press F1 in a wide window, then in a narrow one; scroll with the wheel and the arrow keys | Two columns when wide, one when narrow; both scroll when the list is taller than the card |
 | 272.5 | In the graph, the Changes view and the F1 list press Ctrl+D, Ctrl+U, Alt+J, Alt+K | They move or scroll a page down and up like PageDown / PageUp; the key lists show them |
 
+## 273. Keys: gg / G, Alt+digit, toast
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 273.1 | In the graph and in the Worktrees table press `G`, then `gg` | `G` goes to the last row, `gg` to the first; a `g` followed by another key does nothing |
+| 273.2 | Press Alt+2 in the graph | The second repository tab opens; the view does not change |
+| 273.3 | In the graph trigger a message (`#`) | The toast sits at the foot of the detail pane |
+| 273.4 | Press `U` in the graph and in the Worktrees table; `R` in the table; `x` then `y` in the graph | Gitflow list; the pre-merge check; the bisect marks bad then good |

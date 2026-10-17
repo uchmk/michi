@@ -553,6 +553,8 @@ impl Michi {
             }
             return;
         }
+        // Alt+1.. is a repository tab (the keymap); the digit it types goes nowhere (AltGr is Ctrl+Alt: that types).
+        let alt_held = ctx.input(|i| i.modifiers.alt && !i.modifiers.ctrl);
         let mut events = events.into_iter();
         while let Some(e) = events.next() {
             match e {
@@ -595,6 +597,7 @@ impl Michi {
                         self.app.named(name);
                     }
                 }
+                egui::Event::Text(_) if alt_held => {}
                 egui::Event::Text(t) => {
                     let mut chars = t.chars();
                     while let Some(c) = chars.next() {

@@ -100,11 +100,11 @@ impl View {
                 ("H", "key.file_history"),
                 ("Y", "key.copy_patch"),
                 ("#", "key.copy_hash"),
-                ("G", "key.flow"),
+                ("U", "key.flow"),
                 ("I", "key.issue"),
                 ("Ctrl+V", "key.apply_patch"),
                 ("w", "key.ignore_space"),
-                ("x g", "key.bisect_mark"),
+                ("x y", "key.bisect_mark"),
                 ("u", "key.bisect_skip"),
                 ("r", "key.bisect_run"),
                 ("X", "key.bisect_reset"),
@@ -154,8 +154,8 @@ impl View {
                 ("y", "key.turns"),
                 ("u", "key.submodules"),
                 ("v", "key.move_changes"),
-                ("G", "key.flow"),
-                ("g", "key.ready"),
+                ("U", "key.flow"),
+                ("R", "key.ready"),
             ],
             View::Conflict => &[
                 ("] [", "key.place"),
@@ -210,7 +210,7 @@ pub const BAND_KEYS: [(&str, &str); 3] = [("y", "key.yes"), ("n", "key.no"), ("E
 /// The keys of the clean-up list (`c` over the worktree table).
 pub const TIDY_KEYS: [(&str, &str); 5] =
     [("j k", "key.move"), ("Space", "key.pick"), ("a", "key.pick_all"), ("Enter", "key.run"), ("Esc", "key.back")];
-/// The keys of the pre-merge checklist (`g` over the worktree table).
+/// The keys of the pre-merge checklist (`R` over the worktree table).
 pub const READY_KEYS: [(&str, &str); 1] = [("Esc", "key.back")];
 /// The keys of the sign-in help (`K`).
 pub const AUTH_KEYS: [(&str, &str); 2] = [("1-9", "key.copy_command"), ("Esc", "key.back")];
@@ -396,6 +396,8 @@ pub struct App {
     pub stats: Option<crate::stats::Statistics>,
     /// The graph's legend (#118), while open; any key closes it.
     pub legend: bool,
+    /// A `g` was typed in the graph or the worktree table: a second one goes to the first row.
+    pub pending_g: bool,
     /// The practice repository being made (#117): its folder, or why not.
     pub practicing: Option<std::sync::mpsc::Receiver<Result<std::path::PathBuf, String>>>,
     pub ready: Option<crate::ready::Ready>,
@@ -509,6 +511,7 @@ impl App {
             reflog: None,
             stats: None,
             legend: false,
+            pending_g: false,
             practicing: None,
             ready: None,
             auth: None,
@@ -1669,6 +1672,7 @@ impl App {
     /// A character typed (not a key with Ctrl or Alt: those are the
     /// shortcuts). Returns whether it was used.
     pub fn feed(&mut self, c: char) -> bool {
+        let was_g = std::mem::take(&mut self.pending_g);
         match (self.mode, c) {
             (Mode::Help, c) if self.bare_act(c) => {}
             (Mode::Settings, _) | (Mode::Help, _) => return false,
@@ -1689,6 +1693,13 @@ impl App {
             (Mode::Main, c) if self.trial.is_some() => return self.trial_key(c),
             (Mode::Main, c) if self.reorder.is_some() => return self.reorder_key(c),
             (Mode::Main, c) if self.bare_act(c) => {}
+            (Mode::Main, 'g') if self.g_prefix_view() => {
+                if was_g {
+                    self.go_first();
+                } else {
+                    self.pending_g = true;
+                }
+            }
             (Mode::Main, c) => match View::from_digit(c) {
                 Some(View::Conflict) => self.open_conflicts(),
                 Some(v) => {
@@ -1710,6 +1721,24 @@ impl App {
         true
     }
 
+    /// Whether `g` is the first key of `gg` here: the graph and the worktree table.
+    fn g_prefix_view(&self) -> bool {
+        match self.view {
+            View::Graph => true,
+            View::Worktree => self.review.is_none(),
+            _ => false,
+        }
+    }
+
+    /// `gg`: the first row of the graph or the table.
+    fn go_first(&mut self) {
+        match self.view {
+            View::Graph => self.graph.home(),
+            View::Worktree => self.wt_sel = 0,
+            _ => {}
+        }
+    }
+
     /// The graph's own keys that work already.
     fn graph_key(&mut self, c: char) -> bool {
         let g = &mut self.graph;
@@ -1725,8 +1754,9 @@ impl App {
             'Y' => self.copy_patch(),
             '#' => _ = self.copy_hash(),
             'w' => self.toggle_ignore_space(),
-            'x' | 'g' | 'u' | 'X' | 'r' => return self.bisect_key(c),
-            'G' => self.open_picker(PickKind::Flow),
+            'x' | 'y' | 'u' | 'X' | 'r' => return self.bisect_key(c),
+            'U' => self.open_picker(PickKind::Flow),
+            'G' => g.end(),
             'I' => self.open_issue(),
             'O' => self.images.cycle(),
             't' => self.ask_revert(),
@@ -1761,8 +1791,9 @@ impl App {
             'y' => self.open_turns(),
             'u' => self.open_submodules(),
             'v' => self.open_move(),
-            'G' => self.open_flow(),
-            'g' => self.open_ready(),
+            'U' => self.open_flow(),
+            'R' => self.open_ready(),
+            'G' => self.wt_move(i32::MAX / 2),
             'm' => self.ask_merge(),
             'l' => self.ask_land(),
             'x' => self.ask_remove(),
@@ -1874,6 +1905,7 @@ impl App {
     /// A key with a name (`Enter`, `ArrowDown`), outside the help and the
     /// settings.
     pub fn named(&mut self, name: &str) -> bool {
+        self.pending_g = false;
         if self.mode == Mode::Help {
             return self.help_named(name);
         }
