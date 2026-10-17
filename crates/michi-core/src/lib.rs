@@ -28,6 +28,7 @@ pub mod pr;
 pub mod predict;
 pub mod rebase;
 pub mod recent;
+pub mod reflog;
 pub mod refs;
 pub mod rerere;
 pub mod revert;

@@ -242,6 +242,9 @@ impl App {
                 if matches!(task, Task::Tidy { .. }) {
                     self.tidy = None;
                 }
+                if matches!(task, Task::Recover { .. }) {
+                    self.reflog = None;
+                }
                 if let (Task::Revert { mainline, .. } | Task::CherryPick { mainline, .. }, Some(n)) = (&mut task, side) {
                     *mainline = Some(n);
                 }

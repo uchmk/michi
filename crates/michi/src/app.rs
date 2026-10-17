@@ -90,6 +90,7 @@ impl View {
                 ("m", "key.merge_commit"),
                 ("T", "key.tag"),
                 ("s", "key.stash"),
+                ("R", "key.reflog"),
                 ("Esc", "key.back"),
             ],
             View::Changes => &[
@@ -118,6 +119,7 @@ impl View {
                 ("x", "key.remove"),
                 ("d", "key.branch_diff"),
                 ("c", "key.tidy"),
+                ("R", "key.reflog"),
             ],
             View::Conflict => &[
                 ("] [", "key.place"),
@@ -268,6 +270,7 @@ pub struct App {
     pub waits_told: Option<Vec<(u64, u64)>>,
     /// The clean-up list, over the worktree table.
     pub tidy: Option<crate::tidy::Tidy>,
+    pub reflog: Option<crate::reflog::Reflog>,
     pub reorder: Option<crate::reorder::Reorder>,
     /// The stash clicked in the side column, and the commit the graph had
     /// selected then: the detail shows the stash until that moves.
@@ -331,6 +334,7 @@ impl App {
             reply: None,
             waits_told: None,
             tidy: None,
+            reflog: None,
             reorder: None,
             side_stash: None,
             quit: false,
@@ -1238,6 +1242,7 @@ impl App {
             (Mode::Main, _) if self.picker.is_some() || self.new_work.is_some() || self.reply.is_some() => return false,
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
             (Mode::Main, c) if self.tidy.is_some() => return self.tidy_key(c),
+            (Mode::Main, c) if self.reflog.is_some() => return self.reflog_key(c),
             (Mode::Main, c) if self.reorder.is_some() => return self.reorder_key(c),
             (Mode::Main, c) if self.bare_act(c) => {}
             (Mode::Main, c) => match View::from_digit(c) {
@@ -1266,6 +1271,7 @@ impl App {
             'b' => self.open_picker(PickKind::Branch),
             'T' => self.open_picker(PickKind::Tag),
             's' => self.open_picker(PickKind::Stash),
+            'R' => self.open_reflog(),
             't' => self.ask_revert(),
             'C' => self.ask_cherry(),
             'm' => self.ask_merge_commit(),
@@ -1290,6 +1296,7 @@ impl App {
             'd' => self.open_review(),
             'o' => self.focus_claude(true),
             'c' => self.open_tidy(),
+            'R' => self.open_reflog(),
             'm' => self.ask_merge(),
             'x' => self.ask_remove(),
             'p' => self.open_pr(),
@@ -1375,6 +1382,9 @@ impl App {
         }
         if self.tidy.is_some() {
             return self.tidy_named(name);
+        }
+        if self.reflog.is_some() {
+            return self.reflog_named(name);
         }
         if self.reorder.is_some() {
             return self.reorder_named(name);
@@ -1467,6 +1477,9 @@ impl App {
             return true;
         }
         if self.tidy.take().is_some() {
+            return true;
+        }
+        if self.reflog.take().is_some() {
             return true;
         }
         if self.view == View::Graph && self.picker.is_none() && self.stash_shown().is_some() {

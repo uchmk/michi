@@ -85,6 +85,7 @@ impl App {
             || self.new_work.is_some()
             || self.band.is_some()
             || self.tidy.is_some()
+            || self.reflog.is_some()
             || self.reorder.is_some()
             || self.conflicts.edit.is_some();
         if !busy {
