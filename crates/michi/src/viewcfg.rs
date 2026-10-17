@@ -30,7 +30,16 @@ struct Commit {
 
 #[derive(Deserialize, Default)]
 #[serde(default)]
+struct Issues {
+    github: Option<toml::Value>,
+    keys: Option<toml::Value>,
+    prefixes: Option<toml::Value>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
 struct File {
+    issues: Issues,
     view: View,
     net: Net,
     commit: Commit,
@@ -100,9 +109,63 @@ pub fn co_author(text: Option<&str>) -> (CoAuthor, Vec<String>) {
     }
 }
 
+/// `[issues]`: `github = false` stops `#123` linking to the GitHub remote,
+/// `keys = "https://tracker.example/{key}"` says where `ABC-123` goes (Linear, Jira), and
+/// `prefixes = ["ABC"]` lists the projects that count. With what to warn of.
+pub fn issues(text: Option<&str>) -> (michi_core::issues::Config, Vec<String>) {
+    let mut cfg = michi_core::issues::Config::default();
+    let mut warn = Vec::new();
+    let Some(Ok(File { issues: i, .. })) = text.map(toml::from_str::<File>) else { return (cfg, warn) };
+    if let Some(v) = i.github {
+        match v.as_bool() {
+            Some(b) => cfg.github = b,
+            None => warn.push("config.toml: [issues] github is not true or false".to_owned()),
+        }
+    }
+    if let Some(v) = i.keys {
+        match v.as_str().filter(|t| michi_core::issues::valid_template(t)) {
+            Some(t) => cfg.keys = Some(t.to_owned()),
+            None => warn.push("config.toml: [issues] keys is not an http(s) address with {key} in it".to_owned()),
+        }
+    }
+    if let Some(v) = i.prefixes {
+        let list: Option<Vec<String>> = v.as_array().and_then(|a| a.iter().map(|x| x.as_str().map(str::to_owned)).collect());
+        match list {
+            Some(l) => cfg.prefixes = l,
+            None => warn.push("config.toml: [issues] prefixes is not a list of words".to_owned()),
+        }
+    }
+    (cfg, warn)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn issues_default_to_github_and_read_the_template() {
+        assert_eq!(issues(None), (michi_core::issues::Config::default(), vec![]));
+        let (c, w) = issues(Some(
+            "[issues]
+github = false
+keys = \"https://linear.app/a/issue/{key}\"
+prefixes = [\"ENG\"]
+",
+        ));
+        assert!(w.is_empty(), "{w:?}");
+        assert!(!c.github);
+        assert_eq!(c.keys.as_deref(), Some("https://linear.app/a/issue/{key}"));
+        assert_eq!(c.prefixes, ["ENG"]);
+        let (c, w) = issues(Some(
+            "[issues]
+keys = \"nonsense\"
+github = 3
+prefixes = 1
+",
+        ));
+        assert_eq!(w.len(), 3, "{w:?}");
+        assert_eq!(c, michi_core::issues::Config::default());
+    }
 
     #[test]
     fn auto_fetch_is_five_minutes_unless_written() {

@@ -99,6 +99,7 @@ impl View {
                 ("H", "key.file_history"),
                 ("Y", "key.copy_patch"),
                 ("G", "key.flow"),
+                ("I", "key.issue"),
                 ("Ctrl+V", "key.apply_patch"),
                 ("w", "key.ignore_space"),
                 ("x g", "key.bisect_mark"),
@@ -130,6 +131,7 @@ impl View {
                 ("j k", "key.select"),
                 ("o", "key.tab"),
                 ("p", "key.pr"),
+                ("I", "key.issue"),
                 ("t e E", "key.open_in"),
                 ("r", "key.reorder"),
                 ("M", "key.rebase_trunk"),
@@ -273,6 +275,8 @@ pub struct App {
     pub claude: Option<crate::repo::Sessions>,
     /// tsumugi has been asked at least once (so `claude: None` means it is not there).
     pub claude_asked: bool,
+    /// `(owner, repo)` of the GitHub remote, for `#123` links (#44).
+    pub issue_slug: Option<(String, String)>,
     /// The worktrees and how they stand, for the worktree table.
     pub trees: Trees,
     /// Each worktree's uncommitted change, those with only files too big to
@@ -408,6 +412,7 @@ impl App {
             detail: Pane::default(),
             claude: None,
             claude_asked: false,
+            issue_slug: None,
             trees: Trees::default(),
             wips: Vec::new(),
             identities: Vec::new(),
@@ -634,6 +639,7 @@ impl App {
                 self.remember_repo(&s.top);
                 self.repo = Repo::Ready(s);
             }
+            Answer::IssueSlug(slug) => self.issue_slug = slug,
             Answer::Summary(Err(e)) => {
                 let word = self.tr(failed_word(&e));
                 let path = self.dir.display();
@@ -1578,6 +1584,7 @@ impl App {
             'w' => self.toggle_ignore_space(),
             'x' | 'g' | 'u' | 'X' | 'r' => return self.bisect_key(c),
             'G' => self.open_picker(PickKind::Flow),
+            'I' => self.open_issue(),
             't' => self.ask_revert(),
             'R' => self.ask_reset(),
             'C' => self.ask_cherry(),
@@ -1614,6 +1621,7 @@ impl App {
             'l' => self.ask_land(),
             'x' => self.ask_remove(),
             'p' => self.open_pr(),
+            'I' => self.open_issue(),
             't' => self.open_in(Tool::Terminal, true),
             'e' => self.open_in(Tool::Editor, true),
             'E' => self.open_in(Tool::Explorer, true),

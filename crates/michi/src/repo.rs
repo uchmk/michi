@@ -74,6 +74,8 @@ pub enum Answer {
     Version(Result<Version, git::Error>),
     /// The repository the window is on.
     Summary(Result<Summary, git::Error>),
+    /// `(owner, repo)` of the GitHub remote, for linking `#123` (#44).
+    IssueSlug(Option<(String, String)>),
     /// A reading of the history starts: what it is read against.
     Setup { gen: u32, setup: Box<Setup> },
     /// The next commits, older than the last batch's; `done` at the end.
@@ -369,6 +371,7 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         let ok = summary.is_ok();
         send(Answer::Summary(summary));
         if ok {
+            send(Answer::IssueSlug(michi_core::issues::slug_of(&dir).ok().flatten()));
             history(&dir, setup, &ask_rx, send);
         }
     });

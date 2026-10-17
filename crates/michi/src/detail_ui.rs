@@ -73,6 +73,8 @@ enum Act {
     Wide(bool),
     /// Go to the tsumugi tab of this session.
     Claude(u64),
+    /// Open this issue's page in the browser.
+    Issue(String),
     /// Bring this file back as the shown commit has it (the path; whether
     /// the commit deletes it).
     Restore(String, bool),
@@ -325,6 +327,11 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         Act::AllFiles => app.detail.all_files = true,
         Act::Wide(w) => app.detail.wide = w,
         Act::Claude(session) => app.act(crate::act::Task::Focus { session }),
+        Act::Issue(url) => {
+            std::thread::spawn(move || {
+                let _ = michi_core::pr::open_url(&url);
+            });
+        }
         Act::Restore(path, deleted) => {
             if let Some(id) = app.detail.asked() {
                 app.ask_restore(id, path, deleted);
@@ -479,6 +486,40 @@ fn header(ui: &Ui, app: &App, d: &Detail, at: Pos2, width: f32, paint: Option<(&
                     }
                     if live && resp.clicked() {
                         *act = Some(Act::Claude(id));
+                    }
+                }
+            }
+            x += g.size().x;
+        }
+        y += line_h + 6.0;
+    }
+
+    // The issues the message names: a click opens one in the browser (#44).
+    let issues = app.commit_issues();
+    if !issues.is_empty() {
+        let mut x = x0;
+        let mut runs = vec![(app.tr("detail.issues").to_owned(), c.dim, None)];
+        runs.extend(issues.into_iter().map(|(r, url)| (r.label(), c.blue, Some(url))));
+        for (k, (text, color, link)) in runs.into_iter().enumerate() {
+            let g = ui.fonts_mut(|f| f.layout_no_wrap(text, prop.clone(), color));
+            let gap = if k == 0 { 0.0 } else { 10.0 };
+            if x > x0 && x + gap + g.size().x > right {
+                x = x0;
+                y += line_h;
+            } else {
+                x += gap;
+            }
+            let at = Rect::from_min_size(pos2(x, y + (line_h - g.size().y) / 2.0), g.size());
+            if let Some((p, live)) = paint {
+                p.galley(at.min, g.clone(), color);
+                if let Some(url) = link {
+                    let resp = ui.interact(at.intersect(p.clip_rect()), Id::new(("detail-issue", k)), Sense::CLICK);
+                    if live && resp.hovered() {
+                        p.line_segment([at.left_bottom(), at.right_bottom()], Stroke::new(1.0, color));
+                        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+                    }
+                    if live && resp.clicked() {
+                        *act = Some(Act::Issue(url));
                     }
                 }
             }

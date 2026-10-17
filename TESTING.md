@@ -1189,3 +1189,20 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 | 242.12 | Stop in the middle of a rebase or merge, then use a row | A toast says it is in the middle of it | [ ] |
 | 242.13 | Finish while a Claude is working in the worktree | The question ends with a note that a Claude is working there | [ ] |
 | 242.14 | Check the keybar and `?` over the graph and the `3` view; switch EN and JA | `G` Gitflow is listed; the palette and toasts read well in both languages | [ ] |
+
+## 244. Issue links (`I`, detail links; #44)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 244.1 | In a repo with a GitHub remote, select a commit whose message says `#123` | The detail shows an "Issues" line with `#123` in blue; hovering underlines it with a hand cursor |
+| 244.2 | Click that link | The browser opens `https://github.com/<owner>/<repo>/issues/123` |
+| 244.3 | Press `I` over the graph | The same page opens; a toast names the issue and, if the message has more, how many more |
+| 244.4 | Select a commit with no issue reference and press `I` | A toast says there is no issue |
+| 244.5 | In the worktree table, look at a row whose branch is `123-fix-x` or `GH-123` | A blue "Issue #123" line under the path, and an "Open the issue" button with `I` |
+| 244.6 | Select that row and press `I` (or click the button) | The issue opens in the browser; on the trunk row or a branch without a number nothing is offered |
+| 244.7 | Set `[issues] keys = "https://example.atlassian.net/browse/{key}"` in config.toml and select a commit naming `ABC-123` | `ABC-123` links to that address; without the setting it is plain text |
+| 244.8 | Add `prefixes = ["ABC"]` and name `XYZ-9` and `ABC-1` in one message | Only `ABC-1` links |
+| 244.9 | Set `github = false` | `#123` no longer links |
+| 244.10 | Give `keys` a template without `{key}` or a non-http address | A warning toast names the setting; keys are not linked |
+| 244.11 | Open a repo with no GitHub remote, with `#123` in a message | No link for `#123`; `owner/repo#123` still links |
+| 244.12 | Check the keybar and `?` in the graph and the worktree table; switch EN and JA | `I` is listed with its words in both languages |

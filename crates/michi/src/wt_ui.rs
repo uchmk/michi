@@ -208,6 +208,12 @@ fn name_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
     if let Some((_, who)) = app.identities.iter().find(|(p, _)| paths::key(p) == paths::key(&t.wt.path)) {
         note(app.tr("wt.author").replace("{}", who), c.dim);
     }
+    if let Some(branch) = t.wt.branch.as_deref() {
+        let labels: Vec<String> = app.branch_issues(branch).iter().map(|(r, _)| r.label()).collect();
+        if !labels.is_empty() {
+            note(app.tr("wt.issue").replace("{}", &labels.join(", ")), c.blue);
+        }
+    }
     if t.wt.locked.is_some() {
         note(app.tr("wt.locked").to_owned(), c.wait);
     }
@@ -445,6 +451,9 @@ fn buttons_of(app: &App, t: &Tree, k: usize, trunk: &str, b: &MakeButton) -> Vec
         b(app.tr("wt.diff").to_owned(), Some("d"), Act::Key('d'), false),
         b(app.tr("wt.take").replace("{}", trunk), Some("m"), Act::Key('m'), false),
     ];
+    if t.wt.branch.as_deref().is_some_and(|br| !app.branch_issues(br).is_empty()) {
+        out.push(b(app.tr("key.issue").to_owned(), Some("I"), Act::Key('I'), false));
+    }
     if t.wt.branch.is_some() {
         out.push(b("PR".to_owned(), None, Act::Pr, false));
     }
