@@ -137,9 +137,23 @@ impl App {
             'k' => self.blame_move(-1),
             'B' => self.blame_tab(Tab::Blame),
             'H' => self.blame_tab(Tab::History),
+            'e' => self.blame_editor(),
             _ => {}
         }
         true
+    }
+
+    /// `e`: the file in the editor at the selected line (the working file;
+    /// a file read at a commit is opened as it is now, the line may differ).
+    fn blame_editor(&mut self) {
+        let Some(b) = &self.blame else { return };
+        let line = match (&b.data, b.tab) {
+            (Some(d), Tab::Blame) => d.lines.get(b.sel()).map(|_| b.sel() + 1),
+            _ => None,
+        };
+        let path = b.path.clone();
+        let Some(wt) = self.changes.wt.clone().or_else(|| self.repo_top()) else { return };
+        self.open_file_at(wt, path, line);
     }
 
     fn blame_move(&mut self, by: i64) {

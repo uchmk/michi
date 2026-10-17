@@ -55,8 +55,18 @@ pub struct Prefs {
     pub notify: NotifyCfg,
     pub notify_warn: Vec<String>,
     /// `[open]` of config.toml: the commands that open a worktree's folder.
-    pub open: crate::opencfg::OpenCfg,
+    pub open: ito_openin::Config,
     pub open_warn: Vec<String>,
+    /// The diff / merge tools found installed (empty until the settings screen
+    /// or the first use has asked for them, on a thread of its own).
+    pub found: Vec<ito_openin::diff::Found>,
+    /// The answer to a search for them that is on its way.
+    pub found_rx: Option<Receiver<Vec<ito_openin::diff::Found>>>,
+    /// Whether they have been looked for.
+    pub found_known: bool,
+    /// The external tools page's drafts and the form that adds a tool.
+    pub open_drafts: ito_prefs::Drafts,
+    pub open_form: ito_prefs::OpenForm,
     /// `[view] density` of config.toml: the height of the graph's and the lists' rows.
     pub density: michi_core::density::Density,
     /// `[view] motion` of config.toml: the short fades and slides (#88).
@@ -101,6 +111,11 @@ impl Prefs {
             notify_warn: Vec::new(),
             open: Default::default(),
             open_warn: Vec::new(),
+            found: Vec::new(),
+            found_rx: None,
+            found_known: false,
+            open_drafts: ito_prefs::Drafts::new(),
+            open_form: ito_prefs::OpenForm::default(),
             density: Default::default(),
             motion: Default::default(),
             avatars: true,
@@ -132,7 +147,7 @@ impl Prefs {
             (p.keymap, p.keymap_warn) = (km, warn);
             let config = read_config(b);
             (p.notify, p.notify_warn) = NotifyCfg::read(config.as_deref());
-            (p.open, p.open_warn) = crate::opencfg::OpenCfg::read(config.as_deref());
+            (p.open, p.open_warn) = ito_openin::Config::read(config.as_deref());
             p.read_view(config.as_deref());
         }
         p.base = base;
@@ -178,6 +193,22 @@ impl Prefs {
 
     /// Fold in what the threads have read since the last frame.
     pub fn pump(&mut self) {
+        if let Some(rx) = &self.found_rx {
+            match rx.try_recv() {
+                Ok(found) => {
+                    (self.found, self.found_known, self.found_rx) = (found, true, None);
+                    if let Some(ctx) = &self.wake {
+                        ctx.request_repaint();
+                    }
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    if let Some(ctx) = &self.wake {
+                        ctx.request_repaint_after(Duration::from_millis(100));
+                    }
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => (self.found_known, self.found_rx) = (true, None),
+            }
+        }
         while let Ok(r) = self.rx.try_recv() {
             match r {
                 Reload::Common(Ok((c, w))) => (self.common, self.common_warn) = (c, w),
@@ -191,7 +222,7 @@ impl Prefs {
                 }
                 Reload::Config(text) => {
                     (self.notify, self.notify_warn) = NotifyCfg::read(text.as_deref());
-                    (self.open, self.open_warn) = crate::opencfg::OpenCfg::read(text.as_deref());
+                    (self.open, self.open_warn) = ito_openin::Config::read(text.as_deref());
                     self.read_view(text.as_deref());
                 }
                 Reload::Failed(e) => self.failed = Some(e),
@@ -259,6 +290,39 @@ impl Prefs {
         };
         std::thread::spawn(move || {
             let r = match write_config(&config_path(&base), &edits, &[], webhooks.as_deref()) {
+                Ok(()) => Reload::Config(read_config(&base)),
+                Err(e) => Reload::Failed(e),
+            };
+            Self::send_back(&tx, &wake, r);
+        });
+    }
+
+    /// Looks for the installed diff / merge tools on a thread, once. The answer
+    /// is taken in by [`Prefs::pump`].
+    pub fn find_tools(&mut self) {
+        if self.found_known || self.found_rx.is_some() {
+            return;
+        }
+        self.found_rx = Some(ito_openin::diff::detect_in_background());
+        if let Some(ctx) = &self.wake {
+            // The thread cannot wake the window; the pump polls while it waits.
+            ctx.request_repaint_after(Duration::from_millis(100));
+        }
+    }
+
+    /// Make the external tools page's `edits` in config.toml on a thread, then
+    /// read it again.
+    pub fn open_edit(&self, edits: Vec<ito_openin::Edit>, no_folder: &str) {
+        if edits.is_empty() {
+            return;
+        }
+        let (tx, wake) = (self.tx.clone(), self.wake.clone());
+        let Some(base) = self.base.clone() else {
+            Self::send_back(&tx, &wake, Reload::Failed(no_folder.into()));
+            return;
+        };
+        std::thread::spawn(move || {
+            let r = match write_open(&config_path(&base), &edits) {
                 Ok(()) => Reload::Config(read_config(&base)),
                 Err(e) => Reload::Failed(e),
             };
@@ -399,6 +463,27 @@ pub fn write_config(path: &Path, edits: &[(&str, String)], view: &[(&str, String
     if let Some(places) = webhooks {
         new = ito_prefs::write_webhooks(&new, places, true).map_err(at)?;
     }
+    if new == text {
+        return Ok(());
+    }
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| at(e.to_string()))?;
+    }
+    write_atomic(path, new)
+}
+
+/// Make the external tools page's `edits` in the config.toml at `path`,
+/// written only when that changes it. Call it off the UI thread.
+pub fn write_open(path: &Path, edits: &[ito_openin::Edit]) -> Result<(), String> {
+    static ONE_AT_A_TIME: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _one = ONE_AT_A_TIME.lock().unwrap_or_else(|e| e.into_inner());
+    let at = |e: String| format!("{}: {e}", path.display());
+    let text = match std::fs::read_to_string(path) {
+        Ok(t) => t,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(at(e.to_string())),
+    };
+    let new = ito_prefs::write_edits(&text, edits).map_err(at)?;
     if new == text {
         return Ok(());
     }

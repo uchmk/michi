@@ -614,6 +614,22 @@ impl Changes {
         (self.focus == Focus::Lines).then(|| self.shown()?.changed.get(self.cursor).copied()).flatten()
     }
 
+    /// The line of the file an editor is opened at: the cursor's line (the
+    /// next one that exists in the file when it is a deleted line) in the
+    /// lines' focus, else the first changed line of the diff.
+    pub fn editor_line(&self) -> Option<usize> {
+        let Some(Ok(Some(s))) = self.diff() else { return None };
+        let hunks = &s.diff.file.hunks;
+        let (h, k) = self.cursor_line().unwrap_or_else(|| {
+            let h = 0;
+            (h, hunks.first().and_then(|x| x.lines.iter().position(|l| l.kind != Kind::Context)).unwrap_or(0))
+        });
+        let lines = &hunks.get(h)?.lines;
+        let after = lines.iter().skip(k).map(|l| l.new);
+        let before = lines.iter().take(k).rev().map(|l| l.new);
+        after.chain(before).find(|&n| n > 0).map(|n| n as usize)
+    }
+
     /// `l`: the keys go to the selected file's lines. Err with the word
     /// saying why not.
     pub fn enter_lines(&mut self) -> Result<(), &'static str> {
@@ -971,6 +987,30 @@ pub(crate) mod tests {
         let w = c.move_by(1);
         c.take_file(file_gen(&Vec::from_iter(w)), Ok(Some(two_hunks("a.txt"))));
         c
+    }
+
+    #[test]
+    fn the_editor_opens_at_the_cursor_line_or_the_first_change() {
+        let mut c = Changes::default();
+        let w = c.open(PathBuf::from(WT));
+        let ws = c.take_list(list_gen(&Vec::from_iter(w)), Ok(lists(&[], &["a.txt"])));
+        assert_eq!(c.editor_line(), None);
+        let mut d = two_hunks("a.txt");
+        let news = [4, 5, 0, 6];
+        let kinds = [Kind::Context, Kind::Add, Kind::Del, Kind::Add];
+        d.file.hunks = vec![Hunk {
+            header: "@@ -1,3 +4,3 @@".into(),
+            lines: kinds.iter().zip(news).map(|(&k, n)| Line { new: n, ..line(k, "t") }).collect(),
+        }];
+        c.take_file(file_gen(&ws), Ok(Some(d)));
+        // Not in the lines: the first changed line.
+        assert_eq!(c.editor_line(), Some(5));
+        c.enter_lines().unwrap();
+        c.move_cursor(1);
+        // On a deleted line: the next line that exists.
+        assert_eq!(c.editor_line(), Some(6));
+        c.move_cursor(1);
+        assert_eq!(c.editor_line(), Some(6));
     }
 
     #[test]

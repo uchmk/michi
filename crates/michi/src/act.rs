@@ -355,7 +355,31 @@ pub enum Task {
     /// (a terminal, an editor or the file manager).
     OpenIn {
         wt: PathBuf,
-        tool: michi_core::openin::Tool,
+        tool: ito_openin::Tool,
+        command: String,
+    },
+    /// Opens the file `path` of the worktree at `wt` in the editor, at `line`
+    /// when the editor takes one (#43).
+    OpenFile {
+        wt: PathBuf,
+        path: String,
+        line: Option<usize>,
+        command: String,
+        line_args: ito_openin::LineArgs,
+    },
+    /// Opens the diff of `path` (the index against the file, or HEAD against
+    /// the index when `staged`) in the external diff tool `command` (#43).
+    OpenDiff {
+        wt: PathBuf,
+        path: String,
+        staged: bool,
+        command: String,
+    },
+    /// Opens the clashed `path` in the external merge tool `command`, with
+    /// ours, theirs, the base and the file to write the result to (#43).
+    MergeTool {
+        wt: PathBuf,
+        path: String,
         command: String,
     },
     /// Brings the tsumugi session `session` to the front (`tsumugi focus`).
@@ -434,22 +458,26 @@ pub enum Task {
 }
 
 /// The word-table key of what a tool is called.
-pub fn open_word(tool: michi_core::openin::Tool) -> &'static str {
-    use michi_core::openin::Tool;
+pub fn open_word(tool: ito_openin::Tool) -> &'static str {
+    use ito_openin::Tool;
     match tool {
         Tool::Terminal => "open.terminal",
         Tool::Editor => "open.editor",
         Tool::Explorer => "open.explorer",
+        Tool::Diff => "open.diff",
+        Tool::Merge => "open.merge",
     }
 }
 
 /// The word-table key of the command that opens a worktree in a tool.
-pub fn open_word_cmd(tool: michi_core::openin::Tool) -> &'static str {
-    use michi_core::openin::Tool;
+pub fn open_word_cmd(tool: ito_openin::Tool) -> &'static str {
+    use ito_openin::Tool;
     match tool {
         Tool::Terminal => "key.open_terminal",
         Tool::Editor => "key.open_editor",
         Tool::Explorer => "key.open_explorer",
+        Tool::Diff => "key.open_diff",
+        Tool::Merge => "key.open_merge",
     }
 }
 
@@ -528,7 +556,7 @@ impl Task {
             Task::OpenPr { .. } => "remote",
             Task::PrDraft { .. } => "log",
             Task::CreatePr { .. } => "gh pr create",
-            Task::OpenIn { .. } => "open",
+            Task::OpenIn { .. } | Task::OpenFile { .. } | Task::OpenDiff { .. } | Task::MergeTool { .. } => "open",
             Task::External { .. } => "mergetool",
             Task::AskRerere { .. } => "config --get",
             Task::Rerere { .. } => "config",
@@ -552,6 +580,8 @@ impl Task {
 pub enum Acted {
     Done,
     Opened(Opened),
+    /// The file went to the editor; whether the line asked for was passed.
+    Line(bool),
     /// It deleted something, kept under this backup (none: other refs
     /// have it).
     Kept(Option<String>),
@@ -700,7 +730,20 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::PrDraft { wt, branch, base } => michi_core::prcreate::defaults(wt, branch, base).map(Acted::PrDraft),
         Task::CreatePr { wt, req } => michi_core::prcreate::create(wt, req).map(Acted::PrUrl),
         Task::OpenPr { wt, branch } => michi_core::pr::open(wt, branch).map(|_| Acted::Done),
-        Task::OpenIn { wt, command, .. } => michi_core::openin::open(command, wt).map(|()| Acted::Done),
+        Task::OpenIn { wt, command, .. } => {
+            ito_openin::open(command, &ito_openin::Vars::path(wt), Some(wt)).map(|()| Acted::Done).map_err(git::Error::Io)
+        }
+        Task::OpenFile { wt, path, line, command, line_args } => {
+            ito_openin::open_file(command, &wt.join(path), *line, line_args).map(Acted::Line).map_err(git::Error::Io)
+        }
+        Task::OpenDiff { wt, path, staged, command } => {
+            let p = michi_core::extool::diff_files(wt, path, *staged)?;
+            ito_openin::open_diff(command, &p.left, &p.right).map(|()| Acted::Done).map_err(git::Error::Io)
+        }
+        Task::MergeTool { wt, path, command } => {
+            let m = michi_core::extool::merge_files(wt, path)?;
+            ito_openin::open_merge(command, &m.left, &m.right, &m.base, &m.merged).map(|()| Acted::Done).map_err(git::Error::Io)
+        }
         Task::Focus { session } => handoff::focus(*session).map(|()| Acted::Done),
         Task::Reply { session, text } => handoff::send(*session, text).map(|()| Acted::Done),
         Task::Handoff { conflict, session } => hand_off(conflict, *session).map(|()| Acted::Done),
@@ -898,6 +941,12 @@ impl App {
             (Task::OpenIn { wt, tool, .. }, Ok(_)) => {
                 (self.tr("act.open_in").replace("{wt}", &self::name(wt)).replace("{tool}", self.tr(open_word(*tool))), 3)
             }
+            (Task::OpenFile { path, line, .. }, Ok(acted)) => {
+                let key = if line.is_some() && acted == Acted::Line(false) { "act.open_file_noline" } else { "act.open_file" };
+                (self.tr(key).replace("{path}", path), 3)
+            }
+            (Task::OpenDiff { path, .. }, Ok(_)) => (self.tr("act.open_diff").replace("{path}", path), 3),
+            (Task::MergeTool { path, .. }, Ok(_)) => (self.tr("act.open_merge").replace("{path}", path), 4),
             (Task::Focus { session }, Ok(_)) => (self.tr("act.focused").replace("{n}", &session.to_string()), 3),
             (Task::Handoff { conflict, session }, Ok(_)) => {
                 let key = if session.is_some() { "act.handed" } else { "act.handed_new" };
@@ -1388,13 +1437,38 @@ mod tests {
 
     #[test]
     fn opening_a_folder_says_where_and_what_failed() {
-        use michi_core::openin::Tool;
+        use ito_openin::Tool;
         let mut a = app();
         let t = || Task::OpenIn { wt: PathBuf::from("/r/main"), tool: Tool::Editor, command: "code {path}".into() };
         a.act_done(t(), Ok(Acted::Done));
         assert_eq!(toast(&a), "Opened main in the Editor");
         a.act_done(t(), Err(git::Error::Io("code: gone".into())));
         assert!(toast(&a).starts_with("open failed"), "{}", toast(&a));
+    }
+
+    #[test]
+    fn the_editor_and_the_diff_and_merge_tools_say_what_they_opened() {
+        let mut a = app();
+        let file = |line| Task::OpenFile {
+            wt: PathBuf::from("/r/main"),
+            path: "a.rs".into(),
+            line,
+            command: "code {path}".into(),
+            line_args: ito_openin::LineArgs::default(),
+        };
+        a.act_done(file(Some(3)), Ok(Acted::Line(true)));
+        assert_eq!(toast(&a), "Opened a.rs in the editor");
+        a.act_done(file(Some(3)), Ok(Acted::Line(false)));
+        assert!(toast(&a).contains("takes no line"), "{}", toast(&a));
+        a.act_done(file(None), Ok(Acted::Line(false)));
+        assert_eq!(toast(&a), "Opened a.rs in the editor");
+        a.act_done(
+            Task::OpenDiff { wt: PathBuf::from("/r/main"), path: "a.rs".into(), staged: false, command: String::new() },
+            Ok(Acted::Done),
+        );
+        assert_eq!(toast(&a), "Opened the diff of a.rs in the diff tool");
+        a.act_done(Task::MergeTool { wt: PathBuf::from("/r/main"), path: "a.rs".into(), command: String::new() }, Ok(Acted::Done));
+        assert_eq!(toast(&a), "Opened a.rs in the merge tool");
     }
 
     #[test]

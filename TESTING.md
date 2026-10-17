@@ -1190,6 +1190,29 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 | 242.13 | Finish while a Claude is working in the worktree | The question ends with a note that a Claude is working there | [ ] |
 | 242.14 | Check the keybar and `?` over the graph and the `3` view; switch EN and JA | `G` Gitflow is listed; the palette and toasts read well in both languages | [ ] |
 
+## 243. External editor, diff and merge tools (#43)
+
+michi has no editor of its own; it opens an external one at a line and an external diff / merge tool (`ito-openin`, shared with kura). Templates: `{path} {line} {left} {right} {base} {merged}`.
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 243.1 | In the changes view (`2`), select a file and press `e` | The file opens in the editor (`[open] editor`); a toast names it |
+| 243.2 | Focus the lines (`l`), move to a changed line, press `e` | The editor opens at that line (VS Code: `-g path:line`); on a deleted line it opens at the next line that exists |
+| 243.3 | With an editor that has no line argument (see Settings > External tools > line arguments), press `e` on a line | It opens the file and the toast says the editor takes no line |
+| 243.4 | Add a line argument for it in Settings (`code` = `-g {path}:{line}`) and repeat 243.2 | It now opens at the line |
+| 243.5 | Open blame (`B`), move to a line, press `e` | The working file opens at that line (on the History tab, at the top) |
+| 243.6 | Press `x` on a modified file in the changes view with `diff_tool = "winmerge"` (or any found tool) | The tool opens with the committed (or staged) side on the left and the working file on the right; the UI never freezes |
+| 243.7 | Press `x` on a deleted file and on a file with no diff | A toast says there is nothing to open |
+| 243.8 | Open a conflict (merge in progress), press `w` with a merge tool set or found | The merge tool opens with ours (left), theirs (right), the base and the merged file; saving the merged file is read by michi after the tool closes |
+| 243.9 | WinMerge 3-way: the same, with WinMerge as the tool | UNVERIFIED on a real machine: the built-in WinMerge 3-way command line must open the three sides and the output file in the right panes |
+| 243.10 | With no merge tool set and none found, press `w` | It falls back to `git mergetool` as before |
+| 243.11 | In a conflict, press `E` on a block | The editor opens at that block's line |
+| 243.12 | In the worktree table press `t`, `e`, `E` | The folder opens in the terminal, editor, file manager as before |
+| 243.13 | Open Settings (`,`) and go to External tools | The page lists the five commands, the diff / merge tool row, the tools found (after a moment: "Looking for installed tools..." changes to "Found: ..."), your own tools and the line arguments; config.toml is named as the file |
+| 243.14 | Change a command, pick a tool, add an own tool and a line argument, remove them | config.toml gets `[open]`, `[diff_tools.<name>]`, `[line_args]` edits (comments kept); a bad template shows an error and writes nothing |
+| 243.15 | Edit config.toml by hand with an invalid `[open]` value | A warning shows on the page; the other settings keep working |
+| 243.16 | Check the keybar, `?` and the palette in the changes view, blame and the conflict view; switch EN and JA | `e`, `x`, `E` are listed with their words in both languages |
+
 ## 244. Issue links (`I`, detail links; #44)
 
 | # | Do | Expect |

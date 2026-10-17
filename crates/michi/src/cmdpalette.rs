@@ -7,7 +7,7 @@ use ito_palette::{Entry, Style, View, Words};
 
 use crate::app::{App, GLOBAL_KEYS};
 use crate::keymap::Act;
-use michi_core::openin::Tool;
+use ito_openin::Tool;
 
 /// What picking an entry does.
 #[derive(Clone, Debug, PartialEq)]
@@ -34,7 +34,7 @@ pub fn entries(app: &App) -> Vec<Entry<Pick>> {
         out.push(Entry::new(format!("{} {}", app.tr("key.tab"), app.tr(v.label())), v.digit().to_string(), Pick::Key(v.digit())));
     }
     let in_table = app.view == crate::app::View::Worktree;
-    for (t, key) in Tool::ALL.into_iter().zip(["t", "e", "E"]) {
+    for (t, key) in [(Tool::Terminal, "t"), (Tool::Editor, "e"), (Tool::Explorer, "E")] {
         out.push(Entry::new(app.tr(crate::act::open_word_cmd(t)), if in_table { key } else { "" }, Pick::Open(t)));
     }
     let mut seen = Vec::new();
