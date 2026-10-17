@@ -916,3 +916,14 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 71.1 | In a repository with LFS files, select a commit that changed one | Above its diff (the three pointer lines) a note: `A Git LFS pointer, not the file: the content is not fetched here (git lfs pull)`; other files have no note | | [ ] |
 | 71.2 | Change an LFS file in a worktree and open it in the Changes view, and in a review | The same note shows above the pointer diff | | [ ] |
 | 71.3 | Switch EN and JA | The note reads well in both and fits the width | | [ ] |
+
+## 72. Signature mark in the detail (#35; numbered 71 because `## 35.` is taken)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 72.1 | Select a commit that is signed and whose key git trusts (`git log --show-signature` says Good) | The detail's meta line shows a green `✓ Signed` after the date, before the parents | | [ ] |
+| 72.2 | Select an unsigned commit | No mark at all; the meta line is as before | | [ ] |
+| 72.3 | Select a commit signed with a key git cannot find (or with gpg missing from PATH) | A `? Signature not checked` mark in the waiting colour; no toast, no error | | [ ] |
+| 72.4 | Select a commit whose signature is bad (a commit object edited after signing) or whose key expired | A red `✗ Bad signature` mark | | [ ] |
+| 72.5 | Click through many commits quickly in a repository where most are signed | The detail still follows the selection; the mark may arrive with the diff but never blocks the UI | | [ ] |
+| 72.6 | Switch EN and JA | `✓ 署名あり` / `✗ 署名が不正` / `? 署名は未確認` read well and wrap with the meta line | | [ ] |

@@ -864,7 +864,10 @@ fn details(dir: &Path, wants: &Receiver<Want>, latest: &AtomicU32, send: impl Fn
             continue;
         }
         let result = if want.stash { stash::read(dir, &want.id, &stale) } else { show::read(dir, &want.id, want.patch, &stale) };
-        let result = result.map(Box::new);
+        let mut result = result.map(Box::new);
+        if let (Ok(d), false) = (&mut result, want.stash || stale()) {
+            d.signature = michi_core::signature::read(dir, &want.id);
+        }
         if !stale() {
             send(Answer::Detail { id: want.id, result });
         }

@@ -295,6 +295,7 @@ pub mod fixture {
             body: "The body.\n\nIts second paragraph, which goes on for a while so that it wraps.".into(),
             files: (0..files).map(file).collect(),
             cut: false,
+            signature: michi_core::signature::Signature::Valid,
         }
     }
 }

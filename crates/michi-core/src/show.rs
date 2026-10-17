@@ -30,6 +30,9 @@ pub struct Detail {
     pub files: Vec<File>,
     /// The diff stops short: there was more than [`LIMITS`] keeps.
     pub cut: bool,
+    /// Whether its signature holds (read apart from `git show`, which would
+    /// run gpg while the diff waits).
+    pub signature: crate::signature::Signature,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -431,7 +434,7 @@ fn header(text: &str) -> Option<Detail> {
     let time = l.next()?.trim().parse().unwrap_or(0);
     let subject = l.next().unwrap_or("").to_owned();
     let body = l.next().unwrap_or("").trim_start_matches('\n').trim_end().to_owned();
-    Some(Detail { id, parents, author, email, time, subject, body, files: Vec::new(), cut: false })
+    Some(Detail { id, parents, author, email, time, subject, body, files: Vec::new(), cut: false, signature: Default::default() })
 }
 
 /// The next NUL-ended field as text.
