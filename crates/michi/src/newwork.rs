@@ -5,6 +5,7 @@
 use std::path::PathBuf;
 
 use michi_core::newwork::{self, Plan};
+use michi_core::overlap::{self, Busy, Overlap};
 
 use crate::act::Task;
 use crate::app::{App, Repo};
@@ -34,6 +35,41 @@ impl NewWork {
 }
 
 impl App {
+    /// The worktrees that are changing files the instruction names. Pure
+    /// text matching; only a hint, it never stops the start.
+    pub(crate) fn new_work_overlaps(&self, text: &str) -> Vec<Overlap> {
+        let busy: Vec<Busy> = self
+            .wips
+            .iter()
+            .filter(|w| !w.files.is_empty())
+            .map(|w| Busy {
+                label: w
+                    .branch
+                    .clone()
+                    .unwrap_or_else(|| w.path.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned())),
+                files: w.files.iter().map(|f| f.path.clone()).collect(),
+            })
+            .collect();
+        overlap::find(text, &busy)
+    }
+
+    /// The warning line for `hits`, or `None` when there is nothing to warn of.
+    pub(crate) fn new_work_warning(&self, hits: &[Overlap]) -> Option<String> {
+        if hits.is_empty() {
+            return None;
+        }
+        let parts: Vec<String> = hits
+            .iter()
+            .map(|o| {
+                let more = o.total.saturating_sub(o.files.len());
+                let extra = if more > 0 { format!(" +{more}") } else { String::new() };
+                format!("{} ({}{extra})", o.label, o.files.join(", "))
+            })
+            .collect();
+        let wt = hits.iter().map(|o| o.label.as_str()).collect::<Vec<_>>().join(", ");
+        Some(self.tr("new.overlap").replace("{wt}", &wt).replace("{files}", &parts.join(" / ")))
+    }
+
     /// `N`: opens the form for the window's repository.
     pub(crate) fn open_new_work(&mut self) {
         let Repo::Ready(s) = &self.repo else {
@@ -116,5 +152,39 @@ mod tests {
         a.new_work.as_mut().unwrap().branch = "feat/x".into();
         a.new_work_start();
         assert!(a.new_work.is_none());
+    }
+
+    #[test]
+    fn the_warning_names_the_worktree_and_files_the_instruction_touches() {
+        use michi_core::oid::Oid;
+        use michi_core::show::{File, Status};
+        let mut a = ready();
+        let file = |p: &str| File {
+            status: Status::Modified,
+            path: p.into(),
+            from: None,
+            blob: None,
+            counts: Some((1, 0)),
+            hunks: Vec::new(),
+            eol_only: false,
+            cut: false,
+            not_utf8: false,
+        };
+        let zero = Oid::parse(&"0".repeat(40)).unwrap();
+        let wip = michi_core::wip::Wip {
+            path: PathBuf::from("C:/r/repo-x"),
+            branch: Some("tsumugi/x".into()),
+            head: zero,
+            commit: zero,
+            files: vec![file("src/app.rs")],
+            written: None,
+            left_out: Vec::new(),
+            theirs: None,
+        };
+        a.wips = vec![wip];
+        assert!(a.new_work_warning(&a.new_work_overlaps("do something")).is_none());
+        let hits = a.new_work_overlaps("rework app.rs");
+        let w = a.new_work_warning(&hits).unwrap();
+        assert!(w.contains("tsumugi/x") && w.contains("src/app.rs"), "{w}");
     }
 }

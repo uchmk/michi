@@ -504,3 +504,13 @@ files under `refs/michi/backup/<time>` first.
 | 34.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] |
 | 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] |
 | 34.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] |
+
+## 99. Warning about overlapping work in New work (`N`)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 99.1 | Change a file (say `crates/michi/src/app.rs`) in one worktree and leave it uncommitted; press `N` and type `fix app.rs` in the instruction | A line `⚠ Heads up: <branch> is changing crates/michi/src/app.rs …` shows under the instruction as you type; nothing else in the form is blocked | | [ ] |
+| 99.2 | Type a folder instead (`tidy crates/michi/src/`) | The same worktree is named with the files under that folder (the first three, then `+N`) | | [ ] |
+| 99.3 | Type an instruction with no file or folder name, or names no worktree is changing | No warning shows | | [ ] |
+| 99.4 | With the warning showing, press Ctrl+Enter | The work starts as usual (the warning does not stop it) | | [ ] |
+| 99.5 | Two worktrees change the same file | Both are named in the warning | | [ ] |
