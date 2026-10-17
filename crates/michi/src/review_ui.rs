@@ -452,6 +452,8 @@ fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, pages: i32, 
     ctx.data_mut(|dt| dt.insert_temp(scroll_id(), scroll));
 
     let mut act = None;
+    // The diff's text is picked up with the mouse, as the commit detail's.
+    crate::select::begin(&format!("review:{}:{}:{}", rv.branch, f.path, rv.wide));
     let mut y = body.top() - scroll;
     for (piece, h) in pieces.iter().zip(heights) {
         let rr = Rect::from_min_size(pos2(body.left(), y), vec2(body.width(), h));
@@ -466,7 +468,23 @@ fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, pages: i32, 
             Piece::Diff => {
                 let at = Rect::from_min_size(rr.min, vec2(rr.width(), rr.height() - 6.0));
                 diff(ui, &p, f, rows, at, body, &wrap, &marks);
-                let resp = ui.interact(at.intersect(body), Id::new("review-diff"), Sense::CLICK);
+                // A drag or a double click selects text; a plain click still points at a line.
+                let view = at.intersect(body);
+                let resp = ui.interact(view, Id::new("review-diff"), Sense::click_and_drag());
+                if live {
+                    let driven = crate::select::drive(&resp, view);
+                    if let Some(text) = driven.copy {
+                        ctx.copy_text(text);
+                    }
+                    if let Some(url) = driven.open {
+                        std::thread::spawn(move || {
+                            let _ = michi_core::pr::open_url(&url);
+                        });
+                    }
+                    if ui.input(|i| i.modifiers.command) && resp.hover_pos().is_some_and(|q| crate::select::url_at(q, view)) {
+                        ctx.set_cursor_icon(CursorIcon::PointingHand);
+                    }
+                }
                 if let (true, true, Some(q)) = (live, resp.clicked(), resp.interact_pointer_pos()) {
                     let y = q.y - at.top();
                     let k = tops.partition_point(|&t| t <= y).saturating_sub(1).min(tops.len() - 2);
@@ -498,6 +516,7 @@ fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, pages: i32, 
             }
         }
     }
+    crate::select::paint();
     act
 }
 
@@ -721,5 +740,36 @@ mod tests {
         assert!(rv.is_checked(&rv.files()[0]));
         click(&mut app, pos2(X + BOX / 2.0, row(0)));
         assert_eq!(app.review.as_ref().unwrap().checked(), (0, 4), "and takes the check off");
+    }
+
+    #[test]
+    fn a_drag_over_the_diff_selects_text_and_a_click_still_points_at_a_line() {
+        let ctx = egui::Context::default();
+        let mut app = opened();
+        take_list(&mut app, Ok(listed(files(), None)));
+        take_selected(&mut app);
+        frame(&ctx, &mut app, 900.0, Vec::new());
+        let top = PAD_TOP + TOP_H + CLASH_H + 7.0 + TITLE_H;
+        let button = |at: Pos2, pressed| egui::Event::PointerButton {
+            pos: at,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: Default::default(),
+        };
+        let (from, to) = (pos2(420.0, top + 30.0), pos2(800.0, top + 80.0));
+        frame(&ctx, &mut app, 900.0, vec![egui::Event::PointerMoved(from), button(from, true)]);
+        frame(&ctx, &mut app, 900.0, vec![egui::Event::PointerMoved(to)]);
+        frame(&ctx, &mut app, 900.0, vec![button(to, false)]);
+        frame(&ctx, &mut app, 900.0, Vec::new());
+        assert!(crate::select::text().is_some_and(|t| !t.is_empty()), "the drag picked text up");
+        assert_eq!(app.review.as_ref().unwrap().line, None, "and was not a click on a line");
+        // Some rows are hunk headers, which a click leaves alone; one of the first few is a line.
+        for k in 1..6 {
+            let at = pos2(420.0, top + 8.0 + 22.0 * k as f32);
+            frame(&ctx, &mut app, 900.0, vec![egui::Event::PointerMoved(at), button(at, true)]);
+            frame(&ctx, &mut app, 900.0, vec![button(at, false)]);
+            frame(&ctx, &mut app, 900.0, Vec::new());
+        }
+        assert!(app.review.as_ref().unwrap().line.is_some(), "a plain click points at the line");
     }
 }

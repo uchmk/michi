@@ -474,3 +474,13 @@ files under `refs/michi/backup/<time>` first.
 | 31.2 | Make two worktrees edit the same file, wait for michi's prediction, ask "which worktrees would conflict?" | `michi_conflicts` names the pair and the file | | [ ] |
 | 31.3 | Close michi and ask again | The tool answers "michi is not running; start michi and ask again" | | [ ] |
 | 31.4 | Open two michi windows, close the first, ask again after half a minute | The second window answers | | [ ] |
+
+## 32. Selecting text in the review (ito-select)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 32.1 | Press `d` over a worktree; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal); no comment opens | | [ ] |
+| 32.2 | Double-click a word in the diff, triple-click a line, press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] |
+| 32.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] |
+| 32.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] |
+| 32.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] |
