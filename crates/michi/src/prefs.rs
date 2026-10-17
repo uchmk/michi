@@ -59,6 +59,8 @@ pub struct Prefs {
     pub open_warn: Vec<String>,
     /// `[view] density` of config.toml: the height of the graph's and the lists' rows.
     pub density: michi_core::density::Density,
+    /// `[view] motion` of config.toml: the short fades and slides (#88).
+    pub motion: michi_core::motion::Motion,
     pub view_warn: Vec<String>,
     /// The Notifications page's drafts (a webhook's address being typed).
     pub notify_drafts: ito_prefs::Drafts,
@@ -92,6 +94,7 @@ impl Prefs {
             open: Default::default(),
             open_warn: Vec::new(),
             density: Default::default(),
+            motion: Default::default(),
             view_warn: Vec::new(),
             notify_drafts: ito_prefs::Drafts::new(),
             keys_edit: ito_prefs::KeysEdit::default(),
@@ -119,6 +122,9 @@ impl Prefs {
             (p.notify, p.notify_warn) = NotifyCfg::read(config.as_deref());
             (p.open, p.open_warn) = crate::opencfg::OpenCfg::read(config.as_deref());
             (p.density, p.view_warn) = crate::viewcfg::read(config.as_deref());
+            let (motion, warn) = crate::viewcfg::read_motion(config.as_deref());
+            p.motion = motion;
+            p.view_warn.extend(warn);
         }
         p.base = base;
         p
@@ -178,6 +184,9 @@ impl Prefs {
                     (self.notify, self.notify_warn) = NotifyCfg::read(text.as_deref());
                     (self.open, self.open_warn) = crate::opencfg::OpenCfg::read(text.as_deref());
                     (self.density, self.view_warn) = crate::viewcfg::read(text.as_deref());
+                    let (motion, warn) = crate::viewcfg::read_motion(text.as_deref());
+                    self.motion = motion;
+                    self.view_warn.extend(warn);
                 }
                 Reload::Failed(e) => self.failed = Some(e),
             }
@@ -253,13 +262,22 @@ impl Prefs {
 
     /// Write `[view] density` into config.toml on a thread, then read it again.
     pub fn density_set(&self, d: michi_core::density::Density, no_folder: &str) {
+        self.view_set("density", d.key(), no_folder);
+    }
+
+    /// Write `[view] motion` into config.toml on a thread, then read it again.
+    pub fn motion_set(&self, m: michi_core::motion::Motion, no_folder: &str) {
+        self.view_set("motion", m.key(), no_folder);
+    }
+
+    fn view_set(&self, key: &'static str, value: &'static str, no_folder: &str) {
         let (tx, wake) = (self.tx.clone(), self.wake.clone());
         let Some(base) = self.base.clone() else {
             Self::send_back(&tx, &wake, Reload::Failed(no_folder.into()));
             return;
         };
         std::thread::spawn(move || {
-            let r = match write_config(&config_path(&base), &[], &[("density", ito_common::quote(d.key()))], None) {
+            let r = match write_config(&config_path(&base), &[], &[(key, ito_common::quote(value))], None) {
                 Ok(()) => Reload::Config(read_config(&base)),
                 Err(e) => Reload::Failed(e),
             };

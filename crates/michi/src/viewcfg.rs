@@ -3,12 +3,14 @@
 //! is warned of and keeps the standard.
 
 use michi_core::density::Density;
+use michi_core::motion::Motion;
 use serde::Deserialize;
 
 #[derive(Deserialize, Default)]
 #[serde(default)]
 struct View {
     density: Option<String>,
+    motion: Option<String>,
 }
 
 #[derive(Deserialize, Default)]
@@ -32,6 +34,20 @@ pub fn read(text: Option<&str>) -> (Density, Vec<String>) {
     }
 }
 
+/// `[view] motion` of the config.toml `text` (none: no file), with what to warn of.
+pub fn read_motion(text: Option<&str>) -> (Motion, Vec<String>) {
+    match text.map(toml::from_str::<File>) {
+        Some(Ok(f)) => match f.view.motion {
+            None => (Motion::default(), Vec::new()),
+            Some(s) => match s.parse() {
+                Ok(m) => (m, Vec::new()),
+                Err(()) => (Motion::default(), vec![format!("config.toml: [view] motion `{s}` is not on or off")]),
+            },
+        },
+        _ => (Motion::default(), Vec::new()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -49,5 +65,33 @@ mod tests {
         let (d, w) = read(Some("[view]\ndensity = \"huge\"\n"));
         assert_eq!(d, Density::Standard);
         assert_eq!(w.len(), 1);
+    }
+
+    #[test]
+    fn motion_is_read_or_defaulted() {
+        assert_eq!(read_motion(None), (Motion::On, vec![]));
+        assert_eq!(
+            read_motion(Some(
+                "[view]
+motion = \"off\"
+"
+            ))
+            .0,
+            Motion::Off
+        );
+        assert_eq!(
+            read_motion(Some(
+                "[view]
+density = \"cozy\"
+"
+            )),
+            (Motion::On, vec![])
+        );
+        let (m, w) = read_motion(Some(
+            "[view]
+motion = \"slow\"
+",
+        ));
+        assert_eq!((m, w.len()), (Motion::On, 1));
     }
 }
