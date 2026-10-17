@@ -1049,8 +1049,15 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         }
         if live && resp.double_clicked() {
             act = Some((k, Some(Act::Enter)));
-        } else if live && resp.clicked() {
+        } else if live && (resp.clicked() || resp.secondary_clicked()) {
             act = Some((k, None));
+        }
+        if live {
+            resp.context_menu(|ui| {
+                if let Some(key) = crate::ctxmenu::show(ui, app, michi_core::menu::Kind::Branch) {
+                    act = Some((k, Some(Act::Key(key))));
+                }
+            });
         }
         let mut pressed = None;
         for (n, (y, line)) in b.lines.iter().enumerate() {

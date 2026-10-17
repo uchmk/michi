@@ -653,3 +653,15 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 47.7 | Start `git rebase -i` and stop it at an edit | The strip says it is a rebase, with no buttons; it goes when the rebase ends | | [ ] |
 | 47.8 | With a Claude working in the worktree press `R` | A yes is asked first, as for a switch | | [ ] |
 | 47.9 | Open the settings (`,`) or the key list (`?`) while the strip is up; switch EN and JA | The strip stays tidy at a narrow width (the text is cut with an ellipsis, the buttons stay); both languages read well | | [ ] |
+
+## 66. Right-click menus for a commit, a branch and a file
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 66.1 | In the graph (`1`) right-click a commit row | The row is selected and a menu lists Branch (b), Tag (T), Merge (m), Cherry-pick (C), Revert (t), Compare (D), Reset (R), each with its key; a right-click on the WIP row opens nothing |
+| 66.2 | Pick Tag from that menu; then Esc, and right-click another row and click outside the menu | The tag palette opens on the clicked commit (not the one selected before); Esc and a click outside close the menu without doing anything |
+| 66.3 | While a menu is open, type `d` or `j` | Nothing happens to the view (the keys do not reach the window until the menu is closed) |
+| 66.4 | In the worktree table (`3`) right-click a worktree row | The row is selected and a menu lists Pull request, Open in the terminal / editor / file manager, Branch diff, Rebase onto trunk, Take main, Reorder, Reflog, Remove, with keys; picking Open in the editor opens that row's folder |
+| 66.5 | Pick Remove for a worktree row | The same question as pressing `x` asks first; nothing is lost without a yes |
+| 66.6 | In the changes view (`2`) right-click an unstaged file (flat list and tree) | The file is selected and a menu lists Stage (Space), Split, Ignore, Discard, Amend; Stage moves the clicked file, Discard asks first |
+| 66.7 | Press `?` and open the palette; switch EN and JA and look at the menus | No operation exists only in a menu (each is a key in the help and the palette); the menu words read well in both languages |

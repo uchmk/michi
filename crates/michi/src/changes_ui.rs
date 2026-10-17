@@ -71,6 +71,8 @@ enum Act {
     Select(usize),
     /// A file double-clicked: staged or unstaged.
     Toggle(usize),
+    /// A pick in a file's right-click menu: the key, typed on that file.
+    Menu(usize, char),
     Wide(bool),
     /// A folder of the tree folded, or opened.
     Fold(Side, String),
@@ -166,6 +168,13 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         Act::Toggle(k) => {
             app.changes_select(k);
             app.feed(' ');
+        }
+        Act::Menu(k, key) => {
+            if app.changes.focus == Focus::Lines {
+                app.changes.leave_lines();
+            }
+            app.changes_select(k);
+            app.feed(key);
         }
         Act::Wide(w) => app.changes.wide = w,
         Act::Fold(side, dir) => app.changes.fold(side, &dir),
@@ -534,8 +543,15 @@ fn list(ui: &Ui, app: &App, lr: Rect, live: bool, pointer: Option<Pos2>, act: &m
                 }
                 if live && resp.double_clicked() {
                     *act = Some(Act::Toggle(k));
-                } else if live && resp.clicked() {
+                } else if live && (resp.clicked() || resp.secondary_clicked()) {
                     *act = Some(Act::Select(k));
+                }
+                if live {
+                    resp.context_menu(|ui| {
+                        if let Some(key) = crate::ctxmenu::show(ui, app, michi_core::menu::Kind::File) {
+                            *act = Some(Act::Menu(k, key));
+                        }
+                    });
                 }
             }
         }

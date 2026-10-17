@@ -544,8 +544,26 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
             }
         }
     }
+    // A right-click selects the row and opens its menu; a pick is the key
+    // typed on that row.
+    let menu_id = Id::new("graph-menu-row");
+    if live && list_resp.secondary_clicked() {
+        let row = list_resp.interact_pointer_pos().map(|p| ((p.y - top) / row_h).floor());
+        let row = row.filter(|k| *k >= 0.0 && (*k as u32) < len).map(|k| k as u32);
+        ctx.data_mut(|d| match row {
+            Some(k) => _ = d.insert_temp(menu_id, k),
+            None => _ = d.remove_temp::<u32>(menu_id),
+        });
+        if let Some(k) = row {
+            acts.push(Act::Select(k));
+        }
+    }
+    let mut menu_pick = None;
+    if let Some(k) = ctx.data(|d| d.get_temp::<u32>(menu_id)).filter(|k| app.graph.commit(*k).is_some()) {
+        list_resp.context_menu(|ui| menu_pick = crate::ctxmenu::show(ui, app, michi_core::menu::Kind::Commit).map(|c| (k, c)));
+    }
     ctx.data_mut(|d| d.insert_temp(scroll_id(), scroll));
-    let repaint = !acts.is_empty();
+    let repaint = !acts.is_empty() || menu_pick.is_some();
     for act in acts {
         match act {
             Act::Select(k) => {
@@ -561,6 +579,11 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
             Act::More => app.more(),
             Act::Fold => app.fold(),
         }
+    }
+    if let Some((k, key)) = menu_pick {
+        app.graph.select(k);
+        app.graph.reveal = false;
+        app.feed(key);
     }
     if repaint {
         ctx.request_repaint();
