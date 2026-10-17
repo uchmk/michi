@@ -41,6 +41,7 @@ impl App {
             && self.reflog.is_none()
             && self.stats.is_none()
             && self.ready.is_none()
+            && self.auth.is_none()
             && self.blame.is_none()
             && self.trial.is_none()
             && self.reorder.is_none();

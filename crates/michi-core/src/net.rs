@@ -478,13 +478,6 @@ pub fn last_fetch(common: &Path) -> Option<SystemTime> {
     newest
 }
 
-/// Whether `e` is ssh not getting in (no key loaded, a passphrase it could
-/// not ask for): worth saying to start the ssh agent.
-pub fn is_ssh(e: &git::Error) -> bool {
-    let all = e.all();
-    ["Permission denied (publickey", "Host key verification failed", "passphrase", "authentication agent"].iter().any(|s| all.contains(s))
-}
-
 /// What a remote's short name for `full` is: `origin/main` for
 /// `refs/remotes/origin/main`, `main` for `refs/heads/main`.
 fn short_ref(full: &str) -> &str {
@@ -999,15 +992,5 @@ mod tests {
         assert_eq!(t.out(&t.repo, &["config", "branch.main.remote"]), "mine");
         // Its upstream is the one now.
         assert_eq!(push(&t.repo, None, None, &no, &mut quiet()).unwrap(), Done::Even { to: "mine/main".into() });
-    }
-
-    #[test]
-    fn ssh_trouble_is_told_apart() {
-        let told = git::Error::Told {
-            line: "git@github.com: Permission denied (publickey).".into(),
-            all: "git@github.com: Permission denied (publickey).\nfatal: Could not read from remote repository.".into(),
-        };
-        assert!(is_ssh(&told));
-        assert!(!is_ssh(&git::Error::Git("Could not resolve host: github.com".into())));
     }
 }

@@ -577,9 +577,7 @@ impl App {
             },
             Err(e) => {
                 let mut text = self.tr("net.failed").replace("{job}", kind.word()).replace("{e}", &e.to_string());
-                if net::is_ssh(&e) {
-                    text.push_str(self.tr("net.ssh"));
-                }
+                text.push_str(&self.auth_noted(&e, None));
                 let title = self.tr("notify.title_failed").replace("{job}", kind.word());
                 self.tell("failed", &title, &e.to_string());
                 self.last_error = Some(text.clone());
@@ -747,14 +745,15 @@ mod tests {
             "origin/main refused the push: pre-receive hook declined"
         );
         assert_eq!(
-            said(&push, Err(git::Error::Git("Could not resolve host: example.invalid".into()))),
-            "push failed: Could not resolve host: example.invalid"
+            said(&push, Err(git::Error::Git("fatal: unable to access: remote end hung up".into()))),
+            "push failed: fatal: unable to access: remote end hung up"
         );
+        assert!(said(&push, Err(git::Error::Git("Could not resolve host: example.invalid".into()))).contains("(K "));
         let ssh = git::Error::Told {
             line: "git@github.com: Permission denied (publickey).".into(),
             all: "git@github.com: Permission denied (publickey).\nfatal: Could not read from remote repository.".into(),
         };
-        assert!(said(&Job::Fetch, Err(ssh)).ends_with("start ssh-agent and ssh-add your key"));
+        assert!(said(&Job::Fetch, Err(ssh)).ends_with("ssh key was refused (K for the fix)"));
         assert!(a.band.is_none());
     }
 

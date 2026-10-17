@@ -188,6 +188,13 @@ pub enum Task {
         input: michi_core::ready::Input,
         trunk: String,
     },
+    /// Reads, without changing anything, what a login depends on: the
+    /// remote's address (or the clone's `url`), the credential helper, the
+    /// ssh agent.
+    FindAuth {
+        here: PathBuf,
+        url: Option<String>,
+    },
     /// Lists HEAD's reflog (as the worktree at `here` has it) and the backups.
     FindReflog {
         here: PathBuf,
@@ -472,6 +479,7 @@ impl Task {
             Task::FindReflog { .. } => "reflog",
             Task::FindStats { .. } => "log",
             Task::Ready { .. } => "ready",
+            Task::FindAuth { .. } => "config credential.helper",
             Task::FindContent { content, .. } => match content.kind {
                 michi_core::find::Kind::Text => "log -S",
                 michi_core::find::Kind::Regex => "log -G",
@@ -555,6 +563,7 @@ pub enum Acted {
     Reflog(Vec<michi_core::reflog::Entry>),
     Stats(Box<michi_core::stats::Stats>),
     Ready(Vec<michi_core::ready::Fact>),
+    Auth(Box<michi_core::auth::Facts>),
     /// The commits a content search hits.
     Content(std::collections::HashSet<Oid>),
     Remotes(Vec<michi_core::remote::Remote>),
@@ -639,6 +648,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Ready { input, .. } => Ok(Acted::Ready(michi_core::ready::check(input))),
         Task::FindReflog { here } => michi_core::reflog::list(here).map(Acted::Reflog),
         Task::FindStats { here, range, now } => michi_core::stats::read(here, *range, *now).map(|s| Acted::Stats(Box::new(s))),
+        Task::FindAuth { here, url } => Ok(Acted::Auth(Box::new(michi_core::auth::probe(here, url.as_deref())))),
         Task::FindContent { here, content } => michi_core::find::search(here, content).map(Acted::Content),
         Task::FindBlame { dir, rev, path } => michi_core::blame::read(dir, rev.as_ref(), path).map(|b| Acted::Blamed(Box::new(b))),
         Task::Trial { trunk, branches } => michi_core::trial::run(dir, trunk, branches).map(|t| Acted::Trialed(Box::new(t))),
@@ -1059,6 +1069,7 @@ impl App {
             (Task::Ready { input, trunk }, Ok(Acted::Ready(facts))) => return self.ready_found(input, trunk, facts),
             (Task::FindReflog { .. }, Ok(Acted::Reflog(rows))) => return self.reflog_found(rows),
             (Task::FindStats { range, .. }, Ok(Acted::Stats(data))) => return self.stats_found(*range, *data),
+            (Task::FindAuth { .. }, Ok(Acted::Auth(facts))) => return self.auth_found(*facts),
             (Task::FindContent { content, .. }, Ok(Acted::Content(ids))) => {
                 self.graph.set_content(content.clone(), ids);
                 return;

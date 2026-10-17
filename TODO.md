@@ -114,6 +114,8 @@ All wait for the owner; none is started.
 - [x] Remote management: `M` in the graph lists the remotes, adds one (name then address) and removes one after a yes (TESTING 40)（要確認: #40）
 - [ ] Authentication guidance（要確認: #41）
 - [x] Gitflow: `G` starts a feature, release or hotfix and finishes the worktree flow branch with plain git (TESTING 242)（要確認: #42）
+- [x] Authentication guidance（要確認: #41）: a failed fetch, push or clone is classified from git's stderr (ssh key, host key, https login, expired token, SSO, network), the toast names the cause, and `K` (or the palette) opens a panel with the facts and numbered copy-only fix commands (TESTING 241)
+- [ ] Gitflow（要確認: #42）
 - [ ] Built-in editor（要確認: #43）
 - [ ] Issue tracker integration（要確認: #44）
 - [x] Multi-repository tabs: Ctrl+O / Ctrl+T opens a repository in a tab, Ctrl+Tab / Ctrl+W / Alt+N, tabs kept between runs, TESTING 245（要確認: #45）

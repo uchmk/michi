@@ -3,6 +3,7 @@
 //! Claude sessions tsumugi lists, the conflict prediction, the uncommitted
 //! changes. The window is the `michi` crate.
 
+pub mod auth;
 pub mod autofetch;
 pub mod autostash;
 pub mod avatar;

@@ -10,7 +10,7 @@ use crate::git;
 
 /// `(host, path)` of a remote URL (`https://`, `ssh://`, `git://` and the scp
 /// form `git@host:path`); the path has no surrounding `/` or trailing `.git`.
-fn host_and_path(url: &str) -> Option<(String, String)> {
+pub(crate) fn host_and_path(url: &str) -> Option<(String, String)> {
     let url = url.trim();
     let rest = ["https://", "http://", "ssh://", "git://"].iter().find_map(|p| url.strip_prefix(p));
     let (host, path) = match rest {

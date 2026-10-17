@@ -170,7 +170,7 @@ impl View {
 }
 
 /// The keys that work in every view.
-pub const GLOBAL_KEYS: [(&str, &str); 8] = [
+pub const GLOBAL_KEYS: [(&str, &str); 9] = [
     ("1 2 3 4", "key.views"),
     ("N", "key.new_work"),
     ("W", "key.waiting"),
@@ -179,6 +179,7 @@ pub const GLOBAL_KEYS: [(&str, &str); 8] = [
     ("P", "key.push"),
     ("F", "key.push_over"),
     ("S", "key.sync_help"),
+    ("K", "key.auth"),
 ];
 
 /// The keys of the branch review, drawn over the worktree table.
@@ -204,6 +205,8 @@ pub const TIDY_KEYS: [(&str, &str); 5] =
     [("j k", "key.move"), ("Space", "key.pick"), ("a", "key.pick_all"), ("Enter", "key.run"), ("Esc", "key.back")];
 /// The keys of the pre-merge checklist (`g` over the worktree table).
 pub const READY_KEYS: [(&str, &str); 1] = [("Esc", "key.back")];
+/// The keys of the sign-in help (`K`).
+pub const AUTH_KEYS: [(&str, &str); 2] = [("1-9", "key.copy_command"), ("Esc", "key.back")];
 /// The keys of the reflog list (`L`).
 pub const REFLOG_KEYS: [(&str, &str); 3] = [("j k", "key.move"), ("Enter", "key.bring_back"), ("Esc", "key.back")];
 /// The keys of the statistics screen (`I`).
@@ -371,6 +374,11 @@ pub struct App {
     pub reflog: Option<crate::reflog::Reflog>,
     pub stats: Option<crate::stats::Statistics>,
     pub ready: Option<crate::ready::Ready>,
+    /// The sign-in help panel (`K`), while open.
+    pub auth: Option<crate::auth::Auth>,
+    /// The last login or network failure of a fetch, push or clone, and the
+    /// clone's address when it was a clone: what `K` explains.
+    pub auth_failed: Option<(michi_core::auth::Kind, Option<String>)>,
     pub blame: Option<crate::blame::Blame>,
     /// Text for the clipboard, taken by the window on its next frame.
     pub clipboard: Option<String>,
@@ -466,6 +474,8 @@ impl App {
             reflog: None,
             stats: None,
             ready: None,
+            auth: None,
+            auth_failed: None,
             blame: None,
             clipboard: None,
             trial: None,
@@ -1242,6 +1252,8 @@ impl App {
             (&TIDY_KEYS, "key.tidy")
         } else if self.ready.is_some() {
             (&READY_KEYS, "key.ready")
+        } else if self.auth.is_some() {
+            (&AUTH_KEYS, "key.auth")
         } else if self.reflog.is_some() {
             (&REFLOG_KEYS, "key.reflog")
         } else if self.stats.is_some() {
@@ -1520,6 +1532,7 @@ impl App {
             || self.reflog.is_some()
             || self.stats.is_some()
             || self.ready.is_some()
+            || self.auth.is_some()
             || self.blame.is_some()
             || self.trial.is_some()
             || self.reorder.is_some();
@@ -1562,6 +1575,7 @@ impl App {
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
             (Mode::Main, c) if self.tidy.is_some() => return self.tidy_key(c),
             (Mode::Main, c) if self.ready.is_some() => return self.ready_key(c),
+            (Mode::Main, c) if self.auth.is_some() => return self.auth_key(c),
             (Mode::Main, c) if self.reflog.is_some() => return self.reflog_key(c),
             (Mode::Main, c) if self.stats.is_some() => return self.stats_key(c),
             (Mode::Main, c) if self.blame.is_some() => return self.blame_key(c),
@@ -1580,6 +1594,7 @@ impl App {
                 None if self.view == View::Changes && self.changes_key(c) => {}
                 None if self.view == View::Conflict && self.conflict_key(c) => {}
                 None if c == 'W' => self.jump_waiting(),
+                None if c == 'K' => self.open_auth(),
                 None if self.net_key(c) => {}
                 None if self.strip_key(c) => {}
                 None => return self.later(|token| token.chars().eq([c])),
@@ -1733,7 +1748,7 @@ impl App {
         if self.trial.is_some() {
             return self.trial_named(name);
         }
-        if self.ready.is_some() {
+        if self.ready.is_some() || self.auth.is_some() {
             return true;
         }
         if self.reflog.is_some() {
@@ -1838,7 +1853,7 @@ impl App {
         if self.tidy.take().is_some() {
             return true;
         }
-        if self.reflog.take().is_some() || self.stats.take().is_some() || self.blame.take().is_some() || self.ready.take().is_some() {
+        if self.reflog.take().is_some() || self.stats.take().is_some() || self.blame.take().is_some() || self.ready.take().is_some() || self.auth.take().is_some() {
             return true;
         }
         if self.trial.take().is_some() {
@@ -2022,6 +2037,7 @@ pub(crate) mod tests {
             ("key.asking", &BAND_KEYS[..]),
             ("key.tidy", &TIDY_KEYS[..]),
             ("key.ready", &READY_KEYS[..]),
+            ("key.auth", &AUTH_KEYS[..]),
             ("key.reflog", &REFLOG_KEYS[..]),
             ("key.stats_screen", &STATS_KEYS[..]),
             ("key.blame_screen", &BLAME_KEYS[..]),
