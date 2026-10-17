@@ -519,6 +519,18 @@ impl App {
         crate::i18n::tr(&self.lang, key)
     }
 
+    /// What git refused with, for a toast (#108): the cause and the next step
+    /// when the refusal is a known one, git's own words kept after them as the
+    /// detail; otherwise git's words as they are.
+    pub fn git_says(&self, e: &git::Error) -> String {
+        match michi_core::explain::explain_error(e) {
+            Some(r) => {
+                self.tr("gerr.fmt").replace("{cause}", self.tr(r.cause)).replace("{next}", self.tr(r.next)).replace("{raw}", &e.to_string())
+            }
+            None => e.to_string(),
+        }
+    }
+
     /// What a worktree in the middle of `d` is doing, for the texts' `{doing}`.
     /// The Japanese texts leave out the spaces around it, so that a Japanese
     /// word sits close (`マージの途中`) and an ASCII one gets them here
@@ -780,7 +792,7 @@ impl App {
                     }
                     Ok(Did::Staged) => {}
                     Err(e) => {
-                        let text = self.tr("changes.failed").replace("{}", &e.to_string());
+                        let text = self.tr("changes.failed").replace("{}", &self.git_says(e));
                         self.say_for(text, 8);
                         if let git::Error::Told { all, .. } = e {
                             self.changes.tell(&wt, commit, all.clone());

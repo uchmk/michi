@@ -1317,3 +1317,13 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 261.3 | Change the theme and a key, press Import once, then again | The first press only arms the button; the second reads the file back, a toast says what was read, and the theme and the key are as exported within a couple of seconds |
 | 261.4 | Import a file that is not a settings bundle | A toast gives the reason and nothing in the settings folder changes |
 | 261.5 | Search "backup" in the settings | The Advanced page is listed |
+
+## 108. Git errors as a cause and a next step (#108)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 108.1 | Make the remote ahead of a branch (commit from another clone), then press `P` (push) without fetching | The toast says the remote has commits this branch does not have, to fetch and pull or rebase, and ends with `(git said: …)` holding git's own words |
+| 108.2 | Edit a file that another branch also changes, then switch to that branch from the picker | The toast says uncommitted changes would be overwritten, to commit or stash first; the detail names the file |
+| 108.3 | Create a worktree for a branch that is already open in another worktree | The toast says the branch is open in another worktree and offers switching or a new branch |
+| 108.4 | Switch the language to Japanese and repeat 108.1 | The same sentence in Japanese, the detail still in git's English; the toast stays readable at its width |
+| 108.5 | Trigger a refusal michi has no sentence for (an odd hook output) | git's words are shown as before, nothing extra |

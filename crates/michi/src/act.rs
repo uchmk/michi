@@ -857,7 +857,7 @@ impl App {
     /// The task is over: say how it went; a tag to push goes on to the net
     /// thread.
     pub(crate) fn act_done(&mut self, task: Task, result: Result<Acted, git::Error>) {
-        let failed = |a: &App, e: &git::Error| a.tr("act.failed").replace("{job}", task.word()).replace("{e}", &e.to_string());
+        let failed = |a: &App, e: &git::Error| a.tr("act.failed").replace("{job}", task.word()).replace("{e}", &a.git_says(e));
         if let (
             Task::Resolve { wt, .. }
             | Task::ResolveWith { wt, .. }

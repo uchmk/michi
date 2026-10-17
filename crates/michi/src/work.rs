@@ -576,7 +576,7 @@ impl App {
                 }
             },
             Err(e) => {
-                let mut text = self.tr("net.failed").replace("{job}", kind.word()).replace("{e}", &e.to_string());
+                let mut text = self.tr("net.failed").replace("{job}", kind.word()).replace("{e}", &self.git_says(&e));
                 text.push_str(&self.auth_noted(&e, None));
                 let title = self.tr("notify.title_failed").replace("{job}", kind.word());
                 self.tell("failed", &title, &e.to_string());
