@@ -173,6 +173,26 @@ pub const REVIEW_KEYS: [(&str, &str); 11] = [
     ("Esc", "key.back"),
 ];
 
+/// The keys of the question band (`y` / `n` / `Esc`), over any view.
+pub const BAND_KEYS: [(&str, &str); 3] = [("y", "key.yes"), ("n", "key.no"), ("Esc", "key.back")];
+/// The keys of the clean-up list (`c` over the worktree table).
+pub const TIDY_KEYS: [(&str, &str); 5] =
+    [("j k", "key.move"), ("Space", "key.pick"), ("a", "key.pick_all"), ("Enter", "key.run"), ("Esc", "key.back")];
+/// The keys of the reflog list (`L`).
+pub const REFLOG_KEYS: [(&str, &str); 3] = [("j k", "key.move"), ("Enter", "key.bring_back"), ("Esc", "key.back")];
+/// The keys of the trial-merge screen (`T`).
+pub const TRIAL_KEYS: [(&str, &str); 5] =
+    [("j k", "key.move"), ("Space", "key.pick"), ("u", "key.unpick"), ("Enter", "key.run"), ("Esc", "key.back")];
+/// The keys of the rebase screen (`r`).
+pub const REORDER_KEYS: [(&str, &str); 6] = [
+    ("j k", "key.select"),
+    ("J K", "key.shift_row"),
+    ("p s f d", "key.row_action"),
+    ("r", "key.reword"),
+    ("Enter", "key.run"),
+    ("Esc", "key.back"),
+];
+
 /// What the window shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
@@ -1070,10 +1090,27 @@ impl App {
     /// The keys that work now: the view's, or the branch review's over the
     /// worktree table.
     pub fn keys(&self) -> &'static [(&'static str, &'static str)] {
-        if self.view == View::Worktree && self.review.is_some() {
-            &REVIEW_KEYS
+        self.keys_of().0
+    }
+
+    /// The keys in front now and the word-table key of what they belong to
+    /// (the view, or the screen over it). The order is the one `feed` takes
+    /// the screens in, so the keybar and `?` name the keys that really work.
+    pub fn keys_of(&self) -> (&'static [(&'static str, &'static str)], &'static str) {
+        if self.band.is_some() {
+            (&BAND_KEYS, "key.asking")
+        } else if self.tidy.is_some() {
+            (&TIDY_KEYS, "key.tidy")
+        } else if self.reflog.is_some() {
+            (&REFLOG_KEYS, "key.reflog")
+        } else if self.trial.is_some() {
+            (&TRIAL_KEYS, "key.trial")
+        } else if self.reorder.is_some() {
+            (&REORDER_KEYS, "key.reorder")
+        } else if self.view == View::Worktree && self.review.is_some() {
+            (&REVIEW_KEYS, "key.branch_diff")
         } else {
-            self.view.keys()
+            (self.view.keys(), self.view.label())
         }
     }
 
@@ -1314,15 +1351,20 @@ impl App {
         use ito_help::Line;
         let mut lines = vec![Line::Head(self.tr("help.global").to_owned())];
         let bind = |k: &str, w: &str| Line::Bind { keys: k.to_owned(), desc: w.to_owned() };
-        lines.extend(GLOBAL_KEYS.iter().map(|(k, w)| bind(k, self.tr(w))));
+        // The keys of the screen in front are tried first, and a screen over a
+        // view takes every key: the list names only the global ones that work.
+        let (keys, head) = self.keys_of();
+        let over = self.band.is_some() || self.tidy.is_some() || self.reflog.is_some() || self.trial.is_some() || self.reorder.is_some();
+        if !over {
+            lines.extend(michi_core::keyhelp::global_here(&GLOBAL_KEYS, keys).iter().map(|(k, w)| bind(k, self.tr(w))));
+        }
         lines.extend(ito_keymap::help_lines(&self.prefs.keymap.main, "noop").into_iter().map(|l| {
             let desc = if l.desc.is_empty() { l.run.to_owned() } else { crate::i18n::tr_desc(&self.lang, l.desc) };
             Line::Bind { keys: l.keys, desc }
         }));
-        let view = if self.keys() == self.view.keys() { self.view.label() } else { "key.branch_diff" };
         lines.push(Line::Blank);
-        lines.push(Line::Head(self.tr(view).to_owned()));
-        lines.extend(self.keys().iter().map(|(k, w)| bind(k, self.tr(w))));
+        lines.push(Line::Head(self.tr(head).to_owned()));
+        lines.extend(keys.iter().map(|(k, w)| bind(k, self.tr(w))));
         lines
     }
 
@@ -1774,6 +1816,95 @@ pub(crate) mod tests {
         for (_, w) in GLOBAL_KEYS.iter().chain(&REVIEW_KEYS) {
             assert_ne!(crate::i18n::tr("en", w), *w, "no words for {w}");
         }
+    }
+
+    /// Every screen that has keys of its own, by the word-table key of its name.
+    fn screens() -> Vec<(&'static str, &'static michi_core::keyhelp::Keys)> {
+        let mut v: Vec<(&'static str, &'static michi_core::keyhelp::Keys)> = View::ALL.iter().map(|v| (v.label(), v.keys())).collect();
+        v.extend([
+            ("key.branch_diff", &REVIEW_KEYS[..]),
+            ("key.asking", &BAND_KEYS[..]),
+            ("key.tidy", &TIDY_KEYS[..]),
+            ("key.reflog", &REFLOG_KEYS[..]),
+            ("key.trial", &TRIAL_KEYS[..]),
+            ("key.reorder", &REORDER_KEYS[..]),
+        ]);
+        v
+    }
+
+    #[test]
+    fn every_screen_names_each_key_once_and_has_words_in_both_languages() {
+        for (name, keys) in screens().into_iter().chain([("help.global", &GLOBAL_KEYS[..])]) {
+            assert_eq!(michi_core::keyhelp::repeated(keys), Vec::<&str>::new(), "{name} lists a key twice");
+            for lang in ["en", "ja"] {
+                assert_ne!(crate::i18n::tr(lang, name), name, "no {lang} words for {name}");
+                for (_, w) in keys {
+                    assert_ne!(crate::i18n::tr(lang, w), *w, "no {lang} words for {w}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_keys_that_change_their_meaning_with_the_screen_are_the_ones_known() {
+        use michi_core::keyhelp::{collisions, meanings};
+        let screens = screens();
+        // The ones the owner chose to keep: written down so a new clash is a decision.
+        let t = meanings(&screens, "t");
+        assert_eq!(t, [("view.graph", "key.revert"), ("view.worktree", "key.open_in"), ("view.conflict", "key.theirs")]);
+        let m = meanings(&screens, "m");
+        assert!(m.contains(&("view.graph", "key.merge_commit")) && m.contains(&("view.worktree", "key.take_main")));
+        // A single-letter key on the views' own lists that is also global is
+        // shadowed there (the screen's key is tried first).
+        let global: Vec<&str> = GLOBAL_KEYS.iter().flat_map(|(k, _)| michi_core::keyhelp::tokens(k)).collect();
+        let mut shadows: Vec<(&str, &str)> = Vec::new();
+        for (name, keys) in &screens[..View::ALL.len()] {
+            for (k, _) in keys.iter() {
+                shadows.extend(michi_core::keyhelp::tokens(k).filter(|t| global.contains(t)).map(|t| (*name, t)));
+            }
+        }
+        assert_eq!(shadows, [("view.changes", "N"), ("view.worktree", "p")], "a view shadows a global key");
+        assert!(collisions(&screens).contains_key("t"));
+    }
+
+    #[test]
+    fn the_key_list_names_only_the_global_keys_that_work_on_the_screen() {
+        let text = |a: &App| {
+            a.help_lines().iter().map(|l| format!("{l:?}")).collect::<Vec<_>>().join(
+                "
+",
+            )
+        };
+        let mut a = app();
+        a.view = View::Worktree;
+        let t = text(&a);
+        assert!(!t.contains("Pull") && t.contains("Push"), "p is the pull request here, not a pull: {t}");
+        a.view = View::Graph;
+        assert!(text(&a).contains("Pull"));
+    }
+
+    #[test]
+    fn the_keybar_follows_the_screen_in_front() {
+        use michi_core::reflog::{Entry, Source};
+        let mut a = app();
+        a.view = View::Worktree;
+        assert_eq!(a.keys(), View::Worktree.keys());
+        a.reflog_found(vec![Entry {
+            id: Oid::parse(&"1".repeat(40)).unwrap(),
+            source: Source::Head(1),
+            what: "reset".into(),
+            subject: "s".into(),
+            when: 1,
+        }]);
+        assert_eq!(a.keys(), &REFLOG_KEYS[..]);
+        assert_eq!(a.keys_of().1, "key.reflog");
+        let lines = a.help_lines();
+        assert!(!lines.iter().any(|l| format!("{l:?}").contains("Fetch")), "no global key works over the list");
+        a.reflog = None;
+        a.band = Some(Band::new("ask".into(), crate::work::Then::Act(crate::act::Task::Rerere { wt: PathBuf::from("C:/r"), on: false })));
+        assert_eq!(a.keys(), &BAND_KEYS[..]);
+        a.band = None;
+        assert_eq!(a.keys(), View::Worktree.keys());
     }
 
     #[test]

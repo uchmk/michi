@@ -672,3 +672,13 @@
 - [ ] **80.5** Press Enter with a wrong or half-typed name; then Backspace over it and type the whole `origin/<b>`, Enter → The first Enter only toasts `Type origin/<b> first, then Enter`; the full name pushes (with the lease) → | [ ] 〔未訳〕
 - [ ] **80.6** In the same band press Esc, or click No → The band closes and nothing is pushed → | [ ] 〔未訳〕
 - [ ] **80.7** Switch to JA and repeat 80.2 and 80.3 → Titles, the typing note and the toast read in Japanese → | [ ] 〔未訳〕
+
+## 83. Keys that change meaning with the screen (keybar and `?` always match, #83)
+
+- [ ] **83.1** In `1` the keybar lists `t` as Revert; go to `3` then to `4` (a conflict) → The keybar's `t` reads Open in the terminal in `3`, Theirs in `4`; each does exactly what the keybar says → | [ ] 〔未訳〕
+- [ ] **83.2** In `3` press `?` → Everywhere lists Fetch and Push but not `p` Pull (here `p` is the pull request); in `1` it lists `p` Pull again → | [ ] 〔未訳〕
+- [ ] **83.3** In `2` press `?` → Everywhere does not list `N` for new work (here `n N` jumps between changes); `N` still opens New work in `1` and `3` → | [ ] 〔未訳〕
+- [ ] **83.4** Press `L` (reflog list), then look at the keybar and press `?` → The keybar shows only `j k` Move, Enter Bring the row back, Esc Back; `?` lists those under "Reflog" and no "Everywhere" keys → | [ ] 〔未訳〕
+- [ ] **83.5** Repeat 83.4 with `c` in `3` (clean-up), `T` in `3` (trial merge) and `r` in `3` (rebase) → Each screen's own keys are in the keybar (Space picks, `a` picks all, `u` clears, `s f d p r`...), and typing `f` or `p` there does nothing to git → | [ ] 〔未訳〕
+- [ ] **83.6** Start something that asks for a yes (`x` on a worktree, `F` force push) → The keybar reads `y` Yes, `n` No, Esc Back; closing the question brings the view's keys back → | [ ] 〔未訳〕
+- [ ] **83.7** Switch EN and JA and repeat 83.4 and 83.6 → The new words read well in both languages and fit the keybar (the rest is cut, not overlapped) → | [ ] 〔未訳〕
