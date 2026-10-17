@@ -1304,7 +1304,11 @@
 
 - [ ] **273.1** In the graph and in the Worktrees table press `G`, then `gg` → `G` goes to the last row, `gg` to the first; a `g` followed by another key does nothing 〔未訳〕
 - [ ] **273.2** Press Alt+2 in the graph → The second repository tab opens; the view does not change 〔未訳〕
-- [ ] **273.3** In the graph trigger a message (`#`) → The toast sits at the foot of the detail pane 〔未訳〕
+- [ ] **273.3** In the graph trigger a message (`#`) → The toast sits at the top right (see 274) 〔未訳〕
 - [ ] **273.4** Press `U` in the graph and in the Worktrees table; `R` in the table; `x` then `y` in the graph → Gitflow list; the pre-merge check; the bisect marks bad then good 〔未訳〕
 - [ ] **273.5** In the graph select a merge commit, press `]`, then `[` → `]` selects the commit the merge brought in, `[` the first parent; on a plain commit `]` says there is no second parent 〔未訳〕
 - [ ] **273.6** Select a worktree's uncommitted change and drag over its header in the detail → The text is picked up and copied 〔未訳〕
+
+## 274. Toast: top right, gone after a few seconds
+
+- [ ] **274.1** Trigger a message (`#` in the graph) and wait → It appears at the top right, not at the centre, and is gone after about 4 seconds without touching anything 〔未訳〕

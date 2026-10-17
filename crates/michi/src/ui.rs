@@ -925,17 +925,17 @@ fn help(ui: &mut Ui, app: &mut App, r: Rect) {
     p.text(pos2(card.left() + 20.0, card.bottom() - 22.0), Align2::LEFT_CENTER, app.tr("help.close"), FontId::proportional(11.5), c.dim);
 }
 
-/// The message at the foot of `r`, over whatever is drawn there, while it
-/// lasts.
+/// The message at the top right of `r`, over whatever is drawn there, while
+/// it lasts (as in kura).
 pub fn toast(ui: &mut Ui, app: &App, r: Rect) {
     let (Some((text, _)), Some(left)) = (&app.toast, app.toast_left()) else { return };
     ui.ctx().request_repaint_after(left);
-    // In the graph view the message sits under the detail pane, where the eye is.
-    let r = if app.view == View::Graph && app.mode == Mode::Main { columns(r, app.detail.wide, &app.sizes).detail } else { r };
     let c = ito_theme::colors();
     let p = ui.painter().clone();
-    let galley = ui.fonts_mut(|f| f.layout_no_wrap(text.clone(), FontId::proportional(12.5), c.fg));
-    let box_ = Rect::from_center_size(pos2(r.center().x, r.bottom() - 24.0), galley.size() + vec2(28.0, 14.0));
+    let max_w = (r.width() * 0.5).clamp(240.0, (r.width() - 24.0).max(240.0));
+    let galley = ui.fonts_mut(|f| f.layout(text.clone(), FontId::proportional(12.5), c.fg, max_w - 28.0));
+    let size = galley.size() + vec2(28.0, 14.0);
+    let box_ = Rect::from_min_size(pos2(r.right() - size.x - 12.0, r.top() + 8.0), size);
     p.rect_filled(box_, CornerRadius::same(8), c.raised());
     p.rect_stroke(box_, CornerRadius::same(8), Stroke::new(1.0, c.border_strong()), StrokeKind::Inside);
     p.galley(box_.min + vec2(14.0, 7.0), galley, c.fg);

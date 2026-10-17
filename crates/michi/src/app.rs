@@ -591,7 +591,7 @@ impl App {
 
     /// How long until the toast goes, if there is one.
     pub fn toast_left(&self) -> Option<Duration> {
-        self.toast.as_ref().map(|(_, until)| until.saturating_duration_since(Instant::now()))
+        self.toast.as_ref().and_then(|(_, until)| until.checked_duration_since(Instant::now()).filter(|d| !d.is_zero()))
     }
 
     /// Fold in what the reading thread has sent since the last frame.
@@ -2174,6 +2174,15 @@ pub(crate) mod tests {
     fn selected(a: &App) -> &str {
         let g = &a.graph;
         g.selected_row().and_then(|k| g.commit(k)).map_or("", |c| c.subject.as_str())
+    }
+
+    #[test]
+    fn a_toast_is_gone_once_its_time_is_up() {
+        let mut a = app();
+        a.say_for("hello", 60);
+        assert!(a.toast_left().is_some());
+        a.toast = Some(("hello".into(), Instant::now()));
+        assert!(a.toast_left().is_none(), "an expired toast is not drawn again");
     }
 
     #[test]
