@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use michi_core::claude::State;
-use michi_core::net::{self, Done, Lease, Progress, Why};
+use michi_core::net::{self, Done, Lease, Preview, Progress, Why};
 use michi_core::{git, paths};
 
 use crate::act::{self, Task};
@@ -27,7 +27,9 @@ pub enum Job {
     /// The branch of the worktree at `wt`, to `remote` when it is chosen;
     /// over the remote's commits with `lease`. `over`: `F` asked for it, so commits the remote has and
     /// this branch has not bring the band that asks before a push over them.
-    Push { wt: PathBuf, remote: Option<String>, lease: Option<Lease>, over: bool },
+    /// `shown`: the band that lists what goes, and where, was said yes to;
+    /// until then the job only looks ([`net::preview`]) and the band comes.
+    Push { wt: PathBuf, remote: Option<String>, lease: Option<Lease>, over: bool, shown: bool },
     /// The tag `tag`, to the remote branches are pushed to.
     PushTag { tag: String },
 }
@@ -98,6 +100,12 @@ pub enum Then {
 pub struct Band {
     pub text: String,
     pub then: Then,
+    /// `(key, value)` rows under the text: the commits a push sends.
+    pub rows: Vec<(String, String)>,
+    /// Lines in the warning colour under them.
+    pub notes: Vec<String>,
+    /// Drawn red: it overwrites what the remote has.
+    pub danger: bool,
     /// A merge's revert: `1`, `2`… run it with that parent's side kept,
     /// not `y`. 0 for the rest.
     pub parents: u8,
@@ -105,7 +113,7 @@ pub struct Band {
 
 impl Band {
     pub fn new(text: String, then: Then) -> Band {
-        Band { text, then, parents: 0 }
+        Band { text, then, rows: Vec::new(), notes: Vec::new(), danger: false, parents: 0 }
     }
 
     /// The word on a parent's button: a revert keeps that parent's side, a
@@ -144,7 +152,7 @@ impl App {
         match (c, self.net_tree()) {
             ('f', _) => self.order(Job::Fetch),
             ('p', Some(wt)) => self.pull(wt),
-            (c, Some(wt)) => self.order(Job::Push { wt, remote: None, lease: None, over: c == 'F' }),
+            (c, Some(wt)) => self.order(Job::Push { wt, remote: None, lease: None, over: c == 'F', shown: false }),
             (_, None) => self.say(self.tr("net.no_tree")),
         }
         true
@@ -261,6 +269,35 @@ impl App {
         }
     }
 
+    /// What a push would send is known: the band that lists it, and asks.
+    /// Where the remote has commits this branch does not, `P` says that `F`
+    /// pushes over them; `F` asks in red, with the same list.
+    fn push_preview(&mut self, job: Job, p: Preview) {
+        let Job::Push { wt, remote, over, .. } = job else { return };
+        if p.behind > 0 && !over {
+            let text = self.tr("net.diverged_push").replace("{to}", &p.to).replace("{n}", &p.behind.to_string());
+            self.say_for(text, 10);
+            return;
+        }
+        let mut rows: Vec<(String, String)> = p.commits.iter().map(|c| (c.id.short(), c.subject.clone())).collect();
+        if p.total > p.commits.len() {
+            rows.push(("…".to_owned(), self.tr("net.preview_more").replace("{n}", &(p.total - p.commits.len()).to_string())));
+        }
+        let key = match (p.new, p.total) {
+            (true, 0) => "net.preview_new_empty",
+            (true, _) => "net.preview_new",
+            (false, _) => "net.preview",
+        };
+        let text = self.tr(key).replace("{to}", &p.to).replace("{n}", &p.total.to_string());
+        let notes = if p.lease.is_some() {
+            vec![self.tr("net.lease").replace("{to}", &p.to).replace("{n}", &p.behind.to_string())]
+        } else {
+            Vec::new()
+        };
+        let job = Job::Push { wt, remote, lease: p.lease.clone(), over, shown: true };
+        self.band = Some(Band { rows, notes, danger: p.lease.is_some(), ..Band::new(text, Then::Net(job)) });
+    }
+
     /// The job is over: say how it went, or put up the band that asks to
     /// push over the remote's commits.
     pub(crate) fn net_done(&mut self, job: Job, result: Result<Done, git::Error>) {
@@ -281,6 +318,10 @@ impl App {
             Ok(Done::Even { to }) => {
                 let key = if kind == Kind::Push { "net.even_push" } else { "net.even_pull" };
                 (self.tr(key).replace("{}", &to), 4)
+            }
+            Ok(Done::Preview(p)) => {
+                self.push_preview(job, p);
+                return;
             }
             Ok(Done::Stopped) => (self.tr("net.stopped").replace("{}", kind.word()), 4),
             Ok(Done::Not(why)) => match why {
@@ -307,7 +348,7 @@ impl App {
                         (self.tr("net.diverged_push").replace("{to}", &lease.to).replace("{n}", &count.to_string()), 10)
                     } else {
                         let text = self.tr("net.lease").replace("{to}", &lease.to).replace("{n}", &count.to_string());
-                        self.band = Some(Band::new(text, Then::Net(Job::Push { wt, remote, lease: Some(lease), over: true })));
+                        self.band = Some(Band::new(text, Then::Net(Job::Push { wt, remote, lease: Some(lease), over: true, shown: true })));
                         return;
                     }
                 }
@@ -389,7 +430,7 @@ mod tests {
     fn each_ending_is_said() {
         let mut a = app();
         let wt = PathBuf::from("/r/feat");
-        let push = Job::Push { wt: wt.clone(), remote: None, lease: None, over: false };
+        let push = Job::Push { wt: wt.clone(), remote: None, lease: None, over: false, shown: false };
         let pull = Job::Pull { wt: wt.clone() };
         let mut said = |job: &Job, r: Result<Done, git::Error>| {
             a.net_done(job.clone(), r);
@@ -443,7 +484,7 @@ mod tests {
         use crate::picker::{Item, Kind};
         let mut a = app();
         let wt = PathBuf::from("/r/feat");
-        let job = Job::Push { wt, remote: None, lease: None, over: false };
+        let job = Job::Push { wt, remote: None, lease: None, over: false, shown: false };
         a.net_done(job, Ok(Done::Not(Why::Choose { remotes: vec!["mine".into(), "up".into()] })));
         let p = a.picker.as_ref().expect("the palette of remotes");
         assert_eq!(p.kind, Kind::Remote);
@@ -465,17 +506,17 @@ mod tests {
         let wt = PathBuf::from("/r/feat");
         // P does not push over them: it says F does.
         a.net_done(
-            Job::Push { wt: wt.clone(), remote: None, lease: None, over: false },
+            Job::Push { wt: wt.clone(), remote: None, lease: None, over: false, shown: false },
             Ok(Done::Not(Why::Behind { lease: lease(), count: 2, ahead: 1 })),
         );
         assert!(a.band.is_none());
         assert_eq!(toast(&a), "origin/main has 2 commits this branch does not: F pushes over them, asking first");
         a.net_done(
-            Job::Push { wt: wt.clone(), remote: None, lease: None, over: true },
+            Job::Push { wt: wt.clone(), remote: None, lease: None, over: true, shown: false },
             Ok(Done::Not(Why::Behind { lease: lease(), count: 2, ahead: 1 })),
         );
         let band = a.band.as_ref().expect("a band");
-        assert_eq!(band.then, Then::Net(Job::Push { wt: wt.clone(), remote: None, lease: Some(lease()), over: true }));
+        assert_eq!(band.then, Then::Net(Job::Push { wt: wt.clone(), remote: None, lease: Some(lease()), over: true, shown: true }));
         assert!(band.text.contains("origin/main has 2 commits"), "{}", band.text);
         // Other keys wait; n drops it.
         assert!(a.feed('j'));
@@ -492,12 +533,59 @@ mod tests {
         assert!(a.band.is_none());
     }
 
+    fn preview(total: usize, behind: usize, new: bool) -> Preview {
+        let id = |c: char| Oid::parse(&c.to_string().repeat(40)).unwrap();
+        Preview {
+            to: "origin/feat".into(),
+            new,
+            commits: vec![
+                michi_core::net::Sent { id: id('b'), subject: "Second".into() },
+                michi_core::net::Sent { id: id('a'), subject: "First".into() },
+            ],
+            total,
+            behind,
+            lease: (behind > 0).then(lease),
+        }
+    }
+
+    #[test]
+    fn a_push_lists_what_it_sends_before_it_goes() {
+        let mut a = app();
+        let wt = PathBuf::from("/r/feat");
+        let job = |over: bool, shown: bool| Job::Push { wt: wt.clone(), remote: None, lease: None, over, shown };
+        // P: the list, and a yes that sends the push itself.
+        a.net_done(job(false, false), Ok(Done::Preview(preview(2, 0, false))));
+        let band = a.band.take().expect("a band");
+        assert_eq!(band.text, "Push 2 commit(s) to origin/feat?");
+        assert_eq!(band.rows, [("bbbbbbb".to_owned(), "Second".to_owned()), ("aaaaaaa".to_owned(), "First".to_owned())]);
+        assert!(!band.danger && band.notes.is_empty());
+        assert_eq!(band.then, Then::Net(job(false, true)));
+        // More than the list holds: a last row says how many.
+        a.net_done(job(false, false), Ok(Done::Preview(preview(15, 0, false))));
+        let band = a.band.take().expect("a band");
+        assert_eq!(band.rows.last().unwrap(), &("…".to_owned(), "and 13 more".to_owned()));
+        // A branch the remote lacks.
+        a.net_done(job(false, false), Ok(Done::Preview(preview(2, 0, true))));
+        assert!(a.band.take().unwrap().text.contains("not there yet"));
+        // P over commits the remote has: no band, F is named.
+        a.net_done(job(false, false), Ok(Done::Preview(preview(2, 3, false))));
+        assert!(a.band.is_none());
+        assert_eq!(toast(&a), "origin/feat has 3 commits this branch does not: F pushes over them, asking first");
+        // F: the same list in red, with the overwrite said, and a yes that pushes with the lease.
+        a.net_done(job(true, false), Ok(Done::Preview(preview(2, 3, false))));
+        let band = a.band.take().expect("a band");
+        assert!(band.danger);
+        assert_eq!(band.rows.len(), 2);
+        assert!(band.notes[0].contains("origin/feat has 3 commits"), "{:?}", band.notes);
+        assert_eq!(band.then, Then::Net(Job::Push { wt: wt.clone(), remote: None, lease: Some(lease()), over: true, shown: true }));
+    }
+
     #[test]
     fn a_merge_s_revert_takes_a_parent_s_digit() {
         let mut a = app();
         let id = Oid::parse(&"a".repeat(40)).unwrap();
         let task = Task::Revert { wt: PathBuf::from("/r/main"), id, mainline: None };
-        a.band = Some(Band { text: String::new(), then: Then::Act(task), parents: 2 });
+        a.band = Some(Band { parents: 2, ..Band::new(String::new(), Then::Act(task)) });
         // Not y, nor a digit past its parents.
         for c in ['y', '3', '0'] {
             assert!(a.feed(c));

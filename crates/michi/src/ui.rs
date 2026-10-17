@@ -508,11 +508,11 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
     let style = ito_confirm::Style {
         panel: c.panel,
         border: c.border,
-        accent: Some(c.wait),
+        accent: Some(if b.danger { c.err } else { c.wait }),
         title: c.fg,
         text: c.fg,
         dim: c.dim,
-        warn: c.wait,
+        warn: if b.danger { c.err } else { c.wait },
         button_bg: c.border,
         button_text: c.fg,
     };
@@ -537,9 +537,9 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
     let body = [b.text.clone()];
     let q = ito_confirm::Question {
         title: app.tr("band.title"),
-        rows: &[],
+        rows: &b.rows,
         body: &body,
-        notes: &[],
+        notes: &b.notes,
         buttons: &buttons,
         hint: &hint.join(" · "),
     };
