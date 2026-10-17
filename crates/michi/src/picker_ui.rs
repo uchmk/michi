@@ -39,9 +39,17 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
         Kind::Remote => app.tr("picker.remote_for").replace("{wt}", &act::name(&p.wt)),
         _ => app.tr("picker.for").replace("{wt}", &act::name(&p.wt)).replace("{at}", &p.at.short()),
     };
-    let none = if p.renaming.is_some() { "" } else { app.tr("picker.none") };
-    let words = Words { hint: renaming.as_deref().unwrap_or(app.tr(hint)), none, header: &header, footer: app.tr(keys) };
-    let entries: Vec<Entry<usize>> = (0..p.rows.len()).map(|k| entry(app, &p, k)).collect();
+    // While renaming the box is the new name: one row stands for it, so that
+    // Enter reaches `picker_enter` (the palette closes on Enter with no row).
+    let header = renaming.clone().unwrap_or(header);
+    let words = Words { hint: app.tr(hint), none: app.tr("picker.none"), header: &header, footer: app.tr(keys) };
+    let entries: Vec<Entry<usize>> = if p.renaming.is_some() {
+        let mut e = Entry::new(p.query.trim().to_owned(), "", 0);
+        e.tone = Tone::Accent;
+        vec![e]
+    } else {
+        (0..p.rows.len()).map(|k| entry(app, &p, k)).collect()
+    };
     let answer = ito_palette::show(ctx, &mut p.view, &entries, &style, &words);
     // The box is what was typed, unless the palette's own keys changed it.
     if p.view.query != p.query {

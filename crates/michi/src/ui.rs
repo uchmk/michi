@@ -191,7 +191,12 @@ fn graph_view(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let Some(node) = cols.split.as_ref().filter(|_| live) else { return };
     let look = ito_layout::ui::Look { gap: GAP, grab: GRAB, line: accent() };
     match ito_layout::ui::dividers(ui, ui.id().with("columns"), node, ito_layout::ui::from_egui(r), look) {
-        Some(Moved::Dragging(n) | Moved::Halved(n)) => app.sizes.set_panes(&n, cols.side.is_some()),
+        Some(Moved::Dragging(n)) => app.sizes.set_panes(&n, cols.side.is_some()),
+        // A double-click has no release to save it on.
+        Some(Moved::Halved(n)) => {
+            app.sizes.set_panes(&n, cols.side.is_some());
+            app.sizes.save();
+        }
         Some(Moved::Released) => app.sizes.save(),
         None => {}
     }
