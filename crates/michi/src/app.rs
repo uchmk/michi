@@ -100,6 +100,7 @@ impl View {
                 ("H", "key.file_history"),
                 ("Y", "key.copy_patch"),
                 ("#", "key.copy_hash"),
+                ("[ ]", "key.go_parent"),
                 ("U", "key.flow"),
                 ("I", "key.issue"),
                 ("Ctrl+V", "key.apply_patch"),
@@ -1721,6 +1722,17 @@ impl App {
         true
     }
 
+    /// `[` / `]`: selects the `n`th parent of the selected commit (`]`: the
+    /// second one, where a merge came from).
+    fn go_parent(&mut self, n: usize) {
+        let Some(id) = self.graph.selected() else { return self.say(self.tr("act.pick_commit")) };
+        let parent = self.graph.find_commit(&id).and_then(|c| c.parents.get(n).copied());
+        match parent {
+            Some(p) => self.go_to(p),
+            None => self.say(self.tr(if n == 0 { "act.no_parent" } else { "act.no_merge_parent" })),
+        }
+    }
+
     /// Whether `g` is the first key of `gg` here: the graph and the worktree table.
     fn g_prefix_view(&self) -> bool {
         match self.view {
@@ -1753,6 +1765,8 @@ impl App {
             'H' => self.open_blame(crate::blame::Tab::History),
             'Y' => self.copy_patch(),
             '#' => _ = self.copy_hash(),
+            '[' => self.go_parent(0),
+            ']' => self.go_parent(1),
             'w' => self.toggle_ignore_space(),
             'x' | 'y' | 'u' | 'X' | 'r' => return self.bisect_key(c),
             'U' => self.open_picker(PickKind::Flow),

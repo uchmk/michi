@@ -583,16 +583,19 @@ fn wip_header(ui: &Ui, app: &App, w: &Wip, at: Pos2, width: f32, paint: Option<&
     let inner = (width - 2.0 * X).max(40.0);
     let x0 = left + X;
     let mut y = top + 12.0;
-    let draw = |g: std::sync::Arc<egui::Galley>, at: Pos2| {
+    let draw = |g: std::sync::Arc<egui::Galley>, at: Pos2, note: bool| {
         if let Some(p) = paint {
+            if note {
+                crate::select::note(p, at, &g);
+            }
             p.galley(at, g, c.fg);
         }
     };
 
     let text = app.tr("wip.title").replace("{}", &wip_name(w));
     let title = ui.fonts_mut(|f| f.layout(text, FontId::proportional(14.0), c.fg, inner));
-    draw(title.clone(), pos2(x0, y));
-    draw(title.clone(), pos2(x0 + 0.45, y));
+    draw(title.clone(), pos2(x0, y), true);
+    draw(title.clone(), pos2(x0 + 0.45, y), false);
     y += title.size().y + 6.0;
 
     // worktree <path> · last written at HH:MM
@@ -606,11 +609,11 @@ fn wip_header(ui: &Ui, app: &App, w: &Wip, at: Pos2, width: f32, paint: Option<&
         job.append(&app.tr("wip.written").replace("{}", &at), 10.0, prop(c.dim));
     }
     let meta = ui.fonts_mut(|f| f.layout_job(job));
-    draw(meta.clone(), pos2(x0, y));
+    draw(meta.clone(), pos2(x0, y), true);
     y += meta.size().y + 8.0;
 
     let hint = ui.fonts_mut(|f| f.layout(app.tr("wip.hint").to_owned(), FontId::proportional(11.5), c.dim, inner));
-    draw(hint.clone(), pos2(x0, y));
+    draw(hint.clone(), pos2(x0, y), true);
     y += hint.size().y + 10.0;
 
     // Untracked files too big to count, so not in the change.
@@ -622,7 +625,7 @@ fn wip_header(ui: &Ui, app: &App, w: &Wip, at: Pos2, width: f32, paint: Option<&
         }
         let text = app.tr("wip.left_out").replace("{}", &paths);
         let left = ui.fonts_mut(|f| f.layout(text, FontId::proportional(11.5), c.dim, inner));
-        draw(left.clone(), pos2(x0, y));
+        draw(left.clone(), pos2(x0, y), true);
         y += left.size().y + 10.0;
     }
 
@@ -664,7 +667,7 @@ fn wip_header(ui: &Ui, app: &App, w: &Wip, at: Pos2, width: f32, paint: Option<&
             p.rect_filled(bx, CornerRadius::same(6), c.panel);
             p.rect_stroke(bx, CornerRadius::same(6), Stroke::new(1.0, c.border), egui::StrokeKind::Inside);
         }
-        draw(g, bx.min + vec2(pad, pad));
+        draw(g, bx.min + vec2(pad, pad), true);
         y = bx.bottom() + 10.0;
     }
     if let Some(p) = paint {
