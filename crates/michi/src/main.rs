@@ -644,6 +644,11 @@ impl eframe::App for Michi {
         self.app.prefs.apply_theme(&ctx);
         motion::apply(&ctx, self.app.prefs.motion);
         ctx.set_zoom_factor(self.app.prefs.common.scale_or_one());
+        let full = (self.app.prefs.dates == michi_core::dates::Dates::Full).then(|| {
+            let clock = ito_common::Clock { date: true, weekday: false, ..self.app.prefs.common.clock_or(None) };
+            clock.format()
+        });
+        graph::set_full_dates(full);
         let mono = self.app.prefs.common.mono_font_or_default();
         if mono != self.mono {
             self.mono = mono;

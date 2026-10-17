@@ -19,6 +19,7 @@ pub mod claude;
 pub mod clone;
 pub mod coauthor;
 pub mod conflict;
+pub mod dates;
 pub mod density;
 pub mod detached;
 pub mod discard;

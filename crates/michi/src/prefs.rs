@@ -75,6 +75,8 @@ pub struct Prefs {
     pub density: michi_core::density::Density,
     /// `[view] motion` of config.toml: the short fades and slides (#88).
     pub motion: michi_core::motion::Motion,
+    /// `[view] dates` of config.toml: how the lists write a date.
+    pub dates: michi_core::dates::Dates,
     /// `[view] level` of config.toml: how many keys the keybar and `?` list (#115).
     pub level: michi_core::level::Level,
     pub view_warn: Vec<String>,
@@ -132,6 +134,7 @@ impl Prefs {
             open_form: ito_prefs::OpenForm::default(),
             density: Default::default(),
             motion: Default::default(),
+            dates: Default::default(),
             level: Default::default(),
             avatars: true,
             easy: false,
@@ -415,6 +418,9 @@ impl Prefs {
         let (motion, warn) = crate::viewcfg::read_motion(text);
         self.motion = motion;
         self.view_warn.extend(warn);
+        let (dates, warn) = crate::viewcfg::read_dates(text);
+        self.dates = dates;
+        self.view_warn.extend(warn);
         let (level, warn) = crate::viewcfg::read_level(text);
         self.level = level;
         self.view_warn.extend(warn);
@@ -451,6 +457,11 @@ impl Prefs {
     /// Write `[view] density` into config.toml on a thread, then read it again.
     pub fn density_set(&self, d: michi_core::density::Density, no_folder: &str) {
         self.view_set(("density", ito_common::quote(d.key())), no_folder);
+    }
+
+    /// Write `[view] dates` into config.toml on a thread, then read it again.
+    pub fn dates_set(&self, d: michi_core::dates::Dates, no_folder: &str) {
+        self.view_set(("dates", ito_common::quote(d.key())), no_folder);
     }
 
     /// Write `[view] motion` into config.toml on a thread, then read it again.

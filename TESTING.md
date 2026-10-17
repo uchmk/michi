@@ -1587,3 +1587,10 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | --- | --- | --- |
 | 269.1 | Open the settings, Appearance; look at the monospace font card and switch bundled / system | Hashes and paths redraw in JetBrains Mono for bundled and in the system face for system, without a restart; common.toml gets `mono_font` |
 | 269.2 | Open "Licence of the bundled font" under the card | The authors and the SIL Open Font License text are shown |
+
+## 270. Date style of the lists
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 270.1 | In the settings, General, choose "Full date and time" under Dates | The graph, the worktree table, the detail pane and the conflict list write every date as `YYYY/MM/DD hh:mm` at once; config.toml has `[view] dates = "full"` |
+| 270.2 | Change the clock's date format (e.g. DD/MM/YYYY) and 12-hour time, then go back to "Short" | The full form follows the clock's format; Short shows today's time, "yesterday" and so on again |

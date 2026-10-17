@@ -853,11 +853,27 @@ pub fn bot(author: &str) -> Option<String> {
     Some(format!("⚙ {}", name.strip_prefix("github-").unwrap_or(name)))
 }
 
+/// The `chrono` format the lists write every date in (`[view] dates = "full"`),
+/// none for the short form. Set once a frame from the preferences.
+static FULL: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None);
+
+/// Write every date in `format` (a `chrono` format), or the short form for none.
+pub fn set_full_dates(format: Option<String>) {
+    if let Ok(mut f) = FULL.write() {
+        if *f != format {
+            *f = format;
+        }
+    }
+}
+
 /// When a commit was written, as the graph's column shows it: the time
 /// today, `yesterday` and the time, the month and day this year, else the
 /// date.
 pub fn when<Tz: TimeZone>(t: i64, now: &DateTime<Tz>, yesterday: &str) -> String {
     let Some(d) = now.timezone().timestamp_opt(t, 0).single() else { return String::new() };
+    if let Some(f) = FULL.read().ok().and_then(|f| f.clone()) {
+        return d.naive_local().format(&f).to_string();
+    }
     let hm = format!("{:02}:{:02}", d.hour(), d.minute());
     let days = (now.date_naive() - d.date_naive()).num_days();
     match days {

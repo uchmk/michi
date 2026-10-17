@@ -31,6 +31,7 @@ fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
         (GENERAL, "[clock]"),
         (GENERAL, "density"),
         (GENERAL, "motion"),
+        (GENERAL, "dates"),
         (GENERAL, "avatars"),
         (GENERAL, "easy"),
         (GENERAL, "glossary"),
@@ -136,6 +137,8 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     let mut density_new = None;
     let motion = prefs.motion;
     let mut motion_new = None;
+    let dates = prefs.dates;
+    let mut dates_new = None;
     let avatars = prefs.avatars;
     let mut avatars_new = None;
     let easy = prefs.easy;
@@ -180,6 +183,17 @@ pub fn show(ui: &mut Ui, app: &mut App) {
                         let word = tr(if m.is_on() { "motion.on" } else { "motion.off" });
                         if ui.selectable_label(m == motion, word).clicked() && m != motion {
                             motion_new = Some(m);
+                        }
+                    }
+                });
+            });
+            section(ui, l, tr("settings.dates"), |ui| {
+                ui.label(egui::RichText::new(tr("settings.dates_lead")).color(l.c.dim));
+                ui.horizontal(|ui| {
+                    for d in michi_core::dates::Dates::ALL {
+                        let word = tr(if d == michi_core::dates::Dates::Full { "dates.full" } else { "dates.relative" });
+                        if ui.selectable_label(d == dates, word).clicked() && d != dates {
+                            dates_new = Some(d);
                         }
                     }
                 });
@@ -289,6 +303,9 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     }
     if let Some(d) = density_new {
         app.prefs.density_set(d, no_folder);
+    }
+    if let Some(d) = dates_new {
+        app.prefs.dates_set(d, no_folder);
     }
     if let Some(m) = motion_new {
         app.prefs.motion_set(m, no_folder);

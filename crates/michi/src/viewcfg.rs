@@ -14,6 +14,7 @@ use serde::Deserialize;
 struct View {
     density: Option<String>,
     motion: Option<String>,
+    dates: Option<String>,
     level: Option<String>,
     avatars: Option<toml::Value>,
     easy: Option<toml::Value>,
@@ -76,6 +77,21 @@ pub fn read_motion(text: Option<&str>) -> (Motion, Vec<String>) {
             },
         },
         _ => (Motion::default(), Vec::new()),
+    }
+}
+
+/// `[view] dates = "relative" | "full"` (relative when not written), with what to warn of.
+pub fn read_dates(text: Option<&str>) -> (michi_core::dates::Dates, Vec<String>) {
+    use michi_core::dates::Dates;
+    match text.map(toml::from_str::<File>) {
+        Some(Ok(f)) => match f.view.dates {
+            None => (Dates::default(), Vec::new()),
+            Some(s) => match s.parse() {
+                Ok(d) => (d, Vec::new()),
+                Err(()) => (Dates::default(), vec![format!("config.toml: [view] dates `{s}` is not relative or full")]),
+            },
+        },
+        _ => (Dates::default(), Vec::new()),
     }
 }
 
@@ -193,6 +209,27 @@ pub fn issues(text: Option<&str>) -> (michi_core::issues::Config, Vec<String>) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn dates_are_relative_unless_full() {
+        use michi_core::dates::Dates;
+        assert_eq!(read_dates(None).0, Dates::Relative);
+        assert_eq!(
+            read_dates(Some(
+                "[view]
+dates = \"full\"
+"
+            ))
+            .0,
+            Dates::Full
+        );
+        let (d, warn) = read_dates(Some(
+            "[view]
+dates = \"x\"
+",
+        ));
+        assert_eq!((d, warn.len()), (Dates::Relative, 1));
+    }
+
     use super::*;
 
     #[test]
