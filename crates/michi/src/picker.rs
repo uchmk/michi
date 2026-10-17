@@ -453,6 +453,26 @@ impl App {
         self.band = Some(Band::new(text, Then::Act(Task::Merge { wt, rev })));
     }
 
+    /// `B` on the strip: the branch palette for the window's worktree, a new
+    /// branch at its HEAD (type a name, Shift+Enter).
+    pub(crate) fn open_picker_here(&mut self) {
+        let Repo::Ready(s) = &self.repo else { return };
+        let top = s.top.clone();
+        let worktrees = self.worktrees();
+        let Some(at) = worktrees.iter().find(|w| same(&w.path, &top)).and_then(|w| Oid::parse(&w.head)) else {
+            self.say(self.tr("act.pick_commit"));
+            return;
+        };
+        self.picker = Some(Picker::new(Kind::Branch, self.graph.setup(), &worktrees, top, at));
+        self.say_for(self.tr("strip.branch_hint").to_owned(), 8);
+    }
+
+    /// `R` on the strip: the worktree back onto its branch; where a Claude
+    /// is working, after a yes.
+    pub(crate) fn switch_back(&mut self, task: Task, wt: &Path) {
+        self.guarded(task, wt, "act.doing", "act.claude_switch");
+    }
+
     /// Switches the worktree at `wt` (`task`): not in the middle of a merge
     /// or a rebase; where a Claude is working, after a yes.
     fn switch_to(&mut self, task: Task, wt: &Path) {
@@ -471,7 +491,7 @@ impl App {
         self.picker = None;
         if self.claude_working(wt) {
             let name = match &task {
-                Task::Switch { name, .. } | Task::Track { name, .. } | Task::Create { name, .. } => name.as_str(),
+                Task::Switch { name, .. } | Task::Track { name, .. } | Task::Create { name, .. } | Task::Back { name, .. } => name.as_str(),
                 _ => "",
             };
             let text = self.tr(claude).replace("{wt}", &act::name(wt)).replace("{name}", name);

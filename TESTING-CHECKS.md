@@ -475,3 +475,39 @@
 - [ ] **43.5** Press `R`, then Esc (or `n`, or `y`) → Nothing changes (y does nothing: only 1 2 3 choose) → | [ ] 〔未訳〕
 - [ ] **43.6** Press `R` in a worktree in the middle of a merge or rebase; with no commit selected → A toast says to finish it first / to pick a commit; no band → | [ ] 〔未訳〕
 - [ ] **43.7** Press `R` where a Claude is working → The band ends with the note that a Claude is working there → | [ ] 〔未訳〕
+
+## 44. Ignoring an untracked file (`i`, #49)
+
+- [ ] **44.1** In the `2` view make an untracked file `x.log` in the worktree, select it in the unstaged list and press `i` → No question; a toast says `Added /x.log to .gitignore`; the file leaves the list after the next read and `.gitignore` in the worktree's root has the line (made if there was none) 〔未訳〕
+- [ ] **44.2** Press `i` on a tracked (modified) file, on a staged file; then on an untracked file with `[` `]` and `*` in its name → The first two toast that only an untracked file can be ignored and change nothing; the brackets and star are escaped in the line (`/a\[1\]\*.log`) and git ignores only that file 〔未訳〕
+- [ ] **44.3** Press `i` on a file whose line is already in `.gitignore` (an exact line, e.g. after a hand edit) → A toast says the line is in `.gitignore` already; the file is not changed; with a CRLF `.gitignore` the new line gets CRLF 〔未訳〕
+- [ ] **44.4** Open the help (`?`) in the `2` view → `i` is listed: Add the untracked file to .gitignore (JA: 追っていないファイルを .gitignore に足す) 〔未訳〕
+
+## 45. Changes as a tree of folders
+
+- [ ] **45.1** In `2` over a worktree with changes in nested folders, press `t` (or click Tree in the top bar) → Both lists become folders (a lone chain such as `a/b/c/` is one row) with files under them, folders first; press `t` again for the flat list 〔未訳〕
+- [ ] **45.2** Click a folder row → It folds (▸) and its files vanish from the list; click again to open it (▾). Staged and unstaged fold apart 〔未訳〕
+- [ ] **45.3** Click the `+` at the right of an unstaged folder; then the `−` of a staged one → Every file below it goes into the index, then every one (a rename's old path too) comes out; the count at the right matches 〔未訳〕
+- [ ] **45.4** With a folder folded, press `j` / `k` and the arrow keys → The selection walks the files in the order shown and skips the folded ones; a selection folded away moves to the nearest shown file 〔未訳〕
+- [ ] **45.5** Stage a folder while a Claude is writing in the worktree → The same question for a yes as for a file 〔未訳〕
+
+## 46. Comparing two commits or branches
+
+- [ ] **46.1** In the graph select a commit, then Ctrl+click (Cmd+click on macOS) another → The first row keeps a tint with an outline (the mark), the clicked one is selected; Ctrl+click the marked row again takes the mark off 〔未訳〕
+- [ ] **46.2** With a mark and a selection press `D` → The review opens over the worktree table with "Comparison" and `a...b`, listing the files that changed from where the two parted (or plain a to b when one is the other's ancestor); the diff on the right is the usual one 〔未訳〕
+- [ ] **46.3** Press `D` with no mark; press Esc in the graph with a mark → A toast asks to Ctrl+click a second commit; Esc takes the mark off 〔未訳〕
+- [ ] **46.4** In the comparison press `u` `s` Space `n` `m`; click a file's check box → Nothing happens (no uncommitted, last look, checks, notes or merge); no "seen" count or switches are shown 〔未訳〕
+- [ ] **46.5** Compare two branch tips, then swap which one you Ctrl+click first → The list is each side's own changes since they parted; `j` `k` `J` `K` `Enter` and PageUp/PageDown work as in the branch review; Esc closes it 〔未訳〕
+- [ ] **46.6** Open the comparison, then press `d` on a worktree → The branch review of the worktree replaces it with its own list, checks and notes 〔未訳〕
+
+## 47. A worktree on no branch (the strip under the title bar)
+
+- [ ] **47.1** In the window's worktree run `git checkout --detach` on a commit → Within a moment a strip appears under the title bar: "Not on a branch: the commit … is checked out. Commits made here belong to no branch." with `R Back to <branch>` and `B Branch from here` at the right → | [ ] 〔未訳〕
+- [ ] **47.2** Check out a tag (`git checkout v1`) → The strip names the tag; the body below moves down by the strip's height, nothing is cut off → | [ ] 〔未訳〕
+- [ ] **47.3** Commit something on the detached HEAD → The strip adds "Commits on no branch yet: 1"; the number follows each new commit → | [ ] 〔未訳〕
+- [ ] **47.4** Press `R` (or click `Back to …`) with such a commit → The worktree is on the branch again, the toast names the backup (`michi/backup/…`) that keeps the commit, the strip goes → | [ ] 〔未訳〕
+- [ ] **47.5** Press `B`, type a name, press Shift+Enter → The branch is made at HEAD, the worktree is on it, the strip goes; the commit is on the new branch → | [ ] 〔未訳〕
+- [ ] **47.6** Detach, then delete the branch it came from, then look at the strip → `R` is not offered for a branch that is gone (an earlier existing one, or only `B`) → | [ ] 〔未訳〕
+- [ ] **47.7** Start `git rebase -i` and stop it at an edit → The strip says it is a rebase, with no buttons; it goes when the rebase ends → | [ ] 〔未訳〕
+- [ ] **47.8** With a Claude working in the worktree press `R` → A yes is asked first, as for a switch → | [ ] 〔未訳〕
+- [ ] **47.9** Open the settings (`,`) or the key list (`?`) while the strip is up; switch EN and JA → The strip stays tidy at a narrow width (the text is cut with an ellipsis, the buttons stay); both languages read well → | [ ] 〔未訳〕

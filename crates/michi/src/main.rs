@@ -47,6 +47,7 @@ mod select;
 mod settings;
 mod side_ui;
 mod sizes;
+mod strip;
 mod tidy;
 mod tidy_ui;
 mod ui;

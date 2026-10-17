@@ -261,6 +261,8 @@ pub struct App {
     pub last_fetch: Option<SystemTime>,
     /// A job waiting for a yes, under the title bar.
     pub band: Option<Band>,
+    /// The window's worktree is on no branch: what was read of it (#109).
+    pub detached: Option<crate::strip::Strip>,
     /// rerere was asked about (or read as said) in this session.
     pub rerere_asked: bool,
     /// The branch, tag or stash palette, over the graph.
@@ -331,6 +333,7 @@ impl App {
             net: None,
             last_fetch: None,
             band: None,
+            detached: None,
             rerere_asked: false,
             picker: None,
             new_work: None,
@@ -544,6 +547,7 @@ impl App {
                     }
                 }
                 self.trees = trees;
+                self.detached_sync();
                 self.review_sync();
             }
             Answer::Claude(c) => {
@@ -1303,6 +1307,7 @@ impl App {
                 None if self.view == View::Conflict && self.conflict_key(c) => {}
                 None if c == 'W' => self.jump_waiting(),
                 None if self.net_key(c) => {}
+                None if self.strip_key(c) => {}
                 None => return self.later(|token| token.chars().eq([c])),
             },
         }

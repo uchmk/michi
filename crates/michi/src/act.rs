@@ -263,6 +263,16 @@ pub enum Task {
         wt: PathBuf,
         on: bool,
     },
+    /// Reads why the worktree at `wt` is on no branch.
+    ReadDetached {
+        wt: PathBuf,
+    },
+    /// The worktree at `wt` back onto the branch `name` it left, keeping
+    /// what only its detached HEAD held.
+    Back {
+        wt: PathBuf,
+        name: String,
+    },
 }
 
 /// The word-table key of what a tool is called.
@@ -334,6 +344,8 @@ impl Task {
             Task::External { .. } => "mergetool",
             Task::AskRerere { .. } => "config --get",
             Task::Rerere { .. } => "config",
+            Task::ReadDetached { .. } => "rev-list",
+            Task::Back { .. } => "switch",
         }
     }
 }
@@ -369,6 +381,8 @@ pub enum Acted {
     Rerere(Option<bool>),
     /// The places left with markers (none: nothing is in the middle of a clash).
     Markers(Option<usize>),
+    /// Why a worktree is on no branch.
+    Detached(michi_core::detached::Info),
 }
 
 /// A place solved, or a file put back as git left it.
@@ -435,6 +449,8 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Markers { wt } => conflict::read(wt).map(|c| Acted::Markers(c.map(|c| c.left()))),
         Task::AskRerere { wt } => rerere::enabled(wt).map(Acted::Rerere),
         Task::Rerere { wt, on } => rerere::set(wt, *on).map(|()| Acted::Done),
+        Task::ReadDetached { wt } => michi_core::detached::read(wt).map(Acted::Detached),
+        Task::Back { wt, name } => michi_core::detached::back(wt, name).map(Acted::Kept),
     }
 }
 
@@ -508,7 +524,11 @@ impl App {
         }
         let (text, secs) = match (&task, result) {
             // Not being able to ask is not worth a toast.
-            (Task::AskRerere { .. } | Task::Markers { .. }, Err(_)) => return,
+            (Task::AskRerere { .. } | Task::Markers { .. } | Task::ReadDetached { .. }, Err(_)) => return,
+            (Task::ReadDetached { wt }, Ok(Acted::Detached(i))) => {
+                self.detached_read(wt, i);
+                return;
+            }
             (Task::Markers { .. }, Ok(Acted::Markers(None))) => return,
             (Task::Markers { wt }, Ok(Acted::Markers(Some(n)))) => {
                 let key = if n == 0 { "claude.markers_gone" } else { "claude.markers_left" };
@@ -570,6 +590,11 @@ impl App {
                 (self.tr("act.switched").replace("{name}", name).replace("{wt}", &self::name(wt)) + &text, secs)
             }
             (Task::Switch { wt, name }, Ok(_)) => (self.tr("act.switched").replace("{name}", name).replace("{wt}", &self::name(wt)), 4),
+            (Task::Back { wt, name }, Ok(Acted::Kept(Some(saved)))) => (
+                self.tr("act.back_kept").replace("{name}", name).replace("{wt}", &self::name(wt)).replace("{saved}", backup::short(&saved)),
+                10,
+            ),
+            (Task::Back { wt, name }, Ok(_)) => (self.tr("act.back").replace("{name}", name).replace("{wt}", &self::name(wt)), 4),
             (Task::Track { wt, remote, name }, Ok(_)) => {
                 (self.tr("act.tracked").replace("{name}", name).replace("{remote}", remote).replace("{wt}", &self::name(wt)), 4)
             }
