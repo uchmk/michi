@@ -49,6 +49,7 @@ use michi_core::ignore;
 use michi_core::log::{self, Commit, Reader};
 use michi_core::net::{self, Progress};
 use michi_core::oid::Oid;
+use michi_core::queue::{self, Reviews};
 use michi_core::review::{self, Checks, List};
 use michi_core::show::{self, Changes, Detail};
 use michi_core::stage::{self, Lists};
@@ -94,6 +95,8 @@ pub enum Answer {
     Conflicts(Vec<Conflict>),
     /// The commits not seen yet, per worktree.
     Unseen(Unseen),
+    /// Where each worktree's branch stands in review.
+    Reviews(Reviews),
     /// The Claude sessions in each worktree (by its folder; only those with
     /// some); `None` when tsumugi is not there to ask.
     Claude(Option<Sessions>),
@@ -221,6 +224,8 @@ impl Reading {
 
     /// The branch review is closed: what it asked is not read on.
     pub fn review_closed(&self) {
+        // Its stage may have moved.
+        let _ = self.pokes.send(Poke::Now);
         for l in self.look_latest.iter() {
             l.store(0, Ordering::SeqCst);
         }
@@ -420,6 +425,7 @@ struct Last {
     clashes: Option<Clashes>,
     conflicts: Option<Vec<Conflict>>,
     unseen: Option<Unseen>,
+    reviews: Option<Reviews>,
     claude: Option<Option<Sessions>>,
     /// Every ref and every worktree's `HEAD`: when it changes, the history
     /// is read again.
@@ -436,7 +442,7 @@ fn watch(dir: &Path, pokes: &Receiver<Poke>, asks: &Sender<Ask>, mut fs: Fs, sen
     let marks_file = common.as_deref().and_then(|c| state_path(c, "seen"));
     let mut marks = marks_file.as_deref().and_then(|f| std::fs::read_to_string(f).ok()).map(|t| Marks::parse(&t)).unwrap_or_default();
     let mut last = Last::default();
-    let mut caches = (track::Cache::default(), clash::Cache::default(), unseen::Cache::default());
+    let mut caches = (track::Cache::default(), clash::Cache::default(), unseen::Cache::default(), queue::Cache::default());
     let mut worktrees: Vec<Worktree> = Vec::new();
     let (mut front, mut force, mut watching) = (true, true, false);
     let (mut read_at, mut claude_at): (Option<Instant>, Option<Instant>) = (None, None);
@@ -561,7 +567,7 @@ fn read_trees(
     wts: &[Worktree],
     marks: &mut Marks,
     marks_file: Option<&Path>,
-    (counts, predictions, news): &mut (track::Cache, clash::Cache, unseen::Cache),
+    (counts, predictions, news, queued): &mut (track::Cache, clash::Cache, unseen::Cache, queue::Cache),
     last: &mut Last,
     send: &impl Fn(Answer),
 ) {
@@ -582,6 +588,19 @@ fn read_trees(
             if last.unseen.as_ref() != Some(&unseen) {
                 last.unseen = Some(unseen.clone());
                 send(Answer::Unseen(unseen));
+            }
+            let common = unseen::common_dir(dir).ok();
+            let read = |folder: &str| common.as_deref().and_then(|c| state_path(c, folder)).and_then(|p| std::fs::read_to_string(p).ok());
+            let checks = Checks::parse(&read("review").unwrap_or_default());
+            let flags = queue::Flags::parse(&read("flagged").unwrap_or_default());
+            match queue::read(dir, &trees, &checks, &flags, queued) {
+                Ok(reviews) => {
+                    if last.reviews.as_ref() != Some(&reviews) {
+                        last.reviews = Some(reviews.clone());
+                        send(Answer::Reviews(reviews));
+                    }
+                }
+                Err(e) => eprintln!("michi: {e}"),
             }
             let conflicts: Vec<Conflict> = trees
                 .trees
@@ -660,7 +679,7 @@ fn refs_print(dir: &Path, wts: &[Worktree]) -> Option<String> {
 
 /// The state file in michi's `folder` (`seen`, `review`) for the
 /// repository whose common git folder is `common`.
-fn state_path(common: &Path, folder: &str) -> Option<PathBuf> {
+pub(crate) fn state_path(common: &Path, folder: &str) -> Option<PathBuf> {
     let own = common.file_name()?.to_string_lossy().into_owned();
     // `repo/.git` goes by `repo`; a bare `repo.git` by `repo`.
     let name = if own.eq_ignore_ascii_case(".git") {

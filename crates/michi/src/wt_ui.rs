@@ -16,6 +16,7 @@ use egui::{
 use michi_core::clash::Outcome;
 use michi_core::claude::{Session, State};
 use michi_core::oid::Oid;
+use michi_core::queue::Stage;
 use michi_core::track::Tree;
 
 use crate::app::{failed_word, App, Repo};
@@ -359,6 +360,23 @@ fn unseen_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
     }
 }
 
+/// Where the worktree's branch stands in review: the stage in its colour
+/// and how many of its files are checked; `—` for one with nothing to review.
+fn review_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
+    let c = ito_theme::colors();
+    let font = FontId::proportional(12.5);
+    let Some(row) = app.reviews.of(&t.wt.path) else { return vec![text(layout(ui, "—", font, c.dim, w), 0.0)] };
+    let (key, color) = match row.stage {
+        Stage::Unreviewed => ("wt.review.unreviewed", c.dim),
+        Stage::InReview => ("wt.review.in_review", c.blue),
+        Stage::Flagged => ("wt.review.flagged", c.wait),
+        Stage::Approved => ("wt.review.approved", c.done),
+    };
+    let head = layout(ui, app.tr(key), font.clone(), color, w);
+    let count = app.tr("wt.review.count").replace("{n}", &row.checked.to_string()).replace("{m}", &row.total.to_string());
+    vec![text(head, 0.0), text(layout(ui, count, FontId::proportional(11.5), c.dim, w), 1.0)]
+}
+
 /// What the worktree would conflict with: each side, in how many places,
 /// in which files; yellow where only its uncommitted change does.
 fn clash_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
@@ -476,8 +494,10 @@ fn row_block(ui: &Ui, app: &App, t: &Tree, k: usize, trunk: &str, cols: &[(f32, 
     let (x, w) = cell(n + 2);
     out.push(Col { x, w, pieces: unseen_cell(ui, app, t, w) });
     let (x, w) = cell(n + 3);
-    out.push(Col { x, w, pieces: clash_cell(ui, app, t, w) });
+    out.push(Col { x, w, pieces: review_cell(ui, app, t, w) });
     let (x, w) = cell(n + 4);
+    out.push(Col { x, w, pieces: clash_cell(ui, app, t, w) });
+    let (x, w) = cell(n + 5);
     out.push(Col { x, w, pieces: vec![Piece::Buttons { gap: 0.0, buttons: buttons(ui, app, t, k, trunk) }] });
     let height = line_h(&out) + 2.0 * CELL_Y;
     Block { lines: vec![(CELL_Y, out)], height, card: false }
@@ -515,6 +535,7 @@ fn card_block(ui: &Ui, app: &App, t: &Tree, k: usize, trunk: &str, width: f32, c
     push(kv(app.tr("wt.col.trunk").replace("{}", trunk), trunk_cell(ui, app, t, value_w)), &mut y);
     push(kv(app.tr("wt.col.wip").to_owned(), wip_cell(ui, app, t, value_w)), &mut y);
     push(kv(app.tr("wt.col.unseen").to_owned(), unseen_cell(ui, app, t, value_w)), &mut y);
+    push(kv(app.tr("wt.col.review").to_owned(), review_cell(ui, app, t, value_w)), &mut y);
     push(kv(app.tr("wt.col.clash").to_owned(), clash_cell(ui, app, t, value_w)), &mut y);
     push(vec![Col { x: pad_x, w: inner, pieces: vec![Piece::Buttons { gap: 0.0, buttons: buttons(ui, app, t, k, trunk) }] }], &mut y);
     Block { lines, height: y - gap + pad_y, card: true }
@@ -985,6 +1006,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         words.push(app.tr("wt.col.trunk").replace("{}", &trunk));
         words.push(app.tr("wt.col.wip").to_owned());
         words.push(app.tr("wt.col.unseen").to_owned());
+        words.push(app.tr("wt.col.review").to_owned());
         words.push(app.tr("wt.col.clash").to_owned());
         for (word, (x, w)) in words.into_iter().zip(&cols) {
             let word = cut_end(ui, &word, FontId::proportional(11.0), w - 2.0 * CELL_X);
@@ -995,7 +1017,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         // edge of a fixed column widens it as it goes left, the edge after the
         // name trades with the Claude column.
         let base = 1 + usize::from(claude);
-        let ns: Vec<usize> = (1..=(base + 4)).collect();
+        let ns: Vec<usize> = (1..=(base + 5)).collect();
         let edges: Vec<f32> = ns.iter().map(|n| left + cols[*n].0).collect();
         if let Some(g) = ito_layout::ui::grips(ui, Id::new("wt-cols"), &edges, top..top + HEAD_H, 8.0).filter(|_| live) {
             let n = ns[g.index];
@@ -1222,6 +1244,12 @@ mod tests {
         // Commits not seen yet: in the column, the cards and the list, beside
         // the table of pairs or under it; then more than the list shows.
         app.take(Answer::Unseen(fixture::unseen()));
+        // Where the branches stand in review, one of each stage.
+        use michi_core::queue::{Reviews, Row};
+        let row = |path: &str, stage, checked| Row { path: path.into(), stage, checked, total: 3 };
+        app.take(Answer::Reviews(Reviews {
+            rows: vec![row("C:/r/wt", Stage::Flagged, 3), row("C:/r/old", Stage::Approved, 3), row("C:/r", Stage::InReview, 1)],
+        }));
         for width in [1600.0, 1200.0, 980.0, 600.0, 200.0] {
             frame(&mut app, width);
         }

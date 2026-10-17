@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 
 use ito_layout::Node;
 
-/// The worktree table's fixed columns: trunk, uncommitted, unseen, clash, buttons.
-pub const TABLE: usize = 5;
+/// The worktree table's fixed columns: trunk, uncommitted, unseen, review, clash, buttons.
+pub const TABLE: usize = 6;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Sizes {
@@ -36,7 +36,7 @@ impl Default for Sizes {
             author: 104.0,
             date: 92.0,
             hash: 64.0,
-            table: [230.0, 180.0, 130.0, 200.0, 250.0],
+            table: [230.0, 180.0, 130.0, 130.0, 200.0, 250.0],
             name_share: 0.45,
             file: None,
         }
