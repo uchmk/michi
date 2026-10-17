@@ -45,6 +45,7 @@ use michi_core::conflict::{self, Conflict};
 use michi_core::discard;
 use michi_core::git::{self, Version};
 use michi_core::history::Setup;
+use michi_core::identity;
 use michi_core::ignore;
 use michi_core::log::{self, Commit, Reader};
 use michi_core::net::{self, Progress};
@@ -86,6 +87,9 @@ pub enum Answer {
     /// The worktrees with uncommitted changes, each read anew (with those
     /// whose only change is too big to count).
     Wips(Vec<Wip>),
+    /// Whom each worktree commits as, shown only when they differ (path and
+    /// `Name <email>`).
+    Identities(Vec<(PathBuf, String)>),
     /// How each worktree stands against the trunk and its upstream.
     Trees(Trees),
     /// Which worktrees would conflict with which.
@@ -422,6 +426,7 @@ pub type Sessions = Vec<(PathBuf, Vec<Session>)>;
 #[derive(Default)]
 struct Last {
     wips: Option<Vec<Wip>>,
+    identities: Option<Vec<(PathBuf, String)>>,
     trees: Option<Trees>,
     clashes: Option<Clashes>,
     conflicts: Option<Vec<Conflict>>,
@@ -577,6 +582,14 @@ fn read_trees(
     if last.wips.as_ref() != Some(&wips) {
         last.wips = Some(wips.clone());
         send(Answer::Wips(wips.clone()));
+    }
+    let live: Vec<&Worktree> = wts.iter().filter(|w| !w.bare && w.prunable.is_none()).collect();
+    let who: Vec<identity::Identity> = live.iter().map(|w| identity::read(&w.path).unwrap_or_default()).collect();
+    let shown: Vec<(PathBuf, String)> =
+        live.iter().zip(identity::labels(&who)).filter_map(|(w, l)| l.map(|l| (w.path.clone(), l))).collect();
+    if last.identities.as_ref() != Some(&shown) {
+        last.identities = Some(shown.clone());
+        send(Answer::Identities(shown));
     }
     let mut trunk = None;
     match track::read(dir, wts, counts) {

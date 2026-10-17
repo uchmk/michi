@@ -22,6 +22,7 @@ pub mod find;
 pub mod git;
 pub mod handoff;
 pub mod history;
+pub mod identity;
 pub mod ignore;
 pub mod keyhelp;
 pub mod land;
