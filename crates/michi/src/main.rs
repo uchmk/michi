@@ -14,6 +14,7 @@ mod changes_ui;
 mod cmdpalette;
 mod conflict_ui;
 mod conflicts;
+mod ctxmenu;
 mod detail;
 mod detail_ui;
 mod fonts;
@@ -213,7 +214,8 @@ impl Michi {
     /// message has them, only Ctrl+Enter (commit) is taken; the Escape that
     /// let go of it goes no further.
     fn keys(&mut self, ctx: &egui::Context) {
-        if self.app.cmd.is_some() || self.app.repos.is_some() {
+        // A right-click menu is open: its own Esc and clicks close it.
+        if self.app.cmd.is_some() || self.app.repos.is_some() || egui::Popup::is_any_open(ctx) {
             return;
         }
         let events = ctx.input(|i| i.events.clone());

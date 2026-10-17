@@ -20,6 +20,7 @@ pub mod handoff;
 pub mod history;
 pub mod ignore;
 pub mod log;
+pub mod menu;
 pub mod msghelp;
 pub mod net;
 pub mod newwork;
