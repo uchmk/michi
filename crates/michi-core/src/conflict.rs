@@ -114,6 +114,10 @@ pub enum Body {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Whole {
     pub why: Why,
+    /// What our side did to the file since the base.
+    pub did_ours: Fact,
+    /// What their side did to it.
+    pub did_theirs: Fact,
     /// Whether our side has the file (no: deleted there).
     pub ours: bool,
     /// Whether their side has it.
@@ -129,6 +133,45 @@ pub enum Why {
     Binary,
     /// A link, a submodule, or a clash git saw that is not in the lines.
     Other,
+    /// The name is left over from a rename that clashed (both sides moved
+    /// the file, or only one side has this name and it had no base).
+    Moved,
+}
+
+/// What one side did to a file since the base, from the index alone.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Fact {
+    /// The side no longer has the file.
+    Deleted,
+    /// The side added the file (the base had none).
+    Added,
+    /// The side changed the content.
+    Changed,
+    /// The side changed only the file's mode (the executable bit).
+    Mode { exec: bool },
+    /// The side has a link.
+    Link,
+    /// The side has a submodule.
+    Submodule,
+    /// The side did not touch it.
+    Same,
+}
+
+/// What `side` did to the file that the base had as `base` (mode and blob;
+/// `None` when there is none).
+pub fn fact(base: Option<&(String, Oid)>, side: Option<&(String, Oid)>) -> Fact {
+    let Some((mode, id)) = side else { return Fact::Deleted };
+    match mode.as_str() {
+        "120000" => return Fact::Link,
+        "160000" => return Fact::Submodule,
+        _ => {}
+    }
+    let Some((bmode, bid)) = base else { return Fact::Added };
+    match (bid == id, bmode == mode) {
+        (true, true) => Fact::Same,
+        (true, false) => Fact::Mode { exec: mode == "100755" },
+        _ => Fact::Changed,
+    }
 }
 
 /// A place where the sides clashed.
@@ -388,8 +431,19 @@ fn is_file(mode: &str) -> bool {
 }
 
 fn body(wt: &Path, path: &str, s: &Stages, binary: bool, blobs: &HashMap<Oid, Vec<u8>>, unmerged: bool) -> Body {
-    let whole = |why| Body::Whole(Whole { why, ours: s[1].is_some(), theirs: s[2].is_some() });
-    let (Some(ours), Some(theirs)) = (&s[1], &s[2]) else { return whole(Why::Deleted) };
+    let whole = |why| {
+        Body::Whole(Whole {
+            why,
+            did_ours: fact(s[0].as_ref(), s[1].as_ref()),
+            did_theirs: fact(s[0].as_ref(), s[2].as_ref()),
+            ours: s[1].is_some(),
+            theirs: s[2].is_some(),
+        })
+    };
+    let (Some(ours), Some(theirs)) = (&s[1], &s[2]) else {
+        // A name with no base, or that neither side has, is a rename's.
+        return whole(if s[0].is_none() || (s[1].is_none() && s[2].is_none()) { Why::Moved } else { Why::Deleted });
+    };
     if s.iter().flatten().any(|(m, _)| !is_file(m)) {
         return whole(Why::Other);
     }
@@ -1233,7 +1287,10 @@ mod tests {
         t.git(r, &["commit", "-q", "-m", "main"]);
         assert_eq!(merge(r, "feat").unwrap(), Outcome::Conflict(s(&["d.txt", "e.txt"])));
         let c = read(r).unwrap().unwrap();
-        assert_eq!(c.files[0].body, Body::Whole(Whole { why: Why::Deleted, ours: false, theirs: true }));
+        assert_eq!(
+            c.files[0].body,
+            Body::Whole(Whole { why: Why::Deleted, did_ours: Fact::Deleted, did_theirs: Fact::Changed, ours: false, theirs: true })
+        );
         assert_eq!((c.total(), c.left()), (2, 2));
         take(r, "d.txt", true).unwrap();
         assert!(!r.join("d.txt").exists());
@@ -1242,6 +1299,48 @@ mod tests {
         assert_eq!(read(r).unwrap().unwrap().left(), 0);
         commit(r, "Merge feat").unwrap();
         assert_eq!(t.out(r, &["ls-tree", "--name-only", "HEAD"]), "e.txt");
+    }
+
+    #[test]
+    fn what_a_side_did_comes_from_the_index() {
+        let id = |c: char| Oid::parse(&c.to_string().repeat(40)).unwrap();
+        let f = |m: &str, c: char| Some((m.to_owned(), id(c)));
+        let base = f("100644", 'a');
+        assert_eq!(fact(base.as_ref(), None), Fact::Deleted);
+        assert_eq!(fact(None, f("100644", 'b').as_ref()), Fact::Added);
+        assert_eq!(fact(base.as_ref(), f("100644", 'b').as_ref()), Fact::Changed);
+        assert_eq!(fact(base.as_ref(), f("100644", 'a').as_ref()), Fact::Same);
+        assert_eq!(fact(base.as_ref(), f("100755", 'a').as_ref()), Fact::Mode { exec: true });
+        assert_eq!(fact(f("100755", 'a').as_ref(), f("100644", 'a').as_ref()), Fact::Mode { exec: false });
+        assert_eq!(fact(base.as_ref(), f("120000", 'c').as_ref()), Fact::Link);
+        assert_eq!(fact(base.as_ref(), f("160000", 'c').as_ref()), Fact::Submodule);
+    }
+
+    #[test]
+    fn a_rename_on_both_sides_is_left_as_moved() {
+        let t = TempRepo::configured("conflict-moved");
+        let r = &t.repo;
+        t.write(r, "a.txt", "one\ntwo\nthree\nfour\nfive\nsix\n");
+        t.git(r, &["add", "."]);
+        t.git(r, &["commit", "-q", "-m", "base"]);
+        t.git(r, &["switch", "-q", "-c", "feat"]);
+        t.git(r, &["mv", "a.txt", "b.txt"]);
+        t.git(r, &["commit", "-q", "-m", "feat"]);
+        t.git(r, &["switch", "-q", "main"]);
+        t.git(r, &["mv", "a.txt", "c.txt"]);
+        t.git(r, &["commit", "-q", "-m", "main"]);
+        assert!(matches!(merge(r, "feat").unwrap(), Outcome::Conflict(_)));
+        let c = read(r).unwrap().unwrap();
+        let whys: Vec<(String, Why)> = c
+            .files
+            .iter()
+            .filter_map(|f| match &f.body {
+                Body::Whole(w) => Some((f.path.clone(), w.why)),
+                Body::Text(_) => None,
+            })
+            .collect();
+        assert!(!whys.is_empty() && whys.iter().all(|(_, w)| *w == Why::Moved), "{whys:?}");
+        assert!(whys.iter().any(|(p, _)| p == "a.txt"), "{whys:?}");
     }
 
     #[test]
@@ -1259,7 +1358,10 @@ mod tests {
         t.git(r, &["commit", "-q", "-am", "main"]);
         assert_eq!(merge(r, "feat").unwrap(), Outcome::Conflict(s(&["x.bin"])));
         let c = read(r).unwrap().unwrap();
-        assert_eq!(c.files[0].body, Body::Whole(Whole { why: Why::Binary, ours: true, theirs: true }));
+        assert_eq!(
+            c.files[0].body,
+            Body::Whole(Whole { why: Why::Binary, did_ours: Fact::Changed, did_theirs: Fact::Changed, ours: true, theirs: true })
+        );
         take(r, "x.bin", false).unwrap();
         assert_eq!(text(&t, "x.bin"), "b\0\n");
         assert_eq!(read(r).unwrap().unwrap().left(), 0);

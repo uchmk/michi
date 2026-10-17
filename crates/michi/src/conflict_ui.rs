@@ -13,7 +13,7 @@ use egui::{
 };
 use ito_theme::mix;
 use michi_core::branch::Doing;
-use michi_core::conflict::{Block, Body, Conflict, Hint, Pick, Side, Whole, Why};
+use michi_core::conflict::{Block, Body, Conflict, Fact, Hint, Pick, Side, Whole, Why};
 use michi_core::handoff::{Offer, Stage};
 use michi_core::paths;
 
@@ -47,7 +47,7 @@ const HEAD: f32 = 34.0;
 const COL_HEAD: f32 = 22.0;
 const RES_HEAD: f32 = 24.0;
 const HINT_H: f32 = 18.0;
-const WHY_H: f32 = 30.0;
+const WHY_H: f32 = 48.0;
 const BTN_H: f32 = 25.0;
 /// The line numbers' column in a place, and around it.
 const NUM_W: f32 = 36.0;
@@ -1193,10 +1193,14 @@ impl Draw<'_> {
             (Why::Deleted, false, _) => "cf.why_ours_gone",
             (Why::Deleted, _, false) => "cf.why_theirs_gone",
             (Why::Binary, ..) => "cf.why_binary",
+            (Why::Moved, false, false) => "cf.why_moved_both",
+            (Why::Moved, ..) => "cf.why_moved_one",
             _ => "cf.why_other",
         };
-        let mid = head.bottom() + WHY_H / 2.0;
+        let mid = head.bottom() + 13.0;
         clipped(ui, p, pos2(r.left() + 10.0, mid), self.tr(why), FontId::proportional(12.0), c.fg, r.width() - 20.0);
+        let did = self.tr("cf.did").replace("{ours}", self.tr(fact_key(w.did_ours))).replace("{theirs}", self.tr(fact_key(w.did_theirs)));
+        clipped(ui, p, pos2(r.left() + 10.0, mid + 18.0), &did, FontId::proportional(11.5), c.dim, r.width() - 20.0);
         if f.unmerged && !waits {
             let buttons = self.whole_buttons(w);
             let rects = flow(ui, &buttons, r.left() + 10.0, head.bottom() + WHY_H, r.right() - 10.0);
@@ -1468,6 +1472,20 @@ fn flow<T>(ui: &Ui, buttons: &[(&str, &str, T)], left: f32, top: f32, right: f32
 /// How tall the buttons are, laid in `width`.
 fn flow_h<T>(ui: &Ui, buttons: &[(&str, &str, T)], width: f32) -> f32 {
     flow(ui, buttons, 0.0, 0.0, width).last().map_or(0.0, |r| r.bottom())
+}
+
+/// The word saying what a side did to a file that clashed whole.
+fn fact_key(f: Fact) -> &'static str {
+    match f {
+        Fact::Deleted => "cf.did_deleted",
+        Fact::Added => "cf.did_added",
+        Fact::Changed => "cf.did_changed",
+        Fact::Mode { exec: true } => "cf.did_exec",
+        Fact::Mode { exec: false } => "cf.did_unexec",
+        Fact::Link => "cf.did_link",
+        Fact::Submodule => "cf.did_submodule",
+        Fact::Same => "cf.did_same",
+    }
 }
 
 #[cfg(test)]

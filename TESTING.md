@@ -1115,3 +1115,13 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 251.3 | Type `d:2026-10-01..2026-10-15` and Enter | Only commits made in that range hit | [ ] |
 | 251.4 | Try `d:2.weeks.ago`, `d:..yesterday` and `d:2026-10-01..` | Each hits the commits in the range git reads from it (since, until, since) | [ ] |
 | 251.5 | Type `ann` (an author), then look at the hint of the empty box in EN and JA | The author still filters; the hint names `p:` and `d:` and reads well in both languages | [ ] |
+
+## 236. Conflicts a 3-way view cannot show (#36)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 236.1 | Merge a branch that changed a file the target deleted, open the conflict screen (`3`) | The file card says it was deleted on our side and changed on theirs, and a second line says "Ours: deleted it. Theirs: changed it."; the buttons offer delete or take their file |
+| 236.2 | Merge branches that renamed the same file to two names | The old name card says both sides moved or removed it; the two new names show as files whose card says only one side has the name; each card says what each side did |
+| 236.3 | Merge a branch that changed only a file executable bit while the other changed its content | The second line says one side "made it executable" and the other "changed it" |
+| 236.4 | Merge a binary file changed on both sides, and a submodule moved on both | The cards say binary / has a submodule; "Open in a tool" (`w`) still works |
+| 236.5 | Switch EN and JA; narrow the window | Both lines read well and are cut at the card edge, not over the buttons |
