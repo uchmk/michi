@@ -391,6 +391,10 @@ pub struct App {
     /// The last login or network failure of a fetch, push or clone, and the
     /// clone's address when it was a clone: what `K` explains.
     pub auth_failed: Option<(michi_core::auth::Kind, Option<String>)>,
+    /// What the first-run guide has to tell (#116): found once at startup.
+    pub problems: Vec<michi_core::setup::Problem>,
+    /// Whether the first-run guide is on screen. It takes no keys: work goes on under it.
+    pub guide_open: bool,
     pub blame: Option<crate::blame::Blame>,
     /// Text for the clipboard, taken by the window on its next frame.
     pub clipboard: Option<String>,
@@ -490,6 +494,8 @@ impl App {
             ready: None,
             auth: None,
             auth_failed: None,
+            problems: Vec::new(),
+            guide_open: false,
             blame: None,
             clipboard: None,
             trial: None,
@@ -681,6 +687,11 @@ impl App {
             }
             // The summary that follows says why (git missing, mostly).
             Answer::Version(Err(_)) => {}
+            Answer::Problems(p) => {
+                // The guide opens by itself once, when something is wrong.
+                self.guide_open = !p.is_empty();
+                self.problems = p;
+            }
             Answer::Summary(Ok(s)) => {
                 self.new_title = Some(format!("{} — michi", s.name));
                 self.remember_repo(&s.top);
@@ -1571,7 +1582,8 @@ impl App {
             || self.trial.is_some()
             || self.reorder.is_some();
         if !over {
-            lines.extend(michi_core::keyhelp::global_here(&GLOBAL_KEYS, keys).iter().map(|(k, w)| bind(k, self.tr(w))));
+            let global = michi_core::keyhelp::global_here(&GLOBAL_KEYS, keys);
+            lines.extend(global.iter().filter(|(_, w)| self.prefs.level.lists(w)).map(|(k, w)| bind(k, self.tr(w))));
         }
         lines.extend(ito_keymap::help_lines(&self.prefs.keymap.main, "noop").into_iter().map(|l| {
             let desc = if l.desc.is_empty() { l.run.to_owned() } else { crate::i18n::tr_desc(&self.lang, l.desc) };
@@ -1579,8 +1591,19 @@ impl App {
         }));
         lines.push(Line::Blank);
         lines.push(Line::Head(self.tr(head).to_owned()));
-        lines.extend(keys.iter().map(|(k, w)| bind(k, self.tr(w))));
+        lines.extend(self.listed(keys).iter().map(|(k, w)| bind(k, self.tr(w))));
+        let hidden = self.prefs.level.hidden(keys);
+        if hidden > 0 {
+            lines.push(Line::Blank);
+            lines.push(Line::Head(self.tr("level.more").replace("{n}", &hidden.to_string())));
+        }
         lines
+    }
+
+    /// `keys` as the level lists them in the keybar and `?`. Every key still
+    /// works, and the command palette has all of them (#115).
+    pub fn listed(&self, keys: &'static [(&'static str, &'static str)]) -> Vec<(&'static str, &'static str)> {
+        self.prefs.level.visible(keys)
     }
 
     /// The arrows, pages, Home and End scroll the key list.
@@ -1907,6 +1930,9 @@ impl App {
             self.mode = Mode::Main;
             return true;
         }
+        if std::mem::take(&mut self.guide_open) {
+            return true;
+        }
         if self.repos.take().is_some() {
             return true;
         }
@@ -2136,6 +2162,31 @@ pub(crate) mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn every_advanced_word_is_a_key_somewhere_and_basic_keeps_the_everyday_ones() {
+        let all: Vec<&str> =
+            screens().into_iter().flat_map(|(_, k)| k.iter().map(|(_, w)| *w)).chain(GLOBAL_KEYS.iter().map(|(_, w)| *w)).collect();
+        for w in michi_core::level::ADVANCED {
+            assert!(all.contains(w), "{w} is not a key word of any screen");
+        }
+        // No view is left with an empty list in basic.
+        for (name, keys) in screens() {
+            assert!(!michi_core::level::Level::Basic.visible(keys).is_empty(), "{name}");
+        }
+    }
+
+    #[test]
+    fn basic_shortens_the_key_list_and_says_where_the_rest_is() {
+        let mut p = crate::prefs::Prefs::empty();
+        p.level = michi_core::level::Level::Basic;
+        let basic = App::new(p, std::env::temp_dir());
+        let full = app();
+        let text = |a: &App| a.help_lines().len();
+        assert!(text(&basic) > 0 && text(&basic) != text(&full));
+        assert!(basic.listed(basic.keys()).len() < full.listed(full.keys()).len());
+        assert_eq!(basic.keys().len(), full.keys().len(), "every key still works");
     }
 
     #[test]
