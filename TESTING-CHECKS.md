@@ -523,3 +523,84 @@
 - [ ] **74.7** Commit, then press `c` again → The history has the new message at the top; the template fills the empty box again → | [ ] 〔未訳〕
 - [ ] **74.8** In a repository with no commits press `c` and Alt+Up → Nothing breaks; Alt+Up does nothing → | [ ] 〔未訳〕
 - [ ] **74.9** Click the box with the mouse (not `c`), then press Alt+Up → The history works the same → | [ ] 〔未訳〕
+
+## 86. Row density (compact / standard / cozy)
+
+- [ ] **86.1** Open the settings (`,`), General: look for "Row density" → Three choices, Compact / Standard / Cozy; Standard is lit by default → | [ ] 〔未訳〕
+- [ ] **86.2** Pick Compact → The graph rows, the side column's rows and the reflog / tidy / reorder lists shrink at once (about 20% shorter); text stays readable and nothing is clipped; config.toml has `[view]` `density = "compact"` → | [ ] 〔未訳〕
+- [ ] **86.3** Pick Cozy → The same rows grow (about 20% taller); the graph dots and lines stay joined across rows; the scrollbar marks still sit at their rows → | [ ] 〔未訳〕
+- [ ] **86.4** Click a row, scroll with the wheel and drag the scrollbar in each density → Clicks land on the row under the pointer; the selected row stays in view → | [ ] 〔未訳〕
+- [ ] **86.5** Edit `density` in config.toml by hand (also a wrong word) → The rows change within a few seconds without restart; a wrong word gives a toast warning and the standard rows → | [ ] 〔未訳〕
+- [ ] **86.6** Switch EN and JA in the settings → The section and its three choices read well in both → | [ ] 〔未訳〕
+
+## 94. Review queue of finished Claude work (Review column)
+
+- [ ] **94.1** Open the worktree table (`3`) with two or more branch worktrees that differ from main → A Review column sits between Unseen and Clash; a worktree never opened in the review (`d`) reads `Not looked at` (dim) with `0 / N files checked`; the main worktree reads `—`; in the narrow card layout it is a `Review` line 〔未訳〕
+- [ ] **94.2** Open a branch's review with `d`, then close it (Esc) and look at the table → That row reads `In review` (blue) within a moment of closing, with the count of files checked 〔未訳〕
+- [ ] **94.3** In the review check some files (Space) but not all; then check the last one → `In review` with `k / N`; once every file is checked the row reads `Approved` (green) with `N / N` 〔未訳〕
+- [ ] **94.4** Write a note (`n`) on a line and hand it with `g` → The row reads `Flagged` (yellow) even though all files are checked; the Claude commits again and the row goes back to `In review` or `Approved` by what is checked 〔未訳〕
+- [ ] **94.5** Commit in an approved worktree a change to a file already checked → The row leaves `Approved` (the changed file lost its check) without opening the review 〔未訳〕
+- [ ] **94.6** Drag the Review column's left edge in the header; restart michi → The width follows the drag and is kept; the other columns still resize 〔未訳〕
+- [ ] **94.7** Switch the language EN and JA, and a theme with a light background → The stage words read `Not looked at` / `In review` / `Flagged` / `Approved` and JA `未確認` / `確認中` / `指摘済み` / `承認`; every colour is readable 〔未訳〕
+
+## 66. Right-click menus for a commit, a branch and a file
+
+- [ ] **66.1** In the graph (`1`) right-click a commit row → The row is selected and a menu lists Branch (b), Tag (T), Merge (m), Cherry-pick (C), Revert (t), Compare (D), Reset (R), each with its key; a right-click on the WIP row opens nothing 〔未訳〕
+- [ ] **66.2** Pick Tag from that menu; then Esc, and right-click another row and click outside the menu → The tag palette opens on the clicked commit (not the one selected before); Esc and a click outside close the menu without doing anything 〔未訳〕
+- [ ] **66.3** While a menu is open, type `d` or `j` → Nothing happens to the view (the keys do not reach the window until the menu is closed) 〔未訳〕
+- [ ] **66.4** In the worktree table (`3`) right-click a worktree row → The row is selected and a menu lists Pull request, Open in the terminal / editor / file manager, Branch diff, Rebase onto trunk, Take main, Reorder, Reflog, Remove, with keys; picking Open in the editor opens that row's folder 〔未訳〕
+- [ ] **66.5** Pick Remove for a worktree row → The same question as pressing `x` asks first; nothing is lost without a yes 〔未訳〕
+- [ ] **66.6** In the changes view (`2`) right-click an unstaged file (flat list and tree) → The file is selected and a menu lists Stage (Space), Split, Ignore, Discard, Amend; Stage moves the clicked file, Discard asks first 〔未訳〕
+- [ ] **66.7** Press `?` and open the palette; switch EN and JA and look at the menus → No operation exists only in a menu (each is a key in the help and the palette); the menu words read well in both languages 〔未訳〕
+
+## 87. Diff minimap and next / previous change (`n` / `N`, #87)
+
+- [ ] **87.1** In `2`, select a file with changes far apart (a long file) → A thin strip at the right edge of the diff shows a tick per run of changes (green added, red deleted, amber changed in side by side) and a lit box over the part in sight; the diff text does not run under it 〔未訳〕
+- [ ] **87.2** Scroll with the wheel and PageDown → The lit box follows; it fills the strip (or goes) when the whole diff fits 〔未訳〕
+- [ ] **87.3** Click a tick, then drag along the strip → The diff scrolls to that part, centred on the point; it stays inside the file at both ends 〔未訳〕
+- [ ] **87.4** With the focus on the files press `n` repeatedly, then `N` → Each `n` brings the next change to just under the top of the diff, the last one stops there (and does not stick on the one before it); `N` goes back the same way 〔未訳〕
+- [ ] **87.5** Press `Enter` (side by side) then `n` / `N` → The ticks and the jumps follow the other layout; no change is skipped or repeated 〔未訳〕
+- [ ] **87.6** Press `l` (pick lines) then `n` / `N` → The cursor moves to the first line of the next / previous run of changed lines and the diff follows it; `N` in the middle of a run goes to that run's start 〔未訳〕
+- [ ] **87.7** Select a file with no diff text (binary, deleted-empty) and press `n` → No strip, nothing happens; no error 〔未訳〕
+- [ ] **87.8** Press `?`; switch EN and JA → The key list names `n N` as jumping to the next or previous change in both languages; the strip looks right in Dark and Light themes 〔未訳〕
+
+## 100. Trial merge of several worktrees into the trunk
+
+- [ ] **100.1** In the worktree table press `T` with two or more worktrees on branches other than the trunk → A list opens at the top with those worktrees (branch and folder), each with a `·` mark → | [ ] 〔未訳〕
+- [ ] **100.2** Press `T` with fewer than two such worktrees → A toast says a trial merge needs at least two worktrees; no list opens → | [ ] 〔未訳〕
+- [ ] **100.3** Press `j` `k` and Space on three rows in the order c, a, b; click a row → The picked rows show 1, 2, 3 in the order picked; Space or a click on a picked row takes it back and later marks shift; `u` clears all → | [ ] 〔未訳〕
+- [ ] **100.4** Press Enter with nothing picked → A toast asks to pick with Space first → | [ ] 〔未訳〕
+- [ ] **100.5** Pick two branches that touch different files and press Enter → "Merging in memory…" shows briefly, then each step reads "clean" and the summary counts the changed files with +/- lines → | [ ] 〔未訳〕
+- [ ] **100.6** Pick two branches that edit the same lines, run, then pick them in the other order and run again → The clashing step is named with its files and tinted; which step clashes depends on the order → | [ ] 〔未訳〕
+- [ ] **100.7** Pick a branch that is already merged into the trunk → Its step reads "already in" → | [ ] 〔未訳〕
+- [ ] **100.8** After a run, check `git status`, `git branch -v` and the worktree folders in a terminal → Nothing moved: no branch, index, HEAD or file changed → | [ ] 〔未訳〕
+- [ ] **100.9** Change the picks after a run; press Esc; try Ctrl+Shift+P over the list → The old result goes when the picks change; Esc closes the list; the palette does not open over it → | [ ] 〔未訳〕
+- [ ] **100.10** Switch EN and JA; use a narrow window → Both languages read well; long paths are cut with an ellipsis → | [ ] 〔未訳〕
+
+## 93. Landing a worktree (merge in, check, fast-forward, clean up)
+
+- [ ] **93.1** In the `3` view select a worktree that is ahead of main and press `l` → A band asks "Land <branch> on main?" with four rows (take main in, run the check, move main forward, remove the worktree) and buttons `1` to `4`; `y` does nothing, Esc closes it 〔未訳〕
+- [ ] **93.2** Press `l` on the main worktree, on a detached one, on one with uncommitted changes, on one mid-rebase and on one with nothing ahead → Each answers with a toast saying why and no band opens 〔未訳〕
+- [ ] **93.3** Press `l`, then `4`, on a clean branch whose main is already in it → The toast reads "Landed <branch> on main: …"; main now points at the branch tip (`git log main`), the worktree folder and the branch are gone, a Claude tab of that worktree is closed 〔未訳〕
+- [ ] **93.4** Let main move on (commit on it), press `l`, then `4` → main is taken into the branch first (a merge commit), the check runs, then main moves forward to that merge; no `git push` happens 〔未訳〕
+- [ ] **93.5** Press `l`, then `1` → Only main is taken in; the toast says so ("Land it again to go on") and nothing else moved 〔未訳〕
+- [ ] **93.6** Press `l`, then `2`, in a repository with `scripts/verify.sh` that fails → The toast says "Stopped at the check: it failed (exit N)" with the last lines of its output; main did not move and the worktree is still there 〔未訳〕
+- [ ] **93.7** Press `l`, then `4`, when main clashes with the branch → The `4` view opens on the clash and the toast says "Stopped at taking main in"; after solving and committing there, `l` `4` goes on from there 〔未訳〕
+- [ ] **93.8** Press `l`, then `3`, then `l`, then `4` on the same branch → The second run skips what was done ("main was in … already") and only cleans up 〔未訳〕
+- [ ] **93.9** Use a repository without a verify script → The toast says "no check found (skipped)" and the landing goes on 〔未訳〕
+- [ ] **93.10** Select the window's own worktree and press `l` → Only `1` to `3` are offered and a note says it cannot be removed from here 〔未訳〕
+- [ ] **93.11** Land with a Claude working in the worktree → The band notes a Claude is working there and that its tabs close at the last stage 〔未訳〕
+- [ ] **93.12** Switch to JA and press `l` → The band, the buttons and every toast read in Japanese; `?` lists `l` among the worktree keys 〔未訳〕
+
+## 78. Sync: fetch, pull and push in one (`S`)
+
+- [ ] **78.1** In the graph view look at the tool band → A `Sync S` button sits after `Push P`, before the line; its icon is a down and an up arrow; hover says `Sync (S)` → | [ ] 〔未訳〕
+- [ ] **78.2** Behind origin by 2 commits, ahead by none: press `S` → One job named `sync` runs (the title bar shows its progress, Esc stops it); the toast says `Synced with origin/<b>: pulled 2 commits` → | [ ] 〔未訳〕
+- [ ] **78.3** Ahead by 1, not behind: press `S` → The commit is pushed at once (no band); the toast says `Synced with origin/<b>: pushed`; `git log origin/<b>` has it → | [ ] 〔未訳〕
+- [ ] **78.4** Behind by 1 and ahead by 1 (diverged): press `S` → Nothing is merged or pushed; the toast says `Sync stopped at the pull, nothing was pushed: origin/<b> went its own way (↑1 ↓1) …` → | [ ] 〔未訳〕
+- [ ] **78.5** Behind by 1, ahead by 1 on a pull that works (the other side already pulled), but the remote hook refuses the push → The toast says `Sync stopped at the push (pulled N commits first): … refused the push: …` and the pulled commits stay → | [ ] 〔未訳〕
+- [ ] **78.6** A new branch with no upstream: press `S` → It is pushed and gets the upstream; the toast says `Synced: pushed to origin/<b>, now its upstream` → | [ ] 〔未訳〕
+- [ ] **78.7** With two remotes and no `origin`: press `S` → The remote chooser opens; choosing one runs the sync to it → | [ ] 〔未訳〕
+- [ ] **78.8** In sync already: press `S` → The toast says `Already in sync with origin/<b>` → | [ ] 〔未訳〕
+- [ ] **78.9** Press `S` while a Claude works in the worktree, or in the middle of a merge → The Claude case asks `Sync there anyway?` (y/n); the merge case says sync waits (and the button is greyed) → | [ ] 〔未訳〕
+- [ ] **78.10** Press `S` in the 2, 3 and 4 views; open `?`; switch EN and JA → `S` works in each; the key list has a `S` line; both languages read well → | [ ] 〔未訳〕
