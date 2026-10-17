@@ -3,8 +3,9 @@
 前の会話から次の会話への引き継ぎ。新しいセッションは `C:\dev\michi` で始め、CLAUDE.md・TODO.md・この文書の順に読む。
 設計の正は [design.md](design.md) とモック。大きなファイル（design.md・graph.rs・wt_ui.rs など）は全部読まず、要るところだけ読む。
 
-## いまの版（v0.36.0、2026-10-16）
+## いまの版（v0.44.0、2026-10-17）
 
+v0.37.0〜v0.44.0 で uchmk 共通の仕様を ito 経由に揃えた（下の「ito に揃えたもの」）。
 段 1「見る」は終わり、段 2「変える」は TODO.md の 2. のうち後回しにしたもの（各 question の issue の「後回し」）だけが残る。
 段 3「衝突」は衝突の画面とマージ中のロックが入った（v0.17.0）。別のセッションが `michi.com`（Windows のコンソールの前段）を
 v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TESTING の行は 21（20 は `michi.com`）。入っているもの:
@@ -54,6 +55,17 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
 （#23 は 21.1〜21.20 用。）いまの状態: 作業中の変更は無い。
 差分が無いマージ中の worktree にはマージの行が出ない制限がある。
 
+## ito に揃えたもの（v0.37.0〜v0.44.0、TODO.md の 7）
+
+- `--keys`（v0.37.0、`script.rs`、`ito-keyscript`）・keymap.toml と設定の Keys（v0.38.0、`ito-keymap`・`ito-keys`）・キー一覧（v0.39.0、`ito-help`）・
+  通知と Notifications（v0.40.0、`notify.rs`、`ito-notify`）・F12 の報告（v0.41.0、`bugreport.rs`、`ito-bugreport`）・窓の位置と大きさ（v0.42.0、`ito_common::window`）・
+  コマンドのパレット `Ctrl+Shift+P`（v0.43.0、`cmdpalette.rs`、`ito-palette`。`App.cmd`、選ぶと `run_pick` でキーと同じ）・
+  TESTING-CHECKS.md の生成（v0.44.0、`examples/make-testcheck.rs` は `ito-testcheck` の設定だけ。印は引き継がれる）。
+- ブランチ・タグ・stash の `Picker` と `Band` の確認は ito に替えていない。持ち主の回答が来てから（#26）。
+- 残り: 実機で `--keys` を回す（TESTING 20.7 は `[ ]` のまま）、`keymap_warn` / `notify_warn` を利用者に見せる。
+- ito を上げるときは**全部のクレートを同じ rev に**（今は 2891fb20d2ec32681490c8f99752bb21b6588079、ito v0.56.1。v0.56.0 は雛形の Cargo.toml で git 依存が読めない: ito#6）。
+- 動いている `michi.exe` があると `cargo build`（`verify.sh` の中も）が失敗する。clippy・test は通る。
+
 ## 次にやること
 
 1. モックの 2 回目はやらない（持ち主が 2026-10-15 に「実装を進めて」）。決めることは `question` の issue に文字で書き、推奨で進める。
@@ -94,7 +106,7 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
   - 撮ったあと `michi.exe`・`git.exe` が残っていないか見る（閉じる途中の数秒は残って見える。ほかのセッションの git は触らない）。
 - 大きな履歴は `scripts/make-history.py` で作り、`MICHI_BENCH_REPO=<そのフォルダ> cargo test --release -p michi big_history -- --ignored --nocapture`。
 - 単体テストは本物のリポジトリに触らない（`michi-core/src/testrepo.rs` の `TempRepo`）。
-- ito の rev は 30efd6228241dafb5055b2a9511995c0508a0086（ito v0.42.0、`michi.com` のセッションが上げた）。
+- ito の rev は 2891fb20d2ec32681490c8f99752bb21b6588079（ito v0.56.1）。
 - egui 0.36 の `TextEdit` は、`.frame()` を自分で付けると `margin` が効かない。余白は Frame の `inner_margin` に書く。
 - `scripts/verify.sh` は手元の clippy に加えて、もう一方の CI のターゲット（Windows では Linux）の clippy も回す（acd02a9 から）。
 - tsumugi・yagura・kura・lane の worktree のファイルは直さない。tsumugi で michi を開いて試さない（git の掃除が走って重くなった）。

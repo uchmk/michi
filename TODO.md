@@ -8,7 +8,7 @@
   title bar, view tabs, empty views, keybar and `?`, settings through ito, icon from `assets/icon.svg`, `rustfmt.toml`, `scripts/verify.sh`,
   CI, issue forms and labels, TESTING.md, CHANGELOG.md, git version check (2.38 or newer). The settings open inside the frame (the
   title bar and the keybar stay, unlike minato); the icon is drawn in code (`icon.rs`), no `.ico`
-- [ ] 1. See (read only)
+- [x] 1. See (read only)
   - [x] `ito-graph` in ito (ito v0.36.0)
   - [x] The graph (v0.2.0): main on the left lane, pills, folding lane PRs (`z`, on by default), movement keys, `/` filter, the scrollbar
     with its marks, batches of 2000 / 5000
@@ -32,7 +32,7 @@
   - [x] File watching (`notify` → `Ask::Reload`) and unseen marks (also the worktree table's unseen column) (v0.7.0)
 - [x] ~~Second mock round before stage 2~~: dropped (the owner, 2026-10-15: go on with the implementation). What stage 2 has to
   decide goes into `question` issues in words, and the work goes on with the recommendation
-- [ ] 2. Change
+- [x] 2. Change
   - [x] The diff of a whole branch (`d` in the worktree table, v0.9.0): `main...<branch>` with the uncommitted changes in or out (`u`),
     files checked as seen by path and blob (`Space`), since the last look (`s`, `refs/michi/seen/<branch>`), the prediction against
     main on top, side by side (`Enter`) （要確認: #10）
@@ -64,7 +64,7 @@
   - [x] Clean-up (v0.14.0): `c` over the worktree table lists the branches merged into the trunk or gone from their remote and the
     worktrees whose folder is gone, picked with Space / `a`, asked with the band; a branch's worktree goes with it, unmerged tips kept
     under `refs/michi/backup/`, and what has to stay (main, here, changes, locked, a tsumugi tab) is listed with why （要確認: #20）
-- [ ] 3. Conflicts
+- [x] 3. Conflicts
   - [x] The conflict screen (`4`, v0.15.0): the places with ours / theirs (and the base), picks `o` `t` `b` `B` and back to base, files
     that clashed whole, start a file over (kept under `refs/michi/backup/` first), the done bar with git's message and Ctrl+Enter
     (the Claude band first), call it off after the row (kept first), moving on to the next worktree stopped; locks during a merge
@@ -82,9 +82,15 @@
     （要確認: #22）
 - [x] 4. Worktrees: new work (`N` done in v0.31.0; remove `x` and the tab `o` in v0.30.0), take in main (`m` merge in v0.15.0, `M` rebase in v0.36.0, TESTING 10.17), the PR page (`p`, v0.32.0; michi opens the page, the browser writes the PR per v1-scope)
   and `focus N|NAME` (done in tsumugi v0.110.0, used by `o` since v0.30.0)
-- [ ] 5. Rebase: reorder, squash, reword, the in-progress band (`r` screen done in v0.33.0, TESTING 10.16; the in-progress band is the conflict screen's, v0.17.0)
+- [x] 5. Rebase: reorder, squash, reword, the in-progress band (`r` screen done in v0.33.0, TESTING 10.16; the in-progress band is the conflict screen's, v0.17.0)
 - [x] 6. Claude: hand a conflict to Claude through `tsumugi send` (v0.24.0) and notify on waiting / done (v0.26.0), hand over notes from the
   branch diff (v0.34.0, TESTING 13.13). Watch the markers after it stops (v0.35.0, TESTING 21.31). Stage 6 is done.
+
+- [x] 7. The shared spec through ito (v0.37.0–v0.44.0, ito v0.56.1): `--keys` script (`ito-keyscript`), keymap.toml and the Keys page
+  (`ito-keymap`, `ito-keys`), the key list (`ito-help`), notifications and the Notifications page (`ito-notify`), F12 bug report
+  (`ito-bugreport`), window place saved (`ito_common::window`), TESTING-CHECKS.md by `ito-testcheck`, command palette `Ctrl+Shift+P` (`ito-palette`).
+  - [ ] The branch / tag / stash `Picker` and the `Band` confirmation are not moved onto `ito-palette` / ito's confirm: only after the owner answers （要確認: #26）
+  - [ ] Show `keymap_warn` / `notify_warn` (the warnings read from keymap.toml and config.toml) to the user, not only to the log
 
 ## Owner
 
