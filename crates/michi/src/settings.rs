@@ -11,6 +11,7 @@ use crate::app::App;
 const GENERAL: usize = 0;
 const THEME: usize = 1;
 const KEYS: usize = 2;
+const NOTIFY: usize = 3;
 
 /// The rows on each page, for the search.
 fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
@@ -34,6 +35,8 @@ fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
         (THEME, "light_theme"),
     ];
     v.extend(ito_prefs::keys_index(ito_prefs::KeyWords::of(lang)).into_iter().map(|t| (KEYS, t)));
+    v.extend(ito_prefs::notify_index(w).into_iter().map(|t| (NOTIFY, t)));
+    v.extend([(NOTIFY, "[notify]"), (NOTIFY, "focus_mode"), (NOTIFY, "[[notify.webhooks]]")]);
     v
 }
 
@@ -45,18 +48,27 @@ pub fn show(ui: &mut Ui, app: &mut App) {
         (app.tr("settings.general"), app.tr("settings.general_lead")),
         (app.tr("settings.theme"), app.tr("settings.theme_lead")),
         (app.tr("settings.keys"), app.tr("settings.keys_lead")),
+        (w.notify, app.tr("settings.notify_lead")),
     ];
     let index = index(w, &app.lang);
-    let file = if app.prefs.state.page == KEYS { "keymap.toml" } else { "common.toml" };
+    let file = match app.prefs.state.page {
+        KEYS => "keymap.toml",
+        NOTIFY => "config.toml",
+        _ => "common.toml",
+    };
     let nav = ito_prefs::Nav { pages: &pages, index: &index, words: w, file };
     let kw = ito_prefs::KeyWords::of(&app.lang);
     let layers = app.prefs.keymap.layers();
     let mut key_edits: Vec<ito_keymap::Edit> = Vec::new();
     let mut asked: Vec<CommonChange> = Vec::new();
+    let mut notify_edits: Vec<(&'static str, String)> = Vec::new();
+    let mut webhooks = None;
+    let mut test = None;
     let lang = app.lang.clone();
     let tr = |k: &'static str| crate::i18n::tr(&lang, k);
     let prefs = &mut app.prefs;
     let keys_edit = &mut prefs.keys_edit;
+    let (notify, drafts) = (&prefs.notify, &mut prefs.notify_drafts);
     let (common, themes, base) = (&prefs.common, &prefs.themes, prefs.base.as_deref());
     let out = ito_prefs::show(ui, ito_theme::colors(), &mut prefs.state, &nav, keys, |ui, page, l| match page {
         GENERAL => {
@@ -93,6 +105,19 @@ pub fn show(ui: &mut Ui, app: &mut App) {
             };
             key_edits.extend(ito_prefs::keys_page(ui, l, kw, &table, keys_edit).unwrap_or_default());
         }
+        NOTIFY => {
+            let mut n = notify.page();
+            let ends = [
+                ito_prefs::End { name: tr("notify.done"), color: l.c.done, sound: tr("notify.done_sound") },
+                ito_prefs::End { name: tr("notify.failed"), color: l.c.err, sound: tr("notify.failed_sound") },
+            ];
+            let defaults = crate::notify::NotifyCfg::default().page();
+            if let Some(what) = ito_prefs::notify_page(ui, l, w, &ends, &mut n, &defaults, drafts) {
+                test = Some((what, n.clone()));
+            }
+            webhooks = notify.webhooks_of(&n);
+            notify_edits = notify.edits(&n);
+        }
         _ => {}
     });
     if out.close {
@@ -104,6 +129,10 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     }
     let no_folder = crate::i18n::tr(&app.lang, "settings.no_folder");
     app.prefs.common_change(asked, no_folder);
+    if let Some((what, n)) = test {
+        crate::notify::test(&n, what, tr("notify.test_title"), tr("notify.test_body"));
+    }
+    app.prefs.notify_edit(notify_edits, webhooks, no_folder);
     if !key_edits.is_empty() {
         app.prefs.keymap_edit(key_edits, no_folder);
     }

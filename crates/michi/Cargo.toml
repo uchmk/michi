@@ -32,6 +32,7 @@ ito-keys = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e
 ito-keymap = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 ito-help = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 ito-keyscript = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
+ito-notify = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 ito-console = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 # eframe's own defaults, but for `winit/default` (see tsumugi): the Wayland
 # frame is drawn without the title's text, which brings an unmaintained crate.
@@ -40,3 +41,5 @@ winit = { version = "0.30", default-features = false, features = ["rwh_06", "x11
 egui = "0.36"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 notify = "8"
+serde = { version = "1", features = ["derive"] }
+toml = "1.1"

@@ -325,6 +325,8 @@ impl App {
                 if net::is_ssh(&e) {
                     text.push_str(self.tr("net.ssh"));
                 }
+                let title = self.tr("notify.title_failed").replace("{job}", kind.word());
+                self.tell("failed", &title, &e.to_string());
                 (text, 10)
             }
         };

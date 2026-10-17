@@ -2,6 +2,13 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.40.0] - 2026-10-17
+
+### 追加
+
+- 通知を `ito-notify` で出す。窓が後ろにあるとき、Claude が止まったとき（`claude.handed_done`）と fetch・pull・push が失敗したときに、システムの通知（michi のアイコン付き、アプリ ID `uchmk.michi`）・音・Webhook で知らせる。
+- 設定の「通知」ページ（`ito_prefs::notify_page`）。`config.toml` の `[notify]`（`system`・`sound`・`sound_done`・`sound_failed`・`focus_mode`・`[[notify.webhooks]]`）を読み書きし、手で直すと窓が読み直す。知らない値は警告して既定に戻す。前の 1 つだけの Webhook（`webhook`・`webhook_format`・`webhook_states`）は最初の送り先として読む。
+
 ## [0.39.0] - 2026-10-17
 
 ### 変更

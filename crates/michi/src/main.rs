@@ -23,6 +23,7 @@ mod icon;
 mod keymap;
 mod newwork;
 mod newwork_ui;
+mod notify;
 mod picker;
 mod picker_ui;
 mod prefs;
@@ -391,6 +392,7 @@ impl eframe::App for Michi {
         }
         // In front, the worktrees are watched closely; behind, now and then.
         let front = ctx.input(|i| i.viewport().focused).unwrap_or(true);
+        self.app.front = front;
         if front != self.front {
             self.front = front;
             if let Some(r) = &self.app.reading {

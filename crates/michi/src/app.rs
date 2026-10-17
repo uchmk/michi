@@ -211,6 +211,8 @@ pub struct App {
     pub unseen: Unseen,
     /// The worktrees whose Claude was handed a conflict, until it stops.
     pub handed: Vec<Handed>,
+    /// Whether the window is in front (a notification is told only when it is not).
+    pub front: bool,
     /// The worktree table's selected row.
     pub wt_sel: usize,
     /// The branch review (`d`), over the worktree table.
@@ -278,6 +280,7 @@ impl App {
             clashes: Clashes::default(),
             unseen: Unseen::default(),
             handed: Vec::new(),
+            front: true,
             wt_sel: 0,
             review: None,
             kept_notes: Vec::new(),
@@ -976,17 +979,26 @@ impl App {
                 if h.conflict {
                     check.push(h.wt.clone());
                 }
-                said.push(self.tr("claude.handed_done").replace("{wt}", &crate::act::name(&h.wt)));
+                said.push((self.tr("claude.handed_done").replace("{wt}", &crate::act::name(&h.wt)), crate::act::name(&h.wt)));
                 return false;
             }
             true
         });
         self.handed = watched;
-        if let Some(t) = said.pop() {
+        if let Some((t, wt)) = said.last().cloned() {
             self.say_for(t, 10);
+            let (title, body) = (self.tr("notify.title_done").to_owned(), self.tr("claude.handed_done").replace("{wt}", &wt));
+            self.tell("done", &title, &body);
         }
         for wt in check {
             self.act(crate::act::Task::Markers { wt });
+        }
+    }
+
+    /// Tell of `event` outside the window, when the window is behind another.
+    pub fn tell(&self, event: &str, title: &str, body: &str) {
+        if !self.front {
+            crate::notify::tell(&self.prefs.notify, event, title, body);
         }
     }
 

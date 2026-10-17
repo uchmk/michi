@@ -58,6 +58,11 @@ fn read(source: &str) -> Vec<Section> {
             continue;
         }
         let cells: Vec<&str> = line.trim().trim_matches('|').split(" | ").map(str::trim).collect();
+        // A row may end with a cell of its own mark (`[ ]`); the marks are kept in TESTING-CHECKS.md.
+        let cells = match cells.as_slice() {
+            [id, act, expect, mark] if mark.starts_with('[') => vec![*id, *act, *expect],
+            _ => cells,
+        };
         if let (true, Some(section), [id, act, expect]) = (inside, out.last_mut(), cells.as_slice()) {
             if is_id(id) {
                 section.rows.push(Row { id: (*id).to_owned(), text: format!("{act} → {expect}") });

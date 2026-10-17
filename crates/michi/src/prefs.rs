@@ -10,10 +10,12 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::time::Duration;
 
 use ito_common::{common_path, edit_common, themes_dir, write_atomic, Common, CommonChange};
+use ito_notify::webhook::Place;
 use ito_prefs::State;
 use ito_theme::Theme;
 
 use crate::keymap::Keymap;
+use crate::notify::NotifyCfg;
 
 /// How often the files are looked at.
 const WATCH: Duration = Duration::from_secs(2);
@@ -25,6 +27,8 @@ pub enum Reload {
     /// keymap.toml's text (none when there is no file), and what the Keys page's
     /// number of changes the Keys page made to it (none when it was only read).
     Keymap(Option<String>, Option<usize>),
+    /// config.toml's text (none when there is no file).
+    Config(Option<String>),
     Failed(String),
 }
 
@@ -47,6 +51,11 @@ pub struct Prefs {
     pub keymap_warn: Vec<String>,
     /// How many changes the last write on the Keys page made, for a toast.
     pub said: Option<usize>,
+    /// `[notify]` of config.toml, and what it warns of.
+    pub notify: NotifyCfg,
+    pub notify_warn: Vec<String>,
+    /// The Notifications page's drafts (a webhook's address being typed).
+    pub notify_drafts: ito_prefs::Drafts,
     /// The Keys page's search, filter and the keys being pressed.
     pub keys_edit: ito_prefs::KeysEdit,
     tx: Sender<Reload>,
@@ -72,6 +81,9 @@ impl Prefs {
             keymap: Keymap::load(None).0,
             keymap_warn: Vec::new(),
             said: None,
+            notify: NotifyCfg::default(),
+            notify_warn: Vec::new(),
+            notify_drafts: ito_prefs::Drafts::new(),
             keys_edit: ito_prefs::KeysEdit::default(),
             tx,
             rx,
@@ -93,6 +105,7 @@ impl Prefs {
             p.theme_warn = warn;
             let (km, warn) = Keymap::load(read_keymap(b).as_deref());
             (p.keymap, p.keymap_warn) = (km, warn);
+            (p.notify, p.notify_warn) = NotifyCfg::read(read_config(b).as_deref());
         }
         p.base = base;
         p
@@ -106,7 +119,8 @@ impl Prefs {
         self.os_light = ito_common::OsLight::watch(WATCH, move || os_ctx.request_repaint());
         let Some(base) = self.base.clone() else { return };
         let (common, themes, keymap) = (common_path(&base), themes_dir(&base), keymap_path(&base));
-        let mut paths = vec![common.clone(), keymap.clone(), themes.clone()];
+        let config = config_path(&base);
+        let mut paths = vec![common.clone(), keymap.clone(), config.clone(), themes.clone()];
         // A theme file edited in place; one added or taken away changes the
         // folder's time.
         if let Ok(entries) = std::fs::read_dir(&themes) {
@@ -120,6 +134,9 @@ impl Prefs {
             }
             if changed.contains(&keymap) {
                 sent &= tx.send(Reload::Keymap(read_keymap(&base), None)).is_ok();
+            }
+            if changed.contains(&config) {
+                sent &= tx.send(Reload::Config(read_config(&base))).is_ok();
             }
             if changed.iter().any(|p| p.starts_with(&themes)) {
                 let (user, warn) = ito_theme::load_dir(&themes);
@@ -144,6 +161,7 @@ impl Prefs {
                         self.said = said;
                     }
                 }
+                Reload::Config(text) => (self.notify, self.notify_warn) = NotifyCfg::read(text.as_deref()),
                 Reload::Failed(e) => self.failed = Some(e),
             }
         }
@@ -196,6 +214,26 @@ impl Prefs {
         });
     }
 
+    /// Write the Notifications page's `edits` (and its `webhooks`, when it
+    /// changed them) into config.toml on a thread, then read it again.
+    pub fn notify_edit(&self, edits: Vec<(&'static str, String)>, webhooks: Option<Vec<Place>>, no_folder: &str) {
+        if edits.is_empty() && webhooks.is_none() {
+            return;
+        }
+        let (tx, wake) = (self.tx.clone(), self.wake.clone());
+        let Some(base) = self.base.clone() else {
+            Self::send_back(&tx, &wake, Reload::Failed(no_folder.into()));
+            return;
+        };
+        std::thread::spawn(move || {
+            let r = match write_config(&config_path(&base), &edits, webhooks.as_deref()) {
+                Ok(()) => Reload::Config(read_config(&base)),
+                Err(e) => Reload::Failed(e),
+            };
+            Self::send_back(&tx, &wake, r);
+        });
+    }
+
     /// Open common.toml (made empty first when there is none) with what the
     /// OS opens it with, on a thread.
     pub fn open_common(&self, no_folder: &str) {
@@ -239,6 +277,44 @@ impl Prefs {
 /// set, else `michi` in the `uchmk` folder `base`).
 pub fn keymap_path(base: &Path) -> PathBuf {
     ito_common::env_dir("MICHI_CONFIG_HOME").unwrap_or_else(|| base.join("michi")).join("keymap.toml")
+}
+
+/// config.toml's full path: in michi's own folder, beside keymap.toml.
+pub fn config_path(base: &Path) -> PathBuf {
+    keymap_path(base).with_file_name("config.toml")
+}
+
+/// config.toml's text; none when there is no file.
+fn read_config(base: &Path) -> Option<String> {
+    std::fs::read_to_string(config_path(base)).ok()
+}
+
+/// Set `edits` (`[notify]` keys, already TOML) and `webhooks` in the
+/// config.toml at `path`, written only when that changes it. Call it off the
+/// UI thread.
+pub fn write_config(path: &Path, edits: &[(&str, String)], webhooks: Option<&[Place]>) -> Result<(), String> {
+    static ONE_AT_A_TIME: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _one = ONE_AT_A_TIME.lock().unwrap_or_else(|e| e.into_inner());
+    let at = |e: String| format!("{}: {e}", path.display());
+    let text = match std::fs::read_to_string(path) {
+        Ok(t) => t,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(at(e.to_string())),
+    };
+    let mut new = text.clone();
+    for (key, value) in edits {
+        new = ito_common::set_key(&new, Some("notify"), key, value).map_err(at)?;
+    }
+    if let Some(places) = webhooks {
+        new = ito_prefs::write_webhooks(&new, places, true).map_err(at)?;
+    }
+    if new == text {
+        return Ok(());
+    }
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| at(e.to_string()))?;
+    }
+    write_atomic(path, new)
 }
 
 /// keymap.toml's text; none when there is no file (or it cannot be read, which
