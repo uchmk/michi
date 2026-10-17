@@ -8,6 +8,8 @@ use std::time::{Duration, SystemTime};
 use egui::text::{LayoutJob, TextFormat};
 use egui::{pos2, vec2, Align2, Color32, CornerRadius, CursorIcon, FontId, Id, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, ViewportCommand};
 use ito_common::Clock;
+use ito_layout::ui::Moved;
+use ito_layout::{Dir, Node};
 use michi_core::branch::Doing;
 use michi_core::git;
 use michi_core::summary::Head;
@@ -100,54 +102,73 @@ struct Columns {
     side: Option<Rect>,
     graph: Option<Rect>,
     detail: Rect,
-    /// 1-point lines.
+    /// The 1-point lines between them.
     lines: Vec<Rect>,
-    /// Which width each of the first lines drags (`Drag`), side by side only.
-    drags: Vec<Drag>,
+    /// The panes side by side as ito-layout splits them, with the ratios kept
+    /// to the least widths; the dividers to drag are over it.
+    split: Option<Node<Col>>,
 }
 
-/// The width a line between columns drags.
+/// A column of the graph view, the leaf of its split.
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum Drag {
+pub enum Col {
     Side,
+    Graph,
     Detail,
-    WideGraph,
+}
+
+/// The gap ito-layout leaves between two panes: the 1-point line.
+const GAP: f32 = 1.0;
+/// How far from a line the pointer takes it.
+const GRAB: f32 = 8.0;
+
+fn split(ratio: f32, first: Node<Col>, second: Node<Col>) -> Node<Col> {
+    Node::Split { dir: Dir::Right, ratio, first: Box::new(first), second: Box::new(second) }
+}
+
+/// A split's ratio kept so the first pane is at least `least` wide and the
+/// second at least `least2`, of the `room` the two share (the gap is theirs).
+fn keep(ratio: f32, room: f32, least: f32, least2: f32) -> f32 {
+    let room = (room - GAP).max(1.0);
+    let first = (room * ratio).clamp(least, (room - least2).max(least));
+    first / room
 }
 
 /// The side column, the graph and the detail in `r`: side by side, the
 /// graph narrowed beside a wide diff, or one over the other in a narrow
 /// window (docs/mock).
 fn columns(r: Rect, wide: bool, s: &Sizes) -> Columns {
-    let v_line = |x: f32| Rect::from_min_max(pos2(x, r.top()), pos2(x + 1.0, r.bottom()));
+    let panes = |node: &Node<Col>| -> Vec<(Col, Rect)> {
+        node.layout(ito_layout::ui::from_egui(r), GAP).into_iter().map(|(c, r)| (c, ito_layout::ui::to_egui(r))).collect()
+    };
+    let at = |panes: &[(Col, Rect)], c: Col| panes.iter().find(|(p, _)| *p == c).map(|(_, r)| *r).unwrap_or(r);
+    let line = |a: Rect, b: Rect| Rect::from_min_max(pos2(a.right(), r.top()), pos2(b.left(), r.bottom()));
     match (r.width() < STACK, wide) {
         (false, false) => {
-            let side_w = s.side.clamp(COL_MIN, (r.width() - GRAPH_MIN - COL_MIN - 2.0).max(COL_MIN));
-            let detail_w = s.detail.clamp(COL_MIN, (r.width() - GRAPH_MIN - side_w - 2.0).max(COL_MIN));
-            let side = Rect::from_min_max(r.min, pos2(r.left() + side_w, r.bottom()));
-            let detail = Rect::from_min_max(pos2(r.right() - detail_w, r.top()), r.max);
-            let graph = Rect::from_min_max(pos2(side.right() + 1.0, r.top()), pos2(detail.left() - 1.0, r.bottom()));
-            Columns {
-                side: Some(side),
-                graph: Some(graph),
-                detail,
-                lines: vec![v_line(side.right()), v_line(graph.right())],
-                drags: vec![Drag::Side, Drag::Detail],
-            }
+            let side = keep(s.side, r.width(), COL_MIN, GRAPH_MIN + COL_MIN + GAP);
+            let rest = (r.width() - GAP) * (1.0 - side);
+            // The detail keeps its least: the graph's share is what is left of it.
+            let graph = 1.0 - keep(1.0 - s.graph, rest, COL_MIN, GRAPH_MIN);
+            let node = split(side, Node::Leaf(Col::Side), split(graph, Node::Leaf(Col::Graph), Node::Leaf(Col::Detail)));
+            let p = panes(&node);
+            let (side, graph, detail) = (at(&p, Col::Side), at(&p, Col::Graph), at(&p, Col::Detail));
+            Columns { side: Some(side), graph: Some(graph), detail, lines: vec![line(side, graph), line(graph, detail)], split: Some(node) }
         }
         (false, true) => {
-            let graph =
-                Rect::from_min_max(r.min, pos2(r.left() + s.wide_graph.clamp(COL_MIN, (r.width() - GRAPH_MIN).max(COL_MIN)), r.bottom()));
-            let detail = Rect::from_min_max(pos2(graph.right() + 1.0, r.top()), r.max);
-            Columns { side: None, graph: Some(graph), detail, lines: vec![v_line(graph.right())], drags: vec![Drag::WideGraph] }
+            let graph = keep(s.wide, r.width(), GRAPH_MIN, COL_MIN);
+            let node = split(graph, Node::Leaf(Col::Graph), Node::Leaf(Col::Detail));
+            let p = panes(&node);
+            let (graph, detail) = (at(&p, Col::Graph), at(&p, Col::Detail));
+            Columns { side: None, graph: Some(graph), detail, lines: vec![line(graph, detail)], split: Some(node) }
         }
         (true, false) => {
             let h = STACKED_DETAIL_H.min(r.height() * 0.55);
             let detail = Rect::from_min_max(pos2(r.left(), r.bottom() - h), r.max);
             let graph = Rect::from_min_max(r.min, pos2(r.right(), detail.top() - 1.0));
             let line = Rect::from_min_max(graph.left_bottom(), pos2(r.right(), detail.top()));
-            Columns { side: None, graph: Some(graph), detail, lines: vec![line], drags: Vec::new() }
+            Columns { side: None, graph: Some(graph), detail, lines: vec![line], split: None }
         }
-        (true, true) => Columns { side: None, graph: None, detail: r, lines: Vec::new(), drags: Vec::new() },
+        (true, true) => Columns { side: None, graph: None, detail: r, lines: Vec::new(), split: None },
     }
 }
 
@@ -165,26 +186,15 @@ fn graph_view(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     for line in &cols.lines {
         ui.painter().rect_filled(*line, 0.0, c.border);
     }
-    // The lines between the columns drag them; the side and the detail keep
-    // the room the graph needs.
-    for (n, (line, drag)) in cols.lines.iter().zip(&cols.drags).enumerate() {
-        let strip = line.expand2(vec2(3.0, 0.0));
-        let resp = ui.interact(strip, ui.id().with(("col-drag", n)), Sense::drag());
-        if live && (resp.hovered() || resp.dragged()) {
-            ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
-        }
-        let s = &mut app.sizes;
-        if live && resp.dragged() {
-            let dx = resp.drag_delta().x;
-            match drag {
-                Drag::Side => s.side = cols.side.map_or(s.side, |r| r.width()) + dx,
-                Drag::Detail => s.detail = cols.detail.width() - dx,
-                Drag::WideGraph => s.wide_graph = cols.graph.map_or(s.wide_graph, |r| r.width()) + dx,
-            }
-        }
-        if live && resp.drag_stopped() {
-            app.sizes.save();
-        }
+    // The dividers (ito-layout) drag the columns, the side and the detail
+    // keeping the room the graph needs; they come after the columns, so
+    // they take the pointer first.
+    let Some(node) = cols.split.as_ref().filter(|_| live) else { return };
+    let look = ito_layout::ui::Look { gap: GAP, grab: GRAB, line: accent() };
+    match ito_layout::ui::dividers(ui, ui.id().with("columns"), node, ito_layout::ui::from_egui(r), look) {
+        Some(Moved::Dragging(n) | Moved::Halved(n)) => app.sizes.set_panes(&n, cols.side.is_some()),
+        Some(Moved::Released) => app.sizes.save(),
+        None => {}
     }
 }
 
@@ -734,17 +744,23 @@ mod tests {
         let r = |w: f32| Rect::from_min_size(pos2(0.0, 36.0), vec2(w, 600.0));
         let s = Sizes::default();
         let three = columns(r(1280.0), false, &s);
-        assert_eq!(three.side.unwrap().width(), s.side);
-        assert_eq!(three.detail.width(), s.detail);
-        assert_eq!(three.graph.unwrap().width(), 1280.0 - s.side - s.detail - 2.0);
+        let (side, graph, detail) = (three.side.unwrap(), three.graph.unwrap(), three.detail);
+        assert!((side.width() - 0.16 * 1279.0).abs() < 1.0);
+        assert!(graph.width() > detail.width() && detail.width() > side.width());
+        assert_eq!((side.right() + 1.0, graph.right() + 1.0, detail.right()), (graph.left(), detail.left(), 1280.0));
         assert_eq!(three.lines.len(), 2);
         let wide = columns(r(1280.0), true, &s);
-        assert_eq!((wide.side, wide.graph.unwrap().width()), (None, s.wide_graph));
-        assert_eq!(wide.detail.left(), s.wide_graph + 1.0);
-        // Dragged too wide, the graph keeps its least.
+        assert_eq!(wide.side, None);
+        assert!((wide.graph.unwrap().width() - 0.28 * 1279.0).abs() < 1.0);
+        assert_eq!(wide.detail.left(), wide.graph.unwrap().right() + 1.0);
+        // Dragged too wide, the graph keeps its least and the others theirs.
         let mut big = Sizes::default();
-        (big.side, big.detail) = (900.0, 900.0);
-        assert!(columns(r(1280.0), false, &big).graph.unwrap().width() >= GRAPH_MIN);
+        (big.side, big.graph) = (0.9, 0.05);
+        let c = columns(r(1280.0), false, &big);
+        assert!(c.graph.unwrap().width() >= GRAPH_MIN - 1.0, "{c:?}");
+        assert!(c.detail.width() >= COL_MIN - 1.0 && c.side.unwrap().width() >= COL_MIN - 1.0, "{c:?}");
+        big.side = 0.05;
+        assert!(columns(r(1280.0), false, &big).side.unwrap().width() >= COL_MIN - 1.0);
         let stacked = columns(r(800.0), false, &s);
         assert_eq!(stacked.side, None);
         assert_eq!(stacked.detail.height(), STACKED_DETAIL_H);

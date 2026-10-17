@@ -22,6 +22,7 @@ ito-winres = { git = "https://github.com/uchmk/ito", rev = "2891fb20d2ec32681490
 michi-core = { path = "../michi-core" }
 # Every ito crate at the same rev.
 ito-i18n = { git = "https://github.com/uchmk/ito", rev = "2891fb20d2ec32681490c8f99752bb21b6588079", features = ["edit"] }
+ito-layout = { git = "https://github.com/uchmk/ito", rev = "2891fb20d2ec32681490c8f99752bb21b6588079", features = ["egui"] }
 ito-common = { git = "https://github.com/uchmk/ito", rev = "2891fb20d2ec32681490c8f99752bb21b6588079", features = ["clock", "egui"] }
 ito-theme = { git = "https://github.com/uchmk/ito", rev = "2891fb20d2ec32681490c8f99752bb21b6588079" }
 ito-prefs = { git = "https://github.com/uchmk/ito", rev = "2891fb20d2ec32681490c8f99752bb21b6588079" }

@@ -3,7 +3,7 @@
 前の会話から次の会話への引き継ぎ。新しいセッションは `C:\dev\michi` で始め、CLAUDE.md・TODO.md・この文書の順に読む。
 設計の正は [design.md](design.md) とモック。大きなファイル（design.md・graph.rs・wt_ui.rs など）は全部読まず、要るところだけ読む。
 
-## いまの版（v0.45.0、2026-10-17）
+## いまの版（v0.47.0、2026-10-17）
 
 v0.37.0〜v0.44.0 で uchmk 共通の仕様を ito 経由に揃えた（下の「ito に揃えたもの」）。
 段 1「見る」は終わり、段 2「変える」は TODO.md の 2. のうち後回しにしたもの（各 question の issue の「後回し」）だけが残る。
@@ -61,7 +61,10 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
   通知と Notifications（v0.40.0、`notify.rs`、`ito-notify`）・F12 の報告（v0.41.0、`bugreport.rs`、`ito-bugreport`）・窓の位置と大きさ（v0.42.0、`ito_common::window`）・
   コマンドのパレット `Ctrl+Shift+P`（v0.43.0、`cmdpalette.rs`、`ito-palette`。`App.cmd`、選ぶと `run_pick` でキーと同じ）・
   TESTING-CHECKS.md の生成（v0.44.0、`examples/make-testcheck.rs` は `ito-testcheck` の設定だけ。印は引き継がれる）。
-- ブランチ・タグ・stash の `Picker` と `Band` の確認は ito に替えていない。持ち主の回答が来てから（#26）。
+- 列の幅はつまみで動かせる（v0.46.0、TESTING 26）: 樹形図の 3 列（v0.47.0 から `ito-layout` の仕切り、割合で保存）・樹形図の見出しの列・worktree の表の列（この 2 つは michi の中。ito#7 に共通の部品を頼んだ。出たら置き換える）。`sizes.rs` が `layout.toml`
+  （keymap.toml の隣、`key = 幅`）に書く（ドラッグが終わったときにスレッドで）。実機の確かめは TESTING 25.1・26.1〜26.3 が `[ ]`。Arm64 は別のセッションが確かめる。
+- ブランチ・タグ・stash の `Picker` を `ito-palette` に替える件は ito-7e に頼んである: 選んだ行への別のキー（Shift+Enter・Delete・F2・Ctrl+U・Ctrl+R）が要るので
+  `Answer::Key(key, T)` を ito-palette に足してもらい、rev が出たら 1 度に替える（picker.rs・picker_ui.rs）。`Band` の確認は持ち主の回答が来てから（#26）。
 - `keymap_warn` / `notify_warn` はトーストで見せる（v0.45.0、TESTING 25.1）。残り: 実機で `--keys` を回す（TESTING 20.7 は `[ ]` のまま）。
 - ito を上げるときは**全部のクレートを同じ rev に**（今は 2891fb20d2ec32681490c8f99752bb21b6588079、ito v0.56.1。v0.56.0 は雛形の Cargo.toml で git 依存が読めない: ito#6）。
 - 動いている `michi.exe` があると `cargo build`（`verify.sh` の中も）が失敗する。clippy・test は通る。

@@ -90,6 +90,9 @@
   (`ito-keymap`, `ito-keys`), the key list (`ito-help`), notifications and the Notifications page (`ito-notify`), F12 bug report
   (`ito-bugreport`), window place saved (`ito_common::window`), TESTING-CHECKS.md by `ito-testcheck`, command palette `Ctrl+Shift+P` (`ito-palette`).
   - [ ] The branch / tag / stash `Picker` and the `Band` confirmation are not moved onto `ito-palette` / ito's confirm: only after the owner answers （要確認: #26）
+  - [ ] Replace the `Picker` with `ito-palette`: wait for ito-7e's `Answer::Key(key, T)` (Shift+Enter, Delete, F2, Ctrl+U, Ctrl+R on the selected row), then move it in one go
+  - [ ] Header / table column widths: move onto the ito part asked for in uchmk/ito#7 when it lands (`graph_ui.rs`, `wt_ui.rs`, `sizes.rs`)
+  - [x] Draggable column widths (v0.46.0, panes on `ito-layout` since v0.47.0, TESTING 26): the graph view's three columns, the graph header's columns, the worktree table's columns; kept in `layout.toml`
   - [x] Show `keymap_warn` / `notify_warn` (the warnings read from keymap.toml and config.toml) to the user as a toast (v0.45.0, TESTING 25.1)
 
 ## Owner

@@ -2,6 +2,14 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.47.0] - 2026-10-17
+
+### 変更
+
+- 樹形図の 3 列（左の列・樹形図・詳しく）の境目を `ito-layout` の仕切りに替えた（minato と同じ。近づくと線が出る、ダブルクリックで半分）。
+  幅は割合で `layout.toml` に残る（`side_ratio`・`graph_ratio`・`wide_ratio`。v0.46.0 の `side` `detail` `wide_graph` は読まない）。
+  見出しと worktree の表の列の幅は、ito に共通の部品を頼んである（uchmk/ito#7）ので、それまでは michi の中のまま。
+
 ## [0.46.0] - 2026-10-17
 
 ### 追加
