@@ -2,6 +2,18 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.68.0] - 2026-10-17
+
+### 追加
+
+- ブランチの動きの Undo / Redo（`Ctrl+Z` / `Ctrl+Shift+Z`）。reset・ブランチの削除・改名を直近 20 件まで戻せる。戻す前に `refs/michi/backup` へ退避し、状態が変わっていれば断る（#64）。
+- コミットとブランチを、サイド列の worktree 行へドラッグ&ドロップして merge・cherry-pick・rebase の確認の帯を出す。落とした時点では何も実行しない（#67）。
+- OS ごとの実機確認の表 `TESTING-MACOS.md`・`TESTING-LINUX.md`（#62）。HiDPI と Windows 11 の窓の縁、アクセシビリティの確認の行（#89・#60）。
+
+### 変更
+
+- macOS では固定の文言の `Ctrl+` を `Cmd+` と綴る（#61）。
+
 ## [0.67.0] - 2026-10-17
 
 ### 追加
