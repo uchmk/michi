@@ -116,7 +116,7 @@ All wait for the owner; none is started.
 - [ ] Gitflow（要確認: #42）
 - [ ] Built-in editor（要確認: #43）
 - [ ] Issue tracker integration（要確認: #44）
-- [ ] Multi-repository tabs / workspaces（要確認: #45）
+- [x] Multi-repository tabs: Ctrl+O / Ctrl+T opens a repository in a tab, Ctrl+Tab / Ctrl+W / Alt+N, tabs kept between runs, TESTING 245（要確認: #45）
 - [x] Patch export / apply（要確認: #46）
 - [ ] Statistics and contributor graphs（要確認: #47）
 - [ ] Diff extras (images, word diff, ignore whitespace, external tool)（要確認: #48）

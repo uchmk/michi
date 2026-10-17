@@ -69,8 +69,9 @@ mod wt_ui;
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use app::{App, Mode, View};
+use app::{App, Mode, Repo, View};
 use ito_keyscript::{Do, Runner, Step};
+use michi_core::tabs::{self, Op, Tabs};
 
 /// The named keys that move in a view, by the names `App::named` takes.
 const MOVES: [(egui::Key, &str); 9] = [
@@ -115,6 +116,13 @@ struct Michi {
     warned: Vec<String>,
     /// Requests from `michi mcp`; none under `--keys`.
     mcp: Option<std::sync::mpsc::Receiver<mcp::Ask>>,
+    /// The window's tabs (#45): one repository each. The one in front is
+    /// `app`; the others wait in `parked`, by the same index, as the whole
+    /// state of their view, or as `None` until first shown (restored tabs).
+    tabs: Tabs,
+    parked: Vec<Option<App>>,
+    /// The tabs as last kept in tabs.txt; none to keep under `--keys`.
+    tabs_kept: Option<String>,
 }
 
 impl Michi {
@@ -162,14 +170,23 @@ impl Michi {
         let Some(found) = self.app.opening.as_ref().and_then(|o| o.answer.try_recv().ok()) else { return };
         let Some(o) = self.app.opening.take() else { return };
         match found {
-            Ok(_) => {
-                let prefs = std::mem::replace(&mut self.app.prefs, prefs::Prefs::empty());
-                let recent = std::mem::take(&mut self.app.recent);
-                let mut app = App::new(prefs, o.dir.clone());
-                app.recent = recent;
-                app.front = self.app.front;
-                app.reading = Some(repo::start(o.dir, ctx.clone()));
-                self.app = app;
+            Ok(s) => {
+                // The folder opens in a tab of its own, or its tab comes to the front.
+                let old = self.tabs.active();
+                match self.tabs.open(&s.top) {
+                    Some(made) => {
+                        if made {
+                            self.parked.insert(self.tabs.active(), None);
+                        }
+                        if self.tabs.active() != old {
+                            self.show_tab(ctx, Some(old));
+                        }
+                    }
+                    None => {
+                        let text = self.app.tr("tabs.full").replace("{}", &tabs::MAX.to_string());
+                        self.app.say_for(text, 6);
+                    }
+                }
             }
             Err(e) => {
                 let word = self.app.tr(app::failed_word(&e));
@@ -177,6 +194,116 @@ impl Michi {
                 self.app.say_for(text, 10);
             }
         }
+    }
+
+    /// Puts the window on the tab in front of `self.tabs`: `app` (the tab
+    /// `parked_at` had, if it still has one) goes to its place in `parked`,
+    /// and the front tab's state comes out, or is started on its folder.
+    /// The settings and the recent list are the window's, not a tab's, so
+    /// they go across.
+    fn show_tab(&mut self, ctx: &egui::Context, parked_at: Option<usize>) {
+        let new = self.tabs.active();
+        let mut cur = std::mem::replace(&mut self.app, App::new(prefs::Prefs::empty(), PathBuf::new()));
+        let prefs = std::mem::replace(&mut cur.prefs, prefs::Prefs::empty());
+        let recent = std::mem::take(&mut cur.recent);
+        let front = cur.front;
+        // Behind the front, a tab's worktrees are read now and then.
+        if let Some(r) = &cur.reading {
+            r.front(false);
+        }
+        cur.repos = None;
+        cur.tab_req = None;
+        if let Some(i) = parked_at {
+            self.parked[i] = Some(cur);
+        }
+        let mut next = match self.parked[new].take() {
+            Some(mut a) => {
+                a.prefs = prefs;
+                a
+            }
+            None => {
+                let dir = self.tabs.paths()[new].clone();
+                let mut a = App::new(prefs, dir.clone());
+                a.reading = Some(repo::start(dir, ctx.clone()));
+                a
+            }
+        };
+        next.recent = recent;
+        next.front = front;
+        if let Some(r) = &next.reading {
+            r.front(front);
+        }
+        if let Repo::Ready(s) = &next.repo {
+            next.new_title = Some(format!("{} — michi", s.name));
+        }
+        self.app = next;
+        ctx.request_repaint();
+    }
+
+    /// What a key or a click asked of the tabs.
+    fn tab_step(&mut self, ctx: &egui::Context) {
+        let Some(op) = self.app.tab_req.take() else { return };
+        let old = self.tabs.active();
+        let closing = match op {
+            Op::Close => Some(old),
+            Op::CloseAt(i) => Some(i),
+            _ => None,
+        };
+        if let Some(i) = closing {
+            if !self.tabs.close(i) {
+                if self.tabs.len() < 2 {
+                    let text = self.app.tr("tabs.last");
+                    self.app.say(text);
+                }
+                return;
+            }
+            // The tab in front is dropped with its state; another one is
+            // dropped from `parked` and the front one stays (at its new index).
+            let parked_at = (i != old).then(|| if i < old { old - 1 } else { old });
+            drop(self.parked.remove(i));
+            // With no place to go to, `app` (the closed one) is dropped.
+            self.show_tab(ctx, parked_at);
+            return;
+        }
+        match op {
+            Op::Next => self.tabs.next(),
+            Op::Prev => self.tabs.prev(),
+            Op::Goto(i) => {
+                self.tabs.activate(i);
+            }
+            Op::Close | Op::CloseAt(_) => {}
+        }
+        if self.tabs.active() != old {
+            self.show_tab(ctx, Some(old));
+        }
+    }
+
+    /// The front tab's folder as the repository's top once that is read, the
+    /// names for the bar, and the tabs kept in tabs.txt when they changed.
+    fn sync_tabs(&mut self) {
+        let at = self.tabs.active();
+        if let Repo::Ready(s) = &self.app.repo {
+            if !michi_core::paths::same_path(&self.tabs.paths()[at], &s.top) && self.tabs.index_of(&s.top).is_none() {
+                self.tabs.set_path(at, &s.top);
+            }
+        }
+        self.app.tab_labels = self.tabs.labels();
+        self.app.tab_active = at;
+        let Some(kept) = &mut self.tabs_kept else { return };
+        let text = self.tabs.text();
+        if *kept == text {
+            return;
+        }
+        if let Some(file) = prefs::window_dir(self.app.prefs.base.as_deref()).map(|d| d.join("tabs.txt")) {
+            let text = text.clone();
+            std::thread::spawn(move || {
+                if let Some(dir) = file.parent() {
+                    let _ = std::fs::create_dir_all(dir);
+                }
+                let _ = ito_common::write_atomic(&file, text);
+            });
+        }
+        *kept = text;
     }
 
     fn script(&mut self, ctx: &egui::Context) {
@@ -450,6 +577,7 @@ impl eframe::App for Michi {
             t.follow(&ctx);
         }
         self.switch(&ctx);
+        self.tab_step(&ctx);
         self.answer_mcp();
         self.keymap_keys(&ctx);
         if self.app.mode != Mode::Settings {
@@ -500,6 +628,7 @@ impl eframe::App for Michi {
         if let Some(wake) = self.app.auto_fetch_wake() {
             ctx.request_repaint_after(wake);
         }
+        self.sync_tabs();
         self.app.sync_detail();
         if let Some(title) = self.app.new_title.take() {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
@@ -540,6 +669,9 @@ impl eframe::App for Michi {
             ctx.request_repaint();
         }
         ui::toast(ui, &self.app, out.body);
+        if self.app.tab_req.is_some() {
+            ctx.request_repaint();
+        }
         if self.app.quit {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }
@@ -642,6 +774,7 @@ fn main() -> eframe::Result {
             std::process::exit(2);
         }
     };
+    let path_given = path.is_some();
     let dir = match folder(path) {
         Ok(d) => d,
         Err(e) => {
@@ -666,6 +799,7 @@ fn main() -> eframe::Result {
         // michi.exe for Explorer.
         .with_icon(std::sync::Arc::new(egui::IconData { rgba: icon::pixels(ICON_PX), width: ICON_PX, height: ICON_PX }));
     let script_is_none = script.is_none();
+    let restore = !path_given;
     let viewport = saved.viewport(viewport);
     let options = eframe::NativeOptions { viewport, ..Default::default() };
     eframe::run_native(
@@ -680,6 +814,20 @@ fn main() -> eframe::Result {
             // The scale is common.toml's, so egui's own Ctrl+= / Ctrl+- stay out of it.
             cc.egui_ctx.options_mut(|o| o.zoom_with_keyboard = false);
             cc.egui_ctx.set_zoom_factor(prefs.common.scale_or_one());
+            // The tabs of the last run come back beside the folder asked for
+            // (not when a folder was named, nor under a script); one on a
+            // folder that is gone is let go.
+            let kept = script_is_none.then(|| prefs::window_dir(prefs.base.as_deref()).map(|d| d.join("tabs.txt"))).flatten();
+            let mut tabs = match kept.as_ref().filter(|_| restore).and_then(|f| std::fs::read_to_string(f).ok()) {
+                Some(text) => Tabs::restore(&text, &dir),
+                None => Tabs::new(&dir),
+            };
+            for i in (0..tabs.len()).rev() {
+                if i != tabs.active() && !tabs.paths()[i].is_dir() {
+                    tabs.close(i);
+                }
+            }
+            let parked: Vec<Option<App>> = (0..tabs.len()).map(|_| None).collect();
             let mut app = App::new(prefs, dir.clone());
             app.reading = Some(repo::start(dir, cc.egui_ctx.clone()));
             let mcp = script_is_none.then(|| mcp::listen(cc.egui_ctx.clone()));
@@ -688,7 +836,18 @@ fn main() -> eframe::Result {
                 r.watch(cc.egui_ctx.clone());
                 r
             });
-            Ok(Box::new(Michi { app, front: true, script, place: saved.tracker(), todo: Vec::new(), warned: Vec::new(), mcp }))
+            Ok(Box::new(Michi {
+                app,
+                front: true,
+                script,
+                place: saved.tracker(),
+                todo: Vec::new(),
+                warned: Vec::new(),
+                mcp,
+                tabs,
+                parked,
+                tabs_kept: kept.map(|_| String::new()),
+            }))
         }),
     )
 }

@@ -27,6 +27,13 @@ pub enum Act {
     Repos,
     /// Open the bug report form in the browser.
     BugReport,
+    /// The tab to the right, or to the left.
+    NextTab,
+    PrevTab,
+    /// Close the tab in front.
+    CloseTab,
+    /// The nth tab (from 1) to the front.
+    Tab(usize),
     Quit,
     Scale(ScaleTo),
     /// Does nothing: a key taken away from a built-in operation.
@@ -42,6 +49,10 @@ pub fn parse(s: &str) -> Result<Act, String> {
         (Some("palette"), None) => Act::Palette,
         (Some("repos"), None) => Act::Repos,
         (Some("bugreport"), None) => Act::BugReport,
+        (Some("nexttab"), None) => Act::NextTab,
+        (Some("prevtab"), None) => Act::PrevTab,
+        (Some("closetab"), None) => Act::CloseTab,
+        (Some("tab"), Some(n)) => Act::Tab(n.parse::<usize>().ok().filter(|n| *n >= 1).ok_or_else(|| format!("`{s}` is not a command"))?),
         (Some("quit"), None) => Act::Quit,
         (Some("noop"), None) => Act::Noop,
         (Some("scale"), Some("in")) => Act::Scale(ScaleTo::In),
@@ -135,6 +146,14 @@ mod tests {
         assert_eq!(km.act(key("<C-S-p>")), Some(Act::Palette));
         assert_eq!(km.act(key("<F12>")), Some(Act::BugReport));
         assert_eq!(km.act(key("<C-q>")), Some(Act::Quit));
+        assert_eq!(km.act(key("<C-t>")), Some(Act::Repos));
+        assert_eq!(km.act(key("<C-w>")), Some(Act::CloseTab));
+        assert_eq!(km.act(key("<C-Tab>")), Some(Act::NextTab));
+        assert_eq!(km.act(key("<C-S-Tab>")), Some(Act::PrevTab));
+        assert_eq!(km.act(key("<C-PageDown>")), Some(Act::NextTab));
+        assert_eq!(km.act(key("<C-PageUp>")), Some(Act::PrevTab));
+        assert_eq!(km.act(key("<A-3>")), Some(Act::Tab(3)));
+        assert_eq!(parse("tab 0"), Err("`tab 0` is not a command".to_owned()));
         for k in ["<C-=>", "<C-+>", "<C-;>"] {
             assert_eq!(km.act(key(k)), Some(Act::Scale(ScaleTo::In)), "{k}");
         }
@@ -198,6 +217,10 @@ keymap = []
         assert_eq!(at(K::P, shift), Some(Act::Palette));
         assert_eq!(at(K::F12, M::NONE), Some(Act::BugReport));
         assert_eq!(at(K::Q, ctrl), Some(Act::Quit));
+        assert_eq!(at(K::W, ctrl), Some(Act::CloseTab));
+        assert_eq!(at(K::Tab, ctrl), Some(Act::NextTab));
+        assert_eq!(at(K::Tab, shift), Some(Act::PrevTab));
+        assert_eq!(at(K::Num2, M::ALT), Some(Act::Tab(2)));
         assert_eq!(at(K::Minus, ctrl), Some(Act::Scale(ScaleTo::Out)));
         assert_eq!(at(K::Num0, ctrl), Some(Act::Scale(ScaleTo::Reset)));
     }

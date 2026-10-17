@@ -366,6 +366,11 @@ pub struct App {
     pub opening: Option<crate::repos::Opening>,
     /// A `git clone` running on a thread, started from the repository screen.
     pub cloning: Option<crate::repos::Cloning>,
+    /// The names of the window's tabs and which is in front, set by the window each frame (#45).
+    pub tab_labels: Vec<String>,
+    pub tab_active: usize,
+    /// What a key or a click asked of the tabs, for the window to do.
+    pub tab_req: Option<michi_core::tabs::Op>,
     /// The key list's first line, and how much of it the last frame showed.
     pub help_scroll: usize,
     pub help_drawn: std::cell::Cell<Option<ito_help::Drawn>>,
@@ -420,6 +425,9 @@ impl App {
             sparse: None,
             rerere_asked: false,
             picker: None,
+            tab_labels: Vec::new(),
+            tab_active: 0,
+            tab_req: None,
             new_work: None,
             reply: None,
             waits_told: None,
@@ -1400,6 +1408,10 @@ impl App {
             Act::Palette => self.toggle_palette(),
             Act::Repos => self.toggle_repos(),
             Act::BugReport => self.bug_report(),
+            Act::NextTab => self.tab_req = Some(michi_core::tabs::Op::Next),
+            Act::PrevTab => self.tab_req = Some(michi_core::tabs::Op::Prev),
+            Act::CloseTab => self.tab_req = Some(michi_core::tabs::Op::Close),
+            Act::Tab(n) => self.tab_req = Some(michi_core::tabs::Op::Goto(n - 1)),
             Act::Quit => self.quit = true,
             Act::Scale(to) => self.scale(to),
             Act::Noop => {}
@@ -2201,6 +2213,17 @@ pub(crate) mod tests {
         b.take(Answer::Version(Ok(Version(2, 52, 0))));
         assert_eq!(b.old_git(), None);
         assert!(b.toast.is_none());
+    }
+
+    #[test]
+    fn the_tab_keys_ask_the_window_for_a_tab_step() {
+        use crate::keymap::Act;
+        use michi_core::tabs::Op;
+        let mut a = app();
+        for (act, op) in [(Act::NextTab, Op::Next), (Act::PrevTab, Op::Prev), (Act::CloseTab, Op::Close), (Act::Tab(3), Op::Goto(2))] {
+            a.run_key(act);
+            assert_eq!(a.tab_req.take(), Some(op));
+        }
     }
 
     #[test]

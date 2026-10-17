@@ -27,6 +27,11 @@ pub fn accent() -> Color32 {
 
 const TITLE_H: f32 = 36.0;
 const KEYBAR_H: f32 = 24.0;
+/// The bar of the tabs under the title bar.
+const TABS_H: f32 = 28.0;
+/// The widest a tab grows, and the narrowest it is squeezed to.
+const TAB_MAX: f32 = 220.0;
+const TAB_MIN: f32 = 70.0;
 /// The strip under the title bar for a worktree on no branch.
 const STRIP_H: f32 = 28.0;
 /// How many of a view's keys the keybar shows before "? all keys".
@@ -54,9 +59,11 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     let title = Rect::from_min_size(rect.min, vec2(rect.width(), TITLE_H));
     let keybar = Rect::from_min_max(pos2(rect.left(), rect.bottom() - KEYBAR_H), rect.max);
     // Not on a branch: the strip under the title bar (#109).
-    let strip =
-        (app.mode != Mode::Settings && app.strip_shown()).then(|| Rect::from_min_size(title.left_bottom(), vec2(rect.width(), STRIP_H)));
-    let body = Rect::from_min_max(title.left_bottom() + vec2(0.0, strip.map_or(0.0, |s| s.height())), keybar.right_top());
+    // Two tabs or more: the bar of the window's repositories (#45).
+    let tabs = (app.tab_labels.len() > 1).then(|| Rect::from_min_size(title.left_bottom(), vec2(rect.width(), TABS_H)));
+    let under = title.left_bottom() + vec2(0.0, tabs.map_or(0.0, |t| t.height()));
+    let strip = (app.mode != Mode::Settings && app.strip_shown()).then(|| Rect::from_min_size(under, vec2(rect.width(), STRIP_H)));
+    let body = Rect::from_min_max(under + vec2(0.0, strip.map_or(0.0, |s| s.height())), keybar.right_top());
     let mut out = Out { view: None, settings: false, palette: false, body };
     if app.mode != Mode::Settings {
         // The key list goes over the view; the mouse is the list's then.
@@ -94,9 +101,70 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     if let Some(s) = strip {
         strip_bar(ui, app, s, app.mode == Mode::Main && app.band.is_none() && app.picker.is_none());
     }
+    if let Some(t) = tabs {
+        tab_bar(ui, app, t);
+    }
     title_bar(ui, app, title, &mut out);
     key_bar(ui, app, keybar);
     out
+}
+
+/// The tabs of the window, one repository each: a click brings one to the
+/// front, the cross or a middle click closes it (#45).
+fn tab_bar(ui: &mut Ui, app: &mut App, r: Rect) {
+    let c = ito_theme::colors();
+    let p = ui.painter().clone();
+    p.rect_filled(r, 0.0, c.panel);
+    p.line_segment([r.left_bottom() - vec2(0.0, 0.5), r.right_bottom() - vec2(0.0, 0.5)], Stroke::new(1.0, c.border));
+    let n = app.tab_labels.len().max(1) as f32;
+    let w = ((r.width() - EDGE - 8.0) / n).clamp(TAB_MIN, TAB_MAX);
+    let font = FontId::proportional(12.0);
+    let live = app.mode == Mode::Main && app.band.is_none() && app.picker.is_none();
+    let mut asked = None;
+    for (i, label) in app.tab_labels.iter().enumerate() {
+        let cell = Rect::from_min_size(pos2(r.left() + 4.0 + w * i as f32, r.top()), vec2(w, r.height()));
+        let front = i == app.tab_active;
+        let resp = ui.interact(cell, ui.id().with(("tab", i)), Sense::click());
+        if front {
+            p.rect_filled(cell.shrink2(vec2(1.0, 0.0)), 0.0, c.bg);
+            p.line_segment([cell.left_top() + vec2(0.0, 1.0), cell.right_top() + vec2(0.0, 1.0)], Stroke::new(2.0, accent()));
+        } else if resp.hovered() {
+            p.rect_filled(cell.shrink2(vec2(1.0, 0.0)), 0.0, c.bg.gamma_multiply(0.5));
+        }
+        // The cross: for the front tab and the one under the pointer.
+        let cross = Rect::from_center_size(pos2(cell.right() - 14.0, cell.center().y), vec2(16.0, 16.0));
+        let x = (front || resp.hovered()).then(|| ui.interact(cross, ui.id().with(("tab-x", i)), Sense::click()));
+        let color = if front { c.fg } else { c.dim };
+        let mut job = egui::text::LayoutJob::simple_singleline(label.clone(), font.clone(), color);
+        job.wrap =
+            egui::text::TextWrapping {
+                max_width: (w - 34.0).max(20.0), max_rows: 1, break_anywhere: true, overflow_character: Some('…')
+            };
+        let g = ui.fonts_mut(|f| f.layout_job(job));
+        p.galley(pos2(cell.left() + 10.0, cell.center().y - g.size().y / 2.0), g, color);
+        if let Some(x) = &x {
+            let k = if x.hovered() { c.fg } else { c.dim };
+            let m = cross.center();
+            p.line_segment([m + vec2(-3.5, -3.5), m + vec2(3.5, 3.5)], Stroke::new(1.2, k));
+            p.line_segment([m + vec2(-3.5, 3.5), m + vec2(3.5, -3.5)], Stroke::new(1.2, k));
+            if x.hovered() {
+                ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+            }
+        }
+        if resp.hovered() {
+            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+        }
+        if live {
+            if x.as_ref().is_some_and(|x| x.clicked()) || resp.middle_clicked() {
+                asked = Some(michi_core::tabs::Op::CloseAt(i));
+            } else if resp.clicked() && !front {
+                asked = Some(michi_core::tabs::Op::Goto(i));
+            }
+        }
+    }
+    if asked.is_some() {
+        app.tab_req = asked;
+    }
 }
 
 /// The strip under the title bar for a worktree on no branch: why, and a

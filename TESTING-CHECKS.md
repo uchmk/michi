@@ -857,6 +857,22 @@
 - [ ] **255.8** With a Claude working in either worktree, move → The question also says a Claude is working there 〔未訳〕
 - [ ] **255.9** Switch EN and JA; check the keybar and `?` in the `3` view → `v` Move changes appears; text reads well in both languages 〔未訳〕
 
+## 245. Repository tabs (#45)
+
+- [ ] **245.1** Open one repository, press Ctrl+O (or Ctrl+T), pick another repository → It opens in a new tab right of the front one and the bar appears under the title bar; the first repository is still there in its tab with its view, selection and scroll as left 〔未訳〕
+- [ ] **245.2** Open the same repository again from the screen → No second tab; its tab comes to the front 〔未訳〕
+- [ ] **245.3** Press Ctrl+Tab and Ctrl+Shift+Tab (also Ctrl+PageDown / Ctrl+PageUp) → The front tab moves right / left and goes round at the ends; the window title follows the repository 〔未訳〕
+- [ ] **245.4** Press Alt+1 .. Alt+3 with three tabs → That tab comes to the front; Alt+9 with three tabs does nothing 〔未訳〕
+- [ ] **245.5** Click a tab; click the cross on a tab; middle-click a tab → The tab comes to the front; the tab closes; the tab closes 〔未訳〕
+- [ ] **245.6** Close the front tab with Ctrl+W → The tab to its right takes the front (the one to its left if it was last); closing a tab that is not in front keeps the same tab in front 〔未訳〕
+- [ ] **245.7** With one tab left press Ctrl+W → A toast says it is the only tab; the window stays 〔未訳〕
+- [ ] **245.8** Change a file in a repository behind the front tab (from a shell), then come back to its tab → The tab shows the change within a moment (it was read while behind, more slowly) 〔未訳〕
+- [ ] **245.9** Open two tabs, close the window, start michi with no folder from another folder → The tabs come back, the one for the current folder in front, the others load when first shown; a tab whose folder was deleted is not restored; `michi <folder>` does not restore the others 〔未訳〕
+- [ ] **245.10** Open tabs for two folders of one name (`a/michi`, `b/michi`) → The tabs read `michi (a)` and `michi (b)` 〔未訳〕
+- [ ] **245.11** Open 12 tabs, then another repository → A toast says the tabs are full; nothing opens 〔未訳〕
+- [ ] **245.12** Change the settings (theme, language) in one tab, move to another → Both tabs follow the new theme and language; a toast in one tab is not shown in the other 〔未訳〕
+- [ ] **245.13** Switch EN and JA; check the repository screen footer, the `?` list and the bar → `Open in a tab`, `Close tab`, `Next tab`, `Previous tab`, `Go to tab` read well in both languages 〔未訳〕
+
 ## 246. Patches: copy and paste-to-apply (`Y`, Ctrl+V)
 
 - [ ] **246.1** In the graph, select a commit and press `Y`; paste into a text editor → A toast says a patch of N lines was copied; the clipboard holds an emailed patch (`From <id> ...`, `Subject: [PATCH] ...`, then the diff) 〔未訳〕
