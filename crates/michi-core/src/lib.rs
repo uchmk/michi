@@ -9,6 +9,7 @@ pub mod change;
 pub mod clash;
 pub mod claude;
 pub mod conflict;
+pub mod detached;
 pub mod discard;
 pub mod external;
 pub mod git;

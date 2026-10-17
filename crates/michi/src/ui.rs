@@ -26,6 +26,8 @@ pub fn accent() -> Color32 {
 
 const TITLE_H: f32 = 36.0;
 const KEYBAR_H: f32 = 24.0;
+/// The strip under the title bar for a worktree on no branch.
+const STRIP_H: f32 = 28.0;
 /// How many of a view's keys the keybar shows before "? all keys".
 const KEYBAR_KEYS: usize = 5;
 /// Below this width the palette field is shorter.
@@ -50,7 +52,10 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     ui.painter().rect_filled(rect, 0.0, c.bg);
     let title = Rect::from_min_size(rect.min, vec2(rect.width(), TITLE_H));
     let keybar = Rect::from_min_max(pos2(rect.left(), rect.bottom() - KEYBAR_H), rect.max);
-    let body = Rect::from_min_max(title.left_bottom(), keybar.right_top());
+    // Not on a branch: the strip under the title bar (#109).
+    let strip =
+        (app.mode != Mode::Settings && app.strip_shown()).then(|| Rect::from_min_size(title.left_bottom(), vec2(rect.width(), STRIP_H)));
+    let body = Rect::from_min_max(title.left_bottom() + vec2(0.0, strip.map_or(0.0, |s| s.height())), keybar.right_top());
     let mut out = Out { view: None, settings: false, palette: false, body };
     if app.mode != Mode::Settings {
         // The key list goes over the view; the mouse is the list's then.
@@ -80,9 +85,53 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
             help(ui, app, body);
         }
     }
+    if let Some(s) = strip {
+        strip_bar(ui, app, s, app.mode == Mode::Main && app.band.is_none() && app.picker.is_none());
+    }
     title_bar(ui, app, title, &mut out);
     key_bar(ui, app, keybar);
     out
+}
+
+/// The strip under the title bar for a worktree on no branch: why, and a
+/// button (and key) for each way out.
+fn strip_bar(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
+    let c = ito_theme::colors();
+    let p = ui.painter().clone();
+    p.rect_filled(r, 0.0, c.panel);
+    p.line_segment([r.left_bottom() - vec2(0.0, 0.5), r.right_bottom() - vec2(0.0, 0.5)], Stroke::new(1.0, c.border));
+    let mid = r.center().y;
+    let font = FontId::proportional(12.0);
+    let mut right = r.right() - 12.0 - EDGE;
+    let mut pressed = None;
+    for (key, word) in app.strip_actions().into_iter().rev() {
+        let cap = kbd(ui, &p, pos2(right, mid), &key.to_string());
+        let text = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, word, font.clone(), c.fg);
+        let hit = text.union(cap).expand(4.0);
+        let resp = ui.interact(hit, ui.id().with(("strip", key)), Sense::click());
+        if resp.hovered() {
+            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+        }
+        if live && resp.clicked() {
+            pressed = Some(key);
+        }
+        right = hit.left() - 10.0;
+    }
+    if let Some(text) = app.strip_text() {
+        let left = r.left() + 12.0;
+        let mut job = egui::text::LayoutJob::simple_singleline(text, font, c.wait);
+        job.wrap = egui::text::TextWrapping {
+            max_width: (right - left).max(40.0),
+            max_rows: 1,
+            break_anywhere: true,
+            overflow_character: Some('…'),
+        };
+        let g = ui.fonts_mut(|f| f.layout_job(job));
+        p.galley(pos2(left, mid - g.size().y / 2.0), g, c.wait);
+    }
+    if let Some(key) = pressed {
+        app.strip_key(key);
+    }
 }
 
 /// The narrowest a column can be dragged to.
