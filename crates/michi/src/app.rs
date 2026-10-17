@@ -359,6 +359,8 @@ pub struct App {
     pub open_req: Option<PathBuf>,
     /// A folder being read before the switch.
     pub opening: Option<crate::repos::Opening>,
+    /// A `git clone` running on a thread, started from the repository screen.
+    pub cloning: Option<crate::repos::Cloning>,
     /// The key list's first line, and how much of it the last frame showed.
     pub help_scroll: usize,
     pub help_drawn: std::cell::Cell<Option<ito_help::Drawn>>,
@@ -429,6 +431,7 @@ impl App {
             recent: crate::repos::load(base.as_deref()),
             open_req: None,
             opening: None,
+            cloning: None,
             help_scroll: 0,
             help_drawn: std::cell::Cell::new(None),
         };

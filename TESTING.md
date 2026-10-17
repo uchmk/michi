@@ -1042,3 +1042,15 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 253.2 | In one worktree run `git config extensions.worktreeConfig true` then `git config --worktree user.name Other` and `user.email other@example.com`; wait for the next reread | Every worktree row gets a `Commits as Name <email>` line (JA `作者: …`) under its folder; the changed one shows `Other <other@example.com>` | [ ] |
 | 253.3 | Set the name back in that worktree (`git config --worktree --unset user.name`) so it matches the others again | The lines disappear again without restarting michi | [ ] |
 | 253.4 | Switch EN and JA | The line reads well in both; long values do not overflow the card | [ ] |
+
+## 239. Clone from the repository screen (#39)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 239.1 | Press `Ctrl+O`, paste `https://github.com/<owner>/<small repo>.git` | The first row reads `Clone <address> into <folder beside the open repository>/<repo>`, in the accent colour; the hint and footer read well in EN and JA | [ ] |
+| 239.2 | Press Enter on that row | A toast `Cloning <address> …` shows and the window stays responsive; when git is done a toast `Cloned <folder>` shows and the window switches to the new repository | [ ] |
+| 239.3 | Type an address, a space and a folder (`git@github.com:<owner>/<repo>.git ~/tmp/x`), Enter | It clones into that folder (`~` is the home folder) and switches to it | [ ] |
+| 239.4 | Clone the same address again into the same folder | A toast `Clone failed: destination path ... already exists and is not an empty directory`; the window stays on the repository it was on | [ ] |
+| 239.5 | Clone an address that does not exist, or with the network off | A toast `Clone failed: ...` with git's first line; no half-made folder is left | [ ] |
+| 239.6 | Start a clone of a large repository and press Enter on another clone row | A toast `A clone is still running`; nothing starts twice | [ ] |
+| 239.7 | Type a path or a word (not an address) | No clone row appears; the list and the typed-path row work as before | [ ] |

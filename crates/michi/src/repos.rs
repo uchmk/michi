@@ -10,6 +10,7 @@ use std::sync::mpsc::{self, Receiver};
 
 use eframe::egui::{self, Key, Modifiers};
 use ito_palette::{Answer, Entry, Style, Tone, View, Words};
+use michi_core::clone;
 use michi_core::recent::{self, Recent};
 use michi_core::summary::Summary;
 
@@ -22,6 +23,23 @@ pub enum Row {
     Recent(PathBuf),
     /// The path that was typed.
     Typed(PathBuf),
+    /// An address that was typed, and where its clone goes.
+    Clone(String, PathBuf),
+}
+
+/// A `git clone` running on a thread.
+pub struct Cloning {
+    pub dest: PathBuf,
+    pub answer: Receiver<Result<(), michi_core::git::Error>>,
+}
+
+/// The row that clones what `query` asks for into `parent` (the folder
+/// beside the open repository), when it asks for a clone and a folder name
+/// can be made of it.
+pub fn clone_row(query: &str, parent: &Path) -> Option<Row> {
+    let req = clone::parse(query)?;
+    let dest = clone::target(&req, parent, home().as_deref())?;
+    Some(Row::Clone(req.url, dest))
 }
 
 /// A folder being read before the window switches to it.
@@ -94,11 +112,22 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
         crate::app::Repo::Ready(s) => Some(s.top.clone()),
         _ => None,
     };
-    let entries: Vec<Entry<Row>> = rows(&app.recent, &v.query)
+    let beside = here.as_deref().and_then(Path::parent).map(Path::to_path_buf).or_else(home).unwrap_or_default();
+    let mut found = rows(&app.recent, &v.query);
+    if let Some(row) = clone_row(&v.query, &beside) {
+        found.insert(0, row);
+    }
+    let entries: Vec<Entry<Row>> = found
         .into_iter()
         .map(|row| match &row {
             Row::Typed(p) => {
                 let mut e = Entry::new(app.tr("repos.open").replace("{}", &p.display().to_string()), "", row.clone());
+                e.tone = Tone::Accent;
+                e
+            }
+            Row::Clone(url, dest) => {
+                let text = app.tr("repos.clone").replacen("{}", url, 1).replacen("{}", &dest.display().to_string(), 1);
+                let mut e = Entry::new(text, "", row.clone());
                 e.tone = Tone::Accent;
                 e
             }
@@ -115,6 +144,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
     match ito_palette::show(ctx, &mut v, &entries, &style, &words) {
         None => app.repos = Some(v),
         Some(Answer::Pick(Row::Recent(p) | Row::Typed(p))) => app.open_repo(p),
+        Some(Answer::Pick(Row::Clone(url, dest))) => app.start_clone(ctx, url, dest),
         Some(Answer::Key(_, _, Row::Recent(p))) => {
             app.forget_repo(&p);
             app.repos = Some(v);
@@ -147,6 +177,24 @@ impl App {
     /// Ask to switch the window to `dir`; it is read first (see [`Opening`]).
     pub fn open_repo(&mut self, dir: PathBuf) {
         self.open_req = Some(dir);
+    }
+
+    /// `git clone url dest` on a thread; the window switches to it when it is done.
+    pub fn start_clone(&mut self, ctx: &egui::Context, url: String, dest: PathBuf) {
+        if self.cloning.is_some() {
+            let text = self.tr("repos.clone_busy");
+            self.say(text);
+            return;
+        }
+        let text = self.tr("repos.cloning").replace("{}", &url);
+        self.say_for(text, 8);
+        let (tx, answer) = mpsc::channel();
+        let (d, ctx) = (dest.clone(), ctx.clone());
+        std::thread::spawn(move || {
+            let _ = tx.send(clone::run(&url, &d));
+            ctx.request_repaint();
+        });
+        self.cloning = Some(Cloning { dest, answer });
     }
 
     pub fn forget_repo(&mut self, dir: &Path) {
@@ -207,6 +255,15 @@ mod tests {
         let rs = rows(&r, "/dev/new");
         assert_eq!(rs[0], Row::Typed(PathBuf::from("/dev/new")));
         assert_eq!(rs.len(), 4, "the list stays under it");
+    }
+
+    #[test]
+    fn an_address_makes_a_clone_row_beside_the_open_repository() {
+        let parent = Path::new("/dev");
+        assert!(clone_row("michi", parent).is_none());
+        assert_eq!(clone_row("https://h/a/b.git", parent), Some(Row::Clone("https://h/a/b.git".into(), PathBuf::from("/dev/b"))));
+        assert_eq!(clone_row("https://h/.git", parent), None);
+        assert_eq!(clone_row("https://h/.git /x/y", parent), Some(Row::Clone("https://h/.git".into(), PathBuf::from("/x/y"))));
     }
 
     #[test]
