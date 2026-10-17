@@ -107,7 +107,7 @@ All wait for the owner; none is started.
 - [x] Non-GitHub hosts: PR page links for GitLab.com, Bitbucket and Azure DevOps from the remote URL (TESTING 101)（要確認: #33）
 - [ ] Creating PRs in michi（要確認: #34）
 - [x] Signature status (Verified) marker（要確認: #35）
-- [ ] Dedicated screens for conflicts a 3-way view cannot show（要確認: #36）
+- [x] Whole-file conflicts (delete vs change, rename vs rename, mode, link, submodule): the card says what each side did, TESTING 236（要確認: #36）
 - [x] blame and per-file history（要確認: #37）
 - [x] Content search (pickaxe `s:`, regex `g:`) in the `/` filter, asked with Enter（要確認: #38）
 - [x] clone: paste an address in the repository screen (Ctrl+O) to clone beside the open repository, TESTING 239; init later（要確認: #39）

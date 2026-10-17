@@ -689,7 +689,7 @@ pub(crate) mod tests {
     use super::*;
     use crate::app::tests::{app, toast};
     use michi_core::conflict::File;
-    use michi_core::conflict::{Block, Side, Whole, Why};
+    use michi_core::conflict::{Block, Fact, Side, Whole, Why};
 
     fn block(open: bool) -> Block {
         Block {
@@ -720,7 +720,17 @@ pub(crate) mod tests {
             .into(),
             files: vec![
                 File { path: "x.txt".into(), unmerged: true, body: Body::Text(vec![block(true), block(false), block(true)]) },
-                File { path: "y.bin".into(), unmerged: true, body: Body::Whole(Whole { why: Why::Binary, ours: true, theirs: true }) },
+                File {
+                    path: "y.bin".into(),
+                    unmerged: true,
+                    body: Body::Whole(Whole {
+                        why: Why::Binary,
+                        did_ours: Fact::Changed,
+                        did_theirs: Fact::Changed,
+                        ours: true,
+                        theirs: true,
+                    }),
+                },
             ],
             auto: Vec::new(),
         }

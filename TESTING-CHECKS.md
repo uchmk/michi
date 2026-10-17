@@ -869,3 +869,11 @@
 - [ ] **246.8** With a rebase or merge stopped in the worktree, paste a patch → A toast says the worktree is in the middle of it and to finish first 〔未訳〕
 - [ ] **246.9** Paste a patch while a Claude is working in the worktree → The question ends with the note that a Claude is working there 〔未訳〕
 - [ ] **246.10** Check the keybar and `?` over the graph; switch EN and JA → `Y` and Ctrl+V are listed with their words in both languages 〔未訳〕
+
+## 236. Conflicts a 3-way view cannot show (#36)
+
+- [ ] **236.1** Merge a branch that changed a file the target deleted, open the conflict screen (`3`) → The file card says it was deleted on our side and changed on theirs, and a second line says "Ours: deleted it. Theirs: changed it."; the buttons offer delete or take their file 〔未訳〕
+- [ ] **236.2** Merge branches that renamed the same file to two names → The old name card says both sides moved or removed it; the two new names show as files whose card says only one side has the name; each card says what each side did 〔未訳〕
+- [ ] **236.3** Merge a branch that changed only a file executable bit while the other changed its content → The second line says one side "made it executable" and the other "changed it" 〔未訳〕
+- [ ] **236.4** Merge a binary file changed on both sides, and a submodule moved on both → The cards say binary / has a submodule; "Open in a tool" (`w`) still works 〔未訳〕
+- [ ] **236.5** Switch EN and JA; narrow the window → Both lines read well and are cut at the card edge, not over the buttons 〔未訳〕
