@@ -29,6 +29,7 @@ pub mod newwork;
 pub mod notes;
 pub mod oid;
 pub mod openin;
+pub mod order;
 pub mod overlap;
 pub mod paths;
 pub mod pr;

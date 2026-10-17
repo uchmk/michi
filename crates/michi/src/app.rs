@@ -1143,6 +1143,19 @@ impl App {
         self.trees.trees.iter().any(|t| t.doing == Some(michi_core::branch::Doing::Merge))
     }
 
+    /// The worktree at `path`'s place in the suggested order to land the
+    /// worktrees: `(number, of how many, places to resolve)`. `None` for one
+    /// not in it, or while a merge is under way (the predictions are not
+    /// there then).
+    pub fn land_order_of(&self, path: &Path) -> Option<(usize, usize, u32)> {
+        if self.merging() {
+            return None;
+        }
+        let steps = michi_core::order::suggest(&self.clashes, &self.trees);
+        let n = steps.iter().position(|s| s.path == path)?;
+        Some((n + 1, steps.len(), steps[n].resolve))
+    }
+
     /// The sides the worktree at `path` would conflict with, and how.
     pub fn clashes_in(&self, path: &Path) -> Vec<(&Side, &Outcome)> {
         let Some(i) = self.clashes.side_of(path) else { return Vec::new() };
