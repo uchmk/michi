@@ -46,6 +46,7 @@ pub mod show;
 pub mod stage;
 pub mod stash;
 pub mod summary;
+pub mod syntax;
 pub mod tag;
 pub mod tidy;
 pub mod track;

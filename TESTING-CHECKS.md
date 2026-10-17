@@ -604,3 +604,12 @@
 - [ ] **78.8** In sync already: press `S` → The toast says `Already in sync with origin/<b>` → | [ ] 〔未訳〕
 - [ ] **78.9** Press `S` while a Claude works in the worktree, or in the middle of a merge → The Claude case asks `Sync there anyway?` (y/n); the merge case says sync waits (and the button is greyed) → | [ ] 〔未訳〕
 - [ ] **78.10** Press `S` in the 2, 3 and 4 views; open `?`; switch EN and JA → `S` works in each; the key list has a `S` line; both languages read well → | [ ] 〔未訳〕
+
+## 68. Syntax colours in diffs
+
+- [ ] **68.1** Open a commit that changes a `.rs` file (detail pane), then the Changes view of a worktree with a `.rs` edit → Keywords, strings, comments, numbers and names are coloured on context, added and deleted lines; the green/red line tint and the marked words (changed words) still show → | [ ] 〔未訳〕
+- [ ] **68.2** Look at a `.toml`, `.md`, `.ts`, `.py` and `Dockerfile` change → Each gets colours; a file of an unknown type (`.xyz`) and a binary file stay plain → | [ ] 〔未訳〕
+- [ ] **68.3** Switch the theme in settings between a dark and a light one → The colours follow the theme and stay readable on the added and deleted tints → | [ ] 〔未訳〕
+- [ ] **68.4** Open the diff side by side and unified (narrow the window) → Both layouts show the same colours; wrapped long lines keep them → | [ ] 〔未訳〕
+- [ ] **68.5** Open a big commit (hundreds of files, a huge generated file) → The window does not stall while it loads; a file of over 6000 diff lines, or a line of over 1500 characters, is left plain → | [ ] 〔未訳〕
+- [ ] **68.6** Select diff text with the mouse and copy it → The copied text is the plain text (no colour effects) → | [ ] 〔未訳〕

@@ -131,6 +131,9 @@ pub struct Line {
     /// The words changed against the paired line, as byte ranges of
     /// `text`, in order and apart.
     pub marks: Vec<Range<usize>>,
+    /// Its syntax colours (kinds of token) as byte ranges of `text`, in order
+    /// and apart; empty for a language it does not know.
+    pub ink: crate::syntax::Ink,
 }
 
 /// A tab goes to the next column of every this many.
@@ -155,21 +158,36 @@ impl Line {
 
     /// The text in pieces, each marked or not, tabs turned into spaces.
     pub fn pieces(&self) -> Vec<(String, bool)> {
-        let mut cuts = Vec::new();
-        let mut at = 0;
-        for m in &self.marks {
-            if at < m.start {
-                cuts.push((at..m.start, false));
-            }
-            cuts.push((m.clone(), true));
-            at = m.end;
+        self.styled().into_iter().map(|(s, marked, _)| (s, marked)).collect()
+    }
+
+    /// The text in pieces, each marked or not and with its kind of token
+    /// (`None` for plain text), tabs turned into spaces. A piece never
+    /// straddles a mark or a token.
+    pub fn styled(&self) -> Vec<(String, bool, Option<crate::syntax::Tok>)> {
+        let len = self.text.len();
+        let mut bounds: Vec<usize> = vec![0, len];
+        for r in self.marks.iter().chain(self.ink.iter().map(|(r, _)| r)) {
+            bounds.extend([r.start.min(len), r.end.min(len)]);
         }
-        if at < self.text.len() || cuts.is_empty() {
-            cuts.push((at..self.text.len(), false));
+        bounds.sort_unstable();
+        bounds.dedup();
+        let mut cuts = Vec::new();
+        for w in bounds.windows(2) {
+            let (a, b) = (w[0], w[1]);
+            if !self.text.is_char_boundary(a) || !self.text.is_char_boundary(b) {
+                continue;
+            }
+            let marked = self.marks.iter().any(|m| m.start <= a && b <= m.end);
+            let tok = self.ink.iter().find(|(r, _)| r.start <= a && b <= r.end).map(|(_, t)| *t);
+            cuts.push((a..b, marked, tok));
+        }
+        if cuts.is_empty() {
+            cuts.push((0..0, false, None));
         }
         let mut col = 0;
         cuts.into_iter()
-            .map(|(r, marked)| {
+            .map(|(r, marked, tok)| {
                 let mut s = String::with_capacity(r.len());
                 for ch in self.text[r].chars() {
                     if ch == '\t' {
@@ -181,7 +199,7 @@ impl Line {
                         col += 1;
                     }
                 }
-                (s, marked)
+                (s, marked, tok)
             })
             .collect()
     }
@@ -509,7 +527,14 @@ fn diff(out: &mut impl BufRead, files: &mut [File], cut: &mut bool, limits: &Lim
             }
             let Some(hunk) = file.hunks.last_mut() else { continue };
             file.not_utf8 |= !is_utf8(line, n > buf.len() + 1);
-            hunk.lines.push(Line { kind, old: o, new: w, text: text(line.get(1..).unwrap_or(b""), limits), marks: Vec::new() });
+            hunk.lines.push(Line {
+                kind,
+                old: o,
+                new: w,
+                text: text(line.get(1..).unwrap_or(b""), limits),
+                marks: Vec::new(),
+                ink: Vec::new(),
+            });
             kept += 1;
             file_kept += 1;
         } else if line.starts_with(b"diff --git ") {
@@ -619,6 +644,7 @@ fn polish(file: &mut File) {
         }
     }
     file.eol_only = eol && pairs > 0 && !file.cut;
+    crate::syntax::paint(file);
 }
 
 /// Marks the words that differ between `old` and `new`, unless the two have
@@ -694,7 +720,7 @@ mod tests {
     }
 
     fn line(kind: Kind, text: &str) -> Line {
-        Line { kind, old: 0, new: 0, text: text.into(), marks: Vec::new() }
+        Line { kind, old: 0, new: 0, text: text.into(), marks: Vec::new(), ink: Vec::new() }
     }
 
     fn spans(l: &Line) -> Vec<(usize, usize)> {
@@ -937,6 +963,15 @@ mod tests {
         l.marks.push(2..4);
         assert_eq!(l.pieces(), [("a   ".to_owned(), false), ("bc".to_owned(), true), ("  d".to_owned(), false)]);
         assert_eq!(line(Kind::Context, "").pieces(), [(String::new(), false)]);
+        // Colours and marks cut the same text apart.
+        use crate::syntax::Tok;
+        let mut l = line(Kind::Add, "let	x");
+        l.marks = std::iter::once(2..5).collect();
+        l.ink = std::iter::once((0..3, Tok::Keyword)).collect();
+        assert_eq!(
+            l.styled(),
+            [("le".to_owned(), false, Some(Tok::Keyword)), ("t".to_owned(), true, Some(Tok::Keyword)), (" x".to_owned(), true, None)]
+        );
     }
 
     #[test]
