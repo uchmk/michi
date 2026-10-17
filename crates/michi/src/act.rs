@@ -74,6 +74,20 @@ pub enum Task {
     Untag {
         name: String,
     },
+    /// Lists the remotes with their addresses, the window being on the
+    /// worktree at `here`.
+    FindRemotes {
+        here: PathBuf,
+    },
+    /// Adds the remote `name` at `url`.
+    AddRemote {
+        name: String,
+        url: String,
+    },
+    /// Removes the remote `name` (and its remote-tracking branches).
+    RemoveRemote {
+        name: String,
+    },
     /// Reverts `id` on the branch of the worktree at `wt`; a merge with
     /// the parent (from 1) whose side stays.
     Revert {
@@ -358,6 +372,9 @@ impl Task {
             Task::Rebase { .. } => "rebase",
             Task::Tag { .. } => "tag",
             Task::Untag { .. } => "tag -d",
+            Task::FindRemotes { .. } => "remote -v",
+            Task::AddRemote { .. } => "remote add",
+            Task::RemoveRemote { .. } => "remote remove",
             Task::Revert { .. } => "revert",
             Task::Reset { mode, .. } => match mode {
                 michi_core::reset::Mode::Soft => "reset --soft",
@@ -437,6 +454,9 @@ pub enum Acted {
     Reflog(Vec<michi_core::reflog::Entry>),
     /// The commits a content search hits.
     Content(std::collections::HashSet<Oid>),
+    Remotes(Vec<michi_core::remote::Remote>),
+    /// The remote that was removed, as it was.
+    RemoteRemoved(michi_core::remote::Remote),
     Trialed(Box<michi_core::trial::Trial>),
     Recovered(String),
     Planned(michi_core::rebase::Plan),
@@ -486,6 +506,9 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Rebase { wt, onto } => branch::rebase(wt, onto).map(|saved| Acted::Kept(Some(saved))),
         Task::Tag { name, at, message, .. } => tag::create(dir, name, at, message).map(|()| Acted::Done),
         Task::Untag { name } => tag::delete(dir, name).map(|saved| Acted::Kept(Some(saved))),
+        Task::FindRemotes { here } => michi_core::remote::list(here).map(Acted::Remotes),
+        Task::AddRemote { name, url } => michi_core::remote::add(dir, name, url).map(|()| Acted::Done),
+        Task::RemoveRemote { name } => michi_core::remote::remove(dir, name).map(Acted::RemoteRemoved),
         Task::Revert { wt, id, mainline } => revert::revert(wt, id, *mainline).map(Acted::Reverted),
         Task::Reset { wt, id, mode } => michi_core::reset::reset(wt, id, *mode).map(Acted::Reset),
         Task::Stash { wt, message } => stash::save(wt, message).map(Acted::Stashed),
@@ -837,6 +860,11 @@ impl App {
             (Task::FindContent { content, .. }, Ok(Acted::Content(ids))) => {
                 self.graph.set_content(content.clone(), ids);
                 return;
+            }
+            (Task::FindRemotes { .. }, Ok(Acted::Remotes(rows))) => return self.remotes_found(rows),
+            (Task::AddRemote { name, url }, Ok(_)) => (self.tr("remote.added").replace("{name}", name).replace("{url}", url), 6),
+            (Task::RemoveRemote { name }, Ok(Acted::RemoteRemoved(was))) => {
+                (self.tr("remote.removed").replace("{name}", name).replace("{url}", &was.url), 10)
             }
             (Task::Trial { branches, .. }, Ok(Acted::Trialed(found))) => return self.trial_done(branches, *found),
             (Task::Recover { id }, Ok(Acted::Recovered(name))) => {

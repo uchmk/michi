@@ -171,6 +171,7 @@ fn strength_of(then: &Then) -> Strength {
         Then::Act(
             Task::Delete { .. }
             | Task::Untag { .. }
+            | Task::RemoveRemote { .. }
             | Task::DropStash { .. }
             | Task::RemoveWorktree { .. }
             | Task::Tidy { .. }

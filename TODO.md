@@ -111,7 +111,7 @@ All wait for the owner; none is started.
 - [ ] blame and per-file history（要確認: #37）
 - [x] Content search (pickaxe `s:`, regex `g:`) in the `/` filter, asked with Enter（要確認: #38）
 - [ ] clone / init (with #26)（要確認: #39）
-- [ ] Remote management（要確認: #40）
+- [x] Remote management: `M` in the graph lists the remotes, adds one (name then address) and removes one after a yes (TESTING 40)（要確認: #40）
 - [ ] Authentication guidance（要確認: #41）
 - [ ] Gitflow（要確認: #42）
 - [ ] Built-in editor（要確認: #43）
