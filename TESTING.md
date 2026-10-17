@@ -807,3 +807,17 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 90.4 | Open an empty repository (no commit) | No skeleton stays; the screen says `No commits yet.` | | [ ] |
 | 90.5 | Switch the theme (dark and light), density (compact, cozy) and EN/JA while the bars show | The bars follow the theme and the row height; the text reads in the chosen language | | [ ] |
 | 90.6 | Watch the CPU while the bars pulse | The window repaints about 15 times a second only while waiting and stops when the rows come | | [ ] |
+
+## 99. Handing a clash to a Claude and reviewing the result
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 99.1 | In a worktree with a Claude and a merge conflict, press `4` then `g` | A row appears under the bar: "Asked the Claude in ...; waiting for it to stop..."; no buttons yet; `a` and `r` say the Claude is still working | | [ ] |
+| 99.2 | Let the Claude solve everything (git add) and stop | The toast and notification say it stopped; the row turns green: "... stopped and solved everything", with "Look at the diff" `d`, "Adopt" `a`, "Send back" `r` | | [ ] |
+| 99.3 | Press `d` (or click the button) | The Changes view opens on that worktree and shows what the Claude did | | [ ] |
+| 99.4 | Back in `4`, press `a` | The usual commit flow runs (message check, Claude-working check); the merge is committed and the row goes away with the conflict | | [ ] |
+| 99.5 | Hand over again, let the Claude leave one place marked, stop it | The row is red with "N places still have markers"; only "Look at the diff" and "Send back" show; `a` says places are left | | [ ] |
+| 99.6 | Press `r` | The line "Your solution was not accepted ..." is typed into the Claude; the row goes back to waiting; when it stops, the row updates again | | [ ] |
+| 99.7 | Press `r` with no Claude session open in the worktree | A new tsumugi tab with a Claude starts with the same line | | [ ] |
+| 99.8 | Abort the merge, or finish it by hand | The row goes away; `d`, `a`, `r` do nothing | | [ ] |
+| 99.9 | Switch EN and JA; narrow the window | The row reads well in both and wraps without hiding the buttons | | [ ] |

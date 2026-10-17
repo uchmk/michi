@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use michi_core::branch::Doing;
 use michi_core::claude::State;
 use michi_core::conflict::{Body, Conflict, Intent, Pick};
+use michi_core::handoff::{Offer, Stage};
 use michi_core::paths;
 
 use crate::act::{self, Task};
@@ -103,6 +104,8 @@ pub struct Conflicts {
     pub bases: HashMap<Key, bool>,
     /// The row that asks before the whole thing is called off is up.
     pub abort: bool,
+    /// Where the hand-over to a Claude stands, by the worktree's key.
+    pub hands: HashMap<String, Stage>,
     /// The commit's message, once all is solved.
     pub message: String,
     /// The worktree the message was filled in for.
@@ -150,6 +153,7 @@ impl Conflicts {
         if self.edit.as_ref().is_some_and(|e| !keys.contains(&e.key.0)) {
             self.edit = None;
         }
+        self.hands.retain(|k, _| keys.contains(k));
         self.confirmed.retain(|(k, _)| keys.contains(k));
         self.intents.retain(|(k, ..), _| keys.contains(k));
         self.asked.retain(|(k, ..)| keys.contains(k));
@@ -202,6 +206,25 @@ impl Conflicts {
         self.wt = Some(wt.to_path_buf());
         self.settle();
         true
+    }
+
+    /// Where the hand-over of the one shown stands; once the Claude stopped,
+    /// with the places left now (it may have been finished by hand).
+    pub fn stage(&self) -> Option<Stage> {
+        let c = self.shown()?;
+        match self.hands.get(&paths::key(&c.wt))? {
+            Stage::Asked => Some(Stage::Asked),
+            Stage::Stopped { .. } => Some(Stage::Stopped { left: c.left() }),
+        }
+    }
+
+    /// The hand-over of the worktree at `wt` stands at `stage` (`None`: none).
+    pub fn set_stage(&mut self, wt: &Path, stage: Option<Stage>) {
+        let key = paths::key(wt);
+        match stage {
+            Some(s) => self.hands.insert(key, s),
+            None => self.hands.remove(&key),
+        };
     }
 
     /// The conflict of the worktree at `wt`, if it is stopped.
@@ -382,6 +405,9 @@ impl App {
             'x' => self.conflict_forget(),
             'e' => self.conflict_edit(),
             'g' => self.conflict_handoff(),
+            'd' if self.conflicts.stage().is_some() => self.conflict_offer(Offer::Review),
+            'a' if self.conflicts.stage().is_some() => self.conflict_offer(Offer::Adopt),
+            'r' if self.conflicts.stage().is_some() => self.conflict_offer(Offer::SendBack),
             'w' => self.conflict_external(None),
             _ => return false,
         }
@@ -599,12 +625,42 @@ impl App {
             self.say(self.tr("cf.hand_none"));
             return;
         }
-        let key = paths::key(&c.wt);
-        let sessions = self.claude.iter().flatten().find(|(p, _)| paths::key(p) == key).map(|(_, s)| s);
-        let agents = || sessions.into_iter().flatten().filter(|s| s.is_agent());
-        let session = agents().find(|s| s.state != State::Running).or_else(|| agents().next()).map(|s| s.id);
+        let session = self.agent_session(&c.wt);
         let conflict = Box::new(c.clone());
         self.act(Task::Handoff { conflict, session });
+    }
+
+    /// The Claude to ask in the worktree at `wt`: one waiting for a person
+    /// first, else any agent; none when there is no agent.
+    fn agent_session(&self, wt: &Path) -> Option<u64> {
+        let key = paths::key(wt);
+        let sessions = self.claude.iter().flatten().find(|(p, _)| paths::key(p) == key).map(|(_, s)| s);
+        let agents = || sessions.into_iter().flatten().filter(|s| s.is_agent());
+        agents().find(|s| s.state != State::Running).or_else(|| agents().next()).map(|s| s.id)
+    }
+
+    /// A choice of the strip that follows a hand-over: look at the diff, take
+    /// what the Claude did, or send it back.
+    pub(crate) fn conflict_offer(&mut self, offer: Offer) {
+        let Some(c) = self.conflicts.shown() else { return };
+        let (wt, left) = (c.wt.clone(), c.left());
+        let Some(stage) = self.conflicts.stage() else { return };
+        if !stage.offers().contains(&offer) {
+            let key = if stage == Stage::Asked { "cf.strip_wait" } else { "cf.strip_left" };
+            self.say(self.tr(key));
+            return;
+        }
+        match offer {
+            Offer::Review => {
+                self.changes_open(wt);
+                self.view = View::Changes;
+            }
+            Offer::Adopt => self.conflict_commit(),
+            Offer::SendBack => {
+                let session = self.agent_session(&wt);
+                self.act(Task::SendBack { wt, session, left });
+            }
+        }
     }
 
     /// Opens a file in an external tool: `file` (an index into the files),
@@ -668,6 +724,59 @@ pub(crate) mod tests {
             ],
             auto: Vec::new(),
         }
+    }
+
+    #[test]
+    fn the_hand_over_is_followed_from_asking_to_the_markers_counted() {
+        let mut a = app();
+        a.conflicts.set(vec![conflict("/r/main")]);
+        assert_eq!(a.conflicts.stage(), None);
+        let c = Box::new(conflict("/r/main"));
+        a.act_done(Task::Handoff { conflict: c, session: Some(3) }, Ok(act::Acted::Done));
+        assert_eq!(a.conflicts.stage(), Some(Stage::Asked));
+        a.act_done(Task::Markers { wt: PathBuf::from("/r/main") }, Ok(act::Acted::Markers(Some(2))));
+        // the live count of the fixture (two open places and one whole file), not the one reported
+        assert_eq!(a.conflicts.stage(), Some(Stage::Stopped { left: 3 }));
+        a.act_done(Task::SendBack { wt: PathBuf::from("/r/main"), session: Some(3), left: 2 }, Ok(act::Acted::Done));
+        assert_eq!(a.conflicts.stage(), Some(Stage::Asked));
+        assert!(toast(&a).starts_with("Sent the solution back"), "{}", toast(&a));
+        a.act_done(Task::Markers { wt: PathBuf::from("/r/main") }, Ok(act::Acted::Markers(None)));
+        assert_eq!(a.conflicts.stage(), None);
+    }
+
+    #[test]
+    fn the_strip_keys_do_nothing_until_something_was_handed_over() {
+        let mut a = app();
+        a.conflicts.set(vec![conflict("/r/main")]);
+        a.view = View::Conflict;
+        assert!(!a.conflict_key('d') && !a.conflict_key('a') && !a.conflict_key('r'));
+        a.conflicts.set_stage(Path::new("/r/main"), Some(Stage::Asked));
+        assert!(a.conflict_key('a'));
+        assert_eq!(toast(&a), "The Claude is still working on it");
+        assert_eq!(a.view, View::Conflict);
+        a.conflicts.set_stage(Path::new("/r/main"), Some(Stage::Stopped { left: 2 }));
+        assert!(a.conflict_key('a'));
+        assert_eq!(toast(&a), "Places are left: send it back, or look at the diff first");
+    }
+
+    #[test]
+    fn looking_at_the_diff_opens_the_worktrees_changes() {
+        let mut a = app();
+        a.conflicts.set(vec![conflict("/r/main")]);
+        a.view = View::Conflict;
+        a.conflicts.set_stage(Path::new("/r/main"), Some(Stage::Stopped { left: 2 }));
+        assert!(a.conflict_key('d'));
+        assert_eq!(a.view, View::Changes);
+        assert_eq!(a.changes.wt.as_deref(), Some(Path::new("/r/main")));
+    }
+
+    #[test]
+    fn a_hand_over_is_forgotten_with_its_conflict() {
+        let mut cf = Conflicts::default();
+        cf.set(vec![conflict("/r/main")]);
+        cf.set_stage(Path::new("/r/main"), Some(Stage::Asked));
+        cf.set(Vec::new());
+        assert!(cf.hands.is_empty());
     }
 
     #[test]
