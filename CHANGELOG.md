@@ -2,6 +2,16 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.37.0] - 2026-10-17
+
+### 追加
+
+- `--keys SCRIPT`: 窓が上がってからキーを押す台本（`ito-keyscript`。kura・yagura と同じ書き方）。`<State:名前>` で窓の状態を `名前.txt` に、終わりを環境変数 `MICHI_KEYS_DONE` のファイルに書く（`focus:`・`overlay:`・`view:`・`scale:` など）。`michi.com` は `--keys` の次の語を台本として読む。
+
+### 変更
+
+- ito を v0.55.0（`4c7db9e`）に上げた。
+
 ## [0.36.0] - 2026-10-16
 
 ### 追加

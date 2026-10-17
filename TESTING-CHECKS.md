@@ -260,6 +260,7 @@
 - [ ] **20.4** Run `.\michi C:\dev\some-repo` (a repository), then `.\michi` with no argument in a repository's folder → The window opens on that folder and the prompt comes back as soon as it is up, with michi still open; closing the window later prints nothing in the console
 - [ ] **20.5** Run `$v = .\michi.exe --version` (the windowed program itself), wait a few seconds, then run `.\michi.exe --version` → `$v` is empty and no `panicked` message appears later (the line has nowhere to go and is let go); the second, with no `$v =`, prints the version in the console
 - [ ] **20.6** In a repository's folder run `$v = .\michi` (no argument, its output taken through a pipe); once the prompt is back, run `Get-ChildItem $env:TEMP\michi-com-*`; close michi and run it again → The prompt comes back once the window is up, with michi still open; two files (`.out` and `.err`) while it runs, none after it closes
+- [ ] **20.7** With `michi.com` and `michi.exe` in one folder run `$env:MICHI_KEYS_DONE="$env:TEMP\mk\done.txt"; .\michi C:\dev\some-repo --keys '2<Wait:200><State:two>3<Quit>'` (create `$env:TEMP\mk` first), then read `$env:TEMP\mk	wo.txt` and `done.txt`; then `.\michi --keys j -V` and `.\michi --keys` → The window opens, goes to the `2` view, then to `3`, and closes by itself; `two.txt` starts with `focus: changes` and has `view: 2`; `done.txt` ends with `keys: done` after `quit: yes`; `--keys j -V` prints the version and opens no window; `--keys` alone prints `michi: --keys needs a script` and the usage, then `2`
 
 ## 21. Conflicts
 

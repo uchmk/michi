@@ -31,6 +31,7 @@ mod repo;
 mod review;
 mod review_notes;
 mod review_ui;
+mod script;
 mod settings;
 mod side_ui;
 mod tidy;
@@ -43,6 +44,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use app::{App, Mode, View};
+use ito_keyscript::{Do, Runner, Step};
 
 /// The named keys that move in a view, by the names `App::named` takes.
 const MOVES: [(egui::Key, &str); 8] = [
@@ -62,18 +64,63 @@ const ICON_PX: u32 = 128;
 const USAGE: &str = "\
 michi — a keyboard-driven Git client
 
-usage: michi [<path>] [--version | --help]
+usage: michi [<path>] [--keys SCRIPT] [--version | --help]
 
-  <path>  a folder in the repository to open (default: the current folder)
+  <path>         a folder in the repository to open (default: the current folder)
+  --keys SCRIPT  press these keys once the window is up, as kura's --keys
+                 (`jj<Enter>`, `<C-S-p>`, `<Wait:200>`, `<State:name>`, `<Quit>`);
+                 MICHI_KEYS_DONE names the file that says how it ended
 ";
 
 struct Michi {
     app: App,
     /// Whether the window was in front at the last frame.
     front: bool,
+    script: Option<Runner>,
+    /// What the script asked for in `raw_input_hook`, done in the frame.
+    todo: Vec<Do>,
 }
 
 impl Michi {
+    fn write_state(&self, path: PathBuf, tail: &str) {
+        let text = format!("{}{tail}", self.app.report());
+        if let Err(e) = std::fs::write(&path, text) {
+            ito_console::err(&format!(
+                "michi --keys: {}: {e}
+",
+                path.display()
+            ));
+        }
+    }
+
+    fn script(&mut self, ctx: &egui::Context) {
+        let Some(script) = &mut self.script else { return };
+        if let Some(err) = script.shot(ctx) {
+            self.app.say(err);
+        }
+        for d in std::mem::take(&mut self.todo) {
+            let Some(script) = &self.script else { return };
+            match d {
+                Do::State(name) => self.write_state(script.dir.join(format!("{name}.txt")), ""),
+                Do::Quit => self.app.quit = true,
+                // michi defines no readings of its own.
+                Do::Read { .. } => {}
+                Do::Done => {
+                    if let Some(done) = script.done.clone() {
+                        self.write_state(
+                            done,
+                            "keys: done
+",
+                        );
+                    }
+                }
+            }
+        }
+        if let Some(due) = self.script.as_ref().and_then(Runner::due) {
+            ctx.request_repaint_after(due);
+        }
+    }
+
     /// The characters typed and the named keys. While the graph's filter has
     /// the keys, only Enter (the next hit) and the arrows (the selection)
     /// are taken from it; Escape has already let go of it. While the commit
@@ -279,11 +326,34 @@ impl Michi {
 }
 
 impl eframe::App for Michi {
+    /// A window that closes while a script runs says so in the done file
+    /// (`<Quit>` and a last key that quits both come here).
+    fn on_exit(&mut self) {
+        let Some(script) = &mut self.script else { return };
+        if !script.running() {
+            return;
+        }
+        let left = script.left();
+        script.finish();
+        let Some(done) = script.done.clone() else { return };
+        let tail = if self.app.quit { ito_keyscript::quit_report(left) } else { ito_keyscript::closed_report(left) };
+        self.write_state(done, &tail);
+    }
+
+    fn raw_input_hook(&mut self, ctx: &egui::Context, raw: &mut egui::RawInput) {
+        if let Some(script) = &mut self.script {
+            if let Some(d) = script.input(ctx, raw) {
+                self.todo.push(d);
+            }
+        }
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         if self.app.mode != Mode::Settings {
             self.keys(&ctx);
         }
+        self.script(&ctx);
         self.app.prefs.pump();
         self.app.set_language();
         // common.toml's theme, or the OS's light or dark under `system`.
@@ -350,13 +420,20 @@ enum Cli {
     Version,
     Help,
     /// Open a window on this folder, or on the current one.
-    Open(Option<PathBuf>),
+    Open(Option<PathBuf>, Option<Vec<Step>>),
 }
 
 fn parse_args(args: impl IntoIterator<Item = OsString>) -> Result<Cli, String> {
     let mut path = None;
-    for a in args {
+    let mut script = None;
+    let mut args = args.into_iter();
+    while let Some(a) = args.next() {
         match a.to_str() {
+            Some("--keys") => {
+                let s = args.next().ok_or("--keys needs a script")?;
+                let s = s.to_str().ok_or("--keys: the script is not text")?;
+                script = Some(ito_keyscript::parse(s).map_err(|e| format!("--keys: {e}"))?);
+            }
             Some("--version" | "-V") => return Ok(Cli::Version),
             Some("--help" | "-h") => return Ok(Cli::Help),
             Some(s) if s.starts_with('-') && s.len() > 1 => return Err(format!("unknown argument `{s}`")),
@@ -364,7 +441,7 @@ fn parse_args(args: impl IntoIterator<Item = OsString>) -> Result<Cli, String> {
             _ => path = Some(PathBuf::from(a)),
         }
     }
-    Ok(Cli::Open(path))
+    Ok(Cli::Open(path, script))
 }
 
 /// The folder to open, made absolute so the window's thread and the title
@@ -403,7 +480,7 @@ fn say(text: &str, err: bool) {
 }
 
 fn main() -> eframe::Result {
-    let path = match parse_args(std::env::args_os().skip(1)) {
+    let (path, script) = match parse_args(std::env::args_os().skip(1)) {
         Ok(Cli::Version) => {
             say(&format!("michi {}", env!("CARGO_PKG_VERSION")), false);
             return Ok(());
@@ -412,7 +489,7 @@ fn main() -> eframe::Result {
             say(USAGE, false);
             return Ok(());
         }
-        Ok(Cli::Open(path)) => path,
+        Ok(Cli::Open(path, script)) => (path, script),
         Err(e) => {
             say(&format!("michi: {e}\n\n{USAGE}"), true);
             std::process::exit(2);
@@ -425,6 +502,10 @@ fn main() -> eframe::Result {
             std::process::exit(2);
         }
     };
+    let done = std::env::var_os("MICHI_KEYS_DONE").filter(|v| !v.is_empty()).map(PathBuf::from);
+    if let (Some(_), Some(done)) = (&script, &done) {
+        ito_keyscript::install_panic_report(done.clone());
+    }
     let viewport = egui::ViewportBuilder::default()
         .with_title("michi")
         .with_inner_size([1280.0, 800.0])
@@ -448,7 +529,12 @@ fn main() -> eframe::Result {
             cc.egui_ctx.set_zoom_factor(prefs.common.scale_or_one());
             let mut app = App::new(prefs, dir.clone());
             app.reading = Some(repo::start(dir, cc.egui_ctx.clone()));
-            Ok(Box::new(Michi { app, front: true }))
+            let script = script.map(|steps| {
+                let mut r = Runner::new(steps, done);
+                r.watch(cc.egui_ctx.clone());
+                r
+            });
+            Ok(Box::new(Michi { app, front: true, script, todo: Vec::new() }))
         }),
     )
 }
@@ -463,14 +549,25 @@ mod tests {
 
     #[test]
     fn the_command_line() {
-        assert_eq!(parse(&[]), Ok(Cli::Open(None)));
-        assert_eq!(parse(&["C:/dev/x"]), Ok(Cli::Open(Some(PathBuf::from("C:/dev/x")))));
+        assert_eq!(parse(&[]), Ok(Cli::Open(None, None)));
+        assert_eq!(parse(&["C:/dev/x"]), Ok(Cli::Open(Some(PathBuf::from("C:/dev/x")), None)));
         assert_eq!(parse(&["--version"]), Ok(Cli::Version));
         assert_eq!(parse(&["-V"]), Ok(Cli::Version));
         assert_eq!(parse(&["x", "-h"]), Ok(Cli::Help));
-        assert_eq!(parse(&["-"]), Ok(Cli::Open(Some(PathBuf::from("-")))));
+        assert_eq!(parse(&["-"]), Ok(Cli::Open(Some(PathBuf::from("-")), None)));
         assert!(parse(&["--nope"]).unwrap_err().contains("--nope"));
         assert!(parse(&["a", "b"]).unwrap_err().contains("`b`"));
+    }
+
+    #[test]
+    fn a_script_is_a_value_of_keys() {
+        let Ok(Cli::Open(path, Some(steps))) = parse(&["repo", "--keys", "j<Enter>"]) else { panic!("no script") };
+        assert_eq!(path, Some(PathBuf::from("repo")));
+        assert_eq!(steps.len(), 2);
+        // `-x` after `--keys` is the script's text, not an option.
+        assert!(matches!(parse(&["--keys", "-x"]), Ok(Cli::Open(None, Some(_)))));
+        assert!(parse(&["--keys"]).unwrap_err().contains("needs a script"));
+        assert!(parse(&["--keys", "<Nope>"]).unwrap_err().starts_with("--keys:"));
     }
 
     #[test]

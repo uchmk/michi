@@ -16,19 +16,20 @@ name = "make-testcheck"
 test = true
 
 [build-dependencies]
-ito-winres = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086" }
+ito-winres = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 
 [dependencies]
 michi-core = { path = "../michi-core" }
 # Every ito crate at the same rev.
-ito-i18n = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086", features = ["edit"] }
-ito-common = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086", features = ["clock"] }
-ito-theme = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086" }
-ito-prefs = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086" }
-ito-graph = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086", features = ["egui"] }
-ito-match = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086" }
+ito-i18n = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652", features = ["edit"] }
+ito-common = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652", features = ["clock"] }
+ito-theme = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
+ito-prefs = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
+ito-graph = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652", features = ["egui"] }
+ito-match = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 # `michi.com` (src/bin/michi-com.rs) and the answers `say` writes.
-ito-console = { git = "https://github.com/uchmk/ito", rev = "30efd6228241dafb5055b2a9511995c0508a0086" }
+ito-keyscript = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
+ito-console = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 # eframe's own defaults, but for `winit/default` (see tsumugi): the Wayland
 # frame is drawn without the title's text, which brings an unmaintained crate.
 eframe = { version = "0.36", default-features = false, features = ["accesskit", "default_fonts", "links", "wayland", "web_screen_reader", "wgpu", "x11"] }
