@@ -10,10 +10,11 @@ use crate::app::App;
 
 const GENERAL: usize = 0;
 const THEME: usize = 1;
+const KEYS: usize = 2;
 
 /// The rows on each page, for the search.
-fn index(w: &'static Words) -> Vec<(usize, &'static str)> {
-    vec![
+fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
+    let mut v = vec![
         (GENERAL, w.language),
         (GENERAL, w.scale),
         (GENERAL, w.clock),
@@ -31,19 +32,31 @@ fn index(w: &'static Words) -> Vec<(usize, &'static str)> {
         (THEME, "theme"),
         (THEME, "dark_theme"),
         (THEME, "light_theme"),
-    ]
+    ];
+    v.extend(ito_prefs::keys_index(ito_prefs::KeyWords::of(lang)).into_iter().map(|t| (KEYS, t)));
+    v
 }
 
 pub fn show(ui: &mut Ui, app: &mut App) {
     let w = Words::of(&app.lang);
-    let keys = ito_prefs::Keys::standard(ui, false);
-    let pages = [(app.tr("settings.general"), app.tr("settings.general_lead")), (app.tr("settings.theme"), app.tr("settings.theme_lead"))];
-    let index = index(w);
-    let nav = ito_prefs::Nav { pages: &pages, index: &index, words: w, file: "common.toml" };
+    // The Keys page takes every key while it is setting one, Esc included.
+    let keys = if app.prefs.keys_edit.busy() { ito_prefs::Keys::default() } else { ito_prefs::Keys::standard(ui, false) };
+    let pages = [
+        (app.tr("settings.general"), app.tr("settings.general_lead")),
+        (app.tr("settings.theme"), app.tr("settings.theme_lead")),
+        (app.tr("settings.keys"), app.tr("settings.keys_lead")),
+    ];
+    let index = index(w, &app.lang);
+    let file = if app.prefs.state.page == KEYS { "keymap.toml" } else { "common.toml" };
+    let nav = ito_prefs::Nav { pages: &pages, index: &index, words: w, file };
+    let kw = ito_prefs::KeyWords::of(&app.lang);
+    let layers = app.prefs.keymap.layers();
+    let mut key_edits: Vec<ito_keymap::Edit> = Vec::new();
     let mut asked: Vec<CommonChange> = Vec::new();
     let lang = app.lang.clone();
     let tr = |k: &'static str| crate::i18n::tr(&lang, k);
     let prefs = &mut app.prefs;
+    let keys_edit = &mut prefs.keys_edit;
     let (common, themes, base) = (&prefs.common, &prefs.themes, prefs.base.as_deref());
     let out = ito_prefs::show(ui, ito_theme::colors(), &mut prefs.state, &nav, keys, |ui, page, l| match page {
         GENERAL => {
@@ -64,6 +77,22 @@ pub fn show(ui: &mut Ui, app: &mut App) {
             let tabs = [tr("view.graph"), tr("view.changes"), tr("view.worktree")];
             asked.extend(ito_prefs::theme_page(ui, l, w, themes, (&t, &d, &li), &note, |ui| preview(ui, tr("settings.sample"), tabs)));
         }
+        KEYS => {
+            let layer_name = |n: &str| crate::i18n::tr_layer(&lang, n);
+            let desc = |d: &str| crate::i18n::tr_desc(&lang, d);
+            let table = ito_prefs::KeyTable {
+                now: &layers,
+                built_in: crate::keymap::Keymap::built_in_layers(),
+                noop: "noop",
+                own: "keymap.toml",
+                layer_name: &layer_name,
+                tr: &desc,
+                extra: &|_, _| Vec::new(),
+                unbound: &[],
+                sup: false,
+            };
+            key_edits.extend(ito_prefs::keys_page(ui, l, kw, &table, keys_edit).unwrap_or_default());
+        }
         _ => {}
     });
     if out.close {
@@ -75,6 +104,9 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     }
     let no_folder = crate::i18n::tr(&app.lang, "settings.no_folder");
     app.prefs.common_change(asked, no_folder);
+    if !key_edits.is_empty() {
+        app.prefs.keymap_edit(key_edits, no_folder);
+    }
 }
 
 /// michi in the theme in force: the title bar's tabs and two branches,

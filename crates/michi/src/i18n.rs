@@ -101,6 +101,17 @@ const EN: &[(&str, &str)] = &[
     ("settings.general", "General"),
     ("settings.general_lead", "The language, the size and the clock, shared by every uchmk app."),
     ("settings.theme", "Theme"),
+    ("settings.keys", "Keys"),
+    ("settings.keys_lead", "Which key does what. A change is written to keymap.toml."),
+    ("toast.keymap_saved", "keymap.toml: {} changed"),
+    ("keylayer.main", "Everywhere"),
+    ("keydesc.Settings", "Settings"),
+    ("keydesc.Keys", "Keys"),
+    ("keydesc.Search commands", "Search commands"),
+    ("keydesc.Quit", "Quit"),
+    ("keydesc.Zoom in", "Zoom in"),
+    ("keydesc.Zoom out", "Zoom out"),
+    ("keydesc.Back to 100%", "Back to 100%"),
     ("settings.theme_lead", "The colours, shared by every uchmk app."),
     ("settings.display", "Display"),
     ("settings.theme_note", "Your own themes go in"),
@@ -684,6 +695,17 @@ const JA: &[(&str, &str)] = &[
     ("settings.general", "一般"),
     ("settings.general_lead", "言語・大きさ・時計。uchmk のどのアプリでも共通です。"),
     ("settings.theme", "テーマ"),
+    ("settings.keys", "キー"),
+    ("settings.keys_lead", "どのキーで何をするか。変えると keymap.toml に書きます。"),
+    ("toast.keymap_saved", "keymap.toml: {} 件変えました"),
+    ("keylayer.main", "どこでも"),
+    ("keydesc.Settings", "設定"),
+    ("keydesc.Keys", "キーの一覧"),
+    ("keydesc.Search commands", "コマンドを探す"),
+    ("keydesc.Quit", "終わる"),
+    ("keydesc.Zoom in", "大きくする"),
+    ("keydesc.Zoom out", "小さくする"),
+    ("keydesc.Back to 100%", "100% に戻す"),
     ("settings.theme_lead", "色。uchmk のどのアプリでも共通です。"),
     ("settings.display", "表示"),
     ("settings.theme_note", "自分のテーマの置き場所:"),
@@ -1173,6 +1195,21 @@ pub const AVAILABLE: [&str; 2] = ["en", "ja"];
 pub fn tr(lang: &str, key: &'static str) -> &'static str {
     let table = if lang == "ja" { JA } else { EN };
     table.iter().chain(EN).find(|(k, _)| *k == key).map_or(key, |(_, v)| v)
+}
+
+/// A keymap layer's name in `lang`; the name itself when there are no words.
+pub fn tr_layer(lang: &str, layer: &str) -> String {
+    lookup(lang, &format!("keylayer.{layer}")).unwrap_or(layer).to_owned()
+}
+
+/// A binding's `desc` in `lang`; the desc itself when there are no words.
+pub fn tr_desc(lang: &str, desc: &str) -> String {
+    lookup(lang, &format!("keydesc.{desc}")).unwrap_or(desc).to_owned()
+}
+
+fn lookup(lang: &str, key: &str) -> Option<&'static str> {
+    let table = if lang == "ja" { JA } else { EN };
+    table.iter().chain(EN).find(|(k, _)| *k == key).map(|(_, v)| *v)
 }
 
 #[cfg(test)]

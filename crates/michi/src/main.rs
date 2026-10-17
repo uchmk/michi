@@ -20,6 +20,7 @@ mod graph;
 mod graph_ui;
 mod i18n;
 mod icon;
+mod keymap;
 mod newwork;
 mod newwork_ui;
 mod picker;
@@ -121,19 +122,40 @@ impl Michi {
         }
     }
 
+    /// The keys the keymap binds (the settings, the key list, the palette,
+    /// quit, the scale), taken out of the frame's events before the views
+    /// see them. Not while the Keys page is taking keys.
+    fn keymap_keys(&mut self, ctx: &egui::Context) {
+        if self.app.prefs.keys_edit.busy() {
+            return;
+        }
+        let events = ctx.input(|i| i.events.clone());
+        let mut used = Vec::new();
+        for (n, e) in events.iter().enumerate() {
+            let egui::Event::Key { key, pressed: true, modifiers, .. } = e else { continue };
+            let Some(k) = ito_keys::from_egui(*key, modifiers) else { continue };
+            if self.app.key(k) {
+                used.push(n);
+            }
+        }
+        if !used.is_empty() {
+            ctx.input_mut(|i| {
+                let mut n = 0;
+                i.events.retain(|_| {
+                    n += 1;
+                    !used.contains(&(n - 1))
+                });
+            });
+        }
+    }
+
     /// The characters typed and the named keys. While the graph's filter has
     /// the keys, only Enter (the next hit) and the arrows (the selection)
     /// are taken from it; Escape has already let go of it. While the commit
     /// message has them, only Ctrl+Enter (commit) is taken; the Escape that
     /// let go of it goes no further.
     fn keys(&mut self, ctx: &egui::Context) {
-        let (events, palette) = ctx.input_mut(|i| {
-            let palette = i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, egui::Key::P);
-            (i.events.clone(), palette)
-        });
-        if palette {
-            self.palette();
-        }
+        let events = ctx.input(|i| i.events.clone());
         if self.app.picker.is_some() {
             self.picker_keys(ctx);
             return;
@@ -350,6 +372,7 @@ impl eframe::App for Michi {
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        self.keymap_keys(&ctx);
         if self.app.mode != Mode::Settings {
             self.keys(&ctx);
         }
@@ -361,6 +384,10 @@ impl eframe::App for Michi {
         ctx.set_zoom_factor(self.app.prefs.common.scale_or_one());
         if let Some(e) = self.app.prefs.failed.take() {
             self.app.say(e);
+        }
+        if let Some(n) = self.app.prefs.said.take().filter(|n| *n > 0) {
+            let text = self.app.tr("toast.keymap_saved").replace("{}", &n.to_string());
+            self.app.say(text);
         }
         // In front, the worktrees are watched closely; behind, now and then.
         let front = ctx.input(|i| i.viewport().focused).unwrap_or(true);

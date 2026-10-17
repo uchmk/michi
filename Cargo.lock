@@ -1977,7 +1977,7 @@ dependencies = [
 
 [[package]]
 name = "michi"
-version = "0.37.0"
+version = "0.38.0"
 dependencies = [
  "chrono",
  "eframe",
@@ -1986,6 +1986,8 @@ dependencies = [
  "ito-console",
  "ito-graph",
  "ito-i18n",
+ "ito-keymap",
+ "ito-keys",
  "ito-keyscript",
  "ito-match",
  "ito-prefs",
@@ -1998,7 +2000,7 @@ dependencies = [
 
 [[package]]
 name = "michi-core"
-version = "0.37.0"
+version = "0.38.0"
 dependencies = [
  "chrono",
  "serde",

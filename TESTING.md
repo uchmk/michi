@@ -51,6 +51,7 @@ What text can check (reading the repository, the git version, the command line) 
 | 4.4 | Change the theme, and the size | The whole window follows at once; the logo and the chip stay readable in light and dark |
 | 4.5 | Press Esc, click the `,` button, or click a tab | Each leaves the settings; a tab opens its view |
 | 4.6 | Edit common.toml by hand while michi is open | michi follows within a second |
+| 4.7 | In the settings open the Keys page; press `+ Add` on a row, press `Ctrl+Shift+K`, Enter; then `Ctrl+=`, `Ctrl+-`, `Ctrl+0` in the graph; edit keymap.toml (beside common.toml) by hand | The page lists the keys by layer (names in the language chosen); the new key is written to keymap.toml under `prepend_keymap` and a toast says `keymap.toml: 1 changed`; the keys zoom the window and say the size; a hand edit shows in the page within a second; Esc while a key is being pressed ends that, not the settings | [ ] |
 
 ## 5. git and errors
 

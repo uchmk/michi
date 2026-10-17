@@ -1,0 +1,29 @@
+# michi's built-in keymap. A keymap.toml beside common.toml (in michi's
+# own folder) is laid over it, the way yazi's, kura's and yagura's are:
+# `keymap` replaces a section's list, `prepend_keymap` and `append_keymap`
+# go before and after it. The Keys page of the settings writes there.
+#
+# `on` is one key token or several separated by spaces ("g g"), or an array
+# of tokens; `on_mac` is used instead on macOS.
+#
+# C = Ctrl on Windows and Linux, Cmd on macOS (where Ctrl works too).
+# <C-,> is Ctrl+, (Cmd+, on a Mac).
+#
+# These are the keys every uchmk app has. The keys of the views (the graph's
+# `j` `k` `b`, the worktree table's `d` `m`, ...) are michi's own and are
+# not here yet.
+
+[main]
+keymap = [
+    { on = ",", run = "settings", desc = "Settings" },
+    { on = "<C-,>", run = "settings", desc = "Settings" },
+    { on = "?", run = "help", desc = "Keys" },
+    { on = "<F1>", run = "help", desc = "Keys" },
+    { on = "<C-S-p>", run = "palette", desc = "Search commands" },
+    { on = "<C-q>", run = "quit", desc = "Quit" },
+    { on = "<C-=>", run = "scale in", desc = "Zoom in" },
+    { on = "<C-+>", run = "scale in", desc = "Zoom in" },
+    { on = "<C-;>", run = "scale in", desc = "Zoom in" },
+    { on = "<C-->", run = "scale out", desc = "Zoom out" },
+    { on = "<C-0>", run = "scale reset", desc = "Back to 100%" },
+]

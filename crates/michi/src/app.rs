@@ -1085,6 +1085,55 @@ impl App {
         self.git.filter(|v| !v.is_enough())
     }
 
+    /// A bare character the keymap binds (`,` and `?` by default): it does
+    /// what it is bound to. Whether it was one.
+    fn bare_act(&mut self, c: char) -> bool {
+        match self.prefs.keymap.act(ito_keys::Key::char(c)) {
+            Some(a) => {
+                self.run_key(a);
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// A key with Ctrl or Alt, or a named one, from the keymap. Whether it
+    /// was bound.
+    pub fn key(&mut self, k: ito_keys::Key) -> bool {
+        match self.prefs.keymap.act(k) {
+            Some(a) => {
+                self.run_key(a);
+                true
+            }
+            None => false,
+        }
+    }
+
+    fn run_key(&mut self, a: crate::keymap::Act) {
+        use crate::keymap::Act;
+        match a {
+            Act::Settings => self.mode = if self.mode == Mode::Settings { Mode::Main } else { Mode::Settings },
+            Act::Help => self.mode = if self.mode == Mode::Help { Mode::Main } else { Mode::Help },
+            Act::Palette => {
+                let text = self.tr("later").replace("{}", self.tr("key.palette"));
+                self.say(text);
+            }
+            Act::Quit => self.quit = true,
+            Act::Scale(to) => self.scale(to),
+            Act::Noop => {}
+        }
+    }
+
+    /// Zoom in, out or back to 100%, kept in common.toml.
+    pub fn scale(&mut self, to: ito_common::ScaleTo) {
+        let next = ito_common::scale_step(self.prefs.common.scale_or_one(), to);
+        self.prefs.common.scale = Some(next);
+        let no_folder = crate::i18n::tr(&self.lang, "settings.no_folder");
+        self.prefs.common_change(vec![ito_common::scale_change(next)], no_folder);
+        let text = ito_common::scale_text(next, &self.lang);
+        self.say(text);
+    }
+
     /// A character typed (not a key with Ctrl or Alt: those are the
     /// shortcuts). Returns whether it was used.
     pub fn feed(&mut self, c: char) -> bool {
@@ -1095,8 +1144,7 @@ impl App {
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
             (Mode::Main, c) if self.tidy.is_some() => return self.tidy_key(c),
             (Mode::Main, c) if self.reorder.is_some() => return self.reorder_key(c),
-            (Mode::Main, '?') => self.mode = Mode::Help,
-            (Mode::Main, ',') => self.mode = Mode::Settings,
+            (Mode::Main, c) if self.bare_act(c) => {}
             (Mode::Main, c) => match View::from_digit(c) {
                 Some(View::Conflict) => self.open_conflicts(),
                 Some(v) => {

@@ -2,6 +2,13 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.38.0] - 2026-10-17
+
+### 追加
+
+- `keymap.toml` と設定の「キー」ページ（`ito-keymap`・`ito-keys`・`ito_prefs::keys_page`。kura・yagura と同じ書き方）。michi のフォルダ（`MICHI_CONFIG_HOME` か uchmk の `michi`）の `keymap.toml` が内蔵の割り当ての上に重なり、手で直すと窓が読み直す。ページで押したキーは `prepend_keymap` に書く。
+- 割り当てに入ったのは全アプリ共通のキーだけ: 設定（`,` `Ctrl+,`）、キーの一覧（`?` `F1`）、コマンド検索（`Ctrl+Shift+P`）、終わる（`Ctrl+Q`）、大きさ（`Ctrl+=` `Ctrl+-` `Ctrl+0`）。各画面のキーは今まで通り michi の中に決まっている。
+
 ## [0.37.0] - 2026-10-17
 
 ### 追加

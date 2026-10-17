@@ -13,6 +13,8 @@ use ito_common::{common_path, edit_common, themes_dir, write_atomic, Common, Com
 use ito_prefs::State;
 use ito_theme::Theme;
 
+use crate::keymap::Keymap;
+
 /// How often the files are looked at.
 const WATCH: Duration = Duration::from_secs(2);
 
@@ -20,6 +22,9 @@ const WATCH: Duration = Duration::from_secs(2);
 pub enum Reload {
     Common(Result<(Common, Vec<String>), String>),
     Themes(Vec<Theme>, Vec<String>),
+    /// keymap.toml's text (none when there is no file), and what the Keys page's
+    /// number of changes the Keys page made to it (none when it was only read).
+    Keymap(Option<String>, Option<usize>),
     Failed(String),
 }
 
@@ -37,6 +42,13 @@ pub struct Prefs {
     pub state: State,
     /// The last write that failed, for a toast.
     pub failed: Option<String>,
+    /// The keymap in force: the built-in keys with keymap.toml laid over.
+    pub keymap: Keymap,
+    pub keymap_warn: Vec<String>,
+    /// How many changes the last write on the Keys page made, for a toast.
+    pub said: Option<usize>,
+    /// The Keys page's search, filter and the keys being pressed.
+    pub keys_edit: ito_prefs::KeysEdit,
     tx: Sender<Reload>,
     rx: Receiver<Reload>,
     wake: Option<egui::Context>,
@@ -57,6 +69,10 @@ impl Prefs {
             theme_err: None,
             state: State::default(),
             failed: None,
+            keymap: Keymap::load(None).0,
+            keymap_warn: Vec::new(),
+            said: None,
+            keys_edit: ito_prefs::KeysEdit::default(),
             tx,
             rx,
             wake: None,
@@ -75,6 +91,8 @@ impl Prefs {
             let (user, warn) = ito_theme::load_dir(&themes_dir(b));
             p.themes.extend(user);
             p.theme_warn = warn;
+            let (km, warn) = Keymap::load(read_keymap(b).as_deref());
+            (p.keymap, p.keymap_warn) = (km, warn);
         }
         p.base = base;
         p
@@ -87,8 +105,8 @@ impl Prefs {
         let os_ctx = ctx.clone();
         self.os_light = ito_common::OsLight::watch(WATCH, move || os_ctx.request_repaint());
         let Some(base) = self.base.clone() else { return };
-        let (common, themes) = (common_path(&base), themes_dir(&base));
-        let mut paths = vec![common.clone(), themes.clone()];
+        let (common, themes, keymap) = (common_path(&base), themes_dir(&base), keymap_path(&base));
+        let mut paths = vec![common.clone(), keymap.clone(), themes.clone()];
         // A theme file edited in place; one added or taken away changes the
         // folder's time.
         if let Ok(entries) = std::fs::read_dir(&themes) {
@@ -99,6 +117,9 @@ impl Prefs {
             let mut sent = true;
             if changed.contains(&common) {
                 sent &= tx.send(Reload::Common(Common::read(&base))).is_ok();
+            }
+            if changed.contains(&keymap) {
+                sent &= tx.send(Reload::Keymap(read_keymap(&base), None)).is_ok();
             }
             if changed.iter().any(|p| p.starts_with(&themes)) {
                 let (user, warn) = ito_theme::load_dir(&themes);
@@ -117,6 +138,12 @@ impl Prefs {
                 Reload::Common(Ok((c, w))) => (self.common, self.common_warn) = (c, w),
                 Reload::Common(Err(e)) => self.common_warn = vec![e],
                 Reload::Themes(t, w) => (self.themes, self.theme_warn) = (t, w),
+                Reload::Keymap(text, said) => {
+                    (self.keymap, self.keymap_warn) = Keymap::load(text.as_deref());
+                    if said.is_some() {
+                        self.said = said;
+                    }
+                }
                 Reload::Failed(e) => self.failed = Some(e),
             }
         }
@@ -143,6 +170,26 @@ impl Prefs {
             let done = edit_common(&base, |text| changes.iter().try_fold(text.to_owned(), |t, c| c.apply(&t)));
             let r = match done {
                 Ok(()) => Reload::Common(Common::read(&base)),
+                Err(e) => Reload::Failed(e),
+            };
+            Self::send_back(&tx, &wake, r);
+        });
+    }
+
+    /// Make the Keys page's `edits` in keymap.toml on a thread (only what
+    /// differs from the built-in keys is written), then read it again.
+    pub fn keymap_edit(&self, edits: Vec<ito_keymap::Edit>, no_folder: &str) {
+        if edits.is_empty() {
+            return;
+        }
+        let (tx, wake) = (self.tx.clone(), self.wake.clone());
+        let Some(base) = self.base.clone() else {
+            Self::send_back(&tx, &wake, Reload::Failed(no_folder.into()));
+            return;
+        };
+        std::thread::spawn(move || {
+            let r = match write_keymap(&keymap_path(&base), &edits) {
+                Ok(said) => Reload::Keymap(read_keymap(&base), Some(said)),
                 Err(e) => Reload::Failed(e),
             };
             Self::send_back(&tx, &wake, r);
@@ -188,6 +235,41 @@ impl Prefs {
     }
 }
 
+/// keymap.toml's full path: in michi's own folder (`MICHI_CONFIG_HOME` when
+/// set, else `michi` in the `uchmk` folder `base`).
+pub fn keymap_path(base: &Path) -> PathBuf {
+    ito_common::env_dir("MICHI_CONFIG_HOME").unwrap_or_else(|| base.join("michi")).join("keymap.toml")
+}
+
+/// keymap.toml's text; none when there is no file (or it cannot be read, which
+/// the keymap then reads as having no file).
+fn read_keymap(base: &Path) -> Option<String> {
+    std::fs::read_to_string(keymap_path(base)).ok()
+}
+
+/// Make `edits` in the keymap.toml at `path` (none yet is an empty one),
+/// written only when that changes it; how many changes were made. Call it off the
+/// UI thread.
+pub fn write_keymap(path: &Path, edits: &[ito_keymap::Edit]) -> Result<usize, String> {
+    static ONE_AT_A_TIME: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _one = ONE_AT_A_TIME.lock().unwrap_or_else(|e| e.into_inner());
+    let at = |e: String| format!("{}: {e}", path.display());
+    let text = match std::fs::read_to_string(path) {
+        Ok(t) => t,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(at(e.to_string())),
+    };
+    let new = ito_keymap::edit(&text, &crate::keymap::SPEC, edits, "noop").map_err(at)?;
+    if new == text {
+        return Ok(0);
+    }
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| at(e.to_string()))?;
+    }
+    write_atomic(path, new)?;
+    Ok(edits.len())
+}
+
 #[cfg(windows)]
 fn opener() -> std::process::Command {
     std::process::Command::new("explorer")
@@ -207,4 +289,30 @@ fn open_path(path: &Path) -> Result<(), String> {
     // explorer answers 1 even when it opened the file, so only a failure to
     // start it is said.
     opener().arg(path).status().map(drop).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ito_keymap::Edit;
+
+    #[test]
+    fn a_key_added_is_written_ahead_of_the_defaults_and_reset_takes_it_back() {
+        let dir = std::env::temp_dir().join(format!("michi-keymap-{}", std::process::id()));
+        let path = dir.join("keymap.toml");
+        let _ = std::fs::remove_dir_all(&dir);
+        let on = vec![ito_keys::Key::parse("<C-k>").expect("a key")];
+        let add = Edit::Add { layer: "main".into(), on, run: "palette".into(), desc: "Search commands".into() };
+        assert_eq!(write_keymap(&path, &[add]), Ok(1));
+        let text = std::fs::read_to_string(&path).expect("written");
+        assert!(text.contains("prepend_keymap") && text.contains("<C-k>"), "{text}");
+        let (km, warn) = Keymap::load(Some(&text));
+        assert!(warn.is_empty(), "{warn:?}");
+        assert_eq!(km.act(ito_keys::Key::parse("<C-k>").expect("a key")), Some(crate::keymap::Act::Palette));
+        let reset = Edit::Reset { layer: "main".into(), run: "palette".into() };
+        assert_eq!(write_keymap(&path, &[reset]), Ok(1));
+        let (km, _) = Keymap::load(std::fs::read_to_string(&path).ok().as_deref());
+        assert_eq!(km.act(ito_keys::Key::parse("<C-k>").expect("a key")), None);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
