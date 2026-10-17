@@ -176,7 +176,7 @@ pub enum Task {
     FindReflog {
         here: PathBuf,
     },
-    /// Asks git which commits the filter's content search (`s:` `g:`) hits,
+    /// Asks git which commits the filter's content search (`s:` `g:` `p:` `d:`) hits,
     /// the window being on the worktree at `here`.
     FindContent {
         here: PathBuf,
@@ -427,6 +427,8 @@ impl Task {
             Task::FindContent { content, .. } => match content.kind {
                 michi_core::find::Kind::Text => "log -S",
                 michi_core::find::Kind::Regex => "log -G",
+                michi_core::find::Kind::Path => "log -- path",
+                michi_core::find::Kind::Date => "log --since",
             },
             Task::FindBlame { .. } => "blame",
             Task::Trial { .. } => "merge-tree",
@@ -672,7 +674,7 @@ pub fn name(wt: &Path) -> String {
 
 impl App {
     /// Sends `task` to the act thread.
-    /// Enter in the filter with a content search typed (`s:` `g:`) that git
+    /// Enter in the filter with a content search typed (`s:` `g:` `p:` `d:`) that git
     /// has not answered: asks, off the UI thread. False when there is
     /// nothing to ask (Enter then goes to the next hit).
     pub(crate) fn ask_content(&mut self) -> bool {

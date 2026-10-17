@@ -1083,3 +1083,13 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 246.8 | With a rebase or merge stopped in the worktree, paste a patch | A toast says the worktree is in the middle of it and to finish first |
 | 246.9 | Paste a patch while a Claude is working in the worktree | The question ends with the note that a Claude is working there |
 | 246.10 | Check the keybar and `?` over the graph; switch EN and JA | `Y` and Ctrl+V are listed with their words in both languages |
+
+## 251. Commit search scope in the `/` filter (#51)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 251.1 | Press `/`, type `p:readme` and Enter | The commits that changed a path containing `readme` (any case) stay bright, the rest dim; the scrollbar shows the hits | [ ] |
+| 251.2 | Type `fix p:src/` | Only commits with `fix` in the subject that also touched `src/` hit | [ ] |
+| 251.3 | Type `d:2026-10-01..2026-10-15` and Enter | Only commits made in that range hit | [ ] |
+| 251.4 | Try `d:2.weeks.ago`, `d:..yesterday` and `d:2026-10-01..` | Each hits the commits in the range git reads from it (since, until, since) | [ ] |
+| 251.5 | Type `ann` (an author), then look at the hint of the empty box in EN and JA | The author still filters; the hint names `p:` and `d:` and reads well in both languages | [ ] |

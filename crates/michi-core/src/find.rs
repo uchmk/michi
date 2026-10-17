@@ -27,6 +27,10 @@ pub enum Kind {
     Text,
     /// `g:` - `git log -G`: a changed line matches the regex (any case).
     Regex,
+    /// `p:` - `git log -- <path>`: the commit changes a path that contains the text.
+    Path,
+    /// `d:` - `git log --since --until`: the commit date is in `from..to`.
+    Date,
 }
 
 /// A content search typed in the filter.
@@ -44,6 +48,8 @@ fn split(text: &str) -> (&str, Option<Content>) {
         let kind = match word.get(..2) {
             Some("s:") => Some(Kind::Text),
             Some("g:") => Some(Kind::Regex),
+            Some("p:") => Some(Kind::Path),
+            Some("d:") => Some(Kind::Date),
             _ => None,
         };
         if let Some(kind) = kind {
@@ -59,18 +65,35 @@ fn split(text: &str) -> (&str, Option<Content>) {
 /// The commits of every branch, remote branch and tag whose changes match
 /// `content`, found by git (slow in a big repository: ask off the UI thread).
 pub fn search(wt: &Path, content: &Content) -> Result<HashSet<Oid>, git::Error> {
-    let pattern = match content.kind {
-        Kind::Text => format!("-S{}", content.text),
-        Kind::Regex => format!("-G{}", content.text),
-    };
-    let mut args = vec!["log", "--branches", "--remotes", "--tags", "--format=%H", "--no-ext-diff"];
-    if content.kind == Kind::Regex {
-        args.push("--regexp-ignore-case");
-    }
-    args.push(&pattern);
-    args.push("--");
+    let args = search_args(content);
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
     let out = git::read(wt, &args)?;
     Ok(String::from_utf8_lossy(&out).lines().filter_map(|l| Oid::parse(l.trim())).collect())
+}
+
+/// The arguments of the `git log` that answers `content`.
+fn search_args(content: &Content) -> Vec<String> {
+    let mut args: Vec<String> = ["log", "--branches", "--remotes", "--tags", "--format=%H", "--no-ext-diff"].map(String::from).into();
+    let mut pathspec = None;
+    match content.kind {
+        Kind::Text => args.push(format!("-S{}", content.text)),
+        Kind::Regex => {
+            args.push("--regexp-ignore-case".into());
+            args.push(format!("-G{}", content.text));
+        }
+        Kind::Path => pathspec = Some(format!(":(icase)*{}*", content.text)),
+        Kind::Date => {
+            let (from, to) = content.text.split_once("..").unwrap_or((&content.text, ""));
+            for (flag, v) in [("--since", from.trim()), ("--until", to.trim())] {
+                if !v.is_empty() {
+                    args.push(format!("{flag}={v}"));
+                }
+            }
+        }
+    }
+    args.push("--".into());
+    args.extend(pathspec);
+    args
 }
 
 /// What the filter looks in for one commit.
@@ -237,6 +260,50 @@ mod tests {
         let re = search(&r.repo, &Content { kind: Kind::Regex, text: "NEEDLE.h".into() }).unwrap();
         assert!(re.len() == 1 && re.contains(&two));
         assert!(search(&r.repo, &Content { kind: Kind::Regex, text: "(".into() }).is_err(), "a bad regex is refused");
+    }
+
+    #[test]
+    fn path_and_date_searches_ask_git_for_them() {
+        let q = Query::new("fix p:src/Main.rs");
+        assert_eq!(q.content(), Some(&Content { kind: Kind::Path, text: "src/Main.rs".into() }));
+        assert_eq!(Query::new("d:2026-10-01..2026-10-15").content().map(|c| c.kind), Some(Kind::Date));
+        let a = search_args(&Content { kind: Kind::Path, text: "src".into() });
+        assert_eq!(&a[a.len() - 2..], ["--", ":(icase)*src*"]);
+        let a = search_args(&Content { kind: Kind::Date, text: "2026-10-01..2026-10-15".into() });
+        assert!(a.contains(&"--since=2026-10-01".to_owned()) && a.contains(&"--until=2026-10-15".to_owned()));
+        let a = search_args(&Content { kind: Kind::Date, text: "..yesterday".into() });
+        assert!(a.contains(&"--until=yesterday".to_owned()) && !a.iter().any(|x| x.starts_with("--since")));
+        let a = search_args(&Content { kind: Kind::Date, text: "2.weeks.ago".into() });
+        assert!(a.contains(&"--since=2.weeks.ago".to_owned()) && !a.iter().any(|x| x.starts_with("--until")));
+    }
+
+    #[test]
+    fn path_and_date_searches_search_a_real_history() {
+        use crate::testrepo::TempRepo;
+        let r = TempRepo::new("find-path-date");
+        r.write(
+            &r.repo,
+            "src/a.txt",
+            "a
+",
+        );
+        r.git(&r.repo, &["add", "."]);
+        r.git(&r.repo, &["commit", "-q", "-m", "one"]);
+        r.write(
+            &r.repo,
+            "docs/b.txt",
+            "b
+",
+        );
+        r.git(&r.repo, &["add", "."]);
+        r.git(&r.repo, &["commit", "-q", "-m", "two"]);
+        let two = Oid::parse(&r.out(&r.repo, &["rev-parse", "HEAD"])).unwrap();
+        let by_path = search(&r.repo, &Content { kind: Kind::Path, text: "DOCS".into() }).unwrap();
+        assert!(by_path.len() == 1 && by_path.contains(&two), "a part of the path, any case");
+        let all = search(&r.repo, &Content { kind: Kind::Date, text: "2000-01-01..2100-01-01".into() }).unwrap();
+        assert!(all.len() >= 2 && all.contains(&two));
+        let none = search(&r.repo, &Content { kind: Kind::Date, text: "..2000-01-01".into() }).unwrap();
+        assert!(none.is_empty());
     }
 
     #[test]

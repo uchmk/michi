@@ -122,7 +122,7 @@ All wait for the owner; none is started.
 - [ ] Diff extras (images, word diff, ignore whitespace, external tool)（要確認: #48）
 - [ ] .gitignore editing（要確認: #49）
 - [ ] reflog screen（要確認: #50）
-- [ ] Commit search scope in the `/` filter（要確認: #51）
+- [x] Commit search scope in the `/` filter（要確認: #51）
 - [x] Per-file operations (restore a version from the detail; "open" not done)（要確認: #52）
 - [x] Per-worktree author / email display (display only, recommended option of #53)（要確認: #53）
 - [x] Co-Authored-By on michi commits (recommended option of #54: `[commit] co_author = "Name <email>"` in config.toml, off by default)（要確認: #54）
