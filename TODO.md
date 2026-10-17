@@ -140,12 +140,12 @@ All wait for the owner; none is started.
 All wait for the owner; none is started.
 
 - [ ] Undo / Redo on one key（要確認: #64）
-- [ ] Compare any two commits or branches（要確認: #65）
+- [x] Compare any two commits or branches（要確認: #65）
 - [ ] Context menus (commit, branch, file)（要確認: #66）
 - [ ] Drag and drop (merge / rebase / cherry-pick)（要確認: #67）
 - [ ] Syntax highlighting in diffs（要確認: #68）
 - [ ] CI / PR state on the graph（要確認: #69）
-- [ ] Auto fetch: interval and failure（要確認: #70）
+- [x] Auto fetch (recommended option of #70): while the window is in front, fetch every 5 minutes (`[net] auto_fetch` in config.toml, minutes, 0 is off); a failure shows small on the keybar, no toast（要確認: #70）
 - [ ] Hide / solo branches（要確認: #71）
 - [ ] Tree view of changed files（要確認: #72）
 - [ ] Progress and cancel for long operations（要確認: #73）
@@ -153,7 +153,6 @@ All wait for the owner; none is started.
 - [ ] Open the worktree in terminal / editor / explorer（要確認: #75）
 - [x] autostash on pull / checkout (recommended option of #76): changes in the way are stashed, kept under `refs/michi/backup/`, and put back; a clash stays marked in the files（要確認: #76）
 - [ ] reset: choose soft / mixed / hard（要確認: #77）
-- [ ] autostash on pull / checkout（要確認: #76）
 - [x] reset: choose soft / mixed / hard（`R`、1 soft・2 mixed・3 hard。要確認: #77）
 - [ ] One-button sync（要確認: #78）
 - [ ] Fuzzy pickers everywhere（要確認: #79）
@@ -178,7 +177,7 @@ Worktrees and parallel Claude work are the base; no other client has them.
 - [ ] Land a worktree (merge in, verify, ff, clean up)（要確認: #93）
 - [x] Review queue of finished Claude work: the worktree table's Review column (unreviewed / in review / flagged / approved) (TESTING 94)（要確認: #94）
 - [ ] From a commit to the Claude session that made it（要確認: #95）
-- [ ] Warn before a new task overlaps a running worktree（要確認: #97）
+- [x] Warn before a new task overlaps a running worktree（要確認: #97）
 - [ ] Answer a waiting Claude from a notification in one step（要確認: #98）
 - [ ] Hand-off of a conflict to Claude through to review, in one band（要確認: #99）
 - [ ] Trial merge of several worktrees in a chosen order（要確認: #100）

@@ -894,3 +894,17 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 81.5 | With two or more worktrees and tsumugi not running, look at the worktree view | The line reads `Next: start tsumugi to see the Claude Code running in each worktree.`; start tsumugi and it goes within a few seconds | [ ] |
 | 81.6 | While the history is still being read (a big repository) | No guidance line shows (the skeleton only) | [ ] |
 | 81.7 | Switch EN and JA; narrow the window | The line reads well in both and wraps without overlapping the table | [ ] |
+
+## 70. Auto fetch (every 5 minutes, quiet)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 70.1 | Open a repository with a remote, leave the window in front for 5+ minutes without pressing `f` | The keybar's `fetch N min` goes back to `fetch now` by itself (a fetch ran), with no toast and no notification, even when nothing moved | | [ ] |
+| 70.2 | Put the window behind another and wait over 5 minutes, then bring it forward | No fetch runs while behind; within a moment of coming forward the fetch runs and the time resets | | [ ] |
+| 70.3 | Write `[net]` `auto_fetch = 1` in config.toml (no restart), stay in front | A fetch runs about every minute; `auto_fetch = 0` stops them | | [ ] |
+| 70.4 | Write `auto_fetch = "soon"` | A warning toast about config.toml; the 5-minute default stays | | [ ] |
+| 70.5 | Cut the network (or point `origin` at a bad address) and wait for a fetch | No toast and no system notification; the keybar's right reads `fetch N min · failed` (or `fetch failed`) in the waiting colour; the gaps between tries grow (up to 8 times the interval) | | [ ] |
+| 70.6 | Restore the network and press `f` (or wait) | The failed mark goes as soon as a fetch works | | [ ] |
+| 70.7 | With the network cut, press `f` yourself | The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` | | [ ] |
+| 70.8 | Start a pull or push while the timer is due | The timer waits; it never interrupts a job | | [ ] |
+| 70.9 | Switch EN and JA | The keybar's `· failed` / `· 失敗` reads well and fits | | [ ] |

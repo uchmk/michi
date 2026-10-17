@@ -2,6 +2,7 @@
 //! (how tall the graph's and the lists' rows are, issue #86). Anything else
 //! is warned of and keeps the standard.
 
+use michi_core::autofetch::Every;
 use michi_core::density::Density;
 use michi_core::motion::Motion;
 use serde::Deserialize;
@@ -16,8 +17,15 @@ struct View {
 
 #[derive(Deserialize, Default)]
 #[serde(default)]
+struct Net {
+    auto_fetch: Option<toml::Value>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
 struct File {
     view: View,
+    net: Net,
 }
 
 /// `[view] density` of the config.toml `text` (none: no file), with what to warn of.
@@ -52,7 +60,7 @@ pub fn read_motion(text: Option<&str>) -> (Motion, Vec<String>) {
 /// `[view] avatars` (true unless the file says `false`), with what to warn of.
 pub fn avatars(text: Option<&str>) -> (bool, Vec<String>) {
     match text.map(toml::from_str::<File>) {
-        Some(Ok(File { view: View { avatars: Some(v), .. } })) => match v.as_bool() {
+        Some(Ok(File { view: View { avatars: Some(v), .. }, .. })) => match v.as_bool() {
             Some(b) => (b, Vec::new()),
             None => (true, vec!["config.toml: [view] avatars is not true or false".to_owned()]),
         },
@@ -60,9 +68,61 @@ pub fn avatars(text: Option<&str>) -> (bool, Vec<String>) {
     }
 }
 
+/// `[net] auto_fetch` (minutes between automatic fetches, 0 is off; 5 when
+/// not written), with what to warn of.
+pub fn auto_fetch(text: Option<&str>) -> (Every, Vec<String>) {
+    match text.map(toml::from_str::<File>) {
+        Some(Ok(File { net: Net { auto_fetch: Some(v) }, .. })) => match v.as_integer().and_then(|n| u64::try_from(n).ok()) {
+            Some(n) => (Every::minutes(n), Vec::new()),
+            None => (Every::default(), vec!["config.toml: [net] auto_fetch is not a number of minutes (0 turns it off)".to_owned()]),
+        },
+        _ => (Every::default(), Vec::new()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn auto_fetch_is_five_minutes_unless_written() {
+        assert_eq!(auto_fetch(None), (Every::minutes(5), vec![]));
+        assert_eq!(
+            auto_fetch(Some(
+                "[view]
+density = \"cozy\"
+"
+            ))
+            .0,
+            Every::minutes(5)
+        );
+        assert_eq!(
+            auto_fetch(Some(
+                "[net]
+auto_fetch = 10
+"
+            ))
+            .0,
+            Every::minutes(10)
+        );
+        assert_eq!(
+            auto_fetch(Some(
+                "[net]
+auto_fetch = 0
+"
+            ))
+            .0,
+            Every(None)
+        );
+        for bad in ["\"soon\"", "-3", "true"] {
+            let (e, warn) = auto_fetch(Some(&format!(
+                "[net]
+auto_fetch = {bad}
+"
+            )));
+            assert!(e == Every::minutes(5) && warn.len() == 1, "{bad}");
+        }
+    }
 
     #[test]
     fn avatars_are_on_unless_turned_off() {
