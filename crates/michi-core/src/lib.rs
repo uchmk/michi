@@ -45,6 +45,7 @@ pub mod review;
 pub mod show;
 pub mod stage;
 pub mod stash;
+pub mod strength;
 pub mod summary;
 pub mod syntax;
 pub mod tag;

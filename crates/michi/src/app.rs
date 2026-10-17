@@ -1461,6 +1461,9 @@ impl App {
         if self.mode != Mode::Main {
             return false;
         }
+        if self.band_named(name) {
+            return true;
+        }
         if self.tidy.is_some() {
             return self.tidy_named(name);
         }

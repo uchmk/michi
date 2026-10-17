@@ -66,7 +66,8 @@ use app::{App, Mode, View};
 use ito_keyscript::{Do, Runner, Step};
 
 /// The named keys that move in a view, by the names `App::named` takes.
-const MOVES: [(egui::Key, &str); 8] = [
+const MOVES: [(egui::Key, &str); 9] = [
+    (egui::Key::Backspace, "Backspace"),
     (egui::Key::ArrowDown, "ArrowDown"),
     (egui::Key::ArrowUp, "ArrowUp"),
     (egui::Key::ArrowLeft, "ArrowLeft"),
