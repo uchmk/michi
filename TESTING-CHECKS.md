@@ -1246,3 +1246,33 @@
 - [ ] **89.5** Look at the window corners on Windows 11 (maximised and not) → The corners are rounded when not maximised and square when maximised; no dark triangle or stripe at a corner → | [ ] 〔未訳〕
 - [ ] **89.6** Drag the window by the title bar and resize from each edge and corner → The resize cursors show on the edges; the frame follows the mouse without a lag or a flicker → | [ ] 〔未訳〕
 - [ ] **89.7** Open the palette, the branch box, a confirm window and a toast at 200 % → They are placed inside the window, sharp, and not larger than the window → | [ ] 〔未訳〕
+
+## 265. Undo and Redo of a branch's move (#64)
+
+- [ ] **265.1** In the graph reset a worktree to an older commit (any mode) and press Ctrl+Z → The branch is back on the commit it was; a toast says `Undid the reset of ...`; the graph and the table follow 〔未訳〕
+- [ ] **265.2** Press Ctrl+Shift+Z → The reset is done again; a toast says so; a new reset or delete after an Undo ends the Redo line (Ctrl+Shift+Z says there is nothing to do again) 〔未訳〕
+- [ ] **265.3** Delete a branch (`d` in the branch palette, yes), press Ctrl+Z, then Ctrl+Shift+Z → The branch is back at the same commit, then gone again 〔未訳〕
+- [ ] **265.4** Rename a branch, press Ctrl+Z → The old name is back 〔未訳〕
+- [ ] **265.5** Reset hard, then edit a file, then Ctrl+Z → A toast refuses: uncommitted changes; nothing moves. Commit on the branch and Ctrl+Z again: it refuses, the branch has moved on 〔未訳〕
+- [ ] **265.6** Click into the commit message box, type, press Ctrl+Z → The typing is undone in the box; no branch moves 〔未訳〕
+- [ ] **265.7** Press Ctrl+Z with nothing done in this window → A toast: `Nothing to undo` 〔未訳〕
+- [ ] **265.8** Open `?` and the Keys page of the settings → Undo (Ctrl+Z) and Redo (Ctrl+Shift+Z) are listed; rebinding them works; JA reads `元に戻す` and `やり直す` 〔未訳〕
+
+## 266. Cmd on a Mac (#61)
+
+- [ ] **266.1** On macOS press `?` → The keys read `Cmd+...` (not `Ctrl+...`) in the global list, the keybar and the palette field's key cap; `Ctrl+Tab` stays 〔未訳〕
+- [ ] **266.2** On macOS press Cmd+Enter in the `2` view with a message and a file staged, then Cmd+Z after a reset → The commit is made; the reset is taken back 〔未訳〕
+- [ ] **266.3** On Windows or Linux press `?` → The keys still read `Ctrl+...` 〔未訳〕
+
+## 267. Other operating systems (#62)
+
+- [ ] **267.1** Start michi on macOS and on Linux in a repository → The window opens with the tabs, the chip and the graph; the title reads `<repo> — michi` 〔未訳〕
+- [ ] **267.2** Resize, maximise and drag the window by its bar → The same as 1.4 to 1.7 〔未訳〕
+- [ ] **267.3** Run `michi --version` and `michi --help` from a terminal → Text on the terminal, no window 〔未訳〕
+- [ ] **267.4** Open a folder or a worktree with a Japanese name → The Japanese draws, not boxes 〔未訳〕
+
+## 268. Accessibility (#60)
+
+- [ ] **268.1** Press Ctrl+= five times, then Ctrl+0 → The whole window grows with each press (text, rows, key caps) and a toast names the size; Ctrl+0 is back at 100%; nothing overlaps at the largest size 〔未訳〕
+- [ ] **268.2** Choose each built-in theme in the settings and look at the graph, the table, the changes and a diff → The text reads on its ground; the selected row, a focus ring and a conflict mark are told apart without colour alone (a symbol or a word comes with the colour) 〔未訳〕
+- [ ] **268.3** Use only the keyboard from start to a commit (`2`, `j`, Space, `c`, type, Ctrl+Enter) → Every step works without the pointer; the focus is always visible 〔未訳〕

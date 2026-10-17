@@ -381,6 +381,12 @@ impl Michi {
         for (n, e) in events.iter().enumerate() {
             let egui::Event::Key { key, pressed: true, modifiers, .. } = e else { continue };
             let Some(k) = ito_keys::from_egui(*key, modifiers) else { continue };
+            // Ctrl+Z in a text field undoes the typing, not a branch (#64).
+            if matches!(self.app.prefs.keymap.act(k), Some(crate::keymap::Act::Undo | crate::keymap::Act::Redo))
+                && ctx.egui_wants_keyboard_input()
+            {
+                continue;
+            }
             if self.app.key(k) {
                 used.push(n);
             }

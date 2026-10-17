@@ -387,6 +387,10 @@ pub struct App {
     pub turn_states: Option<std::collections::HashMap<u64, michi_core::claude::State>>,
     /// The clean-up list, over the worktree table.
     pub tidy: Option<crate::tidy::Tidy>,
+    /// The moves of branches done in this window, for Undo and Redo (#64).
+    pub journal: michi_core::undo::Journal,
+    /// An undo or redo is on its way: another waits for it.
+    pub undoing: bool,
     pub reflog: Option<crate::reflog::Reflog>,
     pub stats: Option<crate::stats::Statistics>,
     /// The graph's legend (#118), while open; any key closes it.
@@ -499,6 +503,8 @@ impl App {
             waits_told: None,
             turn_states: None,
             tidy: None,
+            journal: Default::default(),
+            undoing: false,
             reflog: None,
             stats: None,
             legend: false,
@@ -829,6 +835,7 @@ impl App {
             Answer::NetProgress(p) => self.net_progress(p),
             Answer::NetDone { job, result } => self.net_done(job, result),
             Answer::ActDone { task, result } => self.act_done(task, result),
+            Answer::Journaled(entry) => self.journal.record(entry),
             Answer::Fetched(at) => self.last_fetch = at,
         }
     }
@@ -1550,6 +1557,8 @@ impl App {
             Act::CloseTab => self.tab_req = Some(michi_core::tabs::Op::Close),
             Act::Tab(n) => self.tab_req = Some(michi_core::tabs::Op::Goto(n - 1)),
             Act::Quit => self.quit = true,
+            Act::Undo => self.undo(false),
+            Act::Redo => self.undo(true),
             Act::Scale(to) => self.scale(to),
             Act::Noop => {}
         }
@@ -1582,7 +1591,7 @@ impl App {
     pub fn help_lines(&self) -> Vec<ito_help::Line> {
         use ito_help::Line;
         let mut lines = vec![Line::Head(self.tr("help.global").to_owned())];
-        let bind = |k: &str, w: &str| Line::Bind { keys: k.to_owned(), desc: w.to_owned() };
+        let bind = |k: &str, w: &str| Line::Bind { keys: michi_core::keyhelp::native(k).into_owned(), desc: w.to_owned() };
         // The keys of the screen in front are tried first, and a screen over a
         // view takes every key: the list names only the global ones that work.
         let (keys, head) = self.keys_of();

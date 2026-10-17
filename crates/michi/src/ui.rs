@@ -641,7 +641,7 @@ fn branch_mark(p: &egui::Painter, at: Pos2, ink: Color32) {
 /// A key drawn as a key cap, right-aligned to `right_center`; its rect.
 pub(crate) fn kbd(ui: &Ui, p: &egui::Painter, right_center: Pos2, key: &str) -> Rect {
     let c = ito_theme::colors();
-    let g = ui.fonts_mut(|f| f.layout_no_wrap(key.to_owned(), FontId::monospace(10.5), c.dim));
+    let g = ui.fonts_mut(|f| f.layout_no_wrap(michi_core::keyhelp::native(key).into_owned(), FontId::monospace(10.5), c.dim));
     let r = Rect::from_min_max(right_center - vec2(g.size().x + 8.0, 8.0), right_center + vec2(0.0, 8.0));
     p.rect_filled(r, CornerRadius::same(3), c.panel);
     p.rect_stroke(r, CornerRadius::same(3), Stroke::new(1.0, c.border), StrokeKind::Inside);
@@ -856,7 +856,7 @@ fn key_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
     let mut clicked = None;
     for (k, (key, word)) in keys.iter().enumerate() {
         let kc = if k == 0 { accent() } else { c.fg };
-        let kg = ui.fonts_mut(|f| f.layout_no_wrap((*key).to_owned(), FontId::monospace(11.5), kc));
+        let kg = ui.fonts_mut(|f| f.layout_no_wrap(michi_core::keyhelp::native(key).into_owned(), FontId::monospace(11.5), kc));
         let wg = ui.fonts_mut(|f| f.layout_no_wrap(app.tr(word).to_owned(), FontId::proportional(12.0), c.dim));
         if x + kg.size().x + 4.0 + wg.size().x > right {
             break;

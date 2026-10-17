@@ -134,6 +134,8 @@ pub enum Answer {
     Fetched(Option<SystemTime>),
     /// A branch, tag or revert is done.
     ActDone { task: Task, result: Result<Acted, git::Error> },
+    /// A move of a branch that Undo can take back (#64).
+    Journaled(michi_core::undo::Entry),
 }
 
 /// What the window asks of the reading thread.
@@ -348,7 +350,13 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
             act_ctx.request_repaint();
         };
         for task in act_rx {
+            let before = act::before(&act_dir, &task);
             let result = act::run(&act_dir, &task);
+            if result.is_ok() {
+                if let Some(entry) = act::journal_entry(&task, before) {
+                    send(Answer::Journaled(entry));
+                }
+            }
             // A list read moves nothing.
             if !matches!(task, Task::FindTidy { .. }) {
                 let _ = act_pokes.send(Poke::Now);

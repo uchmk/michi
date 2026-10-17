@@ -107,6 +107,11 @@ pub enum Task {
         wt: PathBuf,
         patch: String,
     },
+    /// Takes back (or, with `redo`, does again) the move `entry` (#64).
+    Undo {
+        entry: michi_core::undo::Entry,
+        redo: bool,
+    },
     /// Moves the branch of the worktree at `wt` to `id`, the way `mode` says.
     Reset {
         wt: PathBuf,
@@ -510,6 +515,8 @@ impl Task {
                 michi_core::reset::Mode::Mixed => "reset --mixed",
                 michi_core::reset::Mode::Hard => "reset --hard",
             },
+            Task::Undo { redo: false, .. } => "undo",
+            Task::Undo { redo: true, .. } => "redo",
             Task::Restore { .. } => "restore",
             Task::Calm { .. } => "calm",
             Task::Stash { .. } => "stash",
@@ -603,6 +610,8 @@ pub enum Acted {
     /// What an applied patch changed.
     Patched(michi_core::patch::Summary),
     Reset(michi_core::reset::Reset),
+    /// A move was taken back or done again.
+    Undone,
     Restored(michi_core::restore::Restored),
     Stashed(Saved),
     Calmed(michi_core::calm::Calmed),
@@ -662,6 +671,31 @@ pub struct Solved {
     pub read: Option<Option<Conflict>>,
 }
 
+/// What a task is about to change that Undo needs to know: the commit the
+/// worktree is on (a reset) or the branch is at (a delete).
+pub fn before(dir: &Path, task: &Task) -> Option<Oid> {
+    match task {
+        Task::Reset { wt, .. } => michi_core::undo::head(wt),
+        Task::Delete { name } => michi_core::undo::branch_tip(dir, name),
+        _ => None,
+    }
+}
+
+/// What Undo may take back of the task that has just worked. `before` is
+/// what [`before`] saw; the branch to delete was read there too.
+pub fn journal_entry(task: &Task, before: Option<Oid>) -> Option<michi_core::undo::Entry> {
+    use michi_core::undo::{self, Entry};
+    match task {
+        Task::Reset { wt, mode, .. } => {
+            let (from, to) = (before?, undo::head(wt)?);
+            (from != to).then(|| Entry::reset(wt, *mode, from, to))
+        }
+        Task::Rename { old, new } => Some(Entry::renamed(old, new)),
+        Task::Delete { name } => Some(Entry::deleted(name, before?)),
+        _ => None,
+    }
+}
+
 /// Does `task` in the repository `dir` is in.
 pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
     match task {
@@ -685,6 +719,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::ApplyPatch { wt, patch } => michi_core::patch::apply(wt, patch).map(Acted::Patched),
         Task::Reset { wt, id, mode } => michi_core::reset::reset(wt, id, *mode).map(Acted::Reset),
         Task::Restore { wt, id, path } => michi_core::restore::file(wt, id, path).map(Acted::Restored),
+        Task::Undo { entry, redo } => michi_core::undo::run(dir, if *redo { &entry.redo } else { &entry.undo }).map(|()| Acted::Undone),
         Task::Calm { wt } => michi_core::calm::save(wt).map(Acted::Calmed),
         Task::Stash { wt, message } => stash::save(wt, message).map(Acted::Stashed),
         Task::Unstash { wt, id, pop } => stash::apply(wt, id, *pop).map(Acted::Unstashed),
@@ -862,6 +897,35 @@ impl App {
         }
     }
 
+    /// Ctrl+Z, or Ctrl+Shift+Z with `redo` (#64): takes back the last move of a
+    /// branch this window did, or does the one taken back again. The branch is
+    /// refused when it is no longer as the move left it; what it replaces is
+    /// kept first.
+    pub(crate) fn undo(&mut self, redo: bool) {
+        if self.undoing {
+            return;
+        }
+        let entry = if redo { self.journal.next_redo() } else { self.journal.next_undo() };
+        let Some(entry) = entry.cloned() else {
+            let key = if redo { "undo.nothing_redo" } else { "undo.nothing_undo" };
+            let text = self.tr(key).to_owned();
+            self.say(text);
+            return;
+        };
+        self.undoing = true;
+        self.act(Task::Undo { entry, redo });
+    }
+
+    /// What a move was, in words: `reset of main (mixed)`.
+    fn move_said(&self, e: &michi_core::undo::Entry) -> String {
+        use michi_core::undo::Kind;
+        match &e.kind {
+            Kind::Reset(mode) => self.tr("undo.what_reset").replace("{wt}", &e.subject).replace("{mode}", mode.word()),
+            Kind::DeleteBranch => self.tr("undo.what_delete").replace("{name}", &e.subject),
+            Kind::RenameBranch => self.tr("undo.what_rename").replace("{name}", &e.subject),
+        }
+    }
+
     /// The task is over: say how it went; a tag to push goes on to the net
     /// thread.
     pub(crate) fn act_done(&mut self, task: Task, result: Result<Acted, git::Error>) {
@@ -888,7 +952,23 @@ impl App {
         if let (Task::FindStats { .. }, Err(_)) = (&task, &result) {
             self.stats = None;
         }
+        if let Task::Undo { .. } = &task {
+            self.undoing = false;
+        }
         let (text, secs) = match (&task, result) {
+            (Task::Undo { entry, redo }, Ok(_)) => {
+                if *redo {
+                    self.journal.redid();
+                } else {
+                    self.journal.undid();
+                }
+                let key = if *redo { "undo.redone" } else { "undo.undone" };
+                (self.tr(key).replace("{what}", &self.move_said(entry)), 6)
+            }
+            (Task::Undo { entry, redo }, Err(e)) => {
+                let key = if *redo { "undo.cannot_redo" } else { "undo.cannot_undo" };
+                (self.tr(key).replace("{what}", &self.move_said(entry)).replace("{why}", &self.git_says(&e)), 10)
+            }
             // Not being able to ask is not worth a toast.
             // A turn kept in the background is not worth a toast either way.
             (

@@ -39,6 +39,8 @@ keymap = [
     { on = "<A-9>", run = "tab 9", desc = "Go to tab" },
     { on = "<F12>", run = "bugreport", desc = "Report a bug" },
     { on = "<C-q>", run = "quit", desc = "Quit" },
+    { on = "<C-z>", run = "undo", desc = "Undo" },
+    { on = "<C-S-z>", run = "redo", desc = "Redo" },
     { on = "<C-=>", run = "scale in", desc = "Zoom in" },
     { on = "<C-+>", run = "scale in", desc = "Zoom in" },
     { on = "<C-;>", run = "scale in", desc = "Zoom in" },

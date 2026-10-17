@@ -4,7 +4,7 @@
 //! The generator is ito's `ito-testcheck` (shared with kura and tsumugi); this
 //! is michi's configuration of it: the paths and the preamble.
 //!
-//!     cargo run -p michi --example make-testcheck [-- --check | --stats]
+//!     cargo run -p michi --example make-testcheck [-- --lane macos|linux] [--check | --stats]
 //!
 //! `--check` writes nothing and exits 1 when the file is out of date. The file
 //! keeps `[~]` (an appearance row an agent judged from a screenshot, not done
@@ -20,7 +20,11 @@ fn main() {
         dep_crates: &[],
         release_list: None,
         command: "cargo run -p michi --example make-testcheck",
-        lanes: &[Lane { name: "windows", out: "TESTING-CHECKS.md", marks: &['~'], setup: true, check_release: false, preamble }],
+        lanes: &[
+            Lane { name: "windows", out: "TESTING-CHECKS.md", marks: &['~'], setup: true, check_release: false, preamble },
+            Lane { name: "macos", out: "TESTING-MACOS.md", marks: &['-'], setup: false, check_release: false, preamble: macos },
+            Lane { name: "linux", out: "TESTING-LINUX.md", marks: &['-'], setup: false, check_release: false, preamble: linux },
+        ],
     });
 }
 
@@ -37,4 +41,29 @@ fn preamble(_: &Counts) -> String {
 付ける前に「失敗していたら、画面かディスクの何が違ったはずか」を自問すること。
 "
     .to_owned()
+}
+
+fn macos(_: &Counts) -> String {
+    other_os("macOS", "macos", "TESTING-MACOS.md", "Cmd キーの行（Ctrl の代わりに Cmd）は macOS で押す。")
+}
+
+fn linux(_: &Counts) -> String {
+    other_os("Linux", "linux", "TESTING-LINUX.md", "X11 と Wayland のどちらでも確かめられるなら、どちらかを PR に書く。")
+}
+
+fn other_os(name: &str, lane: &str, file: &str, extra: &str) -> String {
+    format!(
+        "# {name} チェックリスト
+
+`TESTING.md` から `cargo run -p michi --example make-testcheck -- --lane {lane}` で生成している（`{file}`）。
+**正は TESTING.md**。このファイルは {name} で押す側の並べ替えで、Windows 実機の `TESTING-CHECKS.md` とは別に数える。
+
+**チェック（`[x]` と `[-]`）だけは手で書いてよく、生成し直しても残る。**
+
+- `[x]`: {name} で操作し、期待値を読めるテキストかファイルの状態で確かめた。
+- `[-]`: {name} では対象外（Windows だけの行など）。理由は PR に書く。
+- 見た目の行（色、滑らかさ、フォント）は、実機の目で見た人だけが付ける。
+- {extra}
+"
+    )
 }
