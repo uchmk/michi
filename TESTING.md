@@ -1429,3 +1429,24 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | # | Do | Expect |
 | --- | --- | --- |
 | 264.1 | Read GLOSSARY.md, then walk the screens in JA and EN | Each idea uses the word in the table (branch/ブランチ, 衝突, 差分, 作業ツリー, 消す, 捨てる ...) |
+
+## 110. A commit on main asks first (#110)
+
+| # | Do | Should | Notes | OK |
+|---|----|--------|-------|----|
+| 110.1 | In a worktree on `main`, stage a file, write a message, press Ctrl+Enter in the `2` view | A band asks before committing, saying the commit is on main itself; Esc leaves everything as it was, `y` commits | | [ ] |
+| 110.2 | Do the same on a feature branch | The commit goes straight, with no band | | [ ] |
+| 110.3 | Write `[commit]` `protect = ["release/*"]` in config.toml (no restart); commit on `release/1.0`, then on `main` | `release/1.0` asks, `main` does not | | [ ] |
+| 110.4 | Write `protect = []` and commit on `main` | No band | | [ ] |
+| 110.5 | Commit on `main` while a Claude is writing in the worktree | One band tells both reasons; one `y` covers both | | [ ] |
+## 111. A commit warns of big files and secrets (#111)
+
+| # | Do | Should | Notes | OK |
+|---|----|--------|-------|----|
+| 111.1 | Stage a `.env` (or `server.pem`) on a feature branch and press Ctrl+Enter | A band names the file and says it looks like a secret; Esc, unstage it, and the commit then goes straight | | [ ] |
+| 111.2 | Stage a text file holding `-----BEGIN OPENSSH PRIVATE KEY-----` or an `AKIA...` key id | The band names it with what it looks like (private key, AWS access key id) | | [ ] |
+| 111.3 | Stage a file of 60 MB | The band names it with its size; `y` commits anyway | | [ ] |
+| 111.4 | Stage `.env.example` and a 2 MB file | No band | | [ ] |
+| 111.5 | Write `large_mb = 1` under `[commit]` (no restart) and stage the 2 MB file | The band appears; with `large_mb = 0` it does not | | [ ] |
+| 111.6 | Stage five secret-looking files | The band names three and says "and 2 more"; the text is cut off with an ellipsis if narrow | | [ ] |
+| 111.7 | Stage a few thousand files and watch the `2` view | It stays quick; the check runs off the UI thread | | [ ] |

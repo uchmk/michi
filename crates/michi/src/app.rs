@@ -942,6 +942,8 @@ impl App {
             return;
         }
         let claude = self.claude_writing();
+        self.changes.co_author = self.prefs.co_author.clone();
+        self.changes.guard = self.prefs.guard.clone();
         let done = self.changes.commit(claude);
         self.changes_did(done);
     }

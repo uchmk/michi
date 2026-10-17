@@ -86,6 +86,8 @@ pub struct Prefs {
     pub auto_fetch: michi_core::autofetch::Every,
     /// `[commit] co_author` of config.toml: the trailer added to michi's commits (#54).
     pub co_author: michi_core::coauthor::CoAuthor,
+    /// `[commit] protect` and `large_mb`: what a commit asks about first (#110, #111).
+    pub guard: michi_core::guard::Config,
     /// `[issues]` of config.toml: how issue references become links (#44).
     pub issues: michi_core::issues::Config,
     /// The Notifications page's drafts (a webhook's address being typed).
@@ -132,6 +134,7 @@ impl Prefs {
             easy: false,
             auto_fetch: Default::default(),
             co_author: Default::default(),
+            guard: Default::default(),
             issues: Default::default(),
             view_warn: Vec::new(),
             notify_drafts: ito_prefs::Drafts::new(),
@@ -390,6 +393,9 @@ impl Prefs {
         self.view_warn.extend(warn);
         let (co, warn) = crate::viewcfg::co_author(text);
         self.co_author = co;
+        self.view_warn.extend(warn);
+        let (guard, warn) = crate::viewcfg::guard(text);
+        self.guard = guard;
         self.view_warn.extend(warn);
         let (issues, warn) = crate::viewcfg::issues(text);
         self.issues = issues;

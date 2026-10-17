@@ -363,6 +363,12 @@ fn confirm(ui: &Ui, app: &App, p: &Painter, band: Rect, live: bool, pointer: Opt
         };
         text.push(app.tr(key).replace("{file}", path).replace("{n}", &lines.to_string()));
     }
+    if let Some(b) = &cf.branch {
+        text.push(app.tr("changes.on_protected").replace("{branch}", b));
+    }
+    if !cf.notes.is_empty() {
+        text.push(notes_text(app, cf));
+    }
     if cf.claude {
         text.push(app.tr("changes.claude_writing").to_owned());
     }
@@ -377,6 +383,28 @@ fn confirm(ui: &Ui, app: &App, p: &Painter, band: Rect, live: bool, pointer: Opt
     let g = ui.fonts_mut(|f| f.layout_job(job));
     p.galley(pos2(left + 18.0, mid - g.size().y / 2.0), g, c.fg);
     out
+}
+
+/// What the staged files are suspected of, with the first few paths.
+fn notes_text(app: &App, cf: &crate::changes::Confirm) -> String {
+    use michi_core::guard::Secret;
+    let shown = cf
+        .notes
+        .iter()
+        .take(3)
+        .map(|n| match n.secret {
+            Some(Secret::Name(w) | Secret::Content(w)) => format!("{} ({w})", n.path),
+            None => format!("{} ({:.0} MB)", n.path, n.size as f64 / (1024.0 * 1024.0)),
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    let more = cf.notes.len().saturating_sub(3);
+    let key = if cf.notes.iter().any(|n| n.secret.is_some()) { "changes.suspect" } else { "changes.large" };
+    let mut t = app.tr(key).replace("{files}", &shown);
+    if more > 0 {
+        t.push_str(&app.tr("changes.and_more").replace("{n}", &more.to_string()));
+    }
+    t
 }
 
 /// A note at the top of `r`, wrapped to its width.

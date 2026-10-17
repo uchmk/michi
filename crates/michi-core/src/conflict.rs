@@ -486,7 +486,7 @@ fn whole_by_attr(wt: &Path, paths: &[&str]) -> HashSet<String> {
 }
 
 /// The blobs `ids`, by id (`cat-file --batch`).
-fn blobs(wt: &Path, ids: &[Oid]) -> Result<HashMap<Oid, Vec<u8>>, git::Error> {
+pub(crate) fn blobs(wt: &Path, ids: &[Oid]) -> Result<HashMap<Oid, Vec<u8>>, git::Error> {
     let mut map = HashMap::new();
     if ids.is_empty() {
         return Ok(map);
