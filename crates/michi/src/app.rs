@@ -214,7 +214,8 @@ pub const READY_KEYS: [(&str, &str); 1] = [("Esc", "key.back")];
 /// The keys of the sign-in help (`K`).
 pub const AUTH_KEYS: [(&str, &str); 2] = [("1-9", "key.copy_command"), ("Esc", "key.back")];
 /// The keys of the reflog list (`L`).
-pub const REFLOG_KEYS: [(&str, &str); 3] = [("j k", "key.move"), ("Enter", "key.bring_back"), ("Esc", "key.back")];
+pub const REFLOG_KEYS: [(&str, &str); 5] =
+    [("j k", "key.move"), ("Enter", "key.bring_back"), ("g", "key.show_commit"), ("r", "key.raw_wording"), ("Esc", "key.back")];
 /// The keys of the statistics screen (`I`).
 pub const STATS_KEYS: [(&str, &str); 4] = [("j k", "key.move"), ("r", "key.stats_range"), ("w", "key.stats_grain"), ("Esc", "key.back")];
 /// The keys of the blame screen (`B` over the graph or the changes).

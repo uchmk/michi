@@ -1317,3 +1317,13 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 261.3 | Change the theme and a key, press Import once, then again | The first press only arms the button; the second reads the file back, a toast says what was read, and the theme and the key are as exported within a couple of seconds |
 | 261.4 | Import a file that is not a settings bundle | A toast gives the reason and nothing in the settings folder changes |
 | 261.5 | Search "backup" in the settings | The Advanced page is listed |
+
+## 114. Operation history (#114)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 114.1 | Commit, switch branch, reset to `HEAD~1`, then press `L` | Rows read in plain words with the time at the left ("Committed: ...", "Switched from a to b", "Moved the branch to HEAD~1"), the commit id at the right; michi's backups read "michi kept this before: ..." | [ ] |
+| 114.2 | Press `r` in the list, then `r` again | The rows switch to git's own wording (`HEAD@{n}`, `checkout: moving from ...`) and back | [ ] |
+| 114.3 | Select a row and press `g` | The list closes and the graph shows that commit selected; for a commit not in the graph a toast says so | [ ] |
+| 114.4 | Select a row and press Enter | The band asks to bring it back as a new branch (the undo path); nothing moves until `y` | [ ] |
+| 114.5 | Check the keybar and `?` with the list open; switch EN and JA | `g` and `r` are listed; both languages read well | [ ] |

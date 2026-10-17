@@ -52,6 +52,75 @@ impl Entry {
     }
 }
 
+/// What a row says in plain terms, read from git's own wording; the screen
+/// words it in the language chosen.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Op {
+    Commit(String),
+    FirstCommit(String),
+    Amend(String),
+    MergeCommit(String),
+    Switch {
+        from: String,
+        to: String,
+    },
+    Reset(String),
+    Merge(String),
+    Pull,
+    Rebase,
+    CherryPick(String),
+    Revert(String),
+    Clone,
+    /// michi kept the commit before something was dropped; the reason.
+    Kept(String),
+    /// Anything else, as git wrote it.
+    Other(String),
+}
+
+impl Entry {
+    /// The row as an operation: what the user (or michi) did.
+    pub fn op(&self) -> Op {
+        if self.is_backup() {
+            return Op::Kept(self.what.clone());
+        }
+        parse_op(&self.what)
+    }
+}
+
+fn parse_op(what: &str) -> Op {
+    let rest = |p: &str| what.strip_prefix(p).map(|r| r.trim().to_owned());
+    if let Some(m) = rest("commit (initial):") {
+        Op::FirstCommit(m)
+    } else if let Some(m) = rest("commit (amend):") {
+        Op::Amend(m)
+    } else if let Some(m) = rest("commit (merge):") {
+        Op::MergeCommit(m)
+    } else if let Some(m) = rest("commit:") {
+        Op::Commit(m)
+    } else if let Some(t) = rest("checkout: moving from") {
+        match t.split_once(" to ") {
+            Some((a, b)) => Op::Switch { from: a.to_owned(), to: b.to_owned() },
+            None => Op::Other(what.to_owned()),
+        }
+    } else if let Some(t) = rest("reset: moving to") {
+        Op::Reset(t)
+    } else if what.starts_with("pull") {
+        Op::Pull
+    } else if what.starts_with("rebase") {
+        Op::Rebase
+    } else if let Some(t) = what.strip_prefix("merge ") {
+        Op::Merge(t.split(':').next().unwrap_or(t).trim().to_owned())
+    } else if let Some(m) = rest("cherry-pick:") {
+        Op::CherryPick(m)
+    } else if let Some(m) = rest("revert:") {
+        Op::Revert(m)
+    } else if what.starts_with("clone:") {
+        Op::Clone
+    } else {
+        Op::Other(what.to_owned())
+    }
+}
+
 /// The rows, newest first: HEAD's reflog as the worktree at `dir` has it,
 /// and every backup.
 pub fn list(dir: &Path) -> Result<Vec<Entry>, git::Error> {
@@ -135,6 +204,36 @@ mod tests {
         assert_eq!(moves[1].id, second);
         assert_eq!(moves[1].subject, "second");
         assert!(moves.last().unwrap().what.starts_with("commit (initial)"));
+    }
+
+    #[test]
+    fn git_wording_is_read_as_an_operation() {
+        assert_eq!(parse_op("commit: fix it"), Op::Commit("fix it".into()));
+        assert_eq!(parse_op("commit (initial): first"), Op::FirstCommit("first".into()));
+        assert_eq!(parse_op("commit (amend): again"), Op::Amend("again".into()));
+        assert_eq!(parse_op("commit (merge): Merge x"), Op::MergeCommit("Merge x".into()));
+        assert_eq!(parse_op("checkout: moving from a to b/c"), Op::Switch { from: "a".into(), to: "b/c".into() });
+        assert_eq!(parse_op("reset: moving to HEAD~1"), Op::Reset("HEAD~1".into()));
+        assert_eq!(parse_op("merge topic: Fast-forward"), Op::Merge("topic".into()));
+        assert_eq!(parse_op("pull --rebase (finish): returning to refs/heads/main"), Op::Pull);
+        assert_eq!(parse_op("rebase (pick): x"), Op::Rebase);
+        assert_eq!(parse_op("cherry-pick: pick"), Op::CherryPick("pick".into()));
+        assert_eq!(parse_op("revert: Revert x"), Op::Revert("Revert x".into()));
+        assert_eq!(parse_op("clone: from https://example.com/r.git"), Op::Clone);
+        assert_eq!(parse_op("branch: Created from HEAD"), Op::Other("branch: Created from HEAD".into()));
+    }
+
+    #[test]
+    fn rows_of_a_real_repository_have_operations() {
+        let t = TempRepo::configured("reflog-ops");
+        t.git(&t.repo, &["commit", "-q", "--allow-empty", "-m", "second"]);
+        let second = head(&t);
+        t.git(&t.repo, &["reset", "-q", "--hard", "HEAD~1"]);
+        backup::save(&t.repo, &second, "reset away").unwrap();
+        let rows = list(&t.repo).unwrap();
+        assert!(rows.iter().any(|e| e.op() == Op::Reset("HEAD~1".into())), "{rows:?}");
+        assert!(rows.iter().any(|e| e.op() == Op::Commit("second".into())));
+        assert!(rows.iter().any(|e| e.op() == Op::Kept("reset away".into())));
     }
 
     #[test]
