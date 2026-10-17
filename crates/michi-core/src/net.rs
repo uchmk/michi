@@ -13,6 +13,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError};
 use std::time::{Duration, Instant, SystemTime};
 
+use crate::autostash::{self, Stashed};
 use crate::backup;
 use crate::git;
 use crate::oid::Oid;
@@ -53,8 +54,9 @@ impl Progress {
 pub enum Done {
     /// Every remote fetched; `moved` refs came, went or moved.
     Fetched { remotes: usize, moved: usize },
-    /// The branch went forward `count` commits to `upstream` (`origin/main`).
-    Pulled { upstream: String, count: usize },
+    /// The branch went forward `count` commits to `upstream` (`origin/main`);
+    /// `stashed`, the local changes that were put away for it and back.
+    Pulled { upstream: String, count: usize, stashed: Option<Stashed> },
     /// The branch went to `to` (`origin/main`): `new` there, with the
     /// upstream set; `saved`, the backup of what a push over it replaced.
     Pushed { to: String, new: bool, saved: Option<String> },
@@ -148,7 +150,8 @@ pub fn fetch(dir: &Path, stop: &AtomicBool, tell: &mut dyn FnMut(Progress)) -> R
 
 /// Brings the branch of the worktree at `dir` up to its upstream: fetches
 /// that remote, then fast-forwards; a branch with commits of its own is not
-/// merged ([`Why::Diverged`]).
+/// merged ([`Why::Diverged`]). Uncommitted changes that stand in the way are
+/// stashed around the fast-forward ([`autostash`]).
 pub fn pull(dir: &Path, stop: &AtomicBool, tell: &mut dyn FnMut(Progress)) -> Result<Done, git::Error> {
     let Some(branch) = branch(dir)? else { return Ok(Done::Not(Why::Detached)) };
     let remote = config(dir, &format!("branch.{branch}.remote"))?;
@@ -175,11 +178,16 @@ pub fn pull(dir: &Path, stop: &AtomicBool, tell: &mut dyn FnMut(Progress)) -> Re
     if ahead > 0 {
         return Ok(Done::Not(Why::Diverged { upstream, ahead, behind }));
     }
-    let out = git::command().arg("-C").arg(dir).args(["merge", "--ff-only", "-q", &up]).output().map_err(git::started)?;
-    if !out.status.success() {
-        return Err(git::refused_all(&String::from_utf8_lossy(&out.stderr)));
-    }
-    Ok(Done::Pulled { upstream, count: behind })
+    // Local changes in the way are put away, kept, and put back after.
+    let ((), stashed) = autostash::around(dir, &format!("pull of {upstream}"), || {
+        let out = git::command().arg("-C").arg(dir).args(["merge", "--ff-only", "-q", &up]).output().map_err(git::started)?;
+        if out.status.success() {
+            Ok(())
+        } else {
+            Err(git::refused_all(&String::from_utf8_lossy(&out.stderr)))
+        }
+    })?;
+    Ok(Done::Pulled { upstream, count: behind, stashed })
 }
 
 /// Pushes the branch of the worktree at `dir`: to its push remote
@@ -617,7 +625,7 @@ mod tests {
         assert_eq!(pull(&t.repo, &no, &mut quiet()).unwrap(), Done::Even { to: "origin/main".into() });
         let theirs = commit(&t, &other, "a.txt");
         t.git(&other, &["push", "-q"]);
-        assert_eq!(pull(&t.repo, &no, &mut quiet()).unwrap(), Done::Pulled { upstream: "origin/main".into(), count: 1 });
+        assert_eq!(pull(&t.repo, &no, &mut quiet()).unwrap(), Done::Pulled { upstream: "origin/main".into(), count: 1, stashed: None });
         assert_eq!(t.out(&t.repo, &["rev-parse", "HEAD"]), theirs);
 
         commit(&t, &t.repo, "mine.txt");
@@ -632,6 +640,60 @@ mod tests {
         assert_eq!(pull(&t.repo, &no, &mut quiet()).unwrap(), Done::Not(Why::NoUpstream { branch: "lone".into() }));
         t.git(&t.repo, &["switch", "-q", "--detach"]);
         assert_eq!(pull(&t.repo, &no, &mut quiet()).unwrap(), Done::Not(Why::Detached));
+    }
+
+    #[test]
+    fn a_pull_puts_changes_in_the_way_away_and_back() {
+        use crate::autostash::Back;
+        let (t, other) = with_remote("net-pull-autostash");
+        let no = AtomicBool::new(false);
+        commit(&t, &t.repo, "a.txt");
+        t.git(&t.repo, &["push", "-q"]);
+        t.git(&other, &["pull", "-q"]);
+        t.write(
+            &other, "a.txt", "theirs
+",
+        );
+        t.git(&other, &["commit", "-q", "-am", "theirs"]);
+        t.git(&other, &["push", "-q"]);
+
+        // Edits in a file the pull changes: git alone would refuse.
+        t.write(
+            &t.repo, "a.txt", "mine
+",
+        );
+        t.write(
+            &t.repo, "u.txt", "u
+",
+        );
+        let Done::Pulled { count: 1, stashed: Some(s), .. } = pull(&t.repo, &no, &mut quiet()).unwrap() else { panic!("not pulled") };
+        assert!(s.saved.starts_with(backup::PREFIX));
+        assert_eq!(s.back, Back::Clash(vec!["a.txt".into()]));
+        assert!(std::fs::read_to_string(t.repo.join("a.txt")).unwrap().contains("<<<<<<<"));
+        assert_eq!(
+            std::fs::read_to_string(t.repo.join("u.txt")).unwrap(),
+            "u
+"
+        );
+        assert!(!t.out(&t.repo, &["rev-list", &s.saved, "-1", "--format=%s"]).is_empty());
+
+        // Edits to another file go along without any stash.
+        t.git(&t.repo, &["reset", "-q", "--hard"]);
+        t.git(&t.repo, &["stash", "drop", "-q"]);
+        t.write(
+            &other, "b.txt", "b
+",
+        );
+        t.git(&other, &["add", "."]);
+        t.git(&other, &["commit", "-q", "-m", "b"]);
+        t.git(&other, &["push", "-q"]);
+        let done = pull(&t.repo, &no, &mut quiet()).unwrap();
+        assert!(matches!(done, Done::Pulled { count: 1, stashed: None, .. }), "{done:?}");
+        assert_eq!(
+            std::fs::read_to_string(t.repo.join("u.txt")).unwrap(),
+            "u
+"
+        );
     }
 
     #[test]

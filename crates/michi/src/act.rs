@@ -5,6 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
+use michi_core::autostash::{Back as AutoBack, Stashed as Autostashed};
 use michi_core::backup;
 use michi_core::branch::Doing;
 use michi_core::conflict::{self, Block, Conflict, Pick};
@@ -294,6 +295,8 @@ pub enum Acted {
     Upstream(String),
     Reverted(Reverted),
     Stashed(Saved),
+    /// Switched; with the changes that were stashed around it, if any.
+    Switched(Option<Autostashed>),
     Unstashed(Applied),
     Found(Found),
     Planned(michi_core::rebase::Plan),
@@ -325,7 +328,7 @@ pub struct Solved {
 pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
     match task {
         Task::Create { name, at, switch } => branch::create(dir, name, at, switch.as_deref()).map(|()| Acted::Done),
-        Task::Switch { wt, name } => branch::switch(wt, name).map(|()| Acted::Done),
+        Task::Switch { wt, name } => branch::switch_keeping(wt, name).map(Acted::Switched),
         Task::Track { wt, remote, name } => branch::track(wt, remote, name).map(|()| Acted::Done),
         Task::Delete { name } => branch::delete(dir, name).map(Acted::Kept),
         Task::Rename { old, new } => branch::rename(dir, old, new).map(|()| Acted::Done),
@@ -411,6 +414,18 @@ impl App {
         }
     }
 
+    /// What to add to a toast when changes were stashed around a job, and how
+    /// long to show it. A clash stays marked in the files (a stash put back
+    /// leaves no merge for the `4` view to read), as with a stash applied by hand.
+    pub(crate) fn autostash_said(&self, s: &Autostashed) -> (String, u64) {
+        let saved = backup::short(&s.saved);
+        match &s.back {
+            AutoBack::Done => (self.tr("auto.back").replace("{saved}", saved), 8),
+            AutoBack::Clash(files) => (self.tr("auto.clash").replace("{files}", &self.few(files)).replace("{saved}", saved), 14),
+            AutoBack::Failed(why) => (self.tr("auto.failed").replace("{why}", why).replace("{saved}", saved), 14),
+        }
+    }
+
     /// The task is over: say how it went; a tag to push goes on to the net
     /// thread.
     pub(crate) fn act_done(&mut self, task: Task, result: Result<Acted, git::Error>) {
@@ -482,6 +497,10 @@ impl App {
             }
             (Task::Create { name, switch: Some(wt), .. }, Ok(_)) => {
                 (self.tr("act.created_switched").replace("{name}", name).replace("{wt}", &self::name(wt)), 4)
+            }
+            (Task::Switch { wt, name }, Ok(Acted::Switched(Some(s)))) => {
+                let (text, secs) = self.autostash_said(&s);
+                (self.tr("act.switched").replace("{name}", name).replace("{wt}", &self::name(wt)) + &text, secs)
             }
             (Task::Switch { wt, name }, Ok(_)) => (self.tr("act.switched").replace("{name}", name).replace("{wt}", &self::name(wt)), 4),
             (Task::Track { wt, remote, name }, Ok(_)) => {
@@ -714,6 +733,18 @@ mod tests {
             said(Task::Abort { wt: wt.clone(), doing: Doing::CherryPick }, Ok(Acted::Kept(None))),
             "Called the cherry-pick on feat off"
         );
+        assert_eq!(
+            said(
+                Task::Switch { wt: wt.clone(), name: "main".into() },
+                Ok(Acted::Switched(Some(Autostashed { saved: "refs/michi/backup/20261016-120000".into(), back: AutoBack::Done })))
+            ),
+            "feat is on main now; the changes in the way were stashed and put back (kept in michi/backup/20261016-120000)"
+        );
+        assert!(said(
+            Task::Switch { wt: wt.clone(), name: "main".into() },
+            Ok(Acted::Switched(Some(Autostashed { saved: "refs/michi/backup/x".into(), back: AutoBack::Clash(vec!["a.txt".into()]) })))
+        )
+        .contains("clashed in a.txt"));
         assert_eq!(
             said(Task::Stash { wt: wt.clone(), message: String::new() }, Ok(Acted::Stashed(Saved::Made(oid('e'))))),
             "Put the changes of feat away: eeeeeee"
