@@ -540,3 +540,14 @@ files under `refs/michi/backup/<time>` first.
 | 37.5 | Write `[open]` `editor = "notepad {path}"` into config.toml, wait 2 s, press `e` | Notepad is started with the folder as its argument; Settings > General shows the line | | [ ] |
 | 37.6 | Write `editor = "no-such-program"`, press `e` | A toast "open failed: ..." with the program's name; michi keeps running and does not freeze | | [ ] |
 | 37.7 | Write `editor = "a \"b"` (unclosed quote) | A warning about config.toml names the key; `e` still uses the default | | [ ] |
+
+## 38. Key hints on hover
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 38.1 | Hover the gear at the top right and the search field beside it | The tooltips read `Settings (,)` and `Search commands (Ctrl+Shift+P)` | | [ ] |
+| 38.2 | Bind another key to `palette` in keymap.toml (prepend), restart, hover the search field | The tooltip shows the new key | | [ ] |
+| 38.3 | Hover each view tab (Graph, Changes, Worktrees) | The tooltip names the view and its digit, for example `Graph (1)` | | [ ] |
+| 38.4 | In the graph view hover Fetch, Pull, Push, Branch, Stash and New work | Each tooltip shows its key, for example `Fetch (f)`, `New work (N)` | | [ ] |
+| 38.5 | During a merge hover Pull and Stash | The tooltip still says they are held, not the key | | [ ] |
+| 38.6 | In the worktree view hover New work and the re-read button | `New work (N)`; the re-read button shows just its name | | [ ] |

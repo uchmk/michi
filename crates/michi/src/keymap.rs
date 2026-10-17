@@ -55,6 +55,14 @@ pub fn parse(s: &str) -> Result<Act, String> {
     Ok(act)
 }
 
+/// A button's tooltip: its name and, when it has one, its key in brackets.
+pub fn tip(word: &str, key: Option<&str>) -> String {
+    match key {
+        Some(k) => format!("{word} ({k})"),
+        None => word.to_owned(),
+    }
+}
+
 pub(crate) const SPEC: ito_keymap::Spec = ito_keymap::Spec { layers: &[ito_keymap::Layer::new("main")], ignored: &[], defaults: DEFAULTS };
 
 #[derive(Default, Debug)]
@@ -77,6 +85,14 @@ impl Keymap {
         let files: Vec<(&str, &str)> = user.map(|t| ("keymap.toml", t)).into_iter().collect();
         let mut km = ito_keymap::load(&SPEC, &files, &mut command);
         (Self { main: km.take("main") }, km.warnings)
+    }
+
+    /// The key that runs `act`, spelled for a reader (`Ctrl+Shift+P`): the
+    /// first binding in the main layer that is just that command. For a
+    /// button's tooltip, so a changed keymap changes the hint.
+    pub fn hint(&self, act: Act) -> Option<String> {
+        let b = self.main.iter().find(|b| b.run.len() == 1 && b.run[0] == act)?;
+        Some(ito_keys::human_seq(&b.on))
     }
 
     /// Every layer's bindings, by name in [`SPEC`]'s order: what the Keys
@@ -125,6 +141,27 @@ mod tests {
         assert_eq!(km.act(key("<C-->")), Some(Act::Scale(ScaleTo::Out)));
         assert_eq!(km.act(key("<C-0>")), Some(Act::Scale(ScaleTo::Reset)));
         assert_eq!(km.act(key("j")), None);
+    }
+
+    #[test]
+    fn a_hint_follows_the_keymap() {
+        let (km, _) = Keymap::load(None);
+        assert_eq!(km.hint(Act::Palette).as_deref(), Some("Ctrl+Shift+P"));
+        assert_eq!(km.hint(Act::Settings).as_deref(), Some(","));
+        let (km, _) = Keymap::load(Some(
+            "[main]
+prepend_keymap = [{ on = \"<C-k>\", run = \"palette\" }]
+",
+        ));
+        assert_eq!(km.hint(Act::Palette).as_deref(), Some("Ctrl+K"));
+        let (km, _) = Keymap::load(Some(
+            "[main]
+keymap = []
+",
+        ));
+        assert_eq!(km.hint(Act::Palette), None);
+        assert_eq!(tip("Fetch", Some("f")), "Fetch (f)");
+        assert_eq!(tip("Fetch", None), "Fetch");
     }
 
     #[test]

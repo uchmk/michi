@@ -278,6 +278,7 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
         if resp.clicked() {
             out.view = Some(v);
         }
+        resp.clone().on_hover_text(crate::keymap::tip(app.tr(v.label()), Some(&v.digit().to_string())));
         if resp.hovered() {
             ctx.set_cursor_icon(CursorIcon::PointingHand);
         }
@@ -320,7 +321,7 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
     if resp.clicked() {
         out.settings = true;
     }
-    resp.on_hover_text(app.tr("view.settings"));
+    resp.on_hover_text(crate::keymap::tip(app.tr("view.settings"), app.prefs.keymap.hint(crate::keymap::Act::Settings).as_deref()));
     right = gear.left() - 8.0;
     // The palette field.
     let w = if r.width() < NARROW { 150.0 } else { 230.0 };
@@ -337,6 +338,8 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
         if resp.clicked() {
             out.palette = true;
         }
+        let resp =
+            resp.on_hover_text(crate::keymap::tip(app.tr("palette.hint"), app.prefs.keymap.hint(crate::keymap::Act::Palette).as_deref()));
         if resp.hovered() {
             ctx.set_cursor_icon(CursorIcon::Text);
         }

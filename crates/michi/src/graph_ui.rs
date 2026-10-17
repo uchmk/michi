@@ -140,6 +140,8 @@ fn tool_band(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         };
         if locked {
             resp.clone().on_hover_text(app.tr("tool.locked"));
+        } else {
+            resp.clone().on_hover_text(crate::keymap::tip(app.tr(t.word), Some(&t.key.to_string())));
         }
         if hot {
             p.rect_filled(b, CornerRadius::same(5), c.panel);
