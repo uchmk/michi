@@ -306,8 +306,15 @@ impl App {
         let (text, secs) = match result {
             Ok(Done::Fetched { moved: 0, .. }) => (self.tr("net.fetched_none").to_owned(), 4),
             Ok(Done::Fetched { moved, .. }) => (self.tr("net.fetched").replace("{}", &moved.to_string()), 4),
-            Ok(Done::Pulled { upstream, count }) => {
-                (self.tr("net.pulled").replace("{n}", &count.to_string()).replace("{up}", &upstream), 4)
+            Ok(Done::Pulled { upstream, count, stashed }) => {
+                let text = self.tr("net.pulled").replace("{n}", &count.to_string()).replace("{up}", &upstream);
+                match stashed {
+                    Some(s) => {
+                        let (more, secs) = self.autostash_said(&s);
+                        (text + &more, secs)
+                    }
+                    None => (text, 4),
+                }
             }
             Ok(Done::Pushed { to, saved: Some(saved), .. }) => {
                 (self.tr("net.pushed_over").replace("{to}", &to).replace("{saved}", michi_core::backup::short(&saved)), 10)
@@ -438,7 +445,10 @@ mod tests {
         };
         assert_eq!(said(&Job::Fetch, Ok(Done::Fetched { remotes: 1, moved: 0 })), "Fetched: nothing new");
         assert_eq!(said(&Job::Fetch, Ok(Done::Fetched { remotes: 2, moved: 3 })), "Fetched: 3 refs moved");
-        assert_eq!(said(&pull, Ok(Done::Pulled { upstream: "origin/main".into(), count: 2 })), "Pulled 2 commits from origin/main");
+        assert_eq!(
+            said(&pull, Ok(Done::Pulled { upstream: "origin/main".into(), count: 2, stashed: None })),
+            "Pulled 2 commits from origin/main"
+        );
         assert_eq!(said(&pull, Ok(Done::Even { to: "origin/main".into() })), "Already up to date with origin/main");
         assert_eq!(said(&push, Ok(Done::Even { to: "origin/feat".into() })), "origin/feat has it already");
         assert_eq!(

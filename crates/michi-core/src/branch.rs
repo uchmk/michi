@@ -7,6 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::autostash::{self, Stashed};
 use crate::backup;
 use crate::git;
 use crate::oid::Oid;
@@ -94,6 +95,16 @@ pub fn create(dir: &Path, name: &str, at: &Oid, switch: Option<&Path>) -> Result
 /// go along when they can; git refuses when they would be lost.
 pub fn switch(wt: &Path, name: &str) -> Result<(), git::Error> {
     write(wt, &["switch", "--no-guess", name])
+}
+
+/// [`switch`], and when uncommitted changes stand in the way: they are
+/// stashed around it and put back ([`autostash`]), a clash left marked in the
+/// worktree. A branch that is not there is refused before anything is put away.
+pub fn switch_keeping(wt: &Path, name: &str) -> Result<Option<Stashed>, git::Error> {
+    if git::read_maybe(wt, &["rev-parse", "--verify", "-q", &format!("refs/heads/{name}")])?.is_none() {
+        return switch(wt, name).map(|()| None);
+    }
+    autostash::around(wt, &format!("switch to {name}"), || switch(wt, name)).map(|((), stashed)| stashed)
 }
 
 /// Makes the branch `name` from the remote branch `remote` (`origin/feat`),
