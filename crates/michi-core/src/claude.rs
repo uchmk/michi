@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Deserializer};
 
+use crate::oid::Oid;
 use crate::{git, paths};
 
 /// How long `tsumugi ls --json` may take before it is given up on.
@@ -241,6 +242,62 @@ pub fn waiting(by_worktree: &[(PathBuf, Vec<Session>)]) -> Vec<Waiting> {
 /// not have.
 pub fn fresh<'a>(seen: &[(u64, u64)], now: &'a [Waiting]) -> Vec<&'a Waiting> {
     now.iter().filter(|w| !seen.contains(&w.key())).collect()
+}
+
+/// What [`made_in`] needs to know of a commit.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Node {
+    pub parents: Vec<Oid>,
+    /// On the trunk's first-parent line: shared by every worktree, so not any
+    /// one Claude's own work.
+    pub trunk: bool,
+}
+
+/// A worktree's folder and the commit it has checked out.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Tip {
+    pub wt: PathBuf,
+    pub head: Oid,
+}
+
+/// How many commits [`made_in`] looks at for one worktree before it gives up.
+pub const REACH: usize = 5000;
+
+/// The worktrees whose own work `commit` is part of, in the order of `tips`:
+/// the commit is their `HEAD`, or one that `HEAD` reaches without going over
+/// the trunk's first-parent line (a branch's own commits). So a commit on the
+/// trunk belongs to the worktree that has it checked out and to no other.
+/// `node` gives a commit's parents (`None` when it is not read, which ends
+/// that way). Memory only; at most [`REACH`] commits are looked at per worktree.
+pub fn made_in(commit: &Oid, tips: &[Tip], node: impl Fn(&Oid) -> Option<Node>) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    for tip in tips {
+        if tip.head == *commit {
+            out.push(tip.wt.clone());
+            continue;
+        }
+        let mut seen: std::collections::HashSet<Oid> = std::collections::HashSet::new();
+        let mut stack = vec![tip.head];
+        let mut found = false;
+        while let Some(id) = stack.pop() {
+            if seen.len() >= REACH || !seen.insert(id) {
+                continue;
+            }
+            let Some(n) = node(&id) else { continue };
+            if n.trunk {
+                continue;
+            }
+            if id == *commit {
+                found = true;
+                break;
+            }
+            stack.extend(n.parents);
+        }
+        if found {
+            out.push(tip.wt.clone());
+        }
+    }
+    out
 }
 
 /// Runs `program args…` for its standard output. `Ok(None)` when it is not
@@ -532,6 +589,57 @@ mod tests {
         assert_eq!(run("git", &["no-such-subcommand-for-tests"], slow), Ok(None));
         let out = run("git", &["--version"], slow).unwrap().unwrap();
         assert!(String::from_utf8_lossy(&out).starts_with("git version"));
+    }
+
+    fn oid(n: u8) -> Oid {
+        Oid::parse(&format!("{n:02x}").repeat(20)).unwrap()
+    }
+
+    /// 1 <- 2 <- 3 on the trunk; 3 <- 4 <- 5 on a branch; 3 <- 6 on another.
+    fn history(id: &Oid) -> Option<Node> {
+        let n = |parents: &[u8], trunk| Some(Node { parents: parents.iter().map(|p| oid(*p)).collect(), trunk });
+        match *id {
+            x if x == oid(1) => n(&[], true),
+            x if x == oid(2) => n(&[1], true),
+            x if x == oid(3) => n(&[2], true),
+            x if x == oid(4) => n(&[3], false),
+            x if x == oid(5) => n(&[4], false),
+            x if x == oid(6) => n(&[3], false),
+            _ => None,
+        }
+    }
+
+    fn tip(wt: &str, head: u8) -> Tip {
+        Tip { wt: PathBuf::from(wt), head: oid(head) }
+    }
+
+    #[test]
+    fn a_branch_commit_belongs_to_the_worktrees_that_reach_it_off_the_trunk() {
+        let tips = [tip("/main", 3), tip("/a", 5), tip("/b", 6)];
+        assert_eq!(made_in(&oid(4), &tips, history), [PathBuf::from("/a")]);
+        assert_eq!(made_in(&oid(5), &tips, history), [PathBuf::from("/a")]);
+        assert_eq!(made_in(&oid(6), &tips, history), [PathBuf::from("/b")]);
+    }
+
+    #[test]
+    fn a_trunk_commit_belongs_only_to_the_worktree_that_has_it_checked_out() {
+        let tips = [tip("/main", 3), tip("/a", 5)];
+        assert_eq!(made_in(&oid(3), &tips, history), [PathBuf::from("/main")]);
+        assert!(made_in(&oid(2), &tips, history).is_empty());
+    }
+
+    #[test]
+    fn two_worktrees_on_one_commit_both_are_named_and_unread_commits_end_the_walk() {
+        let tips = [tip("/a", 5), tip("/b", 5), tip("/c", 9)];
+        assert_eq!(made_in(&oid(4), &tips, history), [PathBuf::from("/a"), PathBuf::from("/b")]);
+        assert!(made_in(&oid(4), &[tip("/c", 9)], history).is_empty());
+        assert!(made_in(&oid(4), &[], history).is_empty());
+    }
+
+    #[test]
+    fn a_cycle_or_a_long_branch_does_not_hang() {
+        let cyc = |id: &Oid| Some(Node { parents: vec![*id], trunk: false });
+        assert!(made_in(&oid(7), &[tip("/a", 5)], cyc).is_empty());
     }
 
     #[test]

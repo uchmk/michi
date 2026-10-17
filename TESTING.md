@@ -703,6 +703,17 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 94.6 | Drag the Review column's left edge in the header; restart michi | The width follows the drag and is kept; the other columns still resize | [ ] |
 | 94.7 | Switch the language EN and JA, and a theme with a light background | The stage words read `Not looked at` / `In review` / `Flagged` / `Approved` and JA `未確認` / `確認中` / `指摘済み` / `承認`; every colour is readable | [ ] |
 
+## 95. From a commit to the Claude session of its worktree (#95)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 95.1 | With tsumugi running, select a commit that is only on a worktree's branch (not on main) whose worktree has a Claude tab | The detail header shows `Claude in this worktree  tab N · <title>` under the names; the title is the tab's | [ ] |
+| 95.2 | Click that `tab N · title` | The tab comes to the front in tsumugi (same as `o`); a toast says so | [ ] |
+| 95.3 | Select a commit on main that no worktree has checked out | No Claude line; select the one the main worktree has checked out (with a Claude there): the line shows | [ ] |
+| 95.4 | A worktree with two or more Claudes | The first two are listed and `+N more` follows; narrow the window and the line wraps | [ ] |
+| 95.5 | Quit tsumugi (or have no Claude in the worktree) and select the same commit | The line goes within a few seconds; nothing else changes; the WIP row has no such line | [ ] |
+| 95.6 | Switch EN and JA | `Claude in this worktree` / `この worktree の Claude`, `tab` / `タブ` read well | [ ] |
+
 ## 66. Right-click menus for a commit, a branch and a file
 
 | # | Do | Expect |
