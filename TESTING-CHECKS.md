@@ -927,3 +927,16 @@
 - [ ] **236.3** Merge a branch that changed only a file executable bit while the other changed its content → The second line says one side "made it executable" and the other "changed it" 〔未訳〕
 - [ ] **236.4** Merge a binary file changed on both sides, and a submodule moved on both → The cards say binary / has a submodule; "Open in a tool" (`w`) still works 〔未訳〕
 - [ ] **236.5** Switch EN and JA; narrow the window → Both lines read well and are cut at the card edge, not over the buttons 〔未訳〕
+
+## 232. Bisect (#32)
+
+- [ ] **232.1** Select a commit, press `x`, select an older one, press `g` → A question names the worktree, says commits are checked out and the old position is kept under refs/michi/backup/; `n` or Esc leaves everything 〔未訳〕
+- [ ] **232.2** Answer `y` → Bisect starts; the strip shows the commit under test and the steps left; a toast names the backup 〔未訳〕
+- [ ] **232.3** Start with uncommitted tracked changes → Refused with the reason; nothing changed 〔未訳〕
+- [ ] **232.4** Start in the middle of a merge or rebase → Refused with the reason; nothing changed 〔未訳〕
+- [ ] **232.5** Press `g` / `x` / `u` on each tested commit until the end → Strip updates each step; at the end it names the first bad commit 〔未訳〕
+- [ ] **232.6** Press `X` while bisecting, answer `y` → The worktree returns to where it was; the backup ref stays; the strip goes 〔未訳〕
+- [ ] **232.7** Press `r` → A `git bisect run` line is on the clipboard and works when `<test-command>` is replaced 〔未訳〕
+- [ ] **232.8** Run a bisect with a second worktree present → The other worktrees are untouched 〔未訳〕
+- [ ] **232.9** With a Claude working in the worktree, start → The question also says a Claude is working there 〔未訳〕
+- [ ] **232.10** Switch EN and JA; check the keybar and `?` → The bisect keys appear; text reads well in both languages 〔未訳〕

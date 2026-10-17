@@ -9,6 +9,7 @@
 mod act;
 mod app;
 mod avatar;
+mod bisect;
 mod blame;
 mod blame_ui;
 mod bugreport;

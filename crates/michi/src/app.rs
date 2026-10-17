@@ -100,6 +100,10 @@ impl View {
                 ("Y", "key.copy_patch"),
                 ("Ctrl+V", "key.apply_patch"),
                 ("w", "key.ignore_space"),
+                ("x g", "key.bisect_mark"),
+                ("u", "key.bisect_skip"),
+                ("r", "key.bisect_run"),
+                ("X", "key.bisect_reset"),
                 ("Esc", "key.back"),
             ],
             View::Changes => &[
@@ -330,6 +334,12 @@ pub struct App {
     /// The window's worktree is a sparse checkout (#31); None when it is not
     /// (or not read yet).
     pub sparse: Option<michi_core::sparse::Info>,
+    /// A bisect runs in the window's worktree: how far it is; None when it
+    /// does not (or is not read yet).
+    pub bisect: Option<michi_core::bisect::State>,
+    /// The bad and the good commit marked in the graph for a bisect not
+    /// started yet.
+    pub bisect_marks: crate::bisect::Marks,
     /// rerere was asked about (or read as said) in this session.
     pub rerere_asked: bool,
     /// The branch, tag or stash palette, over the graph.
@@ -425,6 +435,8 @@ impl App {
             band: None,
             detached: None,
             sparse: None,
+            bisect: None,
+            bisect_marks: crate::bisect::Marks::default(),
             rerere_asked: false,
             picker: None,
             tab_labels: Vec::new(),
@@ -661,6 +673,7 @@ impl App {
                 self.trees = trees;
                 self.detached_sync();
                 self.sparse_sync();
+                self.bisect_sync();
                 self.review_sync();
             }
             Answer::Claude(c) => {
@@ -1561,6 +1574,7 @@ impl App {
             'H' => self.open_blame(crate::blame::Tab::History),
             'Y' => self.copy_patch(),
             'w' => self.toggle_ignore_space(),
+            'x' | 'g' | 'u' | 'X' | 'r' => return self.bisect_key(c),
             't' => self.ask_revert(),
             'R' => self.ask_reset(),
             'C' => self.ask_cherry(),
