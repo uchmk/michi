@@ -11,7 +11,7 @@ use michi_core::branch::Doing;
 use michi_core::conflict::{self, Block, Conflict, Pick};
 use michi_core::external::{self, Opened};
 use michi_core::git;
-use michi_core::handoff;
+use michi_core::handoff::{self, Stage};
 use michi_core::oid::Oid;
 use michi_core::rerere;
 use michi_core::revert::{self, Reverted};
@@ -224,6 +224,14 @@ pub enum Task {
         conflict: Box<Conflict>,
         session: Option<u64>,
     },
+    /// Tells the Claude of `wt` its solution of a clash was not accepted: the
+    /// tsumugi session `session`, or a new tab when none. `left` places
+    /// still have markers.
+    SendBack {
+        wt: PathBuf,
+        session: Option<u64>,
+        left: usize,
+    },
     /// Writes the notes on the lines of `branch`'s diff to a file and asks a
     /// Claude to act on them: the tsumugi session `session`, or a new tab.
     HandNotes {
@@ -351,7 +359,12 @@ impl Task {
             Task::Abort { doing: Doing::Revert, .. } => "revert --abort",
             Task::Abort { doing: Doing::Bisect, .. } => "bisect reset",
             Task::Markers { .. } => "conflict",
-            Task::Handoff { .. } | Task::HandNotes { .. } | Task::Focus { .. } | Task::Reply { .. } | Task::NewWork { .. } => "tsumugi",
+            Task::Handoff { .. }
+            | Task::SendBack { .. }
+            | Task::HandNotes { .. }
+            | Task::Focus { .. }
+            | Task::Reply { .. }
+            | Task::NewWork { .. } => "tsumugi",
             Task::OpenPr { .. } => "remote",
             Task::OpenIn { .. } => "open",
             Task::External { .. } => "mergetool",
@@ -466,6 +479,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Focus { session } => handoff::focus(*session).map(|()| Acted::Done),
         Task::Reply { session, text } => handoff::send(*session, text).map(|()| Acted::Done),
         Task::Handoff { conflict, session } => hand_off(conflict, *session).map(|()| Acted::Done),
+        Task::SendBack { wt, session, left } => send_back(wt, *session, *left).map(|()| Acted::Done),
         Task::HandNotes { wt, branch, trunk, notes, session } => hand_notes(wt, branch, trunk, notes, *session).map(|()| Acted::Done),
         Task::Markers { wt } => conflict::read(wt).map(|c| Acted::Markers(c.map(|c| c.left()))),
         Task::AskRerere { wt } => rerere::enabled(wt).map(Acted::Rerere),
@@ -485,6 +499,15 @@ fn hand_off(c: &Conflict, session: Option<u64>) -> Result<(), git::Error> {
     match session {
         Some(id) => handoff::send(id, &text),
         None => handoff::start(&c.wt, &name(&c.wt), &text),
+    }
+}
+
+/// Tells the Claude in `wt` that what it solved is sent back.
+fn send_back(wt: &Path, session: Option<u64>, left: usize) -> Result<(), git::Error> {
+    let text = handoff::send_back_request(left);
+    match session {
+        Some(id) => handoff::send(id, &text),
+        None => handoff::start(wt, &name(wt), &text),
     }
 }
 
@@ -570,8 +593,12 @@ impl App {
                 self.detached_read(wt, i);
                 return;
             }
-            (Task::Markers { .. }, Ok(Acted::Markers(None))) => return,
+            (Task::Markers { wt }, Ok(Acted::Markers(None))) => {
+                self.conflicts.set_stage(wt, Stage::after_count(None));
+                return;
+            }
             (Task::Markers { wt }, Ok(Acted::Markers(Some(n)))) => {
+                self.conflicts.set_stage(wt, Stage::after_count(Some(n)));
                 let key = if n == 0 { "claude.markers_gone" } else { "claude.markers_left" };
                 (self.tr(key).replace("{wt}", &self::name(wt)).replace("{n}", &n.to_string()), 10)
             }
@@ -602,7 +629,17 @@ impl App {
                 if let Some(h) = self.handed.last_mut() {
                     h.conflict = true;
                 }
+                self.conflicts.set_stage(&conflict.wt, Some(Stage::Asked));
                 (self.tr(key).replace("{wt}", &self::name(&conflict.wt)), 8)
+            }
+            (Task::SendBack { wt, session, .. }, Ok(_)) => {
+                let key = if session.is_some() { "act.sent_back" } else { "act.sent_back_new" };
+                self.watch_handed(wt.clone());
+                if let Some(h) = self.handed.last_mut() {
+                    h.conflict = true;
+                }
+                self.conflicts.set_stage(wt, Some(Stage::Asked));
+                (self.tr(key).replace("{wt}", &self::name(wt)), 8)
             }
             (Task::HandNotes { wt, notes, session, .. }, Ok(_)) => {
                 let key = if session.is_some() { "act.noted" } else { "act.noted_new" };

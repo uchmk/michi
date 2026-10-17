@@ -14,6 +14,7 @@ use egui::{
 use ito_theme::mix;
 use michi_core::branch::Doing;
 use michi_core::conflict::{Block, Body, Conflict, Hint, Pick, Side, Whole, Why};
+use michi_core::handoff::{Offer, Stage};
 use michi_core::paths;
 
 use crate::act;
@@ -87,6 +88,7 @@ enum Act {
     AbortNo,
     AbortYes,
     Commit,
+    Offer(Offer),
 }
 
 /// The `4` view in `r`.
@@ -117,6 +119,13 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let mut top = bar.bottom();
     if app.conflicts.abort {
         let (a, h) = d.abort_row(pos2(mr.left(), top), mr.width());
+        if a.is_some() {
+            act = a;
+        }
+        top += h;
+    }
+    if let Some(stage) = app.conflicts.stage() {
+        let (a, h) = d.hand_row(pos2(mr.left(), top), mr.width(), stage);
         if a.is_some() {
             act = a;
         }
@@ -208,6 +217,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         Act::AbortNo => cfs.abort = false,
         Act::AbortYes => app.conflict_abort(),
         Act::Commit => app.conflict_commit(),
+        Act::Offer(o) => app.conflict_offer(o),
     }
     ctx.request_repaint();
 }
@@ -609,6 +619,54 @@ impl Draw<'_> {
                 out = Some(a);
             }
             right = hit.left() - 14.0;
+        }
+        (out, r.height())
+    }
+
+    /// The row under the bar after a clash was handed to a Claude: where it
+    /// stands, and once the Claude stopped, to look at the diff, adopt or
+    /// send it back. What was chosen and the row's height.
+    fn hand_row(&self, top: Pos2, width: f32, stage: Stage) -> (Option<Act>, f32) {
+        let (ui, cf) = (self.ui, self.cf);
+        let c = ito_theme::colors();
+        let font = FontId::proportional(12.5);
+        let wt = crate::act::name(&cf.wt);
+        let (text, ink) = match stage {
+            Stage::Asked => (self.tr("cf.strip_asked").replace("{wt}", &wt), c.run),
+            Stage::Stopped { left: 0 } => (self.tr("cf.strip_done").replace("{wt}", &wt), c.done),
+            Stage::Stopped { left } => (self.tr("cf.strip_left_n").replace("{wt}", &wt).replace("{n}", &left.to_string()), c.err),
+        };
+        let offers: Vec<_> = stage
+            .offers()
+            .into_iter()
+            .map(|o| match o {
+                Offer::Review => (self.tr("cf.strip_review"), "d", Look::Plain),
+                Offer::Adopt => (self.tr("cf.strip_adopt"), "a", Look::Prime),
+                Offer::SendBack => (self.tr("cf.strip_back"), "r", Look::Danger),
+            })
+            .zip(stage.offers())
+            .collect();
+        let buttons_w: f32 = offers.iter().map(|((l, k, look), _)| button_w(ui, l, k, *look) + 8.0).sum();
+        let g = wrapped(ui, text, font.clone(), c.fg, (width - 2.0 * PAD_X - 18.0 - buttons_w).max(40.0));
+        let r = Rect::from_min_size(top, vec2(width, (g.size().y + 16.0).max(ABORT_H)));
+        let p = ui.painter_at(r);
+        p.rect_filled(r, 0.0, ink.gamma_multiply(0.10));
+        p.line_segment([r.left_bottom() - vec2(0.0, 0.5), r.right_bottom() - vec2(0.0, 0.5)], Stroke::new(1.0, c.border));
+        let mid = r.center().y;
+        let left = top.x + PAD_X;
+        let first = ui.fonts_mut(|f| f.row_height(&font)) / 2.0;
+        let at = pos2(left + 18.0, mid - g.size().y / 2.0);
+        p.text(pos2(left, at.y + first), Align2::LEFT_CENTER, "●", FontId::proportional(12.0), ink);
+        p.galley(at, g, c.fg);
+        let mut right = r.right() - PAD_X;
+        let mut out = None;
+        for ((label, key, look), offer) in offers.into_iter().rev() {
+            let w = button_w(ui, label, key, look);
+            let b = Rect::from_min_max(pos2(right - w, mid - BTN_H / 2.0), pos2(right, mid + BTN_H / 2.0));
+            if button(ui, &p, b, label, key, look, ("cf-hand", key), self.live, self.pointer) {
+                out = Some(Act::Offer(offer));
+            }
+            right = b.left() - 8.0;
         }
         (out, r.height())
     }

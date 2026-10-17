@@ -105,6 +105,55 @@ pub fn request(file: &Path) -> String {
     )
 }
 
+/// Where a hand-over of a clash stands, for the strip of the conflict view.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Stage {
+    /// Asked; the Claude has not stopped yet.
+    Asked,
+    /// The Claude stopped, with `left` places still carrying markers.
+    Stopped { left: usize },
+}
+
+/// What the person can do from the strip.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Offer {
+    /// Look at what the Claude did, in the diff.
+    Review,
+    /// Take it: commit (or continue) what was solved.
+    Adopt,
+    /// Ask the Claude to do it again.
+    SendBack,
+}
+
+impl Stage {
+    /// The choices at this stage, in the order the strip shows them. While the
+    /// Claude works there are none; adopting waits until no place is left.
+    pub fn offers(self) -> Vec<Offer> {
+        match self {
+            Stage::Asked => Vec::new(),
+            Stage::Stopped { left: 0 } => vec![Offer::Review, Offer::Adopt, Offer::SendBack],
+            Stage::Stopped { .. } => vec![Offer::Review, Offer::SendBack],
+        }
+    }
+
+    /// The stage once the markers were counted (`None`: nothing is stopped
+    /// there any more, so there is nothing to follow).
+    pub fn after_count(left: Option<usize>) -> Option<Stage> {
+        left.map(|left| Stage::Stopped { left })
+    }
+}
+
+/// What the Claude is told when its answer is sent back, on one line.
+pub fn send_back_request(left: usize) -> String {
+    if left > 0 {
+        format!(
+            "Your solution was not accepted: {left} place(s) in this worktree still have conflict markers. Solve them keeping the intent of both sides, then git add the files. Do not commit."
+        )
+    } else {
+        "Your solution was not accepted. Look at `git diff --cached` in this worktree, redo what is wrong keeping the intent of both sides, then git add the files. Do not commit.".to_owned()
+    }
+}
+
 /// Types `text` into the tsumugi session `id`.
 pub fn send(id: u64, text: &str) -> Result<(), git::Error> {
     tsumugi(Command::new("tsumugi").args(["send", &id.to_string(), text]))
@@ -199,5 +248,26 @@ mod tests {
     fn the_request_is_one_line_with_the_file() {
         let r = request(Path::new("/t/x.md"));
         assert!(!r.contains('\n') && r.contains("x.md") && r.contains("Do not commit"));
+    }
+
+    #[test]
+    fn the_strip_offers_adopting_only_when_nothing_is_left() {
+        assert!(Stage::Asked.offers().is_empty());
+        assert_eq!(Stage::Stopped { left: 2 }.offers(), vec![Offer::Review, Offer::SendBack]);
+        assert_eq!(Stage::Stopped { left: 0 }.offers(), vec![Offer::Review, Offer::Adopt, Offer::SendBack]);
+    }
+
+    #[test]
+    fn a_count_of_markers_gives_the_stage_and_none_ends_it() {
+        assert_eq!(Stage::after_count(Some(3)), Some(Stage::Stopped { left: 3 }));
+        assert_eq!(Stage::after_count(None), None);
+    }
+
+    #[test]
+    fn sending_back_is_one_line_that_says_what_is_wrong() {
+        let (a, b) = (send_back_request(2), send_back_request(0));
+        assert!(!a.contains('\n') && !b.contains('\n'));
+        assert!(a.contains("2 place(s)") && b.contains("git diff --cached"));
+        assert!(a.contains("Do not commit") && b.contains("Do not commit"));
     }
 }
