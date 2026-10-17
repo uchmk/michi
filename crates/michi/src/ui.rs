@@ -14,6 +14,7 @@ use michi_core::summary::Head;
 
 use crate::app::{failed_word, App, Mode, Repo, View};
 use crate::graph_ui::{paint_icon, Icon};
+use crate::sizes::Sizes;
 use crate::work::{self, Kind};
 
 /// The accent of the tabs, the chip's name and the best key: main's cyan,
@@ -83,12 +84,10 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     out
 }
 
-/// The side column's width.
-const SIDE_W: f32 = 220.0;
-/// The detail's width beside the graph.
-const DETAIL_W: f32 = 440.0;
-/// The graph's width beside a wide diff.
-const WIDE_GRAPH_W: f32 = 360.0;
+/// The narrowest a column can be dragged to.
+const COL_MIN: f32 = 140.0;
+/// The graph's least width when the others are dragged wide.
+const GRAPH_MIN: f32 = 240.0;
 /// Below this width the side column goes and the detail goes under the
 /// graph.
 const STACK: f32 = 900.0;
@@ -103,40 +102,59 @@ struct Columns {
     detail: Rect,
     /// 1-point lines.
     lines: Vec<Rect>,
+    /// Which width each of the first lines drags (`Drag`), side by side only.
+    drags: Vec<Drag>,
+}
+
+/// The width a line between columns drags.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Drag {
+    Side,
+    Detail,
+    WideGraph,
 }
 
 /// The side column, the graph and the detail in `r`: side by side, the
 /// graph narrowed beside a wide diff, or one over the other in a narrow
 /// window (docs/mock).
-fn columns(r: Rect, wide: bool) -> Columns {
+fn columns(r: Rect, wide: bool, s: &Sizes) -> Columns {
     let v_line = |x: f32| Rect::from_min_max(pos2(x, r.top()), pos2(x + 1.0, r.bottom()));
     match (r.width() < STACK, wide) {
         (false, false) => {
-            let side = Rect::from_min_max(r.min, pos2(r.left() + SIDE_W, r.bottom()));
-            let detail = Rect::from_min_max(pos2(r.right() - DETAIL_W, r.top()), r.max);
+            let side_w = s.side.clamp(COL_MIN, (r.width() - GRAPH_MIN - COL_MIN - 2.0).max(COL_MIN));
+            let detail_w = s.detail.clamp(COL_MIN, (r.width() - GRAPH_MIN - side_w - 2.0).max(COL_MIN));
+            let side = Rect::from_min_max(r.min, pos2(r.left() + side_w, r.bottom()));
+            let detail = Rect::from_min_max(pos2(r.right() - detail_w, r.top()), r.max);
             let graph = Rect::from_min_max(pos2(side.right() + 1.0, r.top()), pos2(detail.left() - 1.0, r.bottom()));
-            Columns { side: Some(side), graph: Some(graph), detail, lines: vec![v_line(side.right()), v_line(graph.right())] }
+            Columns {
+                side: Some(side),
+                graph: Some(graph),
+                detail,
+                lines: vec![v_line(side.right()), v_line(graph.right())],
+                drags: vec![Drag::Side, Drag::Detail],
+            }
         }
         (false, true) => {
-            let graph = Rect::from_min_max(r.min, pos2(r.left() + WIDE_GRAPH_W, r.bottom()));
+            let graph =
+                Rect::from_min_max(r.min, pos2(r.left() + s.wide_graph.clamp(COL_MIN, (r.width() - GRAPH_MIN).max(COL_MIN)), r.bottom()));
             let detail = Rect::from_min_max(pos2(graph.right() + 1.0, r.top()), r.max);
-            Columns { side: None, graph: Some(graph), detail, lines: vec![v_line(graph.right())] }
+            Columns { side: None, graph: Some(graph), detail, lines: vec![v_line(graph.right())], drags: vec![Drag::WideGraph] }
         }
         (true, false) => {
             let h = STACKED_DETAIL_H.min(r.height() * 0.55);
             let detail = Rect::from_min_max(pos2(r.left(), r.bottom() - h), r.max);
             let graph = Rect::from_min_max(r.min, pos2(r.right(), detail.top() - 1.0));
             let line = Rect::from_min_max(graph.left_bottom(), pos2(r.right(), detail.top()));
-            Columns { side: None, graph: Some(graph), detail, lines: vec![line] }
+            Columns { side: None, graph: Some(graph), detail, lines: vec![line], drags: Vec::new() }
         }
-        (true, true) => Columns { side: None, graph: None, detail: r, lines: Vec::new() },
+        (true, true) => Columns { side: None, graph: None, detail: r, lines: Vec::new(), drags: Vec::new() },
     }
 }
 
 /// The graph view: the side column, the graph and the selected commit.
 fn graph_view(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let c = ito_theme::colors();
-    let cols = columns(r, app.detail.wide);
+    let cols = columns(r, app.detail.wide, &app.sizes);
     if let Some(side) = cols.side {
         crate::side_ui::show(ui, app, side, live);
     }
@@ -144,8 +162,29 @@ fn graph_view(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         crate::graph_ui::show(ui, app, graph, live);
     }
     crate::detail_ui::show(ui, app, cols.detail, live);
-    for line in cols.lines {
-        ui.painter().rect_filled(line, 0.0, c.border);
+    for line in &cols.lines {
+        ui.painter().rect_filled(*line, 0.0, c.border);
+    }
+    // The lines between the columns drag them; the side and the detail keep
+    // the room the graph needs.
+    for (n, (line, drag)) in cols.lines.iter().zip(&cols.drags).enumerate() {
+        let strip = line.expand2(vec2(3.0, 0.0));
+        let resp = ui.interact(strip, ui.id().with(("col-drag", n)), Sense::drag());
+        if live && (resp.hovered() || resp.dragged()) {
+            ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
+        }
+        let s = &mut app.sizes;
+        if live && resp.dragged() {
+            let dx = resp.drag_delta().x;
+            match drag {
+                Drag::Side => s.side = cols.side.map_or(s.side, |r| r.width()) + dx,
+                Drag::Detail => s.detail = cols.detail.width() - dx,
+                Drag::WideGraph => s.wide_graph = cols.graph.map_or(s.wide_graph, |r| r.width()) + dx,
+            }
+        }
+        if live && resp.drag_stopped() {
+            app.sizes.save();
+        }
     }
 }
 
@@ -693,19 +732,24 @@ mod tests {
     #[test]
     fn the_columns_follow_the_width_and_the_wide_diff() {
         let r = |w: f32| Rect::from_min_size(pos2(0.0, 36.0), vec2(w, 600.0));
-        let three = columns(r(1280.0), false);
-        assert_eq!(three.side.unwrap().width(), SIDE_W);
-        assert_eq!(three.detail.width(), DETAIL_W);
-        assert_eq!(three.graph.unwrap().width(), 1280.0 - SIDE_W - DETAIL_W - 2.0);
+        let s = Sizes::default();
+        let three = columns(r(1280.0), false, &s);
+        assert_eq!(three.side.unwrap().width(), s.side);
+        assert_eq!(three.detail.width(), s.detail);
+        assert_eq!(three.graph.unwrap().width(), 1280.0 - s.side - s.detail - 2.0);
         assert_eq!(three.lines.len(), 2);
-        let wide = columns(r(1280.0), true);
-        assert_eq!((wide.side, wide.graph.unwrap().width()), (None, WIDE_GRAPH_W));
-        assert_eq!(wide.detail.left(), WIDE_GRAPH_W + 1.0);
-        let stacked = columns(r(800.0), false);
+        let wide = columns(r(1280.0), true, &s);
+        assert_eq!((wide.side, wide.graph.unwrap().width()), (None, s.wide_graph));
+        assert_eq!(wide.detail.left(), s.wide_graph + 1.0);
+        // Dragged too wide, the graph keeps its least.
+        let mut big = Sizes::default();
+        (big.side, big.detail) = (900.0, 900.0);
+        assert!(columns(r(1280.0), false, &big).graph.unwrap().width() >= GRAPH_MIN);
+        let stacked = columns(r(800.0), false, &s);
         assert_eq!(stacked.side, None);
         assert_eq!(stacked.detail.height(), STACKED_DETAIL_H);
         assert_eq!(stacked.graph.unwrap().bottom() + 1.0, stacked.detail.top());
-        let alone = columns(r(800.0), true);
+        let alone = columns(r(800.0), true, &s);
         assert_eq!((alone.graph, alone.detail), (None, r(800.0)));
     }
 }

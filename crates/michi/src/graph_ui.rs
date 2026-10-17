@@ -24,9 +24,8 @@ use michi_core::wip::Wip;
 const TOOL_H: f32 = 38.0;
 /// The columns' names.
 const HEAD_H: f32 = 24.0;
-const AUTHOR_W: f32 = 104.0;
-const DATE_W: f32 = 92.0;
-const HASH_W: f32 = 64.0;
+/// The narrowest an author, date or commit column can be dragged to.
+const COL_MIN: f32 = 40.0;
 const PAD: f32 = 8.0;
 /// The scrollbar's width, its marks' too.
 const BAR_W: f32 = 7.0;
@@ -311,8 +310,9 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
     let lanes = g.layout().width_in(first..last).max(2);
     let gw = m.width(lanes);
     let right = list.right() - BAR_W - 4.0;
-    let hash_x = right - HASH_W;
-    let (date_x, author_x) = if compact { (hash_x, hash_x) } else { (hash_x - DATE_W, hash_x - DATE_W - AUTHOR_W) };
+    let (author_w, date_w, hash_w) = (app.sizes.author, app.sizes.date, app.sizes.hash);
+    let hash_x = right - hash_w;
+    let (date_x, author_x) = if compact { (hash_x, hash_x) } else { (hash_x - date_w, hash_x - date_w - author_w) };
     let subj_x = list.left() + gw;
     let top = list.top() - scroll;
     let row_rect = |k: u32| Rect::from_min_size(pos2(list.left(), top + k as f32 * row_h), vec2(list.width(), row_h));
@@ -356,11 +356,11 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
             let dim = c.dim;
             wip_cell(ui, app, &p, w, pos2(subj_x, mid), author_x - PAD - subj_x);
             if !compact {
-                clipped(ui, &p, pos2(author_x, mid), "—", FontId::proportional(12.0), dim, AUTHOR_W - PAD);
+                clipped(ui, &p, pos2(author_x, mid), "—", FontId::proportional(12.0), dim, author_w - PAD);
                 let date = w.written.map_or("—".to_owned(), |t| when(t, &now, yesterday));
-                clipped(ui, &p, pos2(date_x, mid), &date, FontId::proportional(12.0), dim, DATE_W - PAD);
+                clipped(ui, &p, pos2(date_x, mid), &date, FontId::proportional(12.0), dim, date_w - PAD);
             }
-            clipped(ui, &p, pos2(hash_x, mid), if w.theirs.is_some() { "MERGE" } else { "WIP" }, FontId::monospace(11.5), dim, HASH_W);
+            clipped(ui, &p, pos2(hash_x, mid), if w.theirs.is_some() { "MERGE" } else { "WIP" }, FontId::monospace(11.5), dim, hash_w);
             continue;
         }
         let Some(commit) = g.commit(k) else { continue };
@@ -449,15 +449,15 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
         if !compact {
             let author = bot(&commit.author);
             let shown = author.as_deref().unwrap_or(&commit.author);
-            clipped(ui, &p, pos2(author_x, mid), shown, FontId::proportional(12.0), dim, AUTHOR_W - PAD);
+            clipped(ui, &p, pos2(author_x, mid), shown, FontId::proportional(12.0), dim, author_w - PAD);
             if author.is_some() {
                 let ar = Rect::from_min_max(pos2(author_x, rr.top()), pos2(date_x - PAD, rr.bottom()));
                 ui.interact(ar, Id::new(("graph-bot", k)), Sense::hover()).on_hover_text(&commit.author);
             }
             let date = when(commit.time, &now, yesterday);
-            clipped(ui, &p, pos2(date_x, mid), &date, FontId::proportional(12.0), dim, DATE_W - PAD);
+            clipped(ui, &p, pos2(date_x, mid), &date, FontId::proportional(12.0), dim, date_w - PAD);
         }
-        clipped(ui, &p, pos2(hash_x, mid), &commit.id.short(), FontId::monospace(11.5), dim, HASH_W);
+        clipped(ui, &p, pos2(hash_x, mid), &commit.id.short(), FontId::monospace(11.5), dim, hash_w);
     }
     // The row at the foot: older commits to read.
     if tail == 1 && last >= len {
@@ -498,6 +498,26 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
         if live && resp.clicked() {
             acts.push(Act::Fold);
         }
+    }
+
+    // The left edge of the author, date and commit columns drags: the column
+    // gets wider as the edge goes left.
+    let mut resized = false;
+    let edges = if compact { vec![] } else { vec![(0, author_x, author_w), (1, date_x, date_w)] };
+    for (n, x, w) in edges.into_iter().chain([(2, hash_x, hash_w)]) {
+        let strip = Rect::from_center_size(pos2(x - 2.0, hm), vec2(8.0, HEAD_H));
+        let resp = ui.interact(strip, Id::new(("graph-col-drag", n)), Sense::drag());
+        if live && (resp.hovered() || resp.dragged()) {
+            ctx.set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
+        }
+        if live && resp.dragged() {
+            let to = (w - resp.drag_delta().x).clamp(COL_MIN, 300.0);
+            *[&mut app.sizes.author, &mut app.sizes.date, &mut app.sizes.hash][n] = to;
+        }
+        resized |= live && resp.drag_stopped();
+    }
+    if resized {
+        app.sizes.save();
     }
 
     // The scrollbar, when the rows do not all fit.

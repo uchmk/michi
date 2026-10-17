@@ -327,3 +327,9 @@
 ## 25. Warnings from keymap.toml / config.toml
 
 - [ ] **25.1** Write a bad line into keymap.toml (an unknown key name), save it while michi is open; then fix it → A toast names the number of warnings and the first one; it is not said again until the warnings change; fixing the file says nothing 〔未訳〕
+
+## 26. Dragging the column widths
+
+- [ ] **26.1** In the graph view, drag the two lines between the side column, the graph and the detail; with a wide diff drag the line after the graph; close and open michi → The pointer turns to a left-right arrow over a line; the columns follow the pointer and the graph never goes under its least width; the widths come back at the next start 〔未訳〕
+- [ ] **26.2** Drag the left edge of Author, Date and Commit in the graph's header → The column gets wider as the edge goes left, narrower to the right (40–300); the rows follow 〔未訳〕
+- [ ] **26.3** In the worktree table drag the left edge of each header (Claude, from main, uncommitted, unseen, clash, buttons) and the edge between the name and Claude → Each column follows the pointer; the name and Claude share what is left; the widths come back at the next start 〔未訳〕

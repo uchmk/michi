@@ -38,6 +38,7 @@ mod review_ui;
 mod script;
 mod settings;
 mod side_ui;
+mod sizes;
 mod tidy;
 mod tidy_ui;
 mod ui;

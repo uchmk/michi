@@ -20,6 +20,7 @@ use michi_core::track::Tree;
 
 use crate::app::{failed_word, App, Repo};
 use crate::graph_ui::{claude_look, paint_icon, Icon};
+use crate::sizes::Sizes;
 
 const PAD_X: f32 = 18.0;
 const PAD_TOP: f32 = 14.0;
@@ -28,11 +29,8 @@ const HEAD_H: f32 = 26.0;
 /// A cell's padding.
 const CELL_X: f32 = 10.0;
 const CELL_Y: f32 = 9.0;
-const TRUNK_W: f32 = 230.0;
-const WIP_W: f32 = 180.0;
-const UNSEEN_W: f32 = 130.0;
-const CLASH_W: f32 = 200.0;
-const ACTS_W: f32 = 250.0;
+/// The narrowest a column can be dragged to.
+const COL_MIN: f32 = 60.0;
 /// The narrowest the name and Claude columns get before the others give.
 const REST_MIN: f32 = 200.0;
 const REST_MIN_CLAUDE: f32 = 340.0;
@@ -428,14 +426,14 @@ struct Block {
 
 /// The table's columns: `(left, width)` of each, from the content's left,
 /// with no Claude column when tsumugi is not running.
-fn columns(width: f32, claude: bool) -> Vec<(f32, f32)> {
-    let fixed = [TRUNK_W, WIP_W, UNSEEN_W, CLASH_W, ACTS_W];
+fn columns(width: f32, claude: bool, sizes: &Sizes) -> Vec<(f32, f32)> {
+    let fixed = sizes.table;
     let sum: f32 = fixed.iter().sum();
     let least = if claude { REST_MIN_CLAUDE } else { REST_MIN };
     // In a window just over the cards' width, the fixed columns give too.
     let scale = ((width - least) / sum).clamp(0.6, 1.0);
     let rest = (width - sum * scale).max(120.0);
-    let mut widths: Vec<f32> = if claude { vec![rest * 0.45, rest * 0.55] } else { vec![rest] };
+    let mut widths: Vec<f32> = if claude { vec![rest * sizes.name_share, rest * (1.0 - sizes.name_share)] } else { vec![rest] };
     widths.extend(fixed.map(|w| w * scale));
     let mut x = 0.0;
     widths
@@ -890,7 +888,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let trunk = app.trees.trunk.clone().unwrap_or_else(|| "main".to_owned());
 
     // Everything is laid out from the content's top, then drawn scrolled.
-    let cols = columns(width, claude);
+    let cols = columns(width, claude, &app.sizes);
     let blocks: Vec<Block> = app
         .trees
         .trees
@@ -981,6 +979,35 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             p.text(pos2(left + x + CELL_X, top + HEAD_H / 2.0), Align2::LEFT_CENTER, word, FontId::proportional(11.0), c.dim);
         }
         p.line_segment([pos2(left, top + HEAD_H - 0.5), pos2(left + width, top + HEAD_H - 0.5)], Stroke::new(1.0, c.border));
+        // The edge between two columns drags: the left edge of a fixed column
+        // widens it as it goes left, the edge after the name shares the rest.
+        let base = 1 + usize::from(claude);
+        let mut resized = false;
+        for n in (if claude { 0 } else { 1 })..=(base + 4) {
+            if n == 0 {
+                continue;
+            }
+            let share = claude && n == 1;
+            let x = left + cols[n].0;
+            let strip = Rect::from_center_size(pos2(x, top + HEAD_H / 2.0), vec2(8.0, HEAD_H));
+            let resp = ui.interact(strip.intersect(r), Id::new(("wt-col-drag", n)), Sense::drag());
+            if live && (resp.hovered() || resp.dragged()) {
+                ctx.set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
+            }
+            if live && resp.dragged() {
+                let dx = resp.drag_delta().x;
+                if share {
+                    let both = cols[0].1 + cols[1].1;
+                    app.sizes.name_share = ((cols[0].1 + dx) / both).clamp(0.2, 0.8);
+                } else if n >= base {
+                    app.sizes.table[n - base] = (cols[n].1 - dx).clamp(COL_MIN, 600.0);
+                }
+            }
+            resized |= live && resp.drag_stopped();
+        }
+        if resized {
+            app.sizes.save();
+        }
     }
 
     // The rows.
@@ -1195,12 +1222,12 @@ mod tests {
     #[test]
     fn the_columns_fill_the_width_and_give_near_the_cards() {
         for (width, claude) in [(1600.0, true), (1200.0, true), (CARDS, true), (CARDS, false)] {
-            let cols = columns(width, claude);
+            let cols = columns(width, claude, &Sizes::default());
             let (x, w) = *cols.last().unwrap();
             assert!((x + w - width).abs() < 0.5, "{width} {claude}: {cols:?}");
             assert!(cols[0].1 >= 120.0, "{width} {claude}: {cols:?}");
         }
-        assert_eq!(columns(1600.0, false)[4].1, CLASH_W);
+        assert_eq!(columns(1600.0, false, &Sizes::default())[4].1, Sizes::default().table[3]);
     }
 
     #[test]

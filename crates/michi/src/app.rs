@@ -185,6 +185,8 @@ pub struct App {
     pub view: View,
     pub mode: Mode,
     pub prefs: Prefs,
+    /// The column widths the user dragged.
+    pub sizes: crate::sizes::Sizes,
     /// The language in force (`en`, `ja`), from common.toml or the OS.
     pub lang: String,
     /// The folder the window was opened on.
@@ -270,6 +272,7 @@ impl App {
         let mut app = Self {
             view: View::Graph,
             mode: Mode::Main,
+            sizes: crate::sizes::Sizes::load(crate::prefs::window_dir(prefs.base.as_deref()).as_deref()),
             prefs,
             lang: "en".into(),
             dir,
