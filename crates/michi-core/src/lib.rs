@@ -9,6 +9,7 @@ pub mod avatar;
 pub mod backup;
 pub mod blame;
 pub mod branch;
+pub mod carry;
 pub mod change;
 pub mod clash;
 pub mod claude;

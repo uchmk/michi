@@ -134,6 +134,7 @@ impl View {
                 ("L", "key.reflog"),
                 ("y", "key.turns"),
                 ("u", "key.submodules"),
+                ("v", "key.move_changes"),
             ],
             View::Conflict => &[
                 ("] [", "key.place"),
@@ -1541,6 +1542,7 @@ impl App {
             'L' => self.open_reflog(),
             'y' => self.open_turns(),
             'u' => self.open_submodules(),
+            'v' => self.open_move(),
             'm' => self.ask_merge(),
             'l' => self.ask_land(),
             'x' => self.ask_remove(),

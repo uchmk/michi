@@ -57,6 +57,7 @@ impl App {
                 Some(Kind::Stash) => "stashes",
                 Some(Kind::Remote) => "remotes",
                 Some(Kind::Remotes) => "manage-remotes",
+                Some(Kind::Move) => "move-changes",
                 _ => "branches",
             }
             .to_owned(),

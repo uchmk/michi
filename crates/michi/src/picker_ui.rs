@@ -32,11 +32,13 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
         Kind::Branch => ("picker.branch", "picker.branch_keys"),
         Kind::Tag => ("picker.tag", "picker.tag_keys"),
         Kind::Stash => ("picker.stash", "picker.stash_keys"),
+        Kind::Move => ("picker.move", "picker.move_keys"),
         Kind::Remote => ("picker.remote", "picker.remote_keys"),
         Kind::Remotes => ("picker.remotes", "picker.remotes_keys"),
     };
     let header = match p.kind {
         Kind::Stash => app.tr("picker.stash_for").replace("{wt}", &act::name(&p.wt)),
+        Kind::Move => app.tr("picker.move_for").replace("{wt}", &act::name(&p.wt)),
         Kind::Remote => app.tr("picker.remote_for").replace("{wt}", &act::name(&p.wt)),
         Kind::Remotes => app.tr("picker.remotes_for").to_owned(),
         _ => app.tr("picker.for").replace("{wt}", &act::name(&p.wt)).replace("{at}", &p.at.short()),
@@ -138,6 +140,7 @@ fn describe(app: &App, p: &Picker, item: &Item) -> (String, Option<String>) {
         }
         Item::Stash { id, place, .. } => (format!("stash@{{{place}}}"), Some(id.short())),
         Item::Address { url, .. } => (url.clone(), None),
+        Item::Place { branch, .. } => (branch.clone().unwrap_or_else(|| app.tr("picker.detached").to_owned()), None),
         Item::Save | Item::Target { .. } => (String::new(), None),
     }
 }
