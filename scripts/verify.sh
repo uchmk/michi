@@ -42,4 +42,5 @@ for t in x86_64-unknown-linux-gnu x86_64-pc-windows-msvc aarch64-apple-darwin; d
 done
 # The checklist follows TESTING.md.
 run cargo run -q -p michi --example make-testcheck -- --check
+run python scripts/ito-first.py
 echo "ALL OK: $tests"

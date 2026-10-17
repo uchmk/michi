@@ -1825,7 +1825,7 @@ const JA: &[(&str, &str)] = &[
     ("changes.no", "やめる"),
     ("changes.claude_writing", "この worktree では Claude が書いている途中です。横から書き込みますか？"),
     ("changes.rewrites", "直前のコミットは push 済み。amend すると、ほかの人が持つ履歴を書き換えます。"),
-    ("changes.on_protected", "{branch} そのものにコミットしようとしています（自分の枝ではありません）。"),
+    ("changes.on_protected", "{branch} そのものにコミットしようとしています（自分のブランチではありません）。"),
     ("changes.suspect", "ステージ済み: {files}。秘密情報のようです。コミットすると取り消しにくくなります。Esc で戻って、外してください。"),
     ("changes.large", "ステージ済み: {files}。大きなファイルは入れるとリポジトリがずっと重くなります。Esc で戻って、外してください。"),
     ("changes.and_more", " … ほか {n} 件"),
