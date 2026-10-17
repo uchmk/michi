@@ -99,6 +99,7 @@ impl View {
                 ("H", "key.file_history"),
                 ("Y", "key.copy_patch"),
                 ("Ctrl+V", "key.apply_patch"),
+                ("w", "key.ignore_space"),
                 ("Esc", "key.back"),
             ],
             View::Changes => &[
@@ -112,6 +113,7 @@ impl View {
                 ("n N", "key.next_change"),
                 ("d", "key.discard"),
                 ("i", "key.ignore"),
+                ("w", "key.ignore_space"),
                 ("A", "key.amend"),
                 ("B", "key.blame"),
                 ("H", "key.file_history"),
@@ -517,6 +519,18 @@ impl App {
     /// A stash in the side column is clicked: the detail shows it.
     pub fn show_stash(&mut self, id: Oid) {
         self.side_stash = Some((id, self.graph.selected()));
+    }
+
+    /// `w`: the diffs ignore whitespace, or no longer do. What is shown is
+    /// read again; the file in the `2` view loses its lines (a diff that
+    /// ignores whitespace is for looking at).
+    pub fn toggle_ignore_space(&mut self) {
+        let on = michi_core::space::toggle();
+        self.detail.forget();
+        let wish = self.changes.reread_file();
+        self.stage_wish(wish);
+        let key = if on { "diff.space_on" } else { "diff.space_off" };
+        self.say(self.tr(key));
     }
 
     /// Asks for the selected commit (or the stash shown) in full when the
@@ -926,6 +940,10 @@ impl App {
             }
             'd' => ch.discard(claude),
             'i' => ch.ignore(claude),
+            'w' => {
+                self.toggle_ignore_space();
+                return true;
+            }
             'B' | 'H' => {
                 self.open_blame(if c == 'B' { crate::blame::Tab::Blame } else { crate::blame::Tab::History });
                 return true;
@@ -1518,6 +1536,7 @@ impl App {
             'B' => self.open_blame(crate::blame::Tab::Blame),
             'H' => self.open_blame(crate::blame::Tab::History),
             'Y' => self.copy_patch(),
+            'w' => self.toggle_ignore_space(),
             't' => self.ask_revert(),
             'R' => self.ask_reset(),
             'C' => self.ask_cherry(),

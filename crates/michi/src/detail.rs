@@ -199,6 +199,12 @@ impl Pane {
         true
     }
 
+    /// What is shown stays, in its place, but the commit is read again the
+    /// next time it is asked for (the diff is to be read another way).
+    pub fn forget(&mut self) {
+        self.asked = None;
+    }
+
     pub fn asked(&self) -> Option<Oid> {
         self.asked
     }

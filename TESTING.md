@@ -1083,3 +1083,15 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 246.8 | With a rebase or merge stopped in the worktree, paste a patch | A toast says the worktree is in the middle of it and to finish first |
 | 246.9 | Paste a patch while a Claude is working in the worktree | The question ends with the note that a Claude is working there |
 | 246.10 | Check the keybar and `?` over the graph; switch EN and JA | `Y` and Ctrl+V are listed with their words in both languages |
+
+## 248. Diffs ignoring whitespace (`w`)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 248.1 | Commit a change that only re-indents a file plus one real edit; in the graph select it and press `w` | A toast says diffs now ignore whitespace; the detail's diff is read again and shows only the real edit (the re-indented lines are gone) |
+| 248.2 | Press `w` again | A toast says whitespace changes show again; the full diff is back |
+| 248.3 | In the `2` view, change only the spacing of a line in a tracked file, then press `w` | The file stays in the list; its diff shows nothing to look at; `w` again brings the change back |
+| 248.4 | With `w` on in the `2` view, select a file with a real change and press `l` | The lines cannot be picked (the diff is for looking at); Space still stages the whole file |
+| 248.5 | With `w` on, select a worktree's WIP row and a branch comparison (`d` in the `3` view) | Both diffs ignore whitespace too |
+| 248.6 | Check the keybar and `?` in the graph and the `2` view; switch EN and JA | `w` is listed with its words in both languages; the toasts read well |
+| 248.7 | Look at a changed line in the detail diff | The words that changed within the line are marked (word diff), as before |

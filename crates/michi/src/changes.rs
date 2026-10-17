@@ -300,6 +300,15 @@ impl Changes {
         out
     }
 
+    /// The selected file's diff, read again (the diff is to be read another
+    /// way): out of the lines, which the new diff may not have.
+    pub fn reread_file(&mut self) -> Option<Wish> {
+        self.leave_lines();
+        self.split = None;
+        self.file_asked = None;
+        self.want_file()
+    }
+
     /// The selected file's diff, unless it is asked already.
     fn want_file(&mut self) -> Option<Wish> {
         let wt = self.wt.clone()?;

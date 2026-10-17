@@ -60,6 +60,7 @@ pub mod review;
 pub mod show;
 pub mod signature;
 pub mod skeleton;
+pub mod space;
 pub mod sparse;
 pub mod stage;
 pub mod stash;
