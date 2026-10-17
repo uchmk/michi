@@ -92,7 +92,7 @@
 - [ ] **8.1** Select a commit → Below the graph within a moment: the subject in bold, the full hash, the author, the local time and the parents (blue links), the body, the hint `Enter spreads the diff side by side`; `Reading the commit…` shows while it is read 〔未訳〕
 - [ ] **8.2** Look at the file list → Each file with its status letter in colour (A green, M, D red, R), its path cut from the left with `…` when long, `+a −d` and a bar; a renamed file says where it came from; more than 12 files list 10 and `N more files — click for all` 〔未訳〕
 - [ ] **8.3** Click a file row → The detail scrolls to that file's diff 〔未訳〕
-- [ ] **8.4** Look at the diff → One column: the `@@` rows in blue, added rows green and deleted rows red, the changed words marked a shade deeper, the line numbers at the left; only the detail's wheel scrolls it, with no scrollbar 〔未訳〕
+- [ ] **8.4** Look at the diff → One column: the `` rows in blue, added rows green and deleted rows red, the changed words marked a shade deeper, the line numbers at the left; only the detail's wheel scrolls it, with no scrollbar 〔未訳〕
 - [ ] **8.5** Press Enter, then Esc → Enter narrows the graph and spreads the diff side by side (old left, new right, the empty side hatched); the title's toggle follows; Esc brings the graph back, and a second Esc clears the filter 〔未訳〕
 - [ ] **8.6** Click a parent link → The graph selects the parent and the detail shows it 〔未訳〕
 - [ ] **8.7** Select a merge into main → `N commits came into main by this merge` with their hashes, subjects and times, and whether they are folded or open in the graph; the note that a merge's diff comes in the next stage; no diff 〔未訳〕
@@ -193,7 +193,7 @@
 - [ ] **14.14** Add a pre-commit hook that prints a line and exits 1, then commit → The toast `Could not write: …` with the hook's words for 8 seconds; the staged list and the message stay 〔未訳〕
 - [ ] **14.15** Narrow the window to its smallest; switch to the light theme → The list keeps at least 240 px, the chips end in `…`, the key bar folds what does not fit; the tints, the band and the letters stay readable in both themes 〔未訳〕
 - [ ] **14.16** Add a pre-commit hook that prints five lines (some in colour, `printf '\033[31m…\033[0m'`) to stdout and stderr and exits 1; commit; Esc, Esc; commit again, then `j`; commit again, unstage and stage a file → The toast `Could not write: <the first line>`; in place of the diff the red title `Could not commit: all git and the hooks said` with `Close Esc` at the right and all five lines below in a fixed-width font, without colour codes; the wheel and PageDown scroll a long one (no scrollbar); the first Esc only leaves the message box, the second closes it and the diff is back; `j` (another file) and a write that goes through close it too; a write that fails with one line only shows the toast 〔未訳〕
-- [ ] **14.17** On a hunk with two changes a few lines apart press `s`; `j`, `a`; Space; save the file from an editor; `s` again; on a file whose hunks each have one change press `s` → `s` goes into the lines and each hunk is cut into one piece per run of changes, a `@@` line before each; `a` picks the piece under the cursor and Space stages only it (`git diff --cached` shows that change alone); after the save the file stays cut; `s` again joins the hunks back; on the other file the toast `Nothing to split: each hunk has one run of changes` 〔未訳〕
+- [ ] **14.17** On a hunk with two changes a few lines apart press `s`; `j`, `a`; Space; save the file from an editor; `s` again; on a file whose hunks each have one change press `s` → `s` goes into the lines and each hunk is cut into one piece per run of changes, a `` line before each; `a` picks the piece under the cursor and Space stages only it (`git diff --cached` shows that change alone); after the save the file stays cut; `s` again joins the hunks back; on the other file the toast `Nothing to split: each hunk has one run of changes` 〔未訳〕
 
 ## 15. Fetch, pull and push
 
@@ -392,14 +392,32 @@
 - [ ] **34.4** Select a diff line, then pick another file or switch the wide view → The selection is gone → | [ ] 〔未訳〕
 - [ ] **34.5** Select diff text, close the review (Esc), select a commit's detail text → No stale selection shows in either place → | [ ] 〔未訳〕
 
-## 98. Answering a waiting Claude from the notification (W)
+## 35. Answering a waiting Claude from the notification (W)
 
-- [ ] **98.1** With tsumugi running, let a Claude in a worktree reach a question (a permission prompt) while michi is open → A toast `The Claude in <wt> is waiting: <question> (W: answer)` shows for about 15 s; with the window behind another, the system notification `michi: a Claude is waiting` shows too (it follows the `done` settings of Notifications) → | [ ] 〔未訳〕
-- [ ] **98.2** Press `W` from any view → The window goes to the worktree view with that worktree selected, its branch review (the diff) open, and the question with an answer line over the bottom of the window → | [ ] 〔未訳〕
-- [ ] **98.3** Type `y` (or any text) and press Enter → The text is typed into that Claude's tsumugi tab and submitted; the line closes and the toast says `Sent the answer to tab N`; the Claude goes back to running → | [ ] 〔未訳〕
-- [ ] **98.4** Type the answer with a Japanese IME and confirm the conversion with Enter → The conversion is confirmed without sending; the next Enter sends → | [ ] 〔未訳〕
-- [ ] **98.5** With two Claudes waiting, press `W` twice → The first press goes to the one that has waited longest, the second to the next one, then round → | [ ] 〔未訳〕
-- [ ] **98.6** Press Esc in the answer line → The line closes; the review stays open → | [ ] 〔未訳〕
-- [ ] **98.7** Answer the Claude in its own tab while the line is open → The line closes by itself once michi sees the Claude is no longer waiting → | [ ] 〔未訳〕
-- [ ] **98.8** Press `W` with no Claude waiting → The toast says `No Claude is waiting` → | [ ] 〔未訳〕
-- [ ] **98.9** Start michi while a Claude is already waiting → No toast for it (only waits that begin while michi runs are told); `W` still goes to it → | [ ] 〔未訳〕
+- [ ] **35.1** With tsumugi running, let a Claude in a worktree reach a question (a permission prompt) while michi is open → A toast `The Claude in <wt> is waiting: <question> (W: answer)` shows for about 15 s; with the window behind another, the system notification `michi: a Claude is waiting` shows too (it follows the `done` settings of Notifications) → | [ ] 〔未訳〕
+- [ ] **35.2** Press `W` from any view → The window goes to the worktree view with that worktree selected, its branch review (the diff) open, and the question with an answer line over the bottom of the window → | [ ] 〔未訳〕
+- [ ] **35.3** Type `y` (or any text) and press Enter → The text is typed into that Claude's tsumugi tab and submitted; the line closes and the toast says `Sent the answer to tab N`; the Claude goes back to running → | [ ] 〔未訳〕
+- [ ] **35.4** Type the answer with a Japanese IME and confirm the conversion with Enter → The conversion is confirmed without sending; the next Enter sends → | [ ] 〔未訳〕
+- [ ] **35.5** With two Claudes waiting, press `W` twice → The first press goes to the one that has waited longest, the second to the next one, then round → | [ ] 〔未訳〕
+- [ ] **35.6** Press Esc in the answer line → The line closes; the review stays open → | [ ] 〔未訳〕
+- [ ] **35.7** Answer the Claude in its own tab while the line is open → The line closes by itself once michi sees the Claude is no longer waiting → | [ ] 〔未訳〕
+- [ ] **35.8** Press `W` with no Claude waiting → The toast says `No Claude is waiting` → | [ ] 〔未訳〕
+- [ ] **35.9** Start michi while a Claude is already waiting → No toast for it (only waits that begin while michi runs are told); `W` still goes to it → | [ ] 〔未訳〕
+
+## 36. Warning about overlapping work in New work (`N`)
+
+- [ ] **36.1** Change a file (say `crates/michi/src/app.rs`) in one worktree and leave it uncommitted; press `N` and type `fix app.rs` in the instruction → A line `⚠ Heads up: <branch> is changing crates/michi/src/app.rs …` shows under the instruction as you type; nothing else in the form is blocked → | [ ] 〔未訳〕
+- [ ] **36.2** Type a folder instead (`tidy crates/michi/src/`) → The same worktree is named with the files under that folder (the first three, then `+N`) → | [ ] 〔未訳〕
+- [ ] **36.3** Type an instruction with no file or folder name, or names no worktree is changing → No warning shows → | [ ] 〔未訳〕
+- [ ] **36.4** With the warning showing, press Ctrl+Enter → The work starts as usual (the warning does not stop it) → | [ ] 〔未訳〕
+- [ ] **36.5** Two worktrees change the same file → Both are named in the warning → | [ ] 〔未訳〕
+
+## 37. Open a worktree's folder in a terminal, editor or file manager (#75)
+
+- [ ] **37.1** In the worktree tab select a row; press `t` → A tsumugi tab opens in that worktree's folder; a toast says it was opened → | [ ] 〔未訳〕
+- [ ] **37.2** Press `e`, then `E` → VS Code opens on the folder; the file manager shows the folder (Explorer on Windows) → | [ ] 〔未訳〕
+- [ ] **37.3** Click the Terminal, Editor and Explorer buttons on a row (also on the main worktree's row) → Same as the keys, for the clicked row → | [ ] 〔未訳〕
+- [ ] **37.4** Open the palette (Ctrl+Shift+P) and type "worktree in" → Three entries (terminal, editor, file manager); picking one opens the window's worktree (the selected row when the worktree tab is in front) → | [ ] 〔未訳〕
+- [ ] **37.5** Write `[open]` `editor = "notepad {path}"` into config.toml, wait 2 s, press `e` → Notepad is started with the folder as its argument; Settings > General shows the line → | [ ] 〔未訳〕
+- [ ] **37.6** Write `editor = "no-such-program"`, press `e` → A toast "open failed: ..." with the program's name; michi keeps running and does not freeze → | [ ] 〔未訳〕
+- [ ] **37.7** Write `editor = "a \"b"` (unclosed quote) → A warning about config.toml names the key; `e` still uses the default → | [ ] 〔未訳〕

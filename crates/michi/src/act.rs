@@ -488,13 +488,10 @@ impl App {
                 (self.tr(key).replace("{path}", path), 6)
             }
             (Task::OpenPr { branch, .. }, Ok(_)) => (self.tr("act.pr_opened").replace("{b}", branch), 4),
-<<<<<<< HEAD
             (Task::Reply { session, .. }, Ok(_)) => (self.tr("reply.sent").replace("{n}", &session.to_string()), 4),
-=======
             (Task::OpenIn { wt, tool, .. }, Ok(_)) => {
                 (self.tr("act.open_in").replace("{wt}", &self::name(wt)).replace("{tool}", self.tr(open_word(*tool))), 3)
             }
->>>>>>> worktree-agent-a42757d3fc03671c3
             (Task::Focus { session }, Ok(_)) => (self.tr("act.focused").replace("{n}", &session.to_string()), 3),
             (Task::Handoff { conflict, session }, Ok(_)) => {
                 let key = if session.is_some() { "act.handed" } else { "act.handed_new" };
