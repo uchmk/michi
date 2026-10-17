@@ -101,7 +101,7 @@
 All wait for the owner; none is started.
 
 - [ ] submodule: status and update (not entering)（要確認: #29）
-- [ ] Git LFS: "not fetched" marker（要確認: #30）
+- [x] Git LFS: "not fetched" marker（要確認: #30）
 - [ ] sparse checkout: notice only（要確認: #31）
 - [ ] bisect（要確認: #32）
 - [ ] Non-GitHub hosts: links from the remote URL（要確認: #33）

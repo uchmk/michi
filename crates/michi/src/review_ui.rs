@@ -409,6 +409,9 @@ fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, pages: i32, 
     if f.not_utf8 {
         pieces.push(Piece::Note("detail.not_utf8"));
     }
+    if michi_core::lfs::of_file(f).is_some() {
+        pieces.push(Piece::Note("detail.lfs_note"));
+    }
     if f.is_binary() {
         pieces.push(Piece::Note("detail.binary_note"));
     } else if f.eol_only {

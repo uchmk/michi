@@ -23,6 +23,7 @@ pub mod history;
 pub mod ignore;
 pub mod keyhelp;
 pub mod land;
+pub mod lfs;
 pub mod log;
 pub mod menu;
 pub mod minimap;

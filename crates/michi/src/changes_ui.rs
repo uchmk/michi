@@ -732,6 +732,9 @@ fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32, jump: i32) {
     if s.diff.patch.is_none() {
         pieces.push(Piece::Note("changes.whole_note"));
     }
+    if michi_core::lfs::of_file(f).is_some() {
+        pieces.push(Piece::Note("detail.lfs_note"));
+    }
     if f.is_binary() {
         pieces.push(Piece::Note("detail.binary_note"));
     } else if f.eol_only {

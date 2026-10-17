@@ -908,3 +908,11 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 70.7 | With the network cut, press `f` yourself | The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` | | [ ] |
 | 70.8 | Start a pull or push while the timer is due | The timer waits; it never interrupts a job | | [ ] |
 | 70.9 | Switch EN and JA | The keybar's `· failed` / `· 失敗` reads well and fits | | [ ] |
+
+## 71. Git LFS pointers (#30)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 71.1 | In a repository with LFS files, select a commit that changed one | Above its diff (the three pointer lines) a note: `A Git LFS pointer, not the file: the content is not fetched here (git lfs pull)`; other files have no note | | [ ] |
+| 71.2 | Change an LFS file in a worktree and open it in the Changes view, and in a review | The same note shows above the pointer diff | | [ ] |
+| 71.3 | Switch EN and JA | The note reads well in both and fits the width | | [ ] |

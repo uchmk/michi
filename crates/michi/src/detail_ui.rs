@@ -109,6 +109,9 @@ fn blocks(d: &Detail, merged: usize, all_files: bool) -> Vec<Block> {
         if f.not_utf8 {
             out.push(Block::Note("detail.not_utf8"));
         }
+        if michi_core::lfs::of_file(f).is_some() {
+            out.push(Block::Note("detail.lfs_note"));
+        }
         if f.is_binary() {
             out.push(Block::Note("detail.binary_note"));
         } else if f.eol_only {
