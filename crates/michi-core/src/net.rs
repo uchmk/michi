@@ -62,11 +62,42 @@ pub enum Done {
     PushedTag { remote: String, tag: String },
     /// Nothing to pull from or push to `to`: the same commit.
     Even { to: String },
+    /// A push that has not been made: what it would send and where
+    /// ([`preview`]).
+    Preview(Preview),
     /// Stopped on the flag; what git had done stays.
     Stopped,
     /// Not done, and why.
     Not(Why),
 }
+
+/// What a push of the branch would send, shown before it is made.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Preview {
+    /// Where it goes: `origin/feat`.
+    pub to: String,
+    /// The branch is not there yet (the push creates it and sets the upstream).
+    pub new: bool,
+    /// The newest commits to send, at most [`PREVIEW_MAX`], newest first.
+    pub commits: Vec<Sent>,
+    /// How many commits it sends in all.
+    pub total: usize,
+    /// How many commits the remote's branch has that this one does not (as of
+    /// the last fetch): a push goes over them only with `lease`.
+    pub behind: usize,
+    /// The push over the remote's branch, when it has commits this one does not.
+    pub lease: Option<Lease>,
+}
+
+/// A commit a push would send.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Sent {
+    pub id: Oid,
+    pub subject: String,
+}
+
+/// The most commits a [`Preview`] lists.
+pub const PREVIEW_MAX: usize = 12;
 
 /// Why a pull or push was not done.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -196,39 +227,12 @@ pub fn push(
     stop: &AtomicBool,
     tell: &mut dyn FnMut(Progress),
 ) -> Result<Done, git::Error> {
-    let Some(branch) = branch(dir)? else { return Ok(Done::Not(Why::Detached)) };
-    let up_remote = config(dir, &format!("branch.{branch}.remote"))?;
-    let up_merge = config(dir, &format!("branch.{branch}.merge"))?;
-    let remote = match chosen.map(str::to_owned).map_or_else(|| config(dir, &format!("branch.{branch}.pushRemote")), |r| Ok(Some(r)))? {
-        Some(r) => Some(r),
-        None => match config(dir, "remote.pushDefault")? {
-            Some(r) => Some(r),
-            None => match up_remote.clone().filter(|r| r != ".") {
-                Some(r) => Some(r),
-                None => {
-                    let all = remotes(dir)?;
-                    if all.iter().any(|r| r == "origin") {
-                        Some("origin".to_owned())
-                    } else if all.len() == 1 {
-                        all.into_iter().next()
-                    } else {
-                        None
-                    }
-                }
-            },
-        },
+    let t = match target(dir, chosen)? {
+        Ok(t) => t,
+        Err(done) => return Ok(done),
     };
-    let Some(remote) = remote else {
-        let remotes = remotes(dir)?;
-        return Ok(Done::Not(if remotes.is_empty() { Why::NoRemote } else { Why::Choose { remotes } }));
-    };
-    let dest = match (&up_remote, &up_merge) {
-        (Some(r), Some(m)) if *r == remote => m.clone(),
-        _ => format!("refs/heads/{branch}"),
-    };
-    let new = up_remote.is_none() || up_merge.is_none();
-    let name = dest.strip_prefix("refs/heads/").unwrap_or(&dest);
-    let to = format!("{remote}/{name}");
+    let Target { branch, remote, dest, new, to } = t;
+    let name = dest.strip_prefix("refs/heads/").unwrap_or(&dest).to_owned();
     if lease.is_none() {
         let tracking = format!("refs/remotes/{remote}/{name}");
         if let Some(tip) = git::read_maybe(dir, &["rev-parse", "--verify", "-q", &tracking])? {
@@ -257,6 +261,101 @@ pub fn push(
         Some(done) => done,
         None => Done::Pushed { to, new, saved },
     })
+}
+
+/// Where a push of the branch of the worktree at `dir` goes.
+struct Target {
+    branch: String,
+    remote: String,
+    /// The branch there: `refs/heads/main`.
+    dest: String,
+    /// The branch has no upstream yet.
+    new: bool,
+    /// What to call it: `origin/main`.
+    to: String,
+}
+
+/// The remote and the branch a push goes to, or why it goes nowhere.
+fn target(dir: &Path, chosen: Option<&str>) -> Result<Result<Target, Done>, git::Error> {
+    let Some(branch) = branch(dir)? else { return Ok(Err(Done::Not(Why::Detached))) };
+    let up_remote = config(dir, &format!("branch.{branch}.remote"))?;
+    let up_merge = config(dir, &format!("branch.{branch}.merge"))?;
+    let remote = match chosen.map(str::to_owned).map_or_else(|| config(dir, &format!("branch.{branch}.pushRemote")), |r| Ok(Some(r)))? {
+        Some(r) => Some(r),
+        None => match config(dir, "remote.pushDefault")? {
+            Some(r) => Some(r),
+            None => match up_remote.clone().filter(|r| r != ".") {
+                Some(r) => Some(r),
+                None => {
+                    let all = remotes(dir)?;
+                    if all.iter().any(|r| r == "origin") {
+                        Some("origin".to_owned())
+                    } else if all.len() == 1 {
+                        all.into_iter().next()
+                    } else {
+                        None
+                    }
+                }
+            },
+        },
+    };
+    let Some(remote) = remote else {
+        let remotes = remotes(dir)?;
+        return Ok(Err(Done::Not(if remotes.is_empty() { Why::NoRemote } else { Why::Choose { remotes } })));
+    };
+    let dest = match (&up_remote, &up_merge) {
+        (Some(r), Some(m)) if *r == remote => m.clone(),
+        _ => format!("refs/heads/{branch}"),
+    };
+    let new = up_remote.is_none() || up_merge.is_none();
+    let name = dest.strip_prefix("refs/heads/").unwrap_or(&dest);
+    let to = format!("{remote}/{name}");
+    Ok(Ok(Target { branch, remote, dest, new, to }))
+}
+
+/// What a push of the branch of the worktree at `dir` would send, without
+/// pushing: [`Done::Preview`] when there is something to say, else what
+/// [`push`] would say (it has it already, the remote is ahead, no remote to
+/// choose). Reads only what the last fetch left, so it needs no network.
+pub fn preview(dir: &Path, chosen: Option<&str>) -> Result<Done, git::Error> {
+    let t = match target(dir, chosen)? {
+        Ok(t) => t,
+        Err(done) => return Ok(done),
+    };
+    let Target { remote, dest, new, to, .. } = t;
+    let name = dest.strip_prefix("refs/heads/").unwrap_or(&dest);
+    let tracking = format!("refs/remotes/{remote}/{name}");
+    let tip = git::read_maybe(dir, &["rev-parse", "--verify", "-q", &tracking])?;
+    let (range, behind, lease) = match tip {
+        Some(tip) => {
+            let tip = Oid::parse(String::from_utf8_lossy(&tip).trim()).ok_or_else(|| git::Error::Io(format!("{tracking}: no commit")))?;
+            let (ahead, behind) = counts(dir, &format!("HEAD...{tracking}"))?;
+            if behind > 0 && ahead == 0 {
+                return Ok(Done::Not(Why::Behind { lease: Lease { remote, dest, to, tip }, count: behind, ahead }));
+            }
+            if ahead == 0 {
+                return Ok(Done::Even { to });
+            }
+            let lease = (behind > 0).then(|| Lease { remote: remote.clone(), dest: dest.clone(), to: to.clone(), tip });
+            (vec![format!("{tracking}..HEAD")], behind, lease)
+        }
+        // Not there yet: what no ref of the remote has.
+        None => (vec!["HEAD".to_owned(), "--not".to_owned(), format!("--remotes={remote}")], 0, None),
+    };
+    let mut log = vec!["log".to_owned(), format!("--max-count={PREVIEW_MAX}"), "--format=%H%x1f%s".to_owned()];
+    log.extend(range.iter().cloned());
+    let log: Vec<&str> = log.iter().map(String::as_str).collect();
+    let commits = git::read_text(dir, &log)?
+        .lines()
+        .filter_map(|l| {
+            let (id, subject) = l.split_once('')?;
+            Some(Sent { id: Oid::parse(id)?, subject: subject.trim().to_owned() })
+        })
+        .collect();
+    let mut count = vec!["rev-list", "--count"];
+    count.extend(range.iter().map(String::as_str));
+    let total = git::read_text(dir, &count)?.trim().parse().unwrap_or(0);
+    Ok(Done::Preview(Preview { to, new, commits, total, behind, lease }))
 }
 
 /// `git push` of the tag `tag` to the remote pushes go to
@@ -608,6 +707,52 @@ mod tests {
             d => panic!("{d:?}"),
         }
         assert!(push_tag(&t.repo, "nope", &no, &mut quiet()).is_err());
+    }
+
+    #[test]
+    fn a_preview_lists_what_a_push_would_send_and_over_what() {
+        let (t, other) = with_remote("net-preview");
+        // Nothing new: the remote has it.
+        assert_eq!(preview(&t.repo, None).unwrap(), Done::Even { to: "origin/main".into() });
+        let a = commit(&t, &t.repo, "a.txt");
+        let b = commit(&t, &t.repo, "b.txt");
+        let Done::Preview(p) = preview(&t.repo, None).unwrap() else { panic!("a preview") };
+        assert_eq!((p.to.as_str(), p.new, p.total, p.behind, p.lease.is_none()), ("origin/main", false, 2, 0, true));
+        // Newest first, with their subjects.
+        assert_eq!(p.commits.iter().map(|c| (c.id.to_string(), c.subject.as_str())).collect::<Vec<_>>(), [(b, "b.txt"), (a, "a.txt")]);
+        // Nothing was pushed.
+        assert_eq!(t.out(&t.repo, &["rev-list", "--count", "origin/main..HEAD"]), "2");
+
+        // A branch the remote lacks: what no ref of the remote has, and it is new there.
+        t.git(&t.repo, &["checkout", "-q", "-b", "feat"]);
+        commit(&t, &t.repo, "c.txt");
+        let Done::Preview(p) = preview(&t.repo, None).unwrap() else { panic!("a preview") };
+        assert_eq!((p.to.as_str(), p.new, p.total), ("origin/feat", true, 3));
+        // Many commits: the newest few are listed, the count is all.
+        for i in 0..PREVIEW_MAX {
+            commit(&t, &t.repo, &format!("m{i}.txt"));
+        }
+        let Done::Preview(p) = preview(&t.repo, None).unwrap() else { panic!("a preview") };
+        assert_eq!((p.commits.len(), p.total), (PREVIEW_MAX, 3 + PREVIEW_MAX));
+
+        // The remote is ahead only: nothing to send.
+        t.git(&t.repo, &["checkout", "-q", "main"]);
+        t.git(&t.repo, &["reset", "-q", "--hard", "origin/main"]);
+        commit(&t, &other, "d.txt");
+        t.git(&other, &["push", "-q"]);
+        t.git(&t.repo, &["fetch", "-q"]);
+        assert!(matches!(preview(&t.repo, None).unwrap(), Done::Not(Why::Behind { count: 1, ahead: 0, .. })));
+        // Both sides have commits: the preview carries the lease.
+        commit(&t, &t.repo, "e.txt");
+        let Done::Preview(p) = preview(&t.repo, None).unwrap() else { panic!("a preview") };
+        assert_eq!((p.total, p.behind), (1, 1));
+        let lease = p.lease.expect("a lease");
+        assert_eq!((lease.to.as_str(), lease.dest.as_str()), ("origin/main", "refs/heads/main"));
+        assert_eq!(lease.tip.to_string(), t.out(&t.repo, &["rev-parse", "origin/main"]));
+
+        // No remote: the same word as a push.
+        let lone = TempRepo::configured("net-preview-none");
+        assert_eq!(preview(&lone.repo, None).unwrap(), Done::Not(Why::NoRemote));
     }
 
     #[test]

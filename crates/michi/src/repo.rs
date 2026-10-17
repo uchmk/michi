@@ -380,6 +380,7 @@ fn networks(dir: &Path, orders: &Receiver<Order>, pokes: &Sender<Poke>, send: im
         let result = match &job {
             Job::Fetch => net::fetch(dir, &stop, &mut tell),
             Job::Pull { wt } => net::pull(wt, &stop, &mut tell),
+            Job::Push { wt, remote, shown: false, .. } => net::preview(wt, remote.as_deref()),
             Job::Push { wt, remote, lease, .. } => net::push(wt, remote.as_deref(), lease.as_ref(), &stop, &mut tell),
             Job::PushTag { tag } => net::push_tag(dir, tag, &stop, &mut tell),
         };

@@ -346,8 +346,8 @@ impl App {
             }
             (Kind::Remote, Item::Target { name }) => {
                 let job = self.picker.take().and_then(|p| p.job);
-                if let Some(Job::Push { wt, lease, over, .. }) = job {
-                    self.order(Job::Push { wt, remote: Some(name), lease, over });
+                if let Some(Job::Push { wt, lease, over, shown, .. }) = job {
+                    self.order(Job::Push { wt, remote: Some(name), lease, over, shown });
                 }
             }
             (Kind::Stash, Item::Save) => self.guarded(Task::Stash { wt: wt.clone(), message }, &wt, "act.stash_doing", "act.claude_stash"),
@@ -548,7 +548,7 @@ impl App {
             text.push_str(self.tr("act.revert_claude"));
         }
         let parents = if parents > 1 { parents.min(9) as u8 } else { 0 };
-        self.band = Some(Band { text, then: Then::Act(Task::Revert { wt, id, mainline: None }), parents });
+        self.band = Some(Band { parents, ..Band::new(text, Then::Act(Task::Revert { wt, id, mainline: None })) });
     }
 
     /// `C`: asks before it picks the selected commit onto the window's
@@ -586,7 +586,7 @@ impl App {
             text.push_str(self.tr("act.revert_claude"));
         }
         let parents = if parents > 1 { parents.min(9) as u8 } else { 0 };
-        self.band = Some(Band { text, then: Then::Act(Task::CherryPick { wt, id, mainline: None }), parents });
+        self.band = Some(Band { parents, ..Band::new(text, Then::Act(Task::CherryPick { wt, id, mainline: None })) });
     }
 
     /// `x` in the worktree table: asks before it takes the selected worktree
