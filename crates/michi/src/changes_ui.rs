@@ -167,17 +167,17 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         top += h;
     }
 
-    // The files over the message on the left, the selected one's diff on
-    // the right.
+    // The files on the left, the selected one's diff on the right with the
+    // message under it.
     p.line_segment([pos2(r.left(), top), pos2(r.right(), top)], Stroke::new(1.0, c.border));
     let lw = (r.width() * 0.3).clamp(LIST_MIN, LIST_MAX).min(r.width() / 2.0);
     let left = Rect::from_min_max(pos2(r.left(), top + 1.0), pos2(r.left() + lw, r.bottom()));
-    let dr = Rect::from_min_max(pos2(left.right() + 1.0, top + 1.0), r.max);
+    let right = Rect::from_min_max(pos2(left.right() + 1.0, top + 1.0), r.max);
     p.line_segment([pos2(left.right() + 0.5, top), pos2(left.right() + 0.5, r.bottom())], Stroke::new(1.0, c.border));
-    let box_h = BOX_H.min(left.height() * 0.5);
-    let lr = Rect::from_min_max(left.min, pos2(left.right(), left.bottom() - box_h));
-    let br = Rect::from_min_max(pos2(left.left(), lr.bottom()), left.max);
-    list(ui, app, lr, live, pointer, &mut act);
+    let box_h = BOX_H.min(right.height() * 0.5);
+    let dr = Rect::from_min_max(right.min, pos2(right.right(), right.bottom() - box_h));
+    let br = Rect::from_min_max(pos2(right.left(), dr.bottom()), right.max);
+    list(ui, app, left, live, pointer, &mut act);
     if let Some(a) = message(ui, app, br, live, pointer) {
         act = Some(a);
     }

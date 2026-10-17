@@ -16,7 +16,6 @@
 
 [main]
 keymap = [
-    { on = ",", run = "settings", desc = "Settings" },
     { on = "<C-,>", run = "settings", desc = "Settings" },
     { on = "?", run = "help", desc = "Keys" },
     { on = "<F1>", run = "help", desc = "Keys" },

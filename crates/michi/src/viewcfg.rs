@@ -80,7 +80,7 @@ pub fn read_motion(text: Option<&str>) -> (Motion, Vec<String>) {
     }
 }
 
-/// `[view] dates = "relative" | "full"` (relative when not written), with what to warn of.
+/// `[view] dates = "relative" | "full"` (full when not written), with what to warn of.
 pub fn read_dates(text: Option<&str>) -> (michi_core::dates::Dates, Vec<String>) {
     use michi_core::dates::Dates;
     match text.map(toml::from_str::<File>) {
@@ -210,9 +210,9 @@ pub fn issues(text: Option<&str>) -> (michi_core::issues::Config, Vec<String>) {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn dates_are_relative_unless_full() {
+    fn dates_are_full_unless_relative() {
         use michi_core::dates::Dates;
-        assert_eq!(read_dates(None).0, Dates::Relative);
+        assert_eq!(read_dates(None).0, Dates::Full);
         assert_eq!(
             read_dates(Some(
                 "[view]
@@ -227,7 +227,7 @@ dates = \"full\"
 dates = \"x\"
 ",
         ));
-        assert_eq!((d, warn.len()), (Dates::Relative, 1));
+        assert_eq!((d, warn.len()), (Dates::Full, 1));
     }
 
     use super::*;

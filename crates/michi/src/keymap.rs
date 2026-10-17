@@ -144,7 +144,7 @@ mod tests {
     fn the_defaults_parse_without_a_warning() {
         let (km, warn) = Keymap::load(None);
         assert!(warn.is_empty(), "{warn:?}");
-        assert_eq!(km.act(key(",")), Some(Act::Settings));
+        assert_eq!(km.act(key(",")), None);
         assert_eq!(km.act(key("<C-,>")), Some(Act::Settings));
         assert_eq!(km.act(key("?")), Some(Act::Help));
         assert_eq!(km.act(key("<F1>")), Some(Act::Help));
@@ -171,7 +171,7 @@ mod tests {
     fn a_hint_follows_the_keymap() {
         let (km, _) = Keymap::load(None);
         assert_eq!(km.hint(Act::Palette).as_deref(), Some("Ctrl+Shift+P"));
-        assert_eq!(km.hint(Act::Settings).as_deref(), Some(","));
+        assert_eq!(km.hint(Act::Settings).as_deref(), Some("Ctrl+,"));
         let (km, _) = Keymap::load(Some(
             "[main]
 prepend_keymap = [{ on = \"<C-k>\", run = \"palette\" }]

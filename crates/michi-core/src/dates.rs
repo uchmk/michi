@@ -1,13 +1,13 @@
 //! How the lists write a commit's date: `relative` (the time today, `yesterday`
-//! and the time, the month and day) or `full` (always the whole date and the
+//! and the time, the month and day) or `full` (the default; always the whole date and the
 //! time, in the clock's format: `2026/10/05 14:32`). `[view] dates` in config.toml.
 
 use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Dates {
-    #[default]
     Relative,
+    #[default]
     Full,
 }
 
@@ -45,6 +45,6 @@ mod tests {
             assert_eq!(d.key().parse(), Ok(d));
         }
         assert!("never".parse::<Dates>().is_err());
-        assert_eq!(Dates::default(), Dates::Relative);
+        assert_eq!(Dates::default(), Dates::Full);
     }
 }

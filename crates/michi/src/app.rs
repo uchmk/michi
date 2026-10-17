@@ -137,7 +137,7 @@ impl View {
             View::Worktree => &[
                 ("j k", "key.select"),
                 ("o", "key.tab"),
-                ("p", "key.pr"),
+                ("O", "key.pr"),
                 ("I", "key.issue"),
                 ("Q", "key.pr_create"),
                 ("t e E", "key.open_in"),
@@ -1119,8 +1119,8 @@ impl App {
             "Shift+ArrowUp" => ch.extend(-1),
             "Home" => ch.select(0),
             "End" => ch.select(usize::MAX),
-            "ArrowRight" => return self.changes_key('l'),
-            "ArrowLeft" => return self.changes_key('h'),
+            "ArrowRight" | "Alt+ArrowRight" => return self.changes_key('l'),
+            "ArrowLeft" | "Alt+ArrowLeft" => return self.changes_key('h'),
             "PageDown" => {
                 ch.pages += 1;
                 None
@@ -1817,7 +1817,7 @@ impl App {
             'm' => self.ask_merge(),
             'l' => self.ask_land(),
             'x' => self.ask_remove(),
-            'p' => self.open_pr(),
+            'O' => self.open_pr(),
             'I' => self.open_issue(),
             'Q' => self.open_pr_form(),
             't' => self.open_in(Tool::Terminal, true),
@@ -2183,6 +2183,17 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn brackets_go_to_the_parent_and_the_merged_in_commit() {
+        let mut a = read();
+        a.graph.select_id(&fixture::id(5));
+        assert!(a.feed(']'));
+        assert_eq!(selected(&a), "f2");
+        a.graph.select_id(&fixture::id(5));
+        assert!(a.feed('['));
+        assert_eq!(selected(&a), "m1");
+    }
+
+    #[test]
     fn a_toast_is_gone_once_its_time_is_up() {
         let mut a = app();
         a.say_for("hello", 60);
@@ -2206,7 +2217,8 @@ pub(crate) mod tests {
     #[test]
     fn comma_and_question_mark_open_and_escape_closes() {
         let mut a = app();
-        assert!(a.feed(','));
+        assert!(!a.feed(','), "a bare comma is free");
+        assert!(a.key(ito_keys::Key::parse("<C-,>").unwrap()));
         assert_eq!(a.mode, Mode::Settings);
         // In the settings the screen's own controls take the characters.
         assert!(!a.feed('3'));
@@ -2249,7 +2261,7 @@ pub(crate) mod tests {
         a.feed('?');
         assert!(a.is_on(View::Graph), "the key list is over the view");
         a.escape();
-        a.feed(',');
+        a.key(ito_keys::Key::parse("<C-,>").unwrap());
         assert!(!a.is_on(View::Graph));
     }
 
@@ -2342,7 +2354,7 @@ pub(crate) mod tests {
                 shadows.extend(michi_core::keyhelp::tokens(k).filter(|t| global.contains(t)).map(|t| (*name, t)));
             }
         }
-        assert_eq!(shadows, [("view.changes", "N"), ("view.worktree", "p")], "a view shadows a global key");
+        assert_eq!(shadows, [("view.changes", "N")], "a view shadows a global key");
         assert!(collisions(&screens).contains_key("t"));
     }
 
@@ -2357,7 +2369,7 @@ pub(crate) mod tests {
         let mut a = app();
         a.view = View::Worktree;
         let t = text(&a);
-        assert!(!t.contains("Pull") && t.contains("Push"), "p is the pull request here, not a pull: {t}");
+        assert!(t.contains("Pull") && t.contains("Push"), "{t}");
         a.view = View::Graph;
         assert!(text(&a).contains("Pull"));
     }

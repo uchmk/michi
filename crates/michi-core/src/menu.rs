@@ -36,7 +36,7 @@ const COMMIT: [Item; 7] = [
 ];
 
 const BRANCH: [Item; 10] = [
-    item('p', "key.pr"),
+    item('O', "key.pr"),
     item('t', "key.open_terminal"),
     item('e', "key.open_editor"),
     item('E', "key.open_explorer"),

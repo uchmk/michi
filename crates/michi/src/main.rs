@@ -580,6 +580,12 @@ impl Michi {
                 {
                     self.app.named(if key == egui::Key::ArrowDown { "Shift+ArrowDown" } else { "Shift+ArrowUp" });
                 }
+                // Alt+Left / Alt+Right move between the panes, as in tsumugi.
+                egui::Event::Key { key: key @ (egui::Key::ArrowLeft | egui::Key::ArrowRight), pressed: true, modifiers, .. }
+                    if modifiers.alt && !modifiers.command && !modifiers.shift =>
+                {
+                    self.app.named(if key == egui::Key::ArrowLeft { "Alt+ArrowLeft" } else { "Alt+ArrowRight" });
+                }
                 // Ctrl+D / Ctrl+U and Alt+J / Alt+K are PageDown / PageUp.
                 egui::Event::Key {
                     key: key @ (egui::Key::D | egui::Key::U | egui::Key::J | egui::Key::K),

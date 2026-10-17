@@ -1326,11 +1326,11 @@ mod tests {
     }
 
     #[test]
-    fn p_in_the_worktree_table_is_a_key_of_the_table() {
+    fn o_in_the_worktree_table_is_a_key_of_the_table() {
         let mut a = on("m1");
         assert!(a.feed('3'));
-        assert!(a.keys().iter().any(|(k, _)| *k == "p"));
-        assert!(a.feed('p'), "no reading thread here: nothing runs, nothing is said");
+        assert!(a.keys().iter().any(|(k, _)| *k == "O"));
+        assert!(a.feed('O'), "no reading thread here: nothing runs, nothing is said");
     }
 
     #[test]

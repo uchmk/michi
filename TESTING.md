@@ -148,14 +148,14 @@ Open a repository with a main worktree, a worktree on a branch that is pushed an
 | 10.5 | Look at the locked worktree with no branch | `No branch, at <hash>` and a `Locked` mark; a worktree whose folder was deleted says `Its folder is gone (git can prune it)` |
 | 10.6 | Press `j` / `k`, the arrows, PageDown / PageUp, Home / End, and click a row | The selection moves (10 rows a page) and the table scrolls to keep it in view; the wheel scrolls the table with no scrollbar |
 | 10.7 | Press Enter on a row with changes, and double-click a clean row | The graph opens with the row's `Uncommitted` row selected, or its branch's commit |
-| 10.8 | Press `d`, `m`, `x`, `o`, `p` and click `PR` | A toast at the foot names the work and says it comes in a later stage; `New work` gives the same toast as `N`; the main row shows `Pull` and `Show in the graph` instead, and has no `Remove` |
+| 10.8 | Press `d`, `m`, `x`, `o`, `O` and click `PR` | A toast at the foot names the work and says it comes in a later stage; `New work` gives the same toast as `N`; the main row shows `Pull` and `Show in the graph` instead, and has no `Remove` |
 | 10.9 | Click `Read again` | The toast `Reading the worktrees again…`, and the table follows a change made outside (a new commit, a new worktree) |
 | 10.10 | Narrow the window below 960 wide | Each worktree becomes a card: the branch and folder, then the Claude, `From main`, `Uncommitted`, `Unseen` and `Conflicts ahead` lines, then the buttons, which wrap; still readable at the smallest width |
 | 10.11 | Look at the foot, and switch to the light theme | Only when the Claude column shows, a line on how often it reads tsumugi; colours stay readable in both themes |
 | 10.12 | With a Claude running in a worktree, select its row and press `o`; on a row without a Claude; press `o` in the graph | tsumugi goes to that Claude's tab (waiting or done one first) and a toast `Went to the Claude tab N in tsumugi`; without one a toast `No Claude is running in <worktree>` | [ ] |
 | 10.13 | Select a linked worktree with uncommitted files and a Claude, press `x`; Esc; once more and `y`; on the main worktree and on this window's own | A band `Remove the worktree …? The folder goes; the branch … stays.` naming the Claude tab(s), the uncommitted files and the unpushed commits; Esc removes nothing; yes closes the tabs, keeps the change under `refs/michi/backup/` and removes the folder (the branch stays; a toast names the backup); main and the window's own say they stay | [~] |
 | 10.14 | In the graph or the worktree table press `N`; type a branch, pick the base with Up/Down, type an instruction, raise the count to 2; Ctrl+Enter. Once with an empty branch; once with Esc | A form with the branch (default `tsumugi/MMDD-HHMM`), the base chips, the instruction, the count, the folder and the `tsumugi new …` line as it will run; Ctrl+Enter opens a tsumugi tab with a new worktree and Claude per count (`-1`, `-2` on the branch) and a toast `Started N`; an empty branch says so and stays; Esc closes it and starts nothing | [~] |
-| 10.15 | In the worktree table select a worktree on a branch pushed to GitHub, press `p`; on a detached one; on a branch whose remote is not GitHub | The browser opens `https://github.com/<owner>/<repo>/pull/new/<branch>` and a toast says so; the detached one says it is not on a branch; the other says the remote is not on GitHub | [x] |
+| 10.15 | In the worktree table select a worktree on a branch pushed to GitHub, press `O`; on a detached one; on a branch whose remote is not GitHub | The browser opens `https://github.com/<owner>/<repo>/pull/new/<branch>` and a toast says so; the detached one says it is not on a branch; the other says the remote is not on GitHub | [x] |
 | 10.16 | In the worktree table select a worktree with 3+ commits since main, press `r`; move one with `J`/`K`, fold one with `s` and another with `f`, reword one with `r` (edit, Ctrl+Enter), drop one with `d`; Enter, then yes. Once with nothing changed; once with the first commit folded; once with a clash (two commits touching the same lines, swapped); once with uncommitted changes in the worktree | The commits are listed oldest first with pick/squash/fixup/reword/drop, a dropped one struck through; Enter with nothing changed or the first commit folded says so; the band names the counts and refs/michi/backup/; after yes the log is as the list said and a toast names the backup; a clash stops, the 4 view shows it and a toast says so; uncommitted changes refuse with a toast | [x] |
 | 10.17 | In the worktree table select a branch behind main, press `M`, `y`; then `M` on main, on a detached row, during a merge, and on a branch whose rebase clashes | The band names the branch, main and the backup; after `y` the branch sits on main and the toast names the backup; main says there is nothing to rebase onto, the others refuse with their reason; a clash is called off and the old tip is kept | [x] |
 
@@ -876,7 +876,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | # | Do | Expect |
 | --- | --- | --- |
 | 83.1 | In `1` the keybar lists `t` as Revert; go to `3` then to `4` (a conflict) | The keybar's `t` reads Open in the terminal in `3`, Theirs in `4`; each does exactly what the keybar says | | [ ] |
-| 83.2 | In `3` press `?` | Everywhere lists Fetch and Push but not `p` Pull (here `p` is the pull request); in `1` it lists `p` Pull again | | [ ] |
+| 83.2 | In `3` press `?` | Both `3` and `1` list Fetch, Push and `p` Pull (the pull request is `O` in `3`) | | [ ] |
 | 83.3 | In `2` press `?` | Everywhere does not list `N` for new work (here `n N` jumps between changes); `N` still opens New work in `1` and `3` | | [ ] |
 | 83.4 | Press `L` (reflog list), then look at the keybar and press `?` | The keybar shows only `j k` Move, Enter Bring the row back, Esc Back; `?` lists those under "Reflog" and no "Everywhere" keys | | [ ] |
 | 83.5 | Repeat 83.4 with `c` in `3` (clean-up), `T` in `3` (trial merge) and `r` in `3` (rebase) | Each screen's own keys are in the keybar (Space picks, `a` picks all, `u` clears, `s f d p r`...), and typing `f` or `p` there does nothing to git | | [ ] |
@@ -1631,3 +1631,13 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 274.2 | In Changes click a file, then Shift+click another on the same side; then Space | Every file between is shaded alike and staged together; a Shift+click on the other side only selects |
 | 274.3 | Click a file, Ctrl+click two others (not neighbours), then Ctrl+click one of them again | The Ctrl+clicked files are shaded; the one clicked twice leaves; Space stages the rest; a plain click or Esc drops the marks |
 | 274.4 | In the graph detail pane drag across a line with full-width (Japanese) text | Whole characters are picked, never half of one |
+
+## 275. Keys and layout: Alt+Left/Right, O, Ctrl+, , dates, message box
+
+| # | Do | Expect |
+|---|---|---|
+| 275.1 | In `2` select a file and press Alt+Right, then Alt+Left | The keys go to the diff's lines, then back to the files |
+| 275.2 | In `3` press `O` on a worktree whose branch is on GitHub; press `p` | `O` opens the pull request page; `p` pulls |
+| 275.3 | Press `,` anywhere in the main screen; press Ctrl+, | The comma does nothing; Ctrl+, opens and closes the settings |
+| 275.4 | With `[view] dates` unwritten, look at the graph's date column | `YYYY/MM/DD hh:mm`, as the settings' clock format at the bottom right; `dates = "relative"` brings the short form back |
+| 275.5 | Open `2` | The commit message box is under the diff on the right, not under the file list; the file list runs to the bottom on the left |
