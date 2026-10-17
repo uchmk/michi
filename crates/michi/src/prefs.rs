@@ -279,6 +279,11 @@ pub fn keymap_path(base: &Path) -> PathBuf {
     ito_common::env_dir("MICHI_CONFIG_HOME").unwrap_or_else(|| base.join("michi")).join("keymap.toml")
 }
 
+/// The folder window.toml lives in: michi's own, beside keymap.toml.
+pub fn window_dir(base: Option<&Path>) -> Option<PathBuf> {
+    base.and_then(|b| keymap_path(b).parent().map(Path::to_path_buf))
+}
+
 /// config.toml's full path: in michi's own folder, beside keymap.toml.
 pub fn config_path(base: &Path) -> PathBuf {
     keymap_path(base).with_file_name("config.toml")

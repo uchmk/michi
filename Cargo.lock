@@ -1625,6 +1625,7 @@ version = "0.55.0"
 source = "git+https://github.com/uchmk/ito?rev=4c7db9e2254386cd362f7e6d4e6afc9452e95652#4c7db9e2254386cd362f7e6d4e6afc9452e95652"
 dependencies = [
  "chrono",
+ "egui",
  "raw-window-handle",
  "serde",
  "serde_json",
@@ -1994,7 +1995,7 @@ dependencies = [
 
 [[package]]
 name = "michi"
-version = "0.41.0"
+version = "0.42.0"
 dependencies = [
  "chrono",
  "eframe",
@@ -2022,7 +2023,7 @@ dependencies = [
 
 [[package]]
 name = "michi-core"
-version = "0.41.0"
+version = "0.42.0"
 dependencies = [
  "chrono",
  "serde",

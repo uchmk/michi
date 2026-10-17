@@ -80,6 +80,8 @@ struct Michi {
     /// Whether the window was in front at the last frame.
     front: bool,
     script: Option<Runner>,
+    /// Writes the window's place to window.toml; none under `--keys`.
+    place: Option<ito_common::window::Tracker>,
     /// What the script asked for in `raw_input_hook`, done in the frame.
     todo: Vec<Do>,
 }
@@ -353,6 +355,9 @@ impl eframe::App for Michi {
     /// A window that closes while a script runs says so in the done file
     /// (`<Quit>` and a last key that quits both come here).
     fn on_exit(&mut self) {
+        if let Some(t) = &mut self.place {
+            t.close(None);
+        }
         let Some(script) = &mut self.script else { return };
         if !script.running() {
             return;
@@ -374,6 +379,9 @@ impl eframe::App for Michi {
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        if let Some(t) = &mut self.place {
+            t.follow(&ctx);
+        }
         self.keymap_keys(&ctx);
         if self.app.mode != Mode::Settings {
             self.keys(&ctx);
@@ -536,6 +544,9 @@ fn main() -> eframe::Result {
     if let (Some(_), Some(done)) = (&script, &done) {
         ito_keyscript::install_panic_report(done.clone());
     }
+    // A script plays on a window that keeps no place, and leaves none.
+    let saved =
+        ito_common::window::Saved::load(script.is_none().then(|| crate::prefs::window_dir(ito_common::base_dir().as_deref())).flatten());
     let viewport = egui::ViewportBuilder::default()
         .with_title("michi")
         .with_inner_size([1280.0, 800.0])
@@ -545,11 +556,13 @@ fn main() -> eframe::Result {
         // Alt+Tab and the taskbar; build.rs bakes the same drawing into
         // michi.exe for Explorer.
         .with_icon(std::sync::Arc::new(egui::IconData { rgba: icon::pixels(ICON_PX), width: ICON_PX, height: ICON_PX }));
+    let viewport = saved.viewport(viewport);
     let options = eframe::NativeOptions { viewport, ..Default::default() };
     eframe::run_native(
         "michi",
         options,
         Box::new(move |cc| {
+            saved.put(cc);
             fonts::load_in_background(cc.egui_ctx.clone());
             let mut prefs = prefs::Prefs::load(ito_common::base_dir());
             prefs.watch(&cc.egui_ctx);
@@ -564,7 +577,7 @@ fn main() -> eframe::Result {
                 r.watch(cc.egui_ctx.clone());
                 r
             });
-            Ok(Box::new(Michi { app, front: true, script, todo: Vec::new() }))
+            Ok(Box::new(Michi { app, front: true, script, place: saved.tracker(), todo: Vec::new() }))
         }),
     )
 }
