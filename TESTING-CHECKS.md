@@ -447,3 +447,31 @@
 - [ ] **40.4** Press `P` on a branch that origin already has, on one only behind, and in a repository with no remote → `origin/feat has it already`, `Nothing to push: origin/feat is n ahead (p pulls)` and `No remote …`; no band in any of them 〔未訳〕
 - [ ] **40.5** With two remotes and no `origin`, press `P`, pick one → The list of remotes first, then the band for the picked remote 〔未訳〕
 - [ ] **40.6** Switch the language to Japanese and press `P` → The band reads `n 個のコミットを … に push しますか？`; the commit rows do not run off the box 〔未訳〕
+
+## 41. Autostash on pull and switch
+
+- [ ] **41.1** In a worktree with an uncommitted edit to a file the upstream also changed (different lines), press `p` → The pull goes through instead of stopping; the toast says the changes were stashed and put back, with the `michi/backup/...` name; the edit is still there; `git stash list` is empty → | [ ] 〔未訳〕
+- [ ] **41.2** Same, but the edit touches the same lines the upstream changed → The pull goes through; the toast says the stash clashed in the file; the file has `<<<<<<<` marks and the stash stays in the list and under `michi/backup/` → | [ ] 〔未訳〕
+- [ ] **41.3** Switch a worktree with changes to a branch that would overwrite them (branch picker) → The switch happens, the toast says the changes were stashed and put back (or clashed) → | [ ] 〔未訳〕
+- [ ] **41.4** Pull or switch with no changes, or with changes that do not stand in the way → Behaves as before; no stash, no backup, no extra text in the toast → | [ ] 〔未訳〕
+- [ ] **41.5** Switch to a branch that does not exist, with changes in the worktree → The error is shown as before and the changes are still in the worktree (nothing left in the stash list) → | [ ] 〔未訳〕
+
+## 42. Reflog screen (`L`, #50)
+
+- [ ] **42.1** In the graph or the worktree table press `L` → A list opens at the top: HEAD's reflog (`HEAD@{n}`, what happened, the commit's subject) and the backups under `refs/michi/backup/` (tinted), newest first; the window does not freeze on a big repository → | [ ] 〔未訳〕
+- [ ] **42.2** Reset a branch (`git reset --hard HEAD~1`) in a worktree, then press `R` → The reset is the top `HEAD@{0}` row and the commit it dropped is the row under it → | [ ] 〔未訳〕
+- [ ] **42.3** Move with `j k`, the arrow keys, PageUp/PageDown, Home/End and the mouse; click a row → The selection follows; a click on the selected row asks as Enter does; a click outside the list closes it → | [ ] 〔未訳〕
+- [ ] **42.4** Select a row and press Enter → The band asks to bring the commit back as a new branch and says nothing moves; `y` makes `recovered/<id>` at that commit (`-2` after it if taken), the list closes and a toast names the branch; HEAD and the worktree are untouched → | [ ] 〔未訳〕
+- [ ] **42.5** After a force push or a branch delete (which keep a backup), press `R` → The backup is listed with the reason michi wrote; bringing it back gives a branch at its commit → | [ ] 〔未訳〕
+- [ ] **42.6** Press `R` in a repository with no commits and nothing kept → A toast says the reflog and backups are empty; no list opens → | [ ] 〔未訳〕
+- [ ] **42.7** Switch the language to Japanese and open the list → The title, hints, band and toast are in Japanese → | [ ] 〔未訳〕
+
+## 43. Reset: soft, mixed or hard (#77)
+
+- [ ] **43.1** In the graph, select an older commit and press `R` → A band asks how far to reset, tells what each of 1 soft / 2 mixed / 3 hard loses, and has the three buttons and No → | [ ] 〔未訳〕
+- [ ] **43.2** With a staged change, press `R` on the previous commit, then `1` → The branch moves; the change shows as staged; the toast names the `michi/backup/…` ref of the old tip → | [ ] 〔未訳〕
+- [ ] **43.3** Same, with `2` → The branch moves; the change is unstaged but its text is in the file → | [ ] 〔未訳〕
+- [ ] **43.4** With an edited tracked file and an untracked file, press `R` and `3` → The edit is gone, the untracked file stays; the toast names two backup refs (the tip, the changes); `git show <changes>:file` has the edit → | [ ] 〔未訳〕
+- [ ] **43.5** Press `R`, then Esc (or `n`, or `y`) → Nothing changes (y does nothing: only 1 2 3 choose) → | [ ] 〔未訳〕
+- [ ] **43.6** Press `R` in a worktree in the middle of a merge or rebase; with no commit selected → A toast says to finish it first / to pick a commit; no band → | [ ] 〔未訳〕
+- [ ] **43.7** Press `R` where a Claude is working → The band ends with the note that a Claude is working there → | [ ] 〔未訳〕

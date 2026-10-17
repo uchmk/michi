@@ -1,4 +1,4 @@
-//! The reflog screen (`R` over the graph or the worktree table): where HEAD
+//! The reflog screen (`L` over the graph or the worktree table): where HEAD
 //! has been and what michi kept under `refs/michi/backup/`, in one list.
 //! Enter asks, then brings the row back as a new branch (nothing moves or
 //! goes). reflog_ui.rs draws it.
@@ -32,7 +32,7 @@ impl Reflog {
 }
 
 impl App {
-    /// `R`: read HEAD's reflog and the backups, off the UI thread.
+    /// `L`: read HEAD's reflog and the backups, off the UI thread.
     pub(crate) fn open_reflog(&mut self) {
         let Repo::Ready(s) = &self.repo else { return };
         let here = s.top.clone();

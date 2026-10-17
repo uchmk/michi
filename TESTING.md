@@ -586,11 +586,11 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 41.4 | Pull or switch with no changes, or with changes that do not stand in the way | Behaves as before; no stash, no backup, no extra text in the toast | | [ ] |
 | 41.5 | Switch to a branch that does not exist, with changes in the worktree | The error is shown as before and the changes are still in the worktree (nothing left in the stash list) | | [ ] |
 
-## 42. Reflog screen (`R`, #50)
+## 42. Reflog screen (`L`, #50)
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 42.1 | In the graph or the worktree table press `R` | A list opens at the top: HEAD's reflog (`HEAD@{n}`, what happened, the commit's subject) and the backups under `refs/michi/backup/` (tinted), newest first; the window does not freeze on a big repository | | [ ] |
+| 42.1 | In the graph or the worktree table press `L` | A list opens at the top: HEAD's reflog (`HEAD@{n}`, what happened, the commit's subject) and the backups under `refs/michi/backup/` (tinted), newest first; the window does not freeze on a big repository | | [ ] |
 | 42.2 | Reset a branch (`git reset --hard HEAD~1`) in a worktree, then press `R` | The reset is the top `HEAD@{0}` row and the commit it dropped is the row under it | | [ ] |
 | 42.3 | Move with `j k`, the arrow keys, PageUp/PageDown, Home/End and the mouse; click a row | The selection follows; a click on the selected row asks as Enter does; a click outside the list closes it | | [ ] |
 | 42.4 | Select a row and press Enter | The band asks to bring the commit back as a new branch and says nothing moves; `y` makes `recovered/<id>` at that commit (`-2` after it if taken), the list closes and a toast names the branch; HEAD and the worktree are untouched | | [ ] |

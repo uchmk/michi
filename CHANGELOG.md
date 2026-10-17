@@ -2,6 +2,14 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.56.0] - 2026-10-17
+
+### 追加
+
+- pull と切り替えで、未コミットの変更が邪魔をしたら、自動で stash して戻す（`refs/michi/backup` にも残す）（#76）。
+- reflog の画面（樹形図・worktree の表で `L`）。HEAD の reflog と michi の退避を新しい順に並べ、選んだ点から `recovered/<id>` の枝を作る（何も動かさない）（#50）。
+- reset の 3 種の選択（樹形図で `R`、1 soft / 2 mixed / 3 hard）。動かす前に退避の ref を作り、hard は未コミットの変更も退避する（#77）。
+
 ## [0.55.0] - 2026-10-17
 
 ### 追加

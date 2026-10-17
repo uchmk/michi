@@ -625,7 +625,7 @@ mod tests {
         let id = Oid::parse(&"a".repeat(40)).unwrap();
         let task = Task::Reset { wt: PathBuf::from("/r/main"), id, mode: Mode::Mixed };
         for (c, mode) in [('1', Mode::Soft), ('2', Mode::Mixed), ('3', Mode::Hard)] {
-            a.band = Some(Band { text: String::new(), then: Then::Act(task.clone()), parents: 3 });
+            a.band = Some(Band { parents: 3, ..Band::new(String::new(), Then::Act(task.clone())) });
             assert!(a.feed('y'));
             assert!(a.band.is_some(), "y does not choose");
             assert!(a.band.as_ref().is_some_and(|b| b.parent_key(1) == "band.reset_soft"));

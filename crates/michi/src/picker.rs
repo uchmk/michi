@@ -585,7 +585,7 @@ impl App {
             text.push_str(self.tr("act.revert_claude"));
         }
         let task = Task::Reset { wt, id, mode: michi_core::reset::Mode::Mixed };
-        self.band = Some(Band { text, then: Then::Act(task), parents: 3 });
+        self.band = Some(Band { parents: 3, ..Band::new(text, Then::Act(task)) });
     }
 
     /// `C`: asks before it picks the selected commit onto the window's
