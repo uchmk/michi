@@ -504,3 +504,17 @@ files under `refs/michi/backup/<time>` first.
 | 34.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] |
 | 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] |
 | 34.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] |
+
+## 98. Answering a waiting Claude from the notification (W)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 98.1 | With tsumugi running, let a Claude in a worktree reach a question (a permission prompt) while michi is open | A toast `The Claude in <wt> is waiting: <question> (W: answer)` shows for about 15 s; with the window behind another, the system notification `michi: a Claude is waiting` shows too (it follows the `done` settings of Notifications) | | [ ] |
+| 98.2 | Press `W` from any view | The window goes to the worktree view with that worktree selected, its branch review (the diff) open, and the question with an answer line over the bottom of the window | | [ ] |
+| 98.3 | Type `y` (or any text) and press Enter | The text is typed into that Claude's tsumugi tab and submitted; the line closes and the toast says `Sent the answer to tab N`; the Claude goes back to running | | [ ] |
+| 98.4 | Type the answer with a Japanese IME and confirm the conversion with Enter | The conversion is confirmed without sending; the next Enter sends | | [ ] |
+| 98.5 | With two Claudes waiting, press `W` twice | The first press goes to the one that has waited longest, the second to the next one, then round | | [ ] |
+| 98.6 | Press Esc in the answer line | The line closes; the review stays open | | [ ] |
+| 98.7 | Answer the Claude in its own tab while the line is open | The line closes by itself once michi sees the Claude is no longer waiting | | [ ] |
+| 98.8 | Press `W` with no Claude waiting | The toast says `No Claude is waiting` | | [ ] |
+| 98.9 | Start michi while a Claude is already waiting | No toast for it (only waits that begin while michi runs are told); `W` still goes to it | | [ ] |

@@ -32,6 +32,8 @@ mod picker_ui;
 mod prefs;
 mod reorder;
 mod reorder_ui;
+mod reply;
+mod reply_ui;
 mod repo;
 mod repos;
 mod review;
@@ -237,6 +239,19 @@ impl Michi {
             }
             return;
         }
+        if self.app.reply.is_some() {
+            let (send, esc) = ctx.input_mut(|i| {
+                let enter =
+                    i.consume_key(egui::Modifiers::NONE, egui::Key::Enter) | i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter);
+                (enter, i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+            });
+            if send {
+                self.app.reply_send();
+            } else if esc {
+                self.app.escape();
+            }
+            return;
+        }
         // A message written for a commit of the rebase screen.
         if self.app.band.is_none() && self.app.reorder.as_ref().is_some_and(|r| r.editing.is_some()) {
             let (keep, leave) = ctx.input_mut(|i| {
@@ -439,6 +454,7 @@ impl eframe::App for Michi {
         picker_ui::show(&ctx, &mut self.app);
         repos::show(&ctx, &mut self.app);
         newwork_ui::show(&ctx, &mut self.app);
+        reply_ui::show(&ctx, &mut self.app);
         tidy_ui::show(&ctx, &mut self.app);
         reorder_ui::show(&ctx, &mut self.app);
         // A tab leaves the settings and the key list for its view; the gear

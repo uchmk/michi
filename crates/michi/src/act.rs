@@ -220,6 +220,12 @@ pub enum Task {
     Focus {
         session: u64,
     },
+    /// Types `text` into the tsumugi session `session` (`tsumugi send`): the
+    /// answer to a waiting Claude.
+    Reply {
+        session: u64,
+        text: String,
+    },
     /// Opens the file at `path` in an external tool (`git mergetool` when
     /// `merge.tool` is set, else the system's program for the file).
     External {
@@ -273,7 +279,7 @@ impl Task {
             Task::Abort { doing: Doing::Revert, .. } => "revert --abort",
             Task::Abort { doing: Doing::Bisect, .. } => "bisect reset",
             Task::Markers { .. } => "conflict",
-            Task::Handoff { .. } | Task::HandNotes { .. } | Task::Focus { .. } | Task::NewWork { .. } => "tsumugi",
+            Task::Handoff { .. } | Task::HandNotes { .. } | Task::Focus { .. } | Task::Reply { .. } | Task::NewWork { .. } => "tsumugi",
             Task::OpenPr { .. } => "remote",
             Task::External { .. } => "mergetool",
             Task::AskRerere { .. } => "config --get",
@@ -364,6 +370,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::NewWork { repo, plans } => plans.iter().try_for_each(|p| handoff::new_work(repo, p)).map(|()| Acted::Done),
         Task::OpenPr { wt, branch } => michi_core::pr::open(wt, branch).map(|_| Acted::Done),
         Task::Focus { session } => handoff::focus(*session).map(|()| Acted::Done),
+        Task::Reply { session, text } => handoff::send(*session, text).map(|()| Acted::Done),
         Task::Handoff { conflict, session } => hand_off(conflict, *session).map(|()| Acted::Done),
         Task::HandNotes { wt, branch, trunk, notes, session } => hand_notes(wt, branch, trunk, notes, *session).map(|()| Acted::Done),
         Task::Markers { wt } => conflict::read(wt).map(|c| Acted::Markers(c.map(|c| c.left()))),
@@ -452,6 +459,7 @@ impl App {
                 (self.tr(key).replace("{path}", path), 6)
             }
             (Task::OpenPr { branch, .. }, Ok(_)) => (self.tr("act.pr_opened").replace("{b}", branch), 4),
+            (Task::Reply { session, .. }, Ok(_)) => (self.tr("reply.sent").replace("{n}", &session.to_string()), 4),
             (Task::Focus { session }, Ok(_)) => (self.tr("act.focused").replace("{n}", &session.to_string()), 3),
             (Task::Handoff { conflict, session }, Ok(_)) => {
                 let key = if session.is_some() { "act.handed" } else { "act.handed_new" };

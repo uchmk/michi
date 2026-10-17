@@ -201,6 +201,48 @@ pub fn sort(sessions: &mut [Session]) {
     });
 }
 
+/// A Claude that waits for a person, in the worktree at `wt`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Waiting {
+    pub wt: PathBuf,
+    /// The tsumugi session: what `tsumugi send N` takes.
+    pub id: u64,
+    /// What it asks, on one line (empty when it said nothing).
+    pub question: String,
+    pub since_ms: u64,
+}
+
+impl Waiting {
+    /// Who it is and which wait: a session that went back to work and waits
+    /// again is a new wait.
+    pub fn key(&self) -> (u64, u64) {
+        (self.id, self.since_ms)
+    }
+}
+
+/// What a notification says, on one line: runs of white space become one space.
+pub fn one_line(note: &str) -> String {
+    note.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// The agents that wait for a person, the longest wait first (one with no
+/// time last, then by number).
+pub fn waiting(by_worktree: &[(PathBuf, Vec<Session>)]) -> Vec<Waiting> {
+    let mut out: Vec<Waiting> = by_worktree
+        .iter()
+        .flat_map(|(wt, ss)| ss.iter().filter(|s| s.is_agent() && s.state == State::Waiting).map(move |s| (wt, s)))
+        .map(|(wt, s)| Waiting { wt: wt.clone(), id: s.id, question: one_line(&s.note), since_ms: s.since_ms })
+        .collect();
+    out.sort_by_key(|w| (w.since_ms == 0, w.since_ms, w.id));
+    out
+}
+
+/// The waits in `now` that `seen` (the keys of the waits told of before) does
+/// not have.
+pub fn fresh<'a>(seen: &[(u64, u64)], now: &'a [Waiting]) -> Vec<&'a Waiting> {
+    now.iter().filter(|w| !seen.contains(&w.key())).collect()
+}
+
 /// Runs `program args…` for its standard output. `Ok(None)` when it is not
 /// there or exits with a failure; `Err` when it could not be run or outlived
 /// `timeout` (then it is killed). No console window flashes on Windows.
@@ -490,5 +532,31 @@ mod tests {
         assert_eq!(run("git", &["no-such-subcommand-for-tests"], slow), Ok(None));
         let out = run("git", &["--version"], slow).unwrap().unwrap();
         assert!(String::from_utf8_lossy(&out).starts_with("git version"));
+    }
+
+    #[test]
+    fn waiting_agents_longest_wait_first_and_only_the_new_ones_are_fresh() {
+        let mut ask = s(5, State::Waiting, "/w/a", 20);
+        ask.note = "  Run the
+ migration?  "
+            .into();
+        let list = vec![
+            (PathBuf::from("/w/a"), vec![ask, s(6, State::Running, "/w/a", 1)]),
+            (PathBuf::from("/w/b"), vec![s(7, State::Waiting, "/w/b", 10), s(8, State::Waiting, "/w/b", 0)]),
+        ];
+        let mut shell = s(9, State::Waiting, "/w/b", 5);
+        shell.agent.clear();
+        let mut list = list;
+        list[1].1.push(shell);
+        let w = waiting(&list);
+        assert_eq!(w.iter().map(|w| w.id).collect::<Vec<_>>(), [7, 5, 8], "a plain shell and a running agent are not waits");
+        assert_eq!(w[1].question, "Run the migration?");
+        assert_eq!(w[1].wt, PathBuf::from("/w/a"));
+        let seen = [w[0].key(), w[1].key()];
+        assert_eq!(fresh(&seen, &w).iter().map(|w| w.id).collect::<Vec<_>>(), [8]);
+        assert!(fresh(&[], &[]).is_empty());
+        // The same session waiting again (a later `since`) is told again.
+        let again = [Waiting { since_ms: 99, ..w[0].clone() }];
+        assert_eq!(fresh(&seen, &again).len(), 1);
     }
 }

@@ -135,8 +135,15 @@ impl View {
 }
 
 /// The keys that work in every view.
-pub const GLOBAL_KEYS: [(&str, &str); 6] =
-    [("1 2 3 4", "key.views"), ("N", "key.new_work"), ("f", "key.fetch"), ("p", "key.pull"), ("P", "key.push"), ("F", "key.push_over")];
+pub const GLOBAL_KEYS: [(&str, &str); 7] = [
+    ("1 2 3 4", "key.views"),
+    ("N", "key.new_work"),
+    ("W", "key.waiting"),
+    ("f", "key.fetch"),
+    ("p", "key.pull"),
+    ("P", "key.push"),
+    ("F", "key.push_over"),
+];
 
 /// The keys of the branch review, drawn over the worktree table.
 pub const REVIEW_KEYS: [(&str, &str); 11] = [
@@ -253,6 +260,10 @@ pub struct App {
     pub picker: Option<Picker>,
     /// The new-work form while it is open.
     pub new_work: Option<crate::newwork::NewWork>,
+    /// The answer being written to a waiting Claude (`W`).
+    pub reply: Option<crate::reply::Reply>,
+    /// The keys of the waits already told of; `None` until tsumugi was heard once.
+    pub waits_told: Option<Vec<(u64, u64)>>,
     /// The clean-up list, over the worktree table.
     pub tidy: Option<crate::tidy::Tidy>,
     pub reorder: Option<crate::reorder::Reorder>,
@@ -315,6 +326,8 @@ impl App {
             rerere_asked: false,
             picker: None,
             new_work: None,
+            reply: None,
+            waits_told: None,
             tidy: None,
             reorder: None,
             side_stash: None,
@@ -527,6 +540,7 @@ impl App {
             Answer::Claude(c) => {
                 self.claude = c;
                 self.handed_stopped();
+                self.waits_changed();
             }
             Answer::Clashes(c) => self.clashes = c,
             Answer::Conflicts(c) => {
@@ -1219,7 +1233,7 @@ impl App {
         match (self.mode, c) {
             (Mode::Help, c) if self.bare_act(c) => {}
             (Mode::Settings, _) | (Mode::Help, _) => return false,
-            (Mode::Main, _) if self.picker.is_some() || self.new_work.is_some() => return false,
+            (Mode::Main, _) if self.picker.is_some() || self.new_work.is_some() || self.reply.is_some() => return false,
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
             (Mode::Main, c) if self.tidy.is_some() => return self.tidy_key(c),
             (Mode::Main, c) if self.reorder.is_some() => return self.reorder_key(c),
@@ -1235,6 +1249,7 @@ impl App {
                 None if self.view == View::Worktree && self.review.is_none() && self.wt_key(c) => {}
                 None if self.view == View::Changes && self.changes_key(c) => {}
                 None if self.view == View::Conflict && self.conflict_key(c) => {}
+                None if c == 'W' => self.jump_waiting(),
                 None if self.net_key(c) => {}
                 None => return self.later(|token| token.chars().eq([c])),
             },
@@ -1428,7 +1443,7 @@ impl App {
         if self.repos.take().is_some() {
             return true;
         }
-        if self.picker.take().is_some() || self.new_work.take().is_some() {
+        if self.picker.take().is_some() || self.new_work.take().is_some() || self.reply.take().is_some() {
             return true;
         }
         if self.band.take().is_some() {
