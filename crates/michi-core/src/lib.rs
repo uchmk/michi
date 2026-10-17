@@ -44,6 +44,7 @@ pub mod rebase;
 pub mod recent;
 pub mod reflog;
 pub mod refs;
+pub mod remote;
 pub mod rerere;
 pub mod reset;
 pub mod revert;

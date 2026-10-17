@@ -33,10 +33,12 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
         Kind::Tag => ("picker.tag", "picker.tag_keys"),
         Kind::Stash => ("picker.stash", "picker.stash_keys"),
         Kind::Remote => ("picker.remote", "picker.remote_keys"),
+        Kind::Remotes => ("picker.remotes", "picker.remotes_keys"),
     };
     let header = match p.kind {
         Kind::Stash => app.tr("picker.stash_for").replace("{wt}", &act::name(&p.wt)),
         Kind::Remote => app.tr("picker.remote_for").replace("{wt}", &act::name(&p.wt)),
+        Kind::Remotes => app.tr("picker.remotes_for").to_owned(),
         _ => app.tr("picker.for").replace("{wt}", &act::name(&p.wt)).replace("{at}", &p.at.short()),
     };
     // While renaming the box is the new name: one row stands for it, so that
@@ -123,10 +125,19 @@ fn describe(app: &App, p: &Picker, item: &Item) -> (String, Option<String>) {
         }
         Item::Remote { id, .. } | Item::Tag { id, .. } => (String::new(), Some(id.short())),
         Item::Create { .. } => {
+            if p.kind == Kind::Remotes {
+                let text = if p.message().is_empty() {
+                    app.tr("remote.type_url").to_owned()
+                } else {
+                    app.tr("remote.add_at").replace("{}", p.message())
+                };
+                return (text, None);
+            }
             let key = if p.kind == Kind::Branch { "picker.create" } else { "picker.tag_at" };
             (app.tr(key).replace("{}", &p.at.short()), None)
         }
         Item::Stash { id, place, .. } => (format!("stash@{{{place}}}"), Some(id.short())),
+        Item::Address { url, .. } => (url.clone(), None),
         Item::Save | Item::Target { .. } => (String::new(), None),
     }
 }

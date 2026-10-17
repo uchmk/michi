@@ -26,6 +26,8 @@ pub enum Kind {
     Stash,
     /// The remotes a push could go to, for the push waiting in `job`.
     Remote,
+    /// The remotes, to add one or remove one (`M`).
+    Remotes,
 }
 
 /// A row of the palette.
@@ -60,6 +62,11 @@ pub enum Item {
     Target {
         name: String,
     },
+    /// A remote and its address, in the list that adds and removes them.
+    Address {
+        name: String,
+        url: String,
+    },
     /// A stash, `stash@{place}`.
     Stash {
         id: Oid,
@@ -73,7 +80,11 @@ impl Item {
     /// remote branch.
     pub fn title(&self) -> String {
         match self {
-            Item::Local { name, .. } | Item::Tag { name, .. } | Item::Create { name } | Item::Target { name } => name.clone(),
+            Item::Local { name, .. }
+            | Item::Tag { name, .. }
+            | Item::Create { name }
+            | Item::Target { name }
+            | Item::Address { name, .. } => name.clone(),
             Item::Remote { remote, name, .. } => format!("{remote}/{name}"),
             Item::Stash { subject, .. } => subject.clone(),
             Item::Save => String::new(),
@@ -150,7 +161,7 @@ impl Picker {
                 locals.chain(remotes).collect()
             }
             Kind::Tag => refs.tags.iter().map(|r| Item::Tag { name: r.name.clone(), id: r.id }).collect(),
-            Kind::Remote => Vec::new(),
+            Kind::Remote | Kind::Remotes => Vec::new(),
             Kind::Stash => {
                 refs.stashes.iter().enumerate().map(|(place, s)| Item::Stash { id: s.id, subject: s.subject.clone(), place }).collect()
             }
@@ -162,6 +173,27 @@ impl Picker {
             sel: 0,
             wt,
             at,
+            items,
+            rows: Vec::new(),
+            view: picker_view(),
+            renaming: None,
+            job: None,
+        };
+        p.sync();
+        p
+    }
+
+    /// The list of `remotes` for the worktree at `wt`: what is typed (a
+    /// name, then an address) narrows it and offers a new one.
+    pub fn remotes(remotes: Vec<michi_core::remote::Remote>, wt: PathBuf) -> Picker {
+        let items = remotes.into_iter().map(|r| Item::Address { name: r.name, url: r.url }).collect();
+        let mut p = Picker {
+            kind: Kind::Remotes,
+            query: String::new(),
+            matched: None,
+            sel: 0,
+            wt,
+            at: Oid::parse(&"0".repeat(40)).expect("a zero id"),
             items,
             rows: Vec::new(),
             view: picker_view(),
@@ -201,12 +233,12 @@ impl Picker {
     pub fn name(&self) -> &str {
         match self.kind {
             Kind::Branch | Kind::Stash | Kind::Remote => self.query.trim(),
-            Kind::Tag => self.query.split_whitespace().next().unwrap_or(""),
+            Kind::Tag | Kind::Remotes => self.query.split_whitespace().next().unwrap_or(""),
         }
     }
 
     /// A new tag's message: what is typed after its name; a new stash's:
-    /// all of it.
+    /// all of it; a new remote's address.
     pub fn message(&self) -> &str {
         if self.kind == Kind::Stash {
             return self.query.trim();
@@ -351,6 +383,18 @@ impl App {
                     Some(Job::Sync { wt, .. }) => self.order(Job::Sync { wt, remote: Some(name) }),
                     _ => {}
                 }
+            }
+            (Kind::Remotes, Item::Create { name }) => match michi_core::remote::check(&name, &message) {
+                Ok(()) => {
+                    self.picker = None;
+                    self.act(Task::AddRemote { name, url: message });
+                }
+                Err(_) if message.is_empty() => self.say(self.tr("remote.need_url")),
+                Err(why) => self.say_for(why, 6),
+            },
+            (Kind::Remotes, Item::Address { name, url }) => {
+                let text = self.tr("remote.at").replace("{name}", &name).replace("{url}", &url);
+                self.say_for(text, 6);
             }
             (Kind::Stash, Item::Save) => self.guarded(Task::Stash { wt: wt.clone(), message }, &wt, "act.stash_doing", "act.claude_stash"),
             (Kind::Stash, Item::Stash { id, .. }) => {
@@ -531,8 +575,31 @@ impl App {
                 let text = self.tr("act.drop_stash").replace("{id}", &id.short()).replace("{subject}", &subject);
                 self.band = Some(Band::new(text, Then::Act(Task::DropStash { id })));
             }
+            Item::Address { name, url } => {
+                self.picker = None;
+                let text = self.tr("remote.ask_remove").replace("{name}", &name).replace("{url}", &url);
+                self.band = Some(Band::new(text, Then::Act(Task::RemoveRemote { name })));
+            }
             Item::Create { .. } | Item::Save | Item::Target { .. } => {}
         }
+    }
+
+    /// `M` in the graph: reads the remotes off the UI thread, then opens
+    /// the list.
+    pub(crate) fn open_remotes(&mut self) {
+        let Repo::Ready(s) = &self.repo else {
+            self.say(self.tr("act.no_tree"));
+            return;
+        };
+        let here = s.top.clone();
+        self.act(Task::FindRemotes { here });
+    }
+
+    /// The remotes have come: open the list (empty, it still offers to add one).
+    pub(crate) fn remotes_found(&mut self, remotes: Vec<michi_core::remote::Remote>) {
+        let Repo::Ready(s) = &self.repo else { return };
+        let top = s.top.clone();
+        self.picker = Some(Picker::remotes(remotes, top));
     }
 
     /// `t`: asks before it reverts the selected commit with a new commit on
@@ -1228,5 +1295,65 @@ mod tests {
         assert!(a.feed('b'));
         assert_eq!(toast(&a), "No worktree to work in");
         assert!(a.picker.is_none());
+    }
+
+    fn remotes() -> Picker {
+        let r = |name: &str, url: &str| michi_core::remote::Remote { name: name.into(), url: url.into(), push_url: None };
+        Picker::remotes(vec![r("origin", "https://h/a.git"), r("up", "../up")], PathBuf::from("C:/r/repo"))
+    }
+
+    #[test]
+    fn the_remotes_list_offers_a_new_one_with_its_address() {
+        let mut p = remotes();
+        assert_eq!(titles(&p), ["origin", "up"]);
+        p.query = "mine https://h/b.git".into();
+        p.sync();
+        assert_eq!(titles(&p), ["mine"]);
+        assert_eq!(p.name(), "mine");
+        assert_eq!(p.message(), "https://h/b.git");
+        // A name that is taken offers no new one.
+        p.query = "origin".into();
+        p.sync();
+        assert_eq!(titles(&p), ["origin"]);
+    }
+
+    #[test]
+    fn a_remote_is_added_after_the_address_is_typed_and_removed_after_a_yes() {
+        let mut a = app();
+        let mut p = remotes();
+        p.query = "mine".into();
+        p.sync();
+        a.picker = Some(p);
+        // No address yet: said, and the list stays.
+        a.picker_enter(false);
+        assert_eq!(toast(&a), "Type the address after the name: name https://host/repo.git");
+        assert!(a.picker.is_some());
+        a.picker.as_mut().unwrap().query = "mine -x".into();
+        a.picker.as_mut().unwrap().sync();
+        a.picker_enter(false);
+        assert!(a.picker.is_some(), "an address that would read as an option is refused");
+        a.picker.as_mut().unwrap().query = "mine https://h/b.git".into();
+        a.picker.as_mut().unwrap().sync();
+        a.picker_enter(false);
+        assert!(a.picker.is_none());
+
+        // Delete asks first and names what goes.
+        a.picker = Some(remotes());
+        a.picker_delete();
+        assert!(a.picker.is_none());
+        let band = a.band.as_ref().unwrap();
+        assert_eq!(band.then, Then::Act(Task::RemoveRemote { name: "origin".into() }));
+        assert!(band.text.starts_with("Remove the remote origin (https://h/a.git)?"), "{}", band.text);
+        assert!(band.danger());
+    }
+
+    #[test]
+    fn the_endings_of_adding_and_removing_are_said() {
+        let mut a = app();
+        a.act_done(Task::AddRemote { name: "up".into(), url: "../up".into() }, Ok(crate::act::Acted::Done));
+        assert_eq!(toast(&a), "Added the remote up at ../up. Nothing was fetched; press f.");
+        let was = michi_core::remote::Remote { name: "up".into(), url: "../up".into(), push_url: None };
+        a.act_done(Task::RemoveRemote { name: "up".into() }, Ok(crate::act::Acted::RemoteRemoved(was)));
+        assert_eq!(toast(&a), "Removed the remote up. It was at ../up; add it again with M.");
     }
 }

@@ -908,3 +908,16 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 70.7 | With the network cut, press `f` yourself | The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` | | [ ] |
 | 70.8 | Start a pull or push while the timer is due | The timer waits; it never interrupts a job | | [ ] |
 | 70.9 | Switch EN and JA | The keybar's `· failed` / `· 失敗` reads well and fits | | [ ] |
+
+## 40. Remotes: list, add, remove (`M`)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 40.1 | In the graph press `M` in a repository with a remote | A list titled `Remotes` opens: each remote's name with its address; `M Remotes` is in the graph's keys (`?`) | [ ] |
+| 40.2 | Type `mine https://example.com/x.git` | One row `mine`, lit, reads `add it at https://example.com/x.git`; Enter adds it, a toast says nothing was fetched; `M` lists it | [ ] |
+| 40.3 | Type only `mine` and press Enter | A toast asks for the address after the name; the list stays open | [ ] |
+| 40.4 | Type `a/b https://x` and press Enter | A toast says `'a/b' is not a valid remote name`; the list stays open and nothing is added | [ ] |
+| 40.5 | Select a remote and press Delete | The red question names the remote and its address and says its remote-tracking branches go; `y` removes it, the graph drops its `origin/...` pills, the toast says where it was | [ ] |
+| 40.6 | Press `Esc` on that question | Nothing is removed | [ ] |
+| 40.7 | Press `M` in a repository with no remote | The list opens empty; typing a name and address still adds one | [ ] |
+| 40.8 | Switch EN and JA | The hint, the keys line, the question and the toasts read well and fit | [ ] |
