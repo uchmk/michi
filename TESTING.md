@@ -1317,3 +1317,24 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 261.3 | Change the theme and a key, press Import once, then again | The first press only arms the button; the second reads the file back, a toast says what was read, and the theme and the key are as exported within a couple of seconds |
 | 261.4 | Import a file that is not a settings bundle | A toast gives the reason and nothing in the settings folder changes |
 | 261.5 | Search "backup" in the settings | The Advanced page is listed |
+
+## 113. Calm save (#113)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 113.1 | In a worktree with a staged change, an unstaged change and a new file, press "Save state" in the keybar (or "Calm down" in the palette) | A toast names `michi/backup/<time>` and a `git restore --source=… --worktree -- .` line; the status, the index and HEAD are exactly as before | [ ] |
+| 113.2 | Run the `git restore` line from the toast after editing a file | The file is back as it was when saved | [ ] |
+| 113.3 | Press it in a clean worktree | A toast says there are no changes and HEAD is kept | [ ] |
+| 113.4 | Press it in the middle of a merge with a clash | It saves, and the merge is still under way with the same places to solve | [ ] |
+| 113.5 | Hover the button; switch EN and JA | The tooltip says nothing is changed; both languages read well and the button fits the keybar at a narrow window | [ ] |
+
+## 119. Next thing to do (#119)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 119.1 | Edit a file | A "Next: commit" button appears in the keybar; pressing it goes to the `2` view | [ ] |
+| 119.2 | Commit it, with an upstream | "Next: push" appears; pressing it pushes | [ ] |
+| 119.3 | Make the upstream have a commit you lack | "Next: pull" appears (before push); pressing it pulls | [ ] |
+| 119.4 | On a new branch with commits and no upstream | "Next: push the branch" appears; the trunk never shows it | [ ] |
+| 119.5 | Start a merge with a clash, then solve all places | "Next: solve the clashes" opens the `4` view; after solving it reads "Next: finish the merge" | [ ] |
+| 119.6 | Clean and in step | No suggestion button is shown; the palette has no "next step" entry | [ ] |

@@ -46,6 +46,10 @@ pub struct Out {
     pub view: Option<View>,
     pub settings: bool,
     pub palette: bool,
+    /// The calm save button was pressed (#113).
+    pub calm: bool,
+    /// The suggested next step's button was pressed (#119).
+    pub next: bool,
     /// Between the title bar and the keybar: where the settings go.
     pub body: Rect,
 }
@@ -64,7 +68,7 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     let under = title.left_bottom() + vec2(0.0, tabs.map_or(0.0, |t| t.height()));
     let strip = (app.mode != Mode::Settings && app.strip_shown()).then(|| Rect::from_min_size(under, vec2(rect.width(), STRIP_H)));
     let body = Rect::from_min_max(under + vec2(0.0, strip.map_or(0.0, |s| s.height())), keybar.right_top());
-    let mut out = Out { view: None, settings: false, palette: false, body };
+    let mut out = Out { view: None, settings: false, palette: false, calm: false, next: false, body };
     if app.mode != Mode::Settings {
         // The key list goes over the view; the mouse is the list's then.
         // The columns stay clear of the window's resize edge.
@@ -105,8 +109,24 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
         tab_bar(ui, app, t);
     }
     title_bar(ui, app, title, &mut out);
-    key_bar(ui, app, keybar);
+    key_bar(ui, app, keybar, &mut out);
     out
+}
+
+/// A small clickable button in the keybar ending at `right`; where it begins
+/// and whether it was clicked. Its tooltip says what it does.
+fn pill(ui: &mut Ui, id: &str, text: &str, tip: &str, right: f32, mid: f32, color: Color32) -> (f32, bool) {
+    let c = ito_theme::colors();
+    let g = ui.fonts_mut(|f| f.layout_no_wrap(text.to_owned(), FontId::proportional(12.0), color));
+    let rect = Rect::from_min_max(pos2(right - g.size().x - 16.0, mid - 10.0), pos2(right, mid + 10.0));
+    let resp = ui.interact(rect, egui::Id::new(("michi-pill", id)), egui::Sense::click()).on_hover_text(tip);
+    let p = ui.painter();
+    if resp.hovered() {
+        p.rect_filled(rect, CornerRadius::same(10), c.border);
+    }
+    p.rect_stroke(rect, CornerRadius::same(10), Stroke::new(1.0, c.border_strong()), StrokeKind::Inside);
+    p.galley(pos2(rect.left() + 8.0, mid - g.size().y / 2.0), g, color);
+    (rect.left() - 10.0, resp.clicked())
 }
 
 /// The tabs of the window, one repository each: a click brings one to the
@@ -734,7 +754,7 @@ fn net_status(ui: &Ui, app: &App, p: &egui::Painter, right: f32, mid: f32) -> f3
 
 /// The keybar: the keys of the view at the left, the best one lit; git's
 /// state, the network's and the clock at the right.
-fn key_bar(ui: &mut Ui, app: &App, r: Rect) {
+fn key_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
     let c = ito_theme::colors();
     let p = ui.painter().clone();
     p.rect_filled(r, 0.0, c.side);
@@ -760,6 +780,16 @@ fn key_bar(ui: &mut Ui, app: &App, r: Rect) {
         right = t.left() - 14.0;
     }
     right = net_status(ui, app, &p, right, mid);
+    if app.mode == Mode::Main && matches!(app.repo, Repo::Ready(_)) {
+        let (left, clicked) = pill(ui, "calm", app.tr("calm.button"), app.tr("calm.tip"), right, mid, c.dim);
+        out.calm = clicked;
+        right = left;
+        if let Some(s) = app.suggestion() {
+            let (left, clicked) = pill(ui, "next", app.tr(s.key()), app.tr("suggest.tip"), right, mid, accent());
+            out.next = clicked;
+            right = left;
+        }
+    }
     let keys: Vec<(&str, &'static str)> = match app.mode {
         Mode::Settings => vec![("Esc", "key.back"), ("Ctrl+Tab", "key.page")],
         Mode::Help => vec![("? Esc", "key.back")],
