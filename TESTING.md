@@ -628,3 +628,14 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 45.3 | Click the `+` at the right of an unstaged folder; then the `−` of a staged one | Every file below it goes into the index, then every one (a rename's old path too) comes out; the count at the right matches |
 | 45.4 | With a folder folded, press `j` / `k` and the arrow keys | The selection walks the files in the order shown and skips the folded ones; a selection folded away moves to the nearest shown file |
 | 45.5 | Stage a folder while a Claude is writing in the worktree | The same question for a yes as for a file |
+
+## 46. Comparing two commits or branches
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 46.1 | In the graph select a commit, then Ctrl+click (Cmd+click on macOS) another | The first row keeps a tint with an outline (the mark), the clicked one is selected; Ctrl+click the marked row again takes the mark off |
+| 46.2 | With a mark and a selection press `D` | The review opens over the worktree table with "Comparison" and `a...b`, listing the files that changed from where the two parted (or plain a to b when one is the other's ancestor); the diff on the right is the usual one |
+| 46.3 | Press `D` with no mark; press Esc in the graph with a mark | A toast asks to Ctrl+click a second commit; Esc takes the mark off |
+| 46.4 | In the comparison press `u` `s` Space `n` `m`; click a file's check box | Nothing happens (no uncommitted, last look, checks, notes or merge); no "seen" count or switches are shown |
+| 46.5 | Compare two branch tips, then swap which one you Ctrl+click first | The list is each side's own changes since they parted; `j` `k` `J` `K` `Enter` and PageUp/PageDown work as in the branch review; Esc closes it |
+| 46.6 | Open the comparison, then press `d` on a worktree | The branch review of the worktree replaces it with its own list, checks and notes |

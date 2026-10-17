@@ -210,7 +210,7 @@ impl Reading {
     /// not yet answered is dropped.
     pub fn review(&self, wish: Wish) {
         match &wish {
-            Wish::List { gen, .. } => self.look_latest[0].store(*gen, Ordering::SeqCst),
+            Wish::List { gen, .. } | Wish::Compare { gen, .. } => self.look_latest[0].store(*gen, Ordering::SeqCst),
             Wish::File { gen, .. } => self.look_latest[1].store(*gen, Ordering::SeqCst),
             Wish::Check { .. } => {}
         }
@@ -690,7 +690,7 @@ fn reviews(dir: &Path, wishes: &Receiver<Wish>, latest: &[AtomicU32; 2], send: i
     // Takes in a wish that came: a check at once, the newest list and diff
     // for their turn.
     let take = |w: Wish, checks: &mut Checks, list: &mut Option<Wish>, one: &mut Option<Wish>| match w {
-        Wish::List { .. } => *list = Some(w),
+        Wish::List { .. } | Wish::Compare { .. } => *list = Some(w),
         Wish::File { .. } => *one = Some(w),
         Wish::Check { branch, key, on } => {
             if checks.set(&branch, &key, on) {
@@ -725,6 +725,15 @@ fn reviews(dir: &Path, wishes: &Receiver<Wish>, latest: &[AtomicU32; 2], send: i
                 }
                 if !stale() {
                     send(Answer::ReviewList { gen, result: result.map(Box::new), checks: checks.of(&branch) });
+                }
+            }
+        }
+        if let (true, Some(Wish::Compare { gen, a, b })) = (matches!(list, Some(Wish::Compare { .. })), list.take()) {
+            let stale = || latest[0].load(Ordering::SeqCst) != gen;
+            if !stale() {
+                let result = review::compare(dir, &a, &b, &stale);
+                if !stale() {
+                    send(Answer::ReviewList { gen, result: result.map(Box::new), checks: BTreeSet::new() });
                 }
             }
         }

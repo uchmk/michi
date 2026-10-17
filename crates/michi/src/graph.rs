@@ -119,6 +119,8 @@ pub struct Graph {
     total: Option<u64>,
     error: Option<git::Error>,
     selected: Option<Oid>,
+    /// The commit marked by Ctrl+click, to compare the selected one with.
+    marked: Option<Oid>,
     /// The selection was moved by a key or the mouse (not by the history
     /// coming in), and the window has not taken note yet.
     picked: bool,
@@ -159,6 +161,7 @@ impl Default for Graph {
             total: None,
             error: None,
             selected: None,
+            marked: None,
             picked: false,
             asking: false,
             filter: String::new(),
@@ -447,6 +450,44 @@ impl Graph {
         }
         let i = self.history.find(&id)?;
         self.shown.binary_search(&i).ok().map(|k| (k + self.wips.len()) as u32)
+    }
+
+    /// The row the marked commit is on.
+    pub fn marked_row(&self) -> Option<u32> {
+        let id = self.marked?;
+        if let Some(k) = self.wips.iter().position(|w| w.commit == id) {
+            return Some(k as u32);
+        }
+        let i = self.history.find(&id)?;
+        self.shown.binary_search(&i).ok().map(|k| (k + self.wips.len()) as u32)
+    }
+
+    #[cfg(test)]
+    pub fn marked(&self) -> Option<Oid> {
+        self.marked
+    }
+
+    /// Ctrl+click on row `k`: the commit selected until now is marked (kept
+    /// when there is one already) and `k` is selected, so the two can be
+    /// compared. Clicking the marked row again takes the mark off.
+    pub fn mark_to(&mut self, k: u32) {
+        let Some(id) = self.wip(k).map(|w| w.commit).or_else(|| self.at(k).map(|r| r.commit.id)) else { return };
+        if self.marked == Some(id) {
+            self.marked = None;
+        } else if self.marked.is_none() {
+            self.marked = self.selected.filter(|s| *s != id);
+        }
+        self.select(k);
+    }
+
+    /// Takes the mark off; whether there was one.
+    pub fn unmark(&mut self) -> bool {
+        self.marked.take().is_some()
+    }
+
+    /// The two commits to compare: the marked one, then the selected.
+    pub fn pair(&self) -> Option<(Oid, Oid)> {
+        Some((self.marked?, self.selected?)).filter(|(a, b)| a != b)
     }
 
     /// A reading has started (the refs are in).
@@ -971,6 +1012,28 @@ mod tests {
         g.start(3, setup());
         g.failed(3, git::Error::NotRepo);
         assert!(g.error().is_some());
+    }
+
+    #[test]
+    fn ctrl_click_marks_the_selected_commit_and_selects_another_to_compare() {
+        let mut g = read();
+        g.select(1);
+        let first = g.selected().unwrap();
+        assert_eq!(g.pair(), None);
+        g.mark_to(3);
+        assert_eq!((g.marked(), g.marked_row()), (Some(first), Some(1)));
+        let second = g.selected().unwrap();
+        assert_eq!(g.pair(), Some((first, second)));
+        // A further Ctrl+click moves the other end, not the mark.
+        g.mark_to(4);
+        assert_eq!(g.pair().map(|p| p.0), Some(first));
+        assert_ne!(g.pair().map(|p| p.1), Some(second));
+        // Back on the marked one: the mark is off (a commit is not compared with itself).
+        g.mark_to(1);
+        assert_eq!((g.marked(), g.pair()), (None, None));
+        g.mark_to(2);
+        assert!(g.unmark());
+        assert!(!g.unmark());
     }
 
     #[test]

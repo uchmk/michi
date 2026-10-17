@@ -32,6 +32,9 @@ pub enum Wish {
     /// `trunk`, or from `since`, to `end`; with `prune`, the checks kept to
     /// the files as they are now.
     List { gen: u32, branch: String, trunk: Oid, head: Oid, end: Oid, since: Option<Oid>, prune: bool },
+    /// What changed between two commits picked in the graph (see
+    /// [`review::compare`]); nothing is kept as looked at.
+    Compare { gen: u32, a: Oid, b: Oid },
     /// One file's diff from `from` to `to`: its path, and where it came
     /// from when renamed.
     File { gen: u32, from: Oid, to: Oid, paths: Vec<String> },
@@ -99,6 +102,8 @@ pub struct Review {
     pub notes: Vec<Note>,
     /// The note being written for `line`.
     pub editing: Option<String>,
+    /// Two commits compared (`a` to `b`) instead of a worktree's branch.
+    pub cmp: Option<(Oid, Oid)>,
 }
 
 impl Review {
@@ -125,7 +130,29 @@ impl Review {
             follow: false,
             notes: Vec::new(),
             editing: None,
+            cmp: None,
         }
+    }
+
+    /// A review of two commits picked in the graph, over the repository's
+    /// folder `path`; `title` stands for the branch.
+    pub fn compare(path: PathBuf, title: String, a: Oid, b: Oid) -> Review {
+        let mut r = Review::new(path, title);
+        r.wip = false;
+        r.cmp = Some((a, b));
+        r
+    }
+
+    /// The comparison's list, unless it is asked already.
+    pub fn ask_compare(&mut self) -> Option<Wish> {
+        let (a, b) = self.cmp?;
+        let range = Range { trunk: a, head: a, end: b, since: None };
+        if self.asked == Some(range) {
+            return None;
+        }
+        self.asked = Some(range);
+        self.list_gen = next_gen();
+        Some(Wish::Compare { gen: self.list_gen, a, b })
     }
 
     /// The list wanted for `ends`, unless it is asked already.
@@ -327,6 +354,9 @@ impl Review {
 
     /// Checks the `k`th file as looked at, or takes its check off.
     pub fn check_at(&mut self, k: usize) -> Option<Wish> {
+        if self.cmp.is_some() {
+            return None;
+        }
         let key = review::key(self.files().get(k)?);
         let on = !self.checks.remove(&key);
         if on {
@@ -403,7 +433,7 @@ mod tests {
 
     fn gen(w: &Option<Wish>) -> u32 {
         match w {
-            Some(Wish::List { gen, .. } | Wish::File { gen, .. }) => *gen,
+            Some(Wish::List { gen, .. } | Wish::File { gen, .. } | Wish::Compare { gen, .. }) => *gen,
             _ => panic!("no list or file wished: {w:?}"),
         }
     }
@@ -513,6 +543,19 @@ mod tests {
         assert_eq!(r.since(), Some(oid(5)));
         assert_eq!(r.toggle_since(), Ok(()));
         assert!(matches!(r.ask(ends(2, None)), Some(Wish::List { since: None, .. })));
+    }
+
+    #[test]
+    fn a_comparison_asks_once_lists_from_its_base_and_keeps_no_checks() {
+        let mut r = Review::compare(PathBuf::from("C:/r"), "x".into(), oid(1), oid(2));
+        let w = r.ask_compare();
+        assert!(matches!(w, Some(Wish::Compare { a, b, .. }) if (a, b) == (oid(1), oid(2))));
+        assert_eq!(r.ask_compare(), None);
+        // The list reads from where the two parted (the base the thread found).
+        let l = List { base: Some(oid(7)), last: None, changes: Changes { files: vec![file("a.txt", 4)], cut: false } };
+        let f = r.take_list(gen(&w), Ok(l), BTreeSet::new());
+        assert!(matches!(f, Some(Wish::File { from, to, .. }) if (from, to) == (oid(7), oid(2))));
+        assert!(r.cmp.is_some());
     }
 
     #[test]

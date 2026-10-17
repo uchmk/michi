@@ -89,6 +89,7 @@ impl View {
                 ("R", "key.reset"),
                 ("C", "key.cherry_pick"),
                 ("m", "key.merge_commit"),
+                ("D", "key.compare"),
                 ("T", "key.tag"),
                 ("s", "key.stash"),
                 ("L", "key.reflog"),
@@ -884,6 +885,21 @@ impl App {
         self.say(text);
     }
 
+    /// `D` in the graph: the commit marked by Ctrl+click and the selected
+    /// one compared, in the review's form (from where they parted).
+    pub fn open_compare(&mut self) {
+        let Some((a, b)) = self.graph.pair() else {
+            let text = self.tr("compare.pick");
+            return self.say(text);
+        };
+        let Some(path) = self.repo_top() else { return };
+        self.close_review();
+        let title = self.tr("compare.title").to_owned();
+        self.review = Some(Review::compare(path, title, a, b));
+        self.view = View::Worktree;
+        self.review_sync();
+    }
+
     /// Closes the branch review.
     pub fn close_review(&mut self) {
         if let Some(r) = self.review.take() {
@@ -915,6 +931,10 @@ impl App {
         if self.view != View::Worktree {
             return;
         }
+        if self.review.as_ref().is_some_and(|r| r.cmp.is_some()) {
+            let wish = self.review.as_mut().and_then(|r| r.ask_compare());
+            return self.wish(wish);
+        }
         let Some(ends) = self.review_ends() else { return };
         let wish = self.review.as_mut().and_then(|r| r.ask(ends));
         self.wish(wish);
@@ -931,6 +951,11 @@ impl App {
 
     /// The branch review's own keys.
     fn review_key(&mut self, c: char) -> bool {
+        // A comparison has no worktree: no uncommitted changes, last look,
+        // checks, notes or merge.
+        if matches!(c, 'm' | 'n' | 'g' | ' ' | 'u' | 's') && self.review.as_ref().is_some_and(|r| r.cmp.is_some()) {
+            return true;
+        }
         if c == 'm' && self.review.is_some() {
             self.ask_merge();
             return true;
@@ -1295,6 +1320,7 @@ impl App {
             't' => self.ask_revert(),
             'R' => self.ask_reset(),
             'C' => self.ask_cherry(),
+            'D' => self.open_compare(),
             'm' => self.ask_merge_commit(),
             'j' => g.move_by(1),
             'k' => g.move_by(-1),
@@ -1513,6 +1539,9 @@ impl App {
         }
         if self.view == View::Graph && !self.graph.filter().is_empty() {
             self.graph.set_filter("");
+            return true;
+        }
+        if self.view == View::Graph && self.graph.unmark() {
             return true;
         }
         if self.view == View::Changes {
