@@ -97,6 +97,8 @@ impl View {
                 ("L", "key.reflog"),
                 ("B", "key.blame"),
                 ("H", "key.file_history"),
+                ("Y", "key.copy_patch"),
+                ("Ctrl+V", "key.apply_patch"),
                 ("Esc", "key.back"),
             ],
             View::Changes => &[
@@ -339,6 +341,8 @@ pub struct App {
     pub tidy: Option<crate::tidy::Tidy>,
     pub reflog: Option<crate::reflog::Reflog>,
     pub blame: Option<crate::blame::Blame>,
+    /// Text for the clipboard, taken by the window on its next frame.
+    pub clipboard: Option<String>,
     /// The trial-merge screen (`T` over the worktree table), while open.
     pub trial: Option<crate::trial::TrialScreen>,
     pub reorder: Option<crate::reorder::Reorder>,
@@ -416,6 +420,7 @@ impl App {
             tidy: None,
             reflog: None,
             blame: None,
+            clipboard: None,
             trial: None,
             reorder: None,
             side_stash: None,
@@ -1503,6 +1508,7 @@ impl App {
             'L' => self.open_reflog(),
             'B' => self.open_blame(crate::blame::Tab::Blame),
             'H' => self.open_blame(crate::blame::Tab::History),
+            'Y' => self.copy_patch(),
             't' => self.ask_revert(),
             'R' => self.ask_reset(),
             'C' => self.ask_cherry(),

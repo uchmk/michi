@@ -95,6 +95,17 @@ pub enum Task {
         id: Oid,
         mainline: Option<u32>,
     },
+    /// The commit `id` as a patch for the clipboard; with none, the tracked
+    /// changes of the worktree at `wt`.
+    ExportPatch {
+        wt: PathBuf,
+        id: Option<Oid>,
+    },
+    /// Applies the patch text to the files of the worktree at `wt`.
+    ApplyPatch {
+        wt: PathBuf,
+        patch: String,
+    },
     /// Moves the branch of the worktree at `wt` to `id`, the way `mode` says.
     Reset {
         wt: PathBuf,
@@ -389,6 +400,9 @@ impl Task {
             Task::AddRemote { .. } => "remote add",
             Task::RemoveRemote { .. } => "remote remove",
             Task::Revert { .. } => "revert",
+            Task::ExportPatch { id: Some(_), .. } => "format-patch",
+            Task::ExportPatch { id: None, .. } => "diff",
+            Task::ApplyPatch { .. } => "apply",
             Task::Reset { mode, .. } => match mode {
                 michi_core::reset::Mode::Soft => "reset --soft",
                 michi_core::reset::Mode::Mixed => "reset --mixed",
@@ -459,6 +473,10 @@ pub enum Acted {
     /// The branch now follows this remote branch.
     Upstream(String),
     Reverted(Reverted),
+    /// A patch, to go to the clipboard.
+    Patch(String),
+    /// What an applied patch changed.
+    Patched(michi_core::patch::Summary),
     Reset(michi_core::reset::Reset),
     Restored(michi_core::restore::Restored),
     Stashed(Saved),
@@ -527,6 +545,8 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::AddRemote { name, url } => michi_core::remote::add(dir, name, url).map(|()| Acted::Done),
         Task::RemoveRemote { name } => michi_core::remote::remove(dir, name).map(Acted::RemoteRemoved),
         Task::Revert { wt, id, mainline } => revert::revert(wt, id, *mainline).map(Acted::Reverted),
+        Task::ExportPatch { wt, id } => michi_core::patch::export(wt, id.as_ref()).map(Acted::Patch),
+        Task::ApplyPatch { wt, patch } => michi_core::patch::apply(wt, patch).map(Acted::Patched),
         Task::Reset { wt, id, mode } => michi_core::reset::reset(wt, id, *mode).map(Acted::Reset),
         Task::Restore { wt, id, path } => michi_core::restore::file(wt, id, path).map(Acted::Restored),
         Task::Stash { wt, message } => stash::save(wt, message).map(Acted::Stashed),
@@ -858,6 +878,20 @@ impl App {
                 let text = self.tr(key).replace("{file}", path).replace("{id}", &id.short()).replace("{wt}", &self::name(wt));
                 (text.replace("{saved}", saved), 10)
             }
+            (Task::ExportPatch { .. }, Ok(Acted::Patch(text))) => {
+                let said = self.tr("patch.copied").replace("{n}", &text.lines().count().to_string());
+                self.clipboard = Some(text);
+                (said, 4)
+            }
+            (Task::ApplyPatch { .. }, Ok(Acted::Patched(s))) if s.files == 0 => (self.tr("patch.nothing").to_owned(), 5),
+            (Task::ApplyPatch { wt, .. }, Ok(Acted::Patched(s))) => (
+                self.tr("patch.applied")
+                    .replace("{wt}", &self::name(wt))
+                    .replace("{files}", &s.files.to_string())
+                    .replace("{added}", &s.added.to_string())
+                    .replace("{removed}", &s.removed.to_string()),
+                8,
+            ),
             (Task::Revert { wt, id, .. }, Ok(Acted::Reverted(r))) => match r {
                 Reverted::Made(new) => (
                     self.tr("act.reverted").replace("{id}", &id.short()).replace("{wt}", &self::name(wt)).replace("{new}", &new.short()),

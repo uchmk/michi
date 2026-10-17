@@ -1033,3 +1033,18 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 37.10 | Select a worktree's uncommitted row in the graph and press `B` | The file is blamed as that worktree has it | [ ] |
 | 37.11 | Check the keybar and `?` over the screen; switch EN and JA | The keybar names j k, B H Tab, Enter, PageDown PageUp, Esc; global keys are not listed; text reads well in both languages and long lines end in `…` | [ ] |
 | 37.12 | With Claude writing in the worktree, press `B` | Nothing changes in the worktree and no `index.lock` appears (a read only) | [ ] |
+
+## 246. Patches: copy and paste-to-apply (`Y`, Ctrl+V)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 246.1 | In the graph, select a commit and press `Y`; paste into a text editor | A toast says a patch of N lines was copied; the clipboard holds an emailed patch (`From <id> ...`, `Subject: [PATCH] ...`, then the diff) |
+| 246.2 | Select a worktree's uncommitted (WIP) row and press `Y` | The clipboard holds a plain `diff --git` of the tracked changes; with no changes a toast says there is nothing to make a patch of |
+| 246.3 | Select a merge commit and press `Y` | A toast says a merge commit has no patch of its own; the clipboard is unchanged |
+| 246.4 | Copy a patch from 246.1, switch the window to a worktree where it fits, press Ctrl+V (Cmd+V on macOS) over the graph | A bar asks to apply the pasted patch (N lines) to the files of that worktree; `y` applies it, a toast gives files and +/- counts, and the files show as uncommitted changes (nothing staged, no commit) |
+| 246.5 | Paste the same patch again and answer `y` | A toast says the apply failed with git's reason; no file changed |
+| 246.6 | Paste ordinary text (a branch name) over the graph; paste in the filter box and in the commit message box | Nothing is asked over the graph; the text goes into the boxes as usual |
+| 246.7 | Press Ctrl+V with the changes view, the blame screen or a bar in front | The paste does not open the question |
+| 246.8 | With a rebase or merge stopped in the worktree, paste a patch | A toast says the worktree is in the middle of it and to finish first |
+| 246.9 | Paste a patch while a Claude is working in the worktree | The question ends with the note that a Claude is working there |
+| 246.10 | Check the keybar and `?` over the graph; switch EN and JA | `Y` and Ctrl+V are listed with their words in both languages |
