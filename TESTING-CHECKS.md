@@ -613,3 +613,12 @@
 - [ ] **68.4** Open the diff side by side and unified (narrow the window) → Both layouts show the same colours; wrapped long lines keep them → | [ ] 〔未訳〕
 - [ ] **68.5** Open a big commit (hundreds of files, a huge generated file) → The window does not stall while it loads; a file of over 6000 diff lines, or a line of over 1500 characters, is left plain → | [ ] 〔未訳〕
 - [ ] **68.6** Select diff text with the mouse and copy it → The copied text is the plain text (no colour effects) → | [ ] 〔未訳〕
+
+## 92. Suggested order to land the worktrees
+
+- [ ] **92.1** With three worktrees ahead of main, two of which edit the same lines and one which touches other files: open the worktree table → The name cell of each shows a note `Land 1 of 3` / `2 of 3` / `3 of 3`; the one that conflicts with nothing is `1 of 3` → | [ ] 〔未訳〕
+- [ ] **92.2** Look at the last one of the two that conflict → Its note is yellow and reads `Land 3 of 3 · N places to resolve against those before`; the earlier ones are green with no places → | [ ] 〔未訳〕
+- [ ] **92.3** Only one worktree is ahead of main, or none → No `Land` note shows → | [ ] 〔未訳〕
+- [ ] **92.4** Commit in a worktree so the order would change; wait for the table to refresh → The numbers follow the new predictions without a restart → | [ ] 〔未訳〕
+- [ ] **92.5** Start a merge in one worktree → The notes go away while the merge is under way and come back after → | [ ] 〔未訳〕
+- [ ] **92.6** Switch to JA → The notes read `main へ入れる順 1 / 3`, and the yellow one adds `先に入れた分との衝突 N 箇所` → | [ ] 〔未訳〕

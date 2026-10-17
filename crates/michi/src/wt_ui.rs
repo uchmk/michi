@@ -199,6 +199,11 @@ fn name_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
         let at = t.wt.head.chars().take(7).collect::<String>();
         note(app.tr("wt.detached").replace("{}", &at), c.dim);
     }
+    if let Some((n, m, k)) = app.land_order_of(&t.wt.path) {
+        let key = if k > 0 { "wt.order_resolve" } else { "wt.order" };
+        let words = app.tr(key).replace("{n}", &n.to_string()).replace("{m}", &m.to_string()).replace("{k}", &k.to_string());
+        note(words, if k > 0 { c.wait } else { c.done });
+    }
     if t.wt.locked.is_some() {
         note(app.tr("wt.locked").to_owned(), c.wait);
     }
