@@ -391,3 +391,13 @@
 - [ ] **34.3** Single-click a diff line → The cursor moves to the line and its note can be written (`n`), as before → | [ ] 〔未訳〕
 - [ ] **34.4** Select a diff line, then pick another file or switch the wide view → The selection is gone → | [ ] 〔未訳〕
 - [ ] **34.5** Select diff text, close the review (Esc), select a commit's detail text → No stale selection shows in either place → | [ ] 〔未訳〕
+
+## 50. Reflog screen (`R`, #50)
+
+- [ ] **50.1** In the graph or the worktree table press `R` → A list opens at the top: HEAD's reflog (`HEAD@{n}`, what happened, the commit's subject) and the backups under `refs/michi/backup/` (tinted), newest first; the window does not freeze on a big repository → | [ ] 〔未訳〕
+- [ ] **50.2** Reset a branch (`git reset --hard HEAD~1`) in a worktree, then press `R` → The reset is the top `HEAD@{0}` row and the commit it dropped is the row under it → | [ ] 〔未訳〕
+- [ ] **50.3** Move with `j k`, the arrow keys, PageUp/PageDown, Home/End and the mouse; click a row → The selection follows; a click on the selected row asks as Enter does; a click outside the list closes it → | [ ] 〔未訳〕
+- [ ] **50.4** Select a row and press Enter → The band asks to bring the commit back as a new branch and says nothing moves; `y` makes `recovered/<id>` at that commit (`-2` after it if taken), the list closes and a toast names the branch; HEAD and the worktree are untouched → | [ ] 〔未訳〕
+- [ ] **50.5** After a force push or a branch delete (which keep a backup), press `R` → The backup is listed with the reason michi wrote; bringing it back gives a branch at its commit → | [ ] 〔未訳〕
+- [ ] **50.6** Press `R` in a repository with no commits and nothing kept → A toast says the reflog and backups are empty; no list opens → | [ ] 〔未訳〕
+- [ ] **50.7** Switch the language to Japanese and open the list → The title, hints, band and toast are in Japanese → | [ ] 〔未訳〕

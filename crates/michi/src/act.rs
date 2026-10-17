@@ -113,6 +113,14 @@ pub enum Task {
     FindTidy {
         here: PathBuf,
     },
+    /// Lists HEAD's reflog (as the worktree at `here` has it) and the backups.
+    FindReflog {
+        here: PathBuf,
+    },
+    /// Brings the commit `id` back as a new branch.
+    Recover {
+        id: Oid,
+    },
     /// Reads the commits of the worktree at `wt` since `trunk`, for the
     /// rebase screen.
     FindReorder {
@@ -255,6 +263,8 @@ impl Task {
             Task::Unstash { pop: true, .. } => "stash pop",
             Task::DropStash { .. } => "stash drop",
             Task::FindTidy { .. } => "for-each-ref",
+            Task::FindReflog { .. } => "reflog",
+            Task::Recover { .. } => "branch",
             Task::FindReorder { .. } => "log",
             Task::Reorder { .. } => "rebase -i",
             Task::Tidy { .. } | Task::RemoveWorktree { .. } => "worktree remove",
@@ -296,6 +306,8 @@ pub enum Acted {
     Stashed(Saved),
     Unstashed(Applied),
     Found(Found),
+    Reflog(Vec<michi_core::reflog::Entry>),
+    Recovered(String),
     Planned(michi_core::rebase::Plan),
     Reordered(michi_core::rebase::Outcome),
     Tidied(Outcome),
@@ -341,6 +353,8 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Unstash { wt, id, pop } => stash::apply(wt, id, *pop).map(Acted::Unstashed),
         Task::DropStash { id } => stash::drop(dir, id).map(|saved| Acted::Kept(Some(saved))),
         Task::FindTidy { here } => tidy::find(dir, here).map(Acted::Found),
+        Task::FindReflog { here } => michi_core::reflog::list(here).map(Acted::Reflog),
+        Task::Recover { id } => michi_core::reflog::recover(dir, id).map(Acted::Recovered),
         Task::FindReorder { wt, trunk } => michi_core::rebase::plan(wt, trunk).map(Acted::Planned),
         Task::Reorder { wt, base, list } => michi_core::rebase::run(wt, base, list).map(Acted::Reordered),
         Task::RemoveWorktree { wt, sessions } => {
@@ -548,6 +562,10 @@ impl App {
                 (self.tr("act.dropped").replace("{id}", &id.short()).replace("{saved}", saved), 10)
             }
             (Task::FindTidy { .. }, Ok(Acted::Found(found))) => return self.tidy_found(found),
+            (Task::FindReflog { .. }, Ok(Acted::Reflog(rows))) => return self.reflog_found(rows),
+            (Task::Recover { id }, Ok(Acted::Recovered(name))) => {
+                (self.tr("reflog.done").replace("{id}", &id.short()).replace("{name}", &name), 6)
+            }
             (Task::FindReorder { .. }, Ok(Acted::Planned(plan))) => return self.reorder_found(plan),
             (Task::Reorder { wt, .. }, Ok(Acted::Reordered(out))) => {
                 self.reorder = None;

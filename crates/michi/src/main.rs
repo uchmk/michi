@@ -30,6 +30,8 @@ mod notify;
 mod picker;
 mod picker_ui;
 mod prefs;
+mod reflog;
+mod reflog_ui;
 mod reorder;
 mod reorder_ui;
 mod repo;
@@ -440,6 +442,7 @@ impl eframe::App for Michi {
         repos::show(&ctx, &mut self.app);
         newwork_ui::show(&ctx, &mut self.app);
         tidy_ui::show(&ctx, &mut self.app);
+        reflog_ui::show(&ctx, &mut self.app);
         reorder_ui::show(&ctx, &mut self.app);
         // A tab leaves the settings and the key list for its view; the gear
         // opens the settings and closes them.
