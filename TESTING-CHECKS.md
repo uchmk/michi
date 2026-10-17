@@ -1314,3 +1314,4 @@
 - [ ] **274.1** Trigger a message (`#` in the graph) and wait → It appears at the top right, not at the centre, and is gone after about 4 seconds without touching anything 〔未訳〕
 - [ ] **274.2** In Changes click a file, then Shift+click another on the same side; then Space → Every file between is shaded alike and staged together; a Shift+click on the other side only selects 〔未訳〕
 - [ ] **274.3** Click a file, Ctrl+click two others (not neighbours), then Ctrl+click one of them again → The Ctrl+clicked files are shaded; the one clicked twice leaves; Space stages the rest; a plain click or Esc drops the marks 〔未訳〕
+- [ ] **274.4** In the graph detail pane drag across a line with full-width (Japanese) text → Whole characters are picked, never half of one 〔未訳〕
