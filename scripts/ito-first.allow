@@ -1,0 +1,1 @@
+notify The watcher is event-driven and recursive over every worktree (ReadDirectoryChangesW etc.); ito-common's watch only polls. Asked of ito: uchmk/ito#21.

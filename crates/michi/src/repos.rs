@@ -60,7 +60,7 @@ pub fn load(base: Option<&Path>) -> Recent {
 }
 
 fn home() -> Option<PathBuf> {
-    std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(PathBuf::from)
+    ito_common::home_dir()
 }
 
 /// The rows for `query`: the typed path first when it is one, then the list

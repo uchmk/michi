@@ -26,7 +26,7 @@ pub fn url(base: Option<&Path>, scale: f32, last_error: Option<&str>) -> String 
 }
 
 fn context(base: Option<&Path>, scale: f32, last_error: Option<&str>) -> String {
-    let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(PathBuf::from);
+    let home = ito_common::home_dir();
     let files: Vec<PathBuf> = base
         .map(|b| [ito_common::common_path(b), crate::prefs::keymap_path(b), crate::prefs::config_path(b)])
         .into_iter()
