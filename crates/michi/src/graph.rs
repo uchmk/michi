@@ -6,6 +6,7 @@ use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Datelike, TimeZone, Timelike};
 use ito_graph::{Colors, Dot, Layout, Placed};
+use michi_core::find::{Hay, Query};
 use michi_core::git;
 use michi_core::history::{merged_name, Fold, History, Row, Setup};
 use michi_core::log::Commit;
@@ -124,8 +125,8 @@ pub struct Graph {
     /// A batch was asked for and has not come.
     asking: bool,
     filter: String,
-    /// The filter, trimmed and in lower case.
-    query: String,
+    /// The filter's words.
+    query: Query,
     /// The history's rows the filter hits, in order.
     hits: Vec<u32>,
     /// What the filter looks in, for each of the history's rows read so
@@ -161,7 +162,7 @@ impl Default for Graph {
             picked: false,
             asking: false,
             filter: String::new(),
-            query: String::new(),
+            query: Query::default(),
             hits: Vec::new(),
             hay: Vec::new(),
             marks: Vec::new(),
@@ -687,21 +688,21 @@ impl Graph {
         self.relayout();
     }
 
-    /// The filter's text is now `text`: a commit is hit when its subject,
-    /// author or one of its names holds it, or its hash starts with it, in
-    /// any case. The rows it does not hit are drawn faint, not taken away.
+    /// The filter's text is now `text`: a commit is hit when each word of it
+    /// is the start of its hash, or has its letters in order in the subject,
+    /// the author or one of its names (ito-match's fuzzy rule), in any case. The rows it does not hit are drawn faint, not taken away.
     pub fn set_filter(&mut self, text: &str) {
         if self.filter == text {
             return;
         }
         self.filter = text.to_owned();
-        let query = text.trim().to_lowercase();
+        let query = Query::new(text);
         if query == self.query {
             return;
         }
         // A longer query hits only what the shorter one did: typing on
         // looks only among the hits.
-        let narrower = !self.query.is_empty() && query.starts_with(&self.query);
+        let narrower = query.narrows(&self.query);
         self.query = query;
         if narrower {
             self.fill_hay();
@@ -769,43 +770,6 @@ impl Graph {
 
 /// How many rows below the lowest one in sight are laid out ahead.
 const WANT: usize = 300;
-
-/// What the filter looks in for one commit.
-struct Hay {
-    /// The hash, then the subject, the author and the names in lower case,
-    /// each after a NUL (which a query cannot hold).
-    text: Box<str>,
-    /// Where the hash ends.
-    hash: usize,
-}
-
-impl Hay {
-    fn of(c: &Commit, history: &History) -> Hay {
-        let mut text = c.id.to_string();
-        let hash = text.len();
-        let mut add = |s: &str| {
-            text.push('\0');
-            text.push_str(&s.to_lowercase());
-        };
-        add(&c.subject);
-        add(&c.author);
-        if let Some(l) = history.labels(&c.id) {
-            for n in l.locals.iter().chain(&l.tags) {
-                add(n);
-            }
-            for (r, n) in &l.remotes {
-                add(&format!("{r}/{n}"));
-            }
-        }
-        Hay { text: text.into_boxed_str(), hash }
-    }
-
-    /// Whether the filter's `query` (lower case) hits it: its hash starts
-    /// with it, or its subject, author or one of its names holds it.
-    fn hits(&self, query: &str) -> bool {
-        self.text[..self.hash].starts_with(query) || self.text[self.hash..].contains(query)
-    }
-}
 
 /// A bot's name as the graph shows it: `github-actions[bot]` is `⚙ actions`.
 /// `None` for a person.

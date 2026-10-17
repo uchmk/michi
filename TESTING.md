@@ -504,3 +504,13 @@ files under `refs/michi/backup/<time>` first.
 | 34.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] |
 | 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] |
 | 34.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] |
+
+## 79. Graph filter with fuzzy matching (ito-match)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 79.1 | Press `/` over the graph and type the first letters of a long subject, skipping the rest (e.g. `fxflk` for "Fix the flaky test") | The commit is a hit (the others fade) and the hit count shows it | | [ ] |
+| 79.2 | Type two words, one of a subject and one of an author or a branch name | Only commits that hold both words are hits | | [ ] |
+| 79.3 | Type the first 7 characters of a commit hash, then characters from the middle of one | The first selects that commit; the middle of a hash hits nothing by itself | | [ ] |
+| 79.4 | Type a word, then add letters; then take letters off | Adding letters never lights new rows; taking them off lights rows again, with no lag on a long history | | [ ] |
+| 79.5 | Type in capitals (`FIX`) | The same hits as `fix` | | [ ] |
