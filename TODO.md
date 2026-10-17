@@ -115,7 +115,7 @@ All wait for the owner; none is started.
 - [ ] Authentication guidance（要確認: #41）
 - [ ] Gitflow（要確認: #42）
 - [ ] Built-in editor（要確認: #43）
-- [ ] Issue tracker integration（要確認: #44）
+- [x] Issue tracker integration（要確認: #44）（TESTING 244）
 - [ ] Multi-repository tabs / workspaces（要確認: #45）
 - [x] Patch export / apply（要確認: #46）
 - [ ] Statistics and contributor graphs（要確認: #47）

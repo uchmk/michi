@@ -26,6 +26,7 @@ pub mod handoff;
 pub mod history;
 pub mod identity;
 pub mod ignore;
+pub mod issues;
 pub mod keyhelp;
 pub mod land;
 pub mod lfs;

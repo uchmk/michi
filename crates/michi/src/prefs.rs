@@ -68,6 +68,8 @@ pub struct Prefs {
     pub auto_fetch: michi_core::autofetch::Every,
     /// `[commit] co_author` of config.toml: the trailer added to michi's commits (#54).
     pub co_author: michi_core::coauthor::CoAuthor,
+    /// `[issues]` of config.toml: how issue references become links (#44).
+    pub issues: michi_core::issues::Config,
     /// The Notifications page's drafts (a webhook's address being typed).
     pub notify_drafts: ito_prefs::Drafts,
     /// The Keys page's search, filter and the keys being pressed.
@@ -104,6 +106,7 @@ impl Prefs {
             avatars: true,
             auto_fetch: Default::default(),
             co_author: Default::default(),
+            issues: Default::default(),
             view_warn: Vec::new(),
             notify_drafts: ito_prefs::Drafts::new(),
             keys_edit: ito_prefs::KeysEdit::default(),
@@ -277,6 +280,9 @@ impl Prefs {
         self.view_warn.extend(warn);
         let (co, warn) = crate::viewcfg::co_author(text);
         self.co_author = co;
+        self.view_warn.extend(warn);
+        let (issues, warn) = crate::viewcfg::issues(text);
+        self.issues = issues;
         self.view_warn.extend(warn);
     }
 

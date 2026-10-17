@@ -26,6 +26,7 @@ mod graph;
 mod graph_ui;
 mod i18n;
 mod icon;
+mod issues;
 mod keymap;
 mod land;
 mod mcp;
