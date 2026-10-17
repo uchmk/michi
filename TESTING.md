@@ -856,3 +856,16 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 83.5 | Repeat 83.4 with `c` in `3` (clean-up), `T` in `3` (trial merge) and `r` in `3` (rebase) | Each screen's own keys are in the keybar (Space picks, `a` picks all, `u` clears, `s f d p r`...), and typing `f` or `p` there does nothing to git | | [ ] |
 | 83.6 | Start something that asks for a yes (`x` on a worktree, `F` force push) | The keybar reads `y` Yes, `n` No, Esc Back; closing the question brings the view's keys back | | [ ] |
 | 83.7 | Switch EN and JA and repeat 83.4 and 83.6 | The new words read well in both languages and fit the keybar (the rest is cut, not overlapped) | | [ ] |
+
+## 84. Author avatars
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 84.1 | In the graph view (a repository with GitHub commits), look at the author column | Each author has a 16 px round avatar before their name: the GitHub picture for an author whose commit e-mail is a `...@users.noreply.github.com` address (it appears a moment after the rows), else a circle with their initials on a steady colour | | [ ] |
+| 84.2 | Look at a commit by `github-actions[bot]` or `dependabot[bot]` | The bot shows its GitHub picture and the short `⚙ name` text | | [ ] |
+| 84.3 | Drag the author column narrower than about 100 px | The avatar goes and the name keeps the whole column; widen it and the avatar comes back | | [ ] |
+| 84.4 | Open Settings, General, and untick `Fetch pictures from GitHub` | Every picture turns into initials at once, `config.toml` gets `[view]` `avatars = false`, and no `curl` process starts when scrolling (check the task manager) | | [ ] |
+| 84.5 | Tick it again; or write `avatars = true` in config.toml by hand | Pictures come back without a restart; a non-boolean value shows a warning and counts as on | | [ ] |
+| 84.6 | Disconnect the network, restart michi and scroll the graph | The window stays responsive (no stall on the UI thread); initials show and the pictures are not retried in a loop | | [ ] |
+| 84.7 | Switch the theme dark/light and EN/JA in Settings | The initials stay readable on their colours; the Settings text reads in both languages | | [ ] |
+| 84.8 | Scroll a long history fast | Scrolling stays smooth while pictures arrive; the same author's picture is not fetched twice | | [ ] |

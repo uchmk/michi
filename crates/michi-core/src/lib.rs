@@ -4,6 +4,7 @@
 //! changes. The window is the `michi` crate.
 
 pub mod autostash;
+pub mod avatar;
 pub mod backup;
 pub mod branch;
 pub mod change;

@@ -51,6 +51,8 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 notify = "8"
 serde = { version = "1", features = ["derive"] }
 toml = "1.1"
+# Author avatars (src/avatar.rs): only the two formats GitHub serves.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 
 [dev-dependencies]
 ito-testcheck = { git = "https://github.com/uchmk/ito", rev = "4e4d8b882185326a3dac7c9b965d5026ab57b7c9" }
