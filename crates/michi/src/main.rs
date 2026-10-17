@@ -38,6 +38,8 @@ mod patch;
 mod picker;
 mod picker_ui;
 mod prefs;
+mod prform;
+mod prform_ui;
 mod reflog;
 mod reflog_ui;
 mod reorder;
@@ -269,6 +271,17 @@ impl Michi {
                 if down {
                     n.cycle(1);
                 }
+            }
+            return;
+        }
+        if self.app.pr_form.is_some() {
+            let (go, esc) = ctx.input_mut(|i| {
+                (i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter), i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+            });
+            if go {
+                self.app.pr_submit();
+            } else if esc {
+                self.app.escape();
             }
             return;
         }
@@ -512,6 +525,7 @@ impl eframe::App for Michi {
         picker_ui::show(&ctx, &mut self.app);
         repos::show(&ctx, &mut self.app);
         newwork_ui::show(&ctx, &mut self.app);
+        prform_ui::show(&ctx, &mut self.app);
         reply_ui::show(&ctx, &mut self.app);
         tidy_ui::show(&ctx, &mut self.app);
         reflog_ui::show(&ctx, &mut self.app);

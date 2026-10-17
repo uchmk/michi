@@ -108,7 +108,7 @@ fn config(wt: &Path, key: &str) -> Result<Option<String>, git::Error> {
 
 /// The remote `branch` is pushed to: its `pushRemote`, `remote.pushDefault`,
 /// the remote it tracks, else `origin`.
-fn remote_of(wt: &Path, branch: &str) -> Result<String, git::Error> {
+pub(crate) fn remote_of(wt: &Path, branch: &str) -> Result<String, git::Error> {
     for key in [format!("branch.{branch}.pushRemote"), "remote.pushDefault".to_owned(), format!("branch.{branch}.remote")] {
         if let Some(r) = config(wt, &key)? {
             return Ok(r);

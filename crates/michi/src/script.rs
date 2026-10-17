@@ -32,6 +32,7 @@ impl App {
             _ if self.mode == Mode::Help => "help",
             _ if self.picker.is_some() => "picker",
             _ if self.new_work.is_some() => "new-work",
+            _ if self.pr_form.is_some() => "pr-form",
             _ if self.tidy.is_some() => "tidy",
             _ if self.reflog.is_some() => "reflog",
             _ if self.blame.is_some() => "blame",
@@ -62,6 +63,7 @@ impl App {
             }
             .to_owned(),
             _ if self.new_work.is_some() => "new-work".to_owned(),
+            _ if self.pr_form.is_some() => "pr-form".to_owned(),
             _ if self.tidy.is_some() => "tidy".to_owned(),
             _ if self.reflog.is_some() => "reflog".to_owned(),
             _ if self.blame.is_some() => "blame".to_owned(),

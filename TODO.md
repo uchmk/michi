@@ -105,7 +105,7 @@ All wait for the owner; none is started.
 - [x] sparse checkout: notice only（要確認: #31）: a strip says it is on and how many files are left out (TESTING 31.5–31.9)
 - [ ] bisect（要確認: #32）
 - [x] Non-GitHub hosts: PR page links for GitLab.com, Bitbucket and Azure DevOps from the remote URL (TESTING 101)（要確認: #33）
-- [ ] Creating PRs in michi（要確認: #34）
+- [x] Creating PRs in michi: `G` in the worktree table opens a form (title, body, base, draft); an unpushed branch is pushed after a second confirm; `gh pr create` runs on the act thread (TESTING 234)（要確認: #34）
 - [x] Signature status (Verified) marker（要確認: #35）
 - [ ] Dedicated screens for conflicts a 3-way view cannot show（要確認: #36）
 - [x] blame and per-file history（要確認: #37）

@@ -163,6 +163,7 @@ impl App {
         let busy = self.cmd.is_some()
             || self.picker.is_some()
             || self.new_work.is_some()
+            || self.pr_form.is_some()
             || self.band.is_some()
             || self.tidy.is_some()
             || self.reflog.is_some()

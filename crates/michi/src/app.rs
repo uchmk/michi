@@ -123,6 +123,7 @@ impl View {
                 ("j k", "key.select"),
                 ("o", "key.tab"),
                 ("p", "key.pr"),
+                ("G", "key.pr_create"),
                 ("t e E", "key.open_in"),
                 ("r", "key.reorder"),
                 ("M", "key.rebase_trunk"),
@@ -334,6 +335,8 @@ pub struct App {
     pub picker: Option<Picker>,
     /// The new-work form while it is open.
     pub new_work: Option<crate::newwork::NewWork>,
+    /// The pull request form (`G`).
+    pub pr_form: Option<crate::prform::PrForm>,
     /// The answer being written to a waiting Claude (`W`).
     pub reply: Option<crate::reply::Reply>,
     /// The keys of the waits already told of; `None` until tsumugi was heard once.
@@ -421,6 +424,7 @@ impl App {
             rerere_asked: false,
             picker: None,
             new_work: None,
+            pr_form: None,
             reply: None,
             waits_told: None,
             turn_states: None,
@@ -1478,7 +1482,9 @@ impl App {
         match (self.mode, c) {
             (Mode::Help, c) if self.bare_act(c) => {}
             (Mode::Settings, _) | (Mode::Help, _) => return false,
-            (Mode::Main, _) if self.picker.is_some() || self.new_work.is_some() || self.reply.is_some() => return false,
+            (Mode::Main, _) if self.picker.is_some() || self.new_work.is_some() || self.pr_form.is_some() || self.reply.is_some() => {
+                return false
+            }
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
             (Mode::Main, c) if self.tidy.is_some() => return self.tidy_key(c),
             (Mode::Main, c) if self.reflog.is_some() => return self.reflog_key(c),
@@ -1553,6 +1559,7 @@ impl App {
             'l' => self.ask_land(),
             'x' => self.ask_remove(),
             'p' => self.open_pr(),
+            'G' => self.open_pr_form(),
             't' => self.open_in(Tool::Terminal, true),
             'e' => self.open_in(Tool::Editor, true),
             'E' => self.open_in(Tool::Explorer, true),
@@ -1730,6 +1737,10 @@ impl App {
             return true;
         }
         if self.picker.take().is_some() || self.new_work.take().is_some() || self.reply.take().is_some() {
+            return true;
+        }
+        if self.pr_form.as_ref().is_some_and(|f| !f.busy) {
+            self.pr_form = None;
             return true;
         }
         if self.band.take().is_some() {

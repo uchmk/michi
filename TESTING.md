@@ -1083,3 +1083,19 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 246.8 | With a rebase or merge stopped in the worktree, paste a patch | A toast says the worktree is in the middle of it and to finish first |
 | 246.9 | Paste a patch while a Claude is working in the worktree | The question ends with the note that a Claude is working there |
 | 246.10 | Check the keybar and `?` over the graph; switch EN and JA | `Y` and Ctrl+V are listed with their words in both languages |
+
+## 234. Creating a pull request (`G`, #34)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 234.1 | In the `3` view select a worktree whose branch has commits trunk lacks and press `G` | A form opens at the top: the title is the last commit subject, the body lists the commit subjects, the base is the trunk, the draft box is off; the title box has focus |
+| 234.2 | Select a branch with no upstream | The form says the branch will be pushed to `<remote>` first; Ctrl+Enter shows a second line asking to confirm and the button turns to `Push and create`; `Cancel` goes back; nothing was pushed yet |
+| 234.3 | Confirm with a second Ctrl+Enter (or the button) on a throwaway branch of a repository you own | The window stays responsive while it works; the branch is pushed with `-u`, a pull request is made, and the form shows its address with Open, Copy and Close; a toast names the address and it is on the clipboard |
+| 234.4 | Click Open, then Copy, then Close | The browser opens the pull request; a toast says copied; the form closes |
+| 234.5 | Tick draft, make a pull request on a branch that already has an upstream | No push line; the pull request on GitHub is a draft |
+| 234.6 | Empty the title or the base and press Ctrl+Enter | A toast says one is needed; nothing runs |
+| 234.7 | Run with `gh` off the PATH | A toast says gh was not found and where to get it; the form stays open and editable |
+| 234.8 | Run after `gh auth logout` | A toast points to `gh auth login`; the form stays open |
+| 234.9 | Make a pull request for a branch that already has one | A toast carries gh's first line; the form stays open |
+| 234.10 | Press Esc, or click outside, while the form is open and idle; press `G` on a row without a branch | The form closes; the toast says the row has no branch |
+| 234.11 | Check the keybar and `?` in the `3` view; switch EN and JA | `G` Create a pull request is listed; the form reads well in both |
