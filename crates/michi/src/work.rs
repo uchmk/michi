@@ -120,12 +120,24 @@ pub struct Band {
     /// A merge's revert: `1`, `2`… run it with that parent's side kept,
     /// not `y`. 0 for the rest.
     pub parents: u8,
+    /// Plain sentences on what will happen (#106), above the rows.
+    pub plan: Vec<String>,
 }
 
 impl Band {
     pub fn new(text: String, then: Then) -> Band {
         let strength = strength_of(&then);
-        Band { text, then, rows: Vec::new(), notes: Vec::new(), strength, word: String::new(), typed: String::new(), parents: 0 }
+        Band {
+            text,
+            then,
+            rows: Vec::new(),
+            notes: Vec::new(),
+            strength,
+            word: String::new(),
+            typed: String::new(),
+            parents: 0,
+            plan: Vec::new(),
+        }
     }
 
     /// Drawn red.
@@ -248,9 +260,16 @@ impl App {
             self.say_for(text, 6);
             return;
         }
-        if self.claude_working(&wt) {
-            let text = self.tr(claude).replace("{}", &act::name(&wt));
-            self.band = Some(Band::new(text, Then::Net(job)));
+        // A pull that carries uncommitted files, or one in a Claude's folder,
+        // says what will happen first (#106).
+        let plan = self.pull_forecast(&wt).filter(|_| self.changed_in(&wt) > 0 || self.claude_working(&wt));
+        if self.claude_working(&wt) || plan.is_some() {
+            let text = if self.claude_working(&wt) {
+                self.tr(claude).replace("{}", &act::name(&wt))
+            } else {
+                self.tr("plain.pull_ask").replace("{}", &act::name(&wt))
+            };
+            self.band = Some(Band { plan: plan.unwrap_or_default(), ..Band::new(text, Then::Net(job)) });
             return;
         }
         self.order(job);

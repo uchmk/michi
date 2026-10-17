@@ -34,6 +34,8 @@ const TAB_MAX: f32 = 220.0;
 const TAB_MIN: f32 = 70.0;
 /// The strip under the title bar for a worktree on no branch.
 const STRIP_H: f32 = 28.0;
+/// The line under the title bar that says where the worktree stands (#107).
+const WHERE_H: f32 = 22.0;
 /// How many of a view's keys the keybar shows before "? all keys".
 const KEYBAR_KEYS: usize = 5;
 /// Below this width the palette field is shorter.
@@ -88,7 +90,11 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     let tabs = (app.tab_labels.len() > 1).then(|| Rect::from_min_size(title.left_bottom(), vec2(rect.width(), TABS_H)));
     let under = title.left_bottom() + vec2(0.0, tabs.map_or(0.0, |t| t.height()));
     let strip = (app.mode != Mode::Settings && app.strip_shown()).then(|| Rect::from_min_size(under, vec2(rect.width(), STRIP_H)));
-    let body = Rect::from_min_max(under + vec2(0.0, strip.map_or(0.0, |s| s.height())), keybar.right_top());
+    // Otherwise a plain line on where the worktree stands (#107).
+    let here = if app.mode == Mode::Settings || strip.is_some() { None } else { app.where_text() };
+    let here_r = here.as_ref().map(|_| Rect::from_min_size(under, vec2(rect.width(), WHERE_H)));
+    let top = under + vec2(0.0, strip.map_or(0.0, |s| s.height()) + here_r.map_or(0.0, |r| r.height()));
+    let body = Rect::from_min_max(top, keybar.right_top());
     let mut out = Out { view: None, settings: false, palette: false, key: None, body };
     if app.mode != Mode::Settings {
         // The key list goes over the view; the mouse is the list's then.
@@ -125,6 +131,9 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     }
     if let Some(s) = strip {
         strip_bar(ui, app, s, app.mode == Mode::Main && app.band.is_none() && app.picker.is_none());
+    }
+    if let (Some(r), Some(text)) = (here_r, here) {
+        where_bar(ui, r, text);
     }
     if let Some(t) = tabs {
         tab_bar(ui, app, t);
@@ -231,6 +240,27 @@ fn strip_bar(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     if let Some(key) = pressed {
         app.strip_key(key);
     }
+}
+
+/// The line of plain words under the title bar (#107): one row cut short
+/// with an ellipsis, the whole of it when the pointer rests on it.
+fn where_bar(ui: &mut Ui, r: Rect, text: String) {
+    let c = ito_theme::colors();
+    let p = ui.painter().clone();
+    p.rect_filled(r, 0.0, c.bg);
+    p.line_segment([r.left_bottom() - vec2(0.0, 0.5), r.right_bottom() - vec2(0.0, 0.5)], Stroke::new(1.0, c.border));
+    let font = FontId::proportional(12.0);
+    let left = r.left() + 12.0;
+    let mut job = egui::text::LayoutJob::simple_singleline(text.clone(), font, c.dim);
+    job.wrap = egui::text::TextWrapping {
+        max_width: (r.right() - left - 12.0 - EDGE).max(40.0),
+        max_rows: 1,
+        break_anywhere: true,
+        overflow_character: Some('…'),
+    };
+    let g = ui.fonts_mut(|f| f.layout_job(job));
+    p.galley(pos2(left, r.center().y - g.size().y / 2.0), g, c.dim);
+    ui.interact(r, ui.id().with("where"), Sense::hover()).on_hover_text(text);
 }
 
 /// The narrowest a column can be dragged to.
@@ -690,7 +720,7 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
     buttons.push(app.tr("changes.no").to_owned());
     keys.push('n');
     hint.push(format!("Esc {}", app.tr("changes.no")));
-    let body = [b.text.clone()];
+    let body: Vec<String> = std::iter::once(b.text.clone()).chain(b.plan.iter().cloned()).collect();
     let q = ito_confirm::Question {
         title: app.tr(match b.strength {
             Strength::Easy => "band.title",

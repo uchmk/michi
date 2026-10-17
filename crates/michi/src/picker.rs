@@ -12,6 +12,7 @@ use michi_core::branch::Doing;
 use michi_core::history::Setup;
 use michi_core::oid::Oid;
 use michi_core::paths;
+use michi_core::plain::Outlook;
 use michi_core::worktree::Worktree;
 
 use crate::act::{self, Task};
@@ -632,7 +633,8 @@ impl App {
         if self.claude_working(&wt) {
             text.push_str(self.tr("act.revert_claude"));
         }
-        self.band = Some(Band::new(text, Then::Act(Task::Merge { wt, rev })));
+        let plan = self.merge_forecast(&wt, &id.short(), None, Outlook::Unknown);
+        self.band = Some(Band { plan, ..Band::new(text, Then::Act(Task::Merge { wt, rev })) });
     }
 
     /// `B` on the strip: the branch palette for the window's worktree, a new
@@ -671,13 +673,17 @@ impl App {
             return;
         }
         self.picker = None;
-        if self.claude_working(wt) {
-            let name = match &task {
-                Task::Switch { name, .. } | Task::Track { name, .. } | Task::Create { name, .. } | Task::Back { name, .. } => name.as_str(),
-                _ => "",
-            };
-            let text = self.tr(claude).replace("{wt}", &act::name(wt)).replace("{name}", name);
-            self.band = Some(Band::new(text, Then::Act(task)));
+        let name = match &task {
+            Task::Switch { name, .. } | Task::Track { name, .. } | Task::Create { name, .. } | Task::Back { name, .. } => name.as_str(),
+            _ => "",
+        };
+        // Switching over uncommitted files says what happens to them first (#106).
+        let claude_working = self.claude_working(wt);
+        if claude_working || (!name.is_empty() && self.changed_in(wt) > 0) {
+            let key = if claude_working { claude } else { "plain.switch_ask" };
+            let text = self.tr(key).replace("{wt}", &act::name(wt)).replace("{name}", name);
+            let plan = if name.is_empty() { Vec::new() } else { self.switch_forecast(wt, name) };
+            self.band = Some(Band { plan, ..Band::new(text, Then::Act(task)) });
         } else {
             self.act(task);
         }
@@ -875,7 +881,8 @@ impl App {
             text.push_str(self.tr("act.revert_claude"));
         }
         let parents = if parents > 1 { parents.min(9) as u8 } else { 0 };
-        self.band = Some(Band { parents, ..Band::new(text, Then::Act(Task::CherryPick { wt, id, mainline: None })) });
+        let plan = self.pick_forecast(&wt, &id.short());
+        self.band = Some(Band { parents, plan, ..Band::new(text, Then::Act(Task::CherryPick { wt, id, mainline: None })) });
     }
 
     /// `x` in the worktree table: asks before it takes the selected worktree
@@ -933,6 +940,7 @@ impl App {
             return;
         };
         let (wt, branch, doing) = (t.wt.path.clone(), t.wt.branch.clone(), t.doing);
+        let behind = t.ahead_behind.map(|(_, b)| b);
         let Some(trunk) = self.trees.trunk.clone().or_else(|| self.graph.trunk_name().map(str::to_owned)) else {
             self.say(self.tr("act.no_trunk"));
             return;
@@ -953,7 +961,8 @@ impl App {
         if self.claude_working(&wt) {
             text.push_str(self.tr("act.revert_claude"));
         }
-        self.band = Some(Band::new(text, Then::Act(Task::Merge { wt, rev: trunk })));
+        let plan = self.merge_forecast(&wt, &trunk, behind, self.outlook_with(&wt, &trunk));
+        self.band = Some(Band { plan, ..Band::new(text, Then::Act(Task::Merge { wt, rev: trunk })) });
     }
 
     /// `M` over the worktree table: asks before the row's branch is rebased
