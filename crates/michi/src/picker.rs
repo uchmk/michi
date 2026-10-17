@@ -89,6 +89,21 @@ pub struct Row {
     pub hits: Vec<usize>,
 }
 
+/// The keys besides Enter that act on the selected row.
+fn picker_view() -> ito_palette::View {
+    use eframe::egui::{Key, Modifiers};
+    let mut v = ito_palette::View::new();
+    v.filter = false;
+    v.keys = vec![
+        (Modifiers::SHIFT, Key::Enter),
+        (Modifiers::NONE, Key::Delete),
+        (Modifiers::NONE, Key::F2),
+        (Modifiers::COMMAND, Key::U),
+        (Modifiers::COMMAND, Key::R),
+    ];
+    v
+}
+
 pub struct Picker {
     pub kind: Kind,
     /// What is typed: a branch's name; a tag's name, then its message; a
@@ -103,8 +118,9 @@ pub struct Picker {
     pub at: Oid,
     items: Vec<Item>,
     pub rows: Vec<Row>,
-    /// Opened this frame: the click that opened it is not a click outside.
-    pub opening: bool,
+    /// The palette's own state (ito-palette): the keys it takes and the
+    /// click that opened it.
+    pub view: ito_palette::View,
     /// The branch being renamed: the box then holds its new name and the
     /// rows are not shown.
     pub renaming: Option<String>,
@@ -148,7 +164,7 @@ impl Picker {
             at,
             items,
             rows: Vec::new(),
-            opening: true,
+            view: picker_view(),
             renaming: None,
             job: None,
         };
@@ -172,7 +188,7 @@ impl Picker {
             at: Oid::parse(&"0".repeat(40)).expect("a zero id"),
             items,
             rows: Vec::new(),
-            opening: true,
+            view: picker_view(),
             renaming: None,
             job: Some(job),
         };
@@ -235,12 +251,6 @@ impl Picker {
 
     pub fn selected(&self) -> Option<&Item> {
         self.rows.get(self.sel).map(|r| &r.item)
-    }
-
-    /// Moves the selection by `by` rows, stopping at the ends.
-    pub fn move_by(&mut self, by: i32) {
-        let last = self.rows.len().saturating_sub(1) as i64;
-        self.sel = (self.sel as i64 + i64::from(by)).clamp(0, last) as usize;
     }
 }
 
@@ -691,6 +701,14 @@ pub(crate) fn same(a: &Path, b: &Path) -> bool {
 
 #[cfg(test)]
 mod tests {
+    impl Picker {
+        /// Moves the selection by `by` rows, stopping at the ends.
+        pub fn move_by(&mut self, by: i32) {
+            let last = self.rows.len().saturating_sub(1) as i64;
+            self.sel = (self.sel as i64 + i64::from(by)).clamp(0, last) as usize;
+        }
+    }
+
     use super::*;
     use crate::app::tests::{app, read, toast};
     use crate::graph::fixture::{self, id};

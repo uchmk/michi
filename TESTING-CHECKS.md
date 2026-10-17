@@ -333,3 +333,8 @@
 - [ ] **26.1** In the graph view, drag the two lines between the side column, the graph and the detail (a line shows when the pointer is near); double-click a line; with a wide diff drag the line after the graph; close and open michi → The pointer turns to a left-right arrow over a line; the columns follow the pointer and no column goes under its least width; a double click halves that split; the widths come back at the next start; a double click on an edge brings the default width back 〔未訳〕
 - [ ] **26.2** Drag the left edge of Author, Date and Commit in the graph's header → The column gets wider as the edge goes left, narrower to the right (40–300); the rows follow; a double click on an edge brings the default width back 〔未訳〕
 - [ ] **26.3** In the worktree table drag the left edge of each header (Claude, from main, uncommitted, unseen, clash, buttons) and the edge between the name and Claude → Each column follows the pointer; the name and Claude share what is left; the widths come back at the next start; a double click on an edge brings the default width back 〔未訳〕
+
+## 27. The branch / tag / stash / remote palette on ito-palette
+
+- [ ] **27.1** Open `b`, `T`, `s` and the remote choice of a push; type, move with the arrows and `Ctrl+N` / `Ctrl+P`, click a row, press Esc, click outside → The same box as before: the matched letters lit, the make / save rows in the accent colour, the `for <worktree> at <commit>` line above and the keys below; a click on a row is Enter on it; Esc and a click outside close it 〔未訳〕
+- [ ] **27.2** In `b`: `Shift+Enter`, `Delete`, `F2` (type a name, Enter; Esc cancels), `Ctrl+U`, `Ctrl+R` on a row → Each does what it did in v0.48.0; during a rename only the box shows 〔未訳〕
