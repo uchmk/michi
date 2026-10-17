@@ -120,6 +120,13 @@ pub enum Task {
     FindTidy {
         here: PathBuf,
     },
+    /// Blames the file at `path` of the worktree at `dir` as of `rev` (the
+    /// working tree when none) and lists the commits that touched it.
+    FindBlame {
+        dir: PathBuf,
+        rev: Option<Oid>,
+        path: String,
+    },
     /// Lists HEAD's reflog (as the worktree at `here` has it) and the backups.
     FindReflog {
         here: PathBuf,
@@ -352,6 +359,7 @@ impl Task {
             Task::DropStash { .. } => "stash drop",
             Task::FindTidy { .. } => "for-each-ref",
             Task::FindReflog { .. } => "reflog",
+            Task::FindBlame { .. } => "blame",
             Task::Trial { .. } => "merge-tree",
             Task::Recover { .. } => "branch",
             Task::FindReorder { .. } => "log",
@@ -409,6 +417,7 @@ pub enum Acted {
     Unstashed(Applied),
     Found(Found),
     Reflog(Vec<michi_core::reflog::Entry>),
+    Blamed(Box<michi_core::blame::Blamed>),
     Trialed(Box<michi_core::trial::Trial>),
     Recovered(String),
     Planned(michi_core::rebase::Plan),
@@ -463,6 +472,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::DropStash { id } => stash::drop(dir, id).map(|saved| Acted::Kept(Some(saved))),
         Task::FindTidy { here } => tidy::find(dir, here).map(Acted::Found),
         Task::FindReflog { here } => michi_core::reflog::list(here).map(Acted::Reflog),
+        Task::FindBlame { dir, rev, path } => michi_core::blame::read(dir, rev.as_ref(), path).map(|b| Acted::Blamed(Box::new(b))),
         Task::Trial { trunk, branches } => michi_core::trial::run(dir, trunk, branches).map(|t| Acted::Trialed(Box::new(t))),
         Task::Recover { id } => michi_core::reflog::recover(dir, id).map(Acted::Recovered),
         Task::FindReorder { wt, trunk } => michi_core::rebase::plan(wt, trunk).map(Acted::Planned),
@@ -604,6 +614,9 @@ impl App {
         }
         if let (Task::Trial { .. }, Err(_)) = (&task, &result) {
             self.trial_failed();
+        }
+        if let (Task::FindBlame { .. }, Err(_)) = (&task, &result) {
+            self.blame = None;
         }
         let (text, secs) = match (&task, result) {
             // Not being able to ask is not worth a toast.
@@ -780,6 +793,7 @@ impl App {
             }
             (Task::FindTidy { .. }, Ok(Acted::Found(found))) => return self.tidy_found(found),
             (Task::FindReflog { .. }, Ok(Acted::Reflog(rows))) => return self.reflog_found(rows),
+            (Task::FindBlame { rev, path, .. }, Ok(Acted::Blamed(data))) => return self.blame_found(path, *rev, *data),
             (Task::Trial { branches, .. }, Ok(Acted::Trialed(found))) => return self.trial_done(branches, *found),
             (Task::Recover { id }, Ok(Acted::Recovered(name))) => {
                 (self.tr("reflog.done").replace("{id}", &id.short()).replace("{name}", &name), 6)
