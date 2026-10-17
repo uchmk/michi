@@ -332,6 +332,18 @@ struct Run {
     link: Option<Oid>,
 }
 
+/// The mark for a signed commit: its words' key and colour. Nothing for an
+/// unsigned one.
+fn signature_mark(s: michi_core::signature::Signature, c: &ito_theme::Colors) -> Option<(&'static str, Color32)> {
+    use michi_core::signature::Signature;
+    match s {
+        Signature::None => None,
+        Signature::Valid => Some(("detail.sig_valid", c.done)),
+        Signature::Invalid => Some(("detail.sig_invalid", c.err)),
+        Signature::Unchecked => Some(("detail.sig_unchecked", c.wait)),
+    }
+}
+
 /// The header: the subject; the hash, the author, the date and the
 /// parents; the names on the commit; the message's body; the hint. Its
 /// height. Drawn at `top` with the painter, measured without.
@@ -363,6 +375,9 @@ fn header(ui: &Ui, app: &App, d: &Detail, at: Pos2, width: f32, paint: Option<(&
     runs.push(Run { text: author, font: prop.clone(), color: c.dim, link: None });
     if let Some(t) = time {
         runs.push(Run { text: t, font: prop.clone(), color: c.dim, link: None });
+    }
+    if let Some((key, color)) = signature_mark(d.signature, &c) {
+        runs.push(Run { text: app.tr(key).to_owned(), font: prop.clone(), color, link: None });
     }
     for (k, parent) in d.parents.iter().enumerate() {
         if k == 0 {

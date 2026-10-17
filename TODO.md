@@ -106,7 +106,7 @@ All wait for the owner; none is started.
 - [ ] bisect（要確認: #32）
 - [ ] Non-GitHub hosts: links from the remote URL（要確認: #33）
 - [ ] Creating PRs in michi（要確認: #34）
-- [ ] Signature status (Verified) marker（要確認: #35）
+- [x] Signature status (Verified) marker（要確認: #35）
 - [ ] Dedicated screens for conflicts a 3-way view cannot show（要確認: #36）
 - [ ] blame and per-file history（要確認: #37）
 - [ ] Content search (git grep, pickaxe) in the `/` filter（要確認: #38）

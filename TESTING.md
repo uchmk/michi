@@ -908,3 +908,14 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 70.7 | With the network cut, press `f` yourself | The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` | | [ ] |
 | 70.8 | Start a pull or push while the timer is due | The timer waits; it never interrupts a job | | [ ] |
 | 70.9 | Switch EN and JA | The keybar's `· failed` / `· 失敗` reads well and fits | | [ ] |
+
+## 71. Signature mark in the detail (#35; numbered 71 because `## 35.` is taken)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 71.1 | Select a commit that is signed and whose key git trusts (`git log --show-signature` says Good) | The detail's meta line shows a green `✓ Signed` after the date, before the parents | | [ ] |
+| 71.2 | Select an unsigned commit | No mark at all; the meta line is as before | | [ ] |
+| 71.3 | Select a commit signed with a key git cannot find (or with gpg missing from PATH) | A `? Signature not checked` mark in the waiting colour; no toast, no error | | [ ] |
+| 71.4 | Select a commit whose signature is bad (a commit object edited after signing) or whose key expired | A red `✗ Bad signature` mark | | [ ] |
+| 71.5 | Click through many commits quickly in a repository where most are signed | The detail still follows the selection; the mark may arrive with the diff but never blocks the UI | | [ ] |
+| 71.6 | Switch EN and JA | `✓ 署名あり` / `✗ 署名が不正` / `? 署名は未確認` read well and wrap with the meta line | | [ ] |
