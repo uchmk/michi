@@ -262,6 +262,14 @@ pub struct App {
     pub quit: bool,
     /// The command palette while it is open.
     pub cmd: Option<ito_palette::View>,
+    /// The repository screen while it is open.
+    pub repos: Option<ito_palette::View>,
+    /// The repositories michi was opened on, newest first.
+    pub recent: michi_core::recent::Recent,
+    /// A folder the repository screen picked, for the window to read and switch to.
+    pub open_req: Option<PathBuf>,
+    /// A folder being read before the switch.
+    pub opening: Option<crate::repos::Opening>,
     /// The key list's first line, and how much of it the last frame showed.
     pub help_scroll: usize,
     pub help_drawn: std::cell::Cell<Option<ito_help::Drawn>>,
@@ -269,6 +277,7 @@ pub struct App {
 
 impl App {
     pub fn new(prefs: Prefs, dir: PathBuf) -> Self {
+        let base = prefs.base.clone();
         let mut app = Self {
             view: View::Graph,
             mode: Mode::Main,
@@ -311,6 +320,10 @@ impl App {
             side_stash: None,
             quit: false,
             cmd: None,
+            repos: None,
+            recent: crate::repos::load(base.as_deref()),
+            open_req: None,
+            opening: None,
             help_scroll: 0,
             help_drawn: std::cell::Cell::new(None),
         };
@@ -468,6 +481,7 @@ impl App {
             Answer::Version(Err(_)) => {}
             Answer::Summary(Ok(s)) => {
                 self.new_title = Some(format!("{} — michi", s.name));
+                self.remember_repo(&s.top);
                 self.repo = Repo::Ready(s);
             }
             Answer::Summary(Err(e)) => {
@@ -1135,6 +1149,7 @@ impl App {
                 self.mode = if self.mode == Mode::Help { Mode::Main } else { Mode::Help };
             }
             Act::Palette => self.toggle_palette(),
+            Act::Repos => self.toggle_repos(),
             Act::BugReport => self.bug_report(),
             Act::Quit => self.quit = true,
             Act::Scale(to) => self.scale(to),
@@ -1408,6 +1423,9 @@ impl App {
     pub fn escape(&mut self) -> bool {
         if self.mode != Mode::Main {
             self.mode = Mode::Main;
+            return true;
+        }
+        if self.repos.take().is_some() {
             return true;
         }
         if self.picker.take().is_some() || self.new_work.take().is_some() {

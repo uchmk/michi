@@ -23,6 +23,7 @@ pub mod paths;
 pub mod pr;
 pub mod predict;
 pub mod rebase;
+pub mod recent;
 pub mod refs;
 pub mod rerere;
 pub mod revert;
