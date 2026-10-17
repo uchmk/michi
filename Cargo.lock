@@ -1636,6 +1636,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ito-confirm"
+version = "0.59.0"
+source = "git+https://github.com/uchmk/ito?rev=2c82056fc6da21003b77d27b562eb509d7adf309#2c82056fc6da21003b77d27b562eb509d7adf309"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "ito-console"
 version = "0.59.0"
 source = "git+https://github.com/uchmk/ito?rev=2c82056fc6da21003b77d27b562eb509d7adf309#2c82056fc6da21003b77d27b562eb509d7adf309"
@@ -2020,13 +2028,14 @@ dependencies = [
 
 [[package]]
 name = "michi"
-version = "0.50.0"
+version = "0.51.0"
 dependencies = [
  "chrono",
  "eframe",
  "egui",
  "ito-bugreport",
  "ito-common",
+ "ito-confirm",
  "ito-console",
  "ito-graph",
  "ito-help",
@@ -2051,7 +2060,7 @@ dependencies = [
 
 [[package]]
 name = "michi-core"
-version = "0.50.0"
+version = "0.51.0"
 dependencies = [
  "chrono",
  "serde",

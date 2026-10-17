@@ -446,3 +446,12 @@ files under `refs/michi/backup/<time>` first.
 | 28.2 | Type part of a name, two words, then clear; move with the arrows; press Enter on another repository | The list narrows to the paths holding every word; Enter switches this window: the title, the graph, the worktree table and the Claude column are the other repository's, the old one is no longer read | | [x] |
 | 28.3 | Type `C:\dev\some-repo` (or `~/...`, `./...`), Enter; then a folder that is not a repository | A first row "Open <path>" in the accent colour; a repository opens and joins the list; a folder that is not one leaves the window as it was and says so in a toast | | [x] |
 | 28.4 | `Delete` on a row; close michi and open it again | The row is gone, and stays gone; the repositories opened since are at the top (`recent.txt` in michi's folder) | | [ ] |
+
+## 29. 確かめの窓（ito-confirm）
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 29.1 | In the graph press `t` on a commit (revert) | The window dims and a box in the middle asks `Are you sure?` / `よろしいですか` with the band's words, the buttons `Go ahead` and `Not now`, and `y Go ahead · Esc Not now` under them; nothing behind answers the mouse | | [ ] |
+| 29.2 | Press `y`; then ask again and press `Esc`, then `n`; then click each button | `y` and the first button run it; `Esc`, `n` and the second button drop it | | [ ] |
+| 29.3 | Revert a merge commit | One button per parent (`keep parent 1`, `keep parent 2`) and `Not now`; `1` / `2` and a click run it with that side; `y` does nothing | | [ ] |
+| 29.4 | Shrink the window to its smallest with the box up | The box narrows and its words wrap; every button stays clickable | | [ ] |

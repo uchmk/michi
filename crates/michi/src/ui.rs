@@ -5,8 +5,7 @@
 
 use std::time::{Duration, SystemTime};
 
-use egui::text::{LayoutJob, TextFormat};
-use egui::{pos2, vec2, Align2, Color32, CornerRadius, CursorIcon, FontId, Id, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, ViewportCommand};
+use egui::{pos2, vec2, Align2, Color32, CornerRadius, CursorIcon, FontId, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, ViewportCommand};
 use ito_common::Clock;
 use ito_layout::ui::Moved;
 use ito_layout::{Dir, Node};
@@ -57,9 +56,9 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
         // The key list goes over the view; the mouse is the list's then.
         // The columns stay clear of the window's resize edge.
         let live = app.mode == Mode::Main;
-        // A job waiting for a yes takes the top of the body.
-        let top = body.top() + band(ui, app, body, live);
-        let r = Rect::from_min_max(pos2(body.left(), top), pos2(body.right() - EDGE, body.bottom()));
+        // A job waiting for a yes is asked over the view.
+        band(ui, app, live);
+        let r = Rect::from_min_max(body.left_top(), pos2(body.right() - EDGE, body.bottom()));
         if app.view == View::Worktree && app.review.is_some() {
             crate::review_ui::show(ui, app, r, live);
         } else if app.view == View::Worktree {
@@ -494,63 +493,55 @@ fn empty_view(ui: &mut Ui, app: &App, r: Rect) {
     p.text(mid + vec2(0.0, 34.0), Align2::CENTER_CENTER, app.tr("empty.soon"), FontId::proportional(12.0), c.dim.gamma_multiply(0.7));
 }
 
-/// The band's height when its words take one line.
-const BAND_H: f32 = 34.0;
-/// The room the band leaves its keys at the right.
-const BAND_KEYS_W: f32 = 230.0;
-/// The room each parent's key after the first takes besides.
-const BAND_PARENT_W: f32 = 120.0;
-
-/// The band at the top of `r` asking for a yes to what would lose work or
-/// get in a Claude's way: what it would do, `y` and `Esc` (a merge's revert:
-/// a digit for each parent, not `y`). Its height; 0 with no band.
-fn band(ui: &mut Ui, app: &mut App, r: Rect, live: bool) -> f32 {
-    let Some(b) = &app.band else { return 0.0 };
+/// The question for a job waiting for a yes to what would lose work or get
+/// in a Claude's way, drawn by `ito-confirm` over the window: what it would
+/// do, `y` and `Esc` (a merge's revert: a digit for each parent, not `y`).
+/// The keys are `App::band_key`'s; a click on a button is the same key.
+fn band(ui: &mut Ui, app: &mut App, live: bool) {
+    let Some(b) = &app.band else { return };
     let c = ito_theme::colors();
-    let p = ui.painter().clone();
-    let left = r.left() + 18.0;
-    let keys_w = BAND_KEYS_W + f32::from(b.parents.saturating_sub(1)) * BAND_PARENT_W;
-    let wrap = (r.width() - 36.0 - 18.0 - keys_w).max(120.0);
-    let mut job =
-        LayoutJob::single_section(b.text.clone(), TextFormat { font_id: FontId::proportional(12.5), color: c.fg, ..Default::default() });
-    job.wrap.max_width = wrap;
-    let g = ui.fonts_mut(|f| f.layout_job(job));
-    let h = BAND_H.max(g.size().y + 16.0);
-    let band = Rect::from_min_size(r.min, vec2(r.width(), h));
-    p.rect_filled(band, 0.0, c.wait.gamma_multiply(0.14));
-    p.line_segment([band.left_bottom() - vec2(0.0, 0.5), band.right_bottom() - vec2(0.0, 0.5)], Stroke::new(1.0, c.border));
-    let mid = band.center().y;
-    let pointer = ui.ctx().pointer_latest_pos();
-    let mut right = band.right() - 18.0 - EDGE;
-    let mut key = None;
-    // Right to left: Esc, then y or the parents from the last.
-    let mut caps = vec![("Esc".to_owned(), app.tr("changes.no").to_owned(), 'n')];
+    let style = ito_confirm::Style {
+        panel: c.panel,
+        border: c.border,
+        accent: Some(c.wait),
+        title: c.fg,
+        text: c.fg,
+        dim: c.dim,
+        warn: c.wait,
+        button_bg: c.border,
+        button_text: c.fg,
+    };
+    let mut buttons = Vec::new();
+    let mut keys = Vec::new();
+    let mut hint = Vec::new();
     if b.parents == 0 {
-        caps.push(("y".to_owned(), app.tr("changes.yes").to_owned(), 'y'));
+        buttons.push(app.tr("changes.yes").to_owned());
+        keys.push('y');
+        hint.push(format!("y {}", app.tr("changes.yes")));
     }
-    for n in (1..=u32::from(b.parents)).rev() {
+    for n in 1..=u32::from(b.parents) {
         let d = char::from_digit(n, 10).unwrap_or('1');
-        caps.push((d.to_string(), app.tr(b.parent_key()).replace("{}", &n.to_string()), d));
+        let word = app.tr(b.parent_key()).replace("{}", &n.to_string());
+        hint.push(format!("{d} {word}"));
+        buttons.push(word);
+        keys.push(d);
     }
-    for (k, word, c_) in caps {
-        let cap = kbd(ui, &p, pos2(right, mid), &k);
-        let w = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, word, FontId::proportional(12.5), c.fg);
-        let hit = w.union(cap).expand(3.0);
-        let resp = ui.interact(hit, Id::new(("net-band", c_)), Sense::CLICK);
-        if live && pointer.is_some_and(|at| hit.contains(at)) {
-            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
-        }
-        if live && resp.clicked() {
-            key = Some(c_);
-        }
-        right = hit.left() - 14.0;
+    buttons.push(app.tr("changes.no").to_owned());
+    keys.push('n');
+    hint.push(format!("Esc {}", app.tr("changes.no")));
+    let body = [b.text.clone()];
+    let q = ito_confirm::Question {
+        title: app.tr("band.title"),
+        rows: &[],
+        body: &body,
+        notes: &[],
+        buttons: &buttons,
+        hint: &hint.join(" · "),
+    };
+    let clicked = ito_confirm::show(ui.ctx(), &q, &style);
+    if let (true, Some(i)) = (live, clicked) {
+        app.band_key(keys[i]);
     }
-    p.text(pos2(left, mid), Align2::LEFT_CENTER, "●", FontId::proportional(12.0), c.wait);
-    p.galley(pos2(left + 18.0, mid - g.size().y / 2.0), g, c.fg);
-    if let Some(k) = key {
-        app.band_key(k);
-    }
-    h
 }
 
 /// What the keybar says of the network at its right: the job that runs and
