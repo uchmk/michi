@@ -869,3 +869,16 @@
 - [ ] **246.8** With a rebase or merge stopped in the worktree, paste a patch → A toast says the worktree is in the middle of it and to finish first 〔未訳〕
 - [ ] **246.9** Paste a patch while a Claude is working in the worktree → The question ends with the note that a Claude is working there 〔未訳〕
 - [ ] **246.10** Check the keybar and `?` over the graph; switch EN and JA → `Y` and Ctrl+V are listed with their words in both languages 〔未訳〕
+
+## 232. Bisect (#32)
+
+- [ ] **232.1** Select a commit, press `x`, select an older one, press `g` → A question names the worktree, says commits are checked out and the old position is kept under refs/michi/backup/; `n` or Esc leaves everything 〔未訳〕
+- [ ] **232.2** Answer `y` → Bisect starts; the strip shows the commit under test and the steps left; a toast names the backup 〔未訳〕
+- [ ] **232.3** Start with uncommitted tracked changes → Refused with the reason; nothing changed 〔未訳〕
+- [ ] **232.4** Start in the middle of a merge or rebase → Refused with the reason; nothing changed 〔未訳〕
+- [ ] **232.5** Press `g` / `x` / `u` on each tested commit until the end → Strip updates each step; at the end it names the first bad commit 〔未訳〕
+- [ ] **232.6** Press `X` while bisecting, answer `y` → The worktree returns to where it was; the backup ref stays; the strip goes 〔未訳〕
+- [ ] **232.7** Press `r` → A `git bisect run` line is on the clipboard and works when `<test-command>` is replaced 〔未訳〕
+- [ ] **232.8** Run a bisect with a second worktree present → The other worktrees are untouched 〔未訳〕
+- [ ] **232.9** With a Claude working in the worktree, start → The question also says a Claude is working there 〔未訳〕
+- [ ] **232.10** Switch EN and JA; check the keybar and `?` → The bisect keys appear; text reads well in both languages 〔未訳〕

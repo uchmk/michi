@@ -103,7 +103,7 @@ All wait for the owner; none is started.
 - [x] submodule: status and update (not entering): `u` on the worktree table, TESTING 129（要確認: #29）
 - [x] Git LFS: "not fetched" marker（要確認: #30）
 - [x] sparse checkout: notice only（要確認: #31）: a strip says it is on and how many files are left out (TESTING 31.5–31.9)
-- [ ] bisect（要確認: #32）
+- [x] bisect: mark good/bad in the graph, start/skip/reset in the window's worktree, steps left in the strip, copy a `git bisect run` line（要確認: #32、回答: 欲しい。実装する。）（TESTING 232）
 - [x] Non-GitHub hosts: PR page links for GitLab.com, Bitbucket and Azure DevOps from the remote URL (TESTING 101)（要確認: #33）
 - [ ] Creating PRs in michi（要確認: #34）
 - [x] Signature status (Verified) marker（要確認: #35）

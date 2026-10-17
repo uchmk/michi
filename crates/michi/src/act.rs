@@ -349,6 +349,27 @@ pub enum Task {
     ReadSparse {
         wt: PathBuf,
     },
+    /// Reads the bisect that runs in the worktree at `wt` (#32).
+    ReadBisect {
+        wt: PathBuf,
+    },
+    /// Starts a bisect in the worktree at `wt` between `bad` and `good`.
+    BisectStart {
+        wt: PathBuf,
+        bad: Oid,
+        good: Oid,
+    },
+    /// Marks the commit a bisect of `wt` checked out (`id`: that one) good,
+    /// bad or skipped.
+    BisectMark {
+        wt: PathBuf,
+        how: michi_core::bisect::Mark,
+        id: Option<Oid>,
+    },
+    /// Ends the bisect of `wt`, back where the worktree was.
+    BisectReset {
+        wt: PathBuf,
+    },
     /// The worktree at `wt` back onto the branch `name` it left, keeping
     /// what only its detached HEAD held.
     Back {
@@ -462,6 +483,12 @@ impl Task {
             Task::Rerere { .. } => "config",
             Task::ReadDetached { .. } => "rev-list",
             Task::ReadSparse { .. } => "ls-files",
+            Task::ReadBisect { .. } => "bisect log",
+            Task::BisectStart { .. } => "bisect start",
+            Task::BisectMark { how: michi_core::bisect::Mark::Good, .. } => "bisect good",
+            Task::BisectMark { how: michi_core::bisect::Mark::Bad, .. } => "bisect bad",
+            Task::BisectMark { how: michi_core::bisect::Mark::Skip, .. } => "bisect skip",
+            Task::BisectReset { .. } => "bisect reset",
             Task::Back { .. } => "switch",
             Task::Turn { .. } => "commit-tree",
             Task::FindTurns { .. } => "for-each-ref",
@@ -519,6 +546,9 @@ pub enum Acted {
     Detached(michi_core::detached::Info),
     /// A worktree's sparse checkout (none: it is off).
     Sparse(Option<michi_core::sparse::Info>),
+    /// A worktree's bisect (none: it runs none), and where the worktree was
+    /// kept when the task started or ended one.
+    Bisect(Option<Box<michi_core::bisect::State>>, Option<String>),
     /// The turns kept for a branch, the oldest first.
     Turns(Vec<michi_core::turn::Turn>),
 }
@@ -607,6 +637,12 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Rerere { wt, on } => rerere::set(wt, *on).map(|()| Acted::Done),
         Task::ReadDetached { wt } => michi_core::detached::read(wt).map(Acted::Detached),
         Task::ReadSparse { wt } => michi_core::sparse::read(wt).map(Acted::Sparse),
+        Task::ReadBisect { wt } => michi_core::bisect::read(wt).map(|s| Acted::Bisect(s.map(Box::new), None)),
+        Task::BisectStart { wt, bad, good } => {
+            michi_core::bisect::start(wt, bad, good).map(|(s, saved)| Acted::Bisect(s.map(Box::new), Some(saved)))
+        }
+        Task::BisectMark { wt, how, id } => michi_core::bisect::mark(wt, *how, id.as_ref()).map(|s| Acted::Bisect(s.map(Box::new), None)),
+        Task::BisectReset { wt } => michi_core::bisect::reset(wt).map(|saved| Acted::Bisect(None, Some(saved))),
         Task::Back { wt, name } => michi_core::detached::back(wt, name).map(Acted::Kept),
         Task::Turn { wt, branch } => michi_core::turn::snapshot(wt, branch).map(|_| Acted::Done),
         Task::FindTurns { wt, branch, .. } => michi_core::turn::list(wt, branch).map(Acted::Turns),
@@ -728,9 +764,21 @@ impl App {
             // Not being able to ask is not worth a toast.
             // A turn kept in the background is not worth a toast either way.
             (
-                Task::AskRerere { .. } | Task::Markers { .. } | Task::ReadDetached { .. } | Task::ReadSparse { .. } | Task::Turn { .. },
+                Task::AskRerere { .. }
+                | Task::Markers { .. }
+                | Task::ReadDetached { .. }
+                | Task::ReadSparse { .. }
+                | Task::ReadBisect { .. }
+                | Task::Turn { .. },
                 Err(_),
             ) => return,
+            (Task::ReadBisect { wt }, Ok(Acted::Bisect(s, _))) => {
+                self.bisect_read(wt, s.map(|b| *b));
+                return;
+            }
+            (Task::BisectStart { .. } | Task::BisectMark { .. } | Task::BisectReset { .. }, Ok(Acted::Bisect(s, saved))) => {
+                self.bisect_done(&task, s.map(|b| *b), saved)
+            }
             (Task::Turn { .. }, Ok(_)) => return,
             (Task::FindTurns { wt, branch, back }, Ok(Acted::Turns(turns))) => {
                 self.turns_found(wt, branch, *back, turns);

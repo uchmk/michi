@@ -72,7 +72,7 @@ impl App {
 
     /// Whether the strip is up.
     pub(crate) fn strip_shown(&self) -> bool {
-        self.detached.as_ref().is_some_and(|d| d.info.is_some()) || self.sparse.is_some()
+        self.detached.as_ref().is_some_and(|d| d.info.is_some()) || self.sparse.is_some() || self.bisect_text().is_some()
     }
 
     /// The sentence about a sparse checkout: it is on, and how many files
@@ -85,6 +85,10 @@ impl App {
 
     /// What the strip says.
     pub(crate) fn strip_text(&self) -> Option<String> {
+        // A bisect leaves the worktree on no branch, and says so itself.
+        if let Some(bisect) = self.bisect_text() {
+            return Some(bisect);
+        }
         let sparse = self.sparse_text();
         let Some(detached) = self.detached_text() else { return sparse };
         Some(match sparse {
@@ -113,6 +117,10 @@ impl App {
     /// The keys the strip offers, with the words on its buttons, in the
     /// order they are shown. A rebase or a bisect ends by itself: none.
     pub(crate) fn strip_actions(&self) -> Vec<(char, String)> {
+        let bisect = self.bisect_actions();
+        if !bisect.is_empty() {
+            return bisect;
+        }
         let Some(i) = self.detached.as_ref().and_then(|d| d.info.as_ref()) else { return Vec::new() };
         if matches!(i.why, Why::Rebase | Why::Bisect) {
             return Vec::new();
@@ -129,6 +137,9 @@ impl App {
     pub(crate) fn strip_key(&mut self, c: char) -> bool {
         if !self.strip_actions().iter().any(|(k, _)| *k == c) {
             return false;
+        }
+        if !self.bisect_actions().is_empty() {
+            return self.bisect_key(c);
         }
         match c {
             'R' => self.strip_back(),

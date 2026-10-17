@@ -8,7 +8,7 @@ v1（[dev-prompt.md](dev-prompt.md) の段階 1〜6）で作るものは [design
 - **submodule**: 樹形図と差分では submodule の行を 1 行（コミットの id の変化）で出すだけ。中には入らない。衝突は「どちらを取るか」だけ。
 - **Git LFS**: ポインタのファイルとして見せる。取得・push は git に任せる（`git lfs` が入っていれば git が呼ぶ）。
 - **sparse checkout**: 設定の画面も切り替えも作らない。
-- **bisect**: 作らない。
+- **bisect**: 作った（#32、持ち主の回答で方針を変えた）。グラフで `x`（bad）・`g`（good）を付けると始める確かめが出る。`u` で skip、`X` で reset、`r` で `git bisect run` の行をコピー。窓の worktree だけで動く。
 - **GitHub 以外のホスト**: 「PR を開く」・リモートの札のリンクは GitHub だけ。fetch・push は git がするので、ほかのホストでも動く。
 - **署名の設定**: 鍵の作成や `user.signingkey` の設定は作らない。署名付きのコミットは git が設定どおりに作る（commit は git で作るため）。
 - **PR の作成**: michi では PR を作らない。minato かブラウザに渡す。
