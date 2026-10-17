@@ -118,7 +118,14 @@ impl Band {
 
     /// The word on a parent's button: a revert keeps that parent's side, a
     /// pick takes the changes against it.
-    pub fn parent_key(&self) -> &'static str {
+    pub fn parent_key(&self, n: u32) -> &'static str {
+        if matches!(self.then, Then::Act(Task::Reset { .. })) {
+            return match n {
+                1 => "band.reset_soft",
+                2 => "band.reset_mixed",
+                _ => "band.reset_hard",
+            };
+        }
         if matches!(self.then, Then::Act(Task::CherryPick { .. })) {
             "band.parent_pick"
         } else {
@@ -247,6 +254,9 @@ impl App {
                 }
                 if let (Task::Revert { mainline, .. } | Task::CherryPick { mainline, .. }, Some(n)) = (&mut task, side) {
                     *mainline = Some(n);
+                }
+                if let (Task::Reset { mode, .. }, Some(n)) = (&mut task, side) {
+                    *mode = michi_core::reset::Mode::ALL[(n as usize - 1).min(2)];
                 }
                 self.act(task);
             }
@@ -606,6 +616,22 @@ mod tests {
         }
         assert!(a.feed('2'));
         assert!(a.band.is_none());
+    }
+
+    #[test]
+    fn a_reset_takes_its_kind_from_the_digit() {
+        use michi_core::reset::Mode;
+        let mut a = app();
+        let id = Oid::parse(&"a".repeat(40)).unwrap();
+        let task = Task::Reset { wt: PathBuf::from("/r/main"), id, mode: Mode::Mixed };
+        for (c, mode) in [('1', Mode::Soft), ('2', Mode::Mixed), ('3', Mode::Hard)] {
+            a.band = Some(Band { text: String::new(), then: Then::Act(task.clone()), parents: 3 });
+            assert!(a.feed('y'));
+            assert!(a.band.is_some(), "y does not choose");
+            assert!(a.band.as_ref().is_some_and(|b| b.parent_key(1) == "band.reset_soft"));
+            assert!(a.feed(c));
+            assert!(a.band.is_none(), "{mode:?}");
+        }
     }
 
     #[test]
