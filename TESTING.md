@@ -32,7 +32,7 @@ What text can check (reading the repository, the git version, the command line) 
 | 2.4 | Press `N` in any view (Enter spreads the diff: 8.5; `f` `p` `P`: 15; `b` `T` `t`: 16; `s`: 17) | A toast at the foot names the key's work and says it comes in a later stage; it goes after 4 seconds |
 | 2.5 | Press Ctrl+Shift+P, or click the palette field | The same toast for the command search; the field lights under the pointer with a text cursor |
 | 2.6 | Press a key with no work (`q`, `4`) | Nothing happens |
-| 2.7 | Press `?` (or `F1`), in a window short enough that the list does not fit; then `Down`, `PageDown`, `End`, `Home`; then bind another key to Quit on the Keys page and press `?` again | The list has the global keys and the keymap's keys (`Ctrl+Q`, `Ctrl+Shift+P`, ...), then the keys of the view in front; the keys move the list and a thin bar shows where it is; the new Quit key shows in the list; `?` or Esc closes it | [ ] |
+| 2.7 | Press `?` (or `F1`), in a window short enough that the list does not fit; then `Down`, `PageDown`, `End`, `Home`; then bind another key to Quit on the Keys page and press `?` again | The list has the global keys and the keymap's keys (`Ctrl+Q`, `Ctrl+Shift+P`, ...), then the keys of the view in front; the keys move the list and a thin bar shows where it is; the new Quit key shows in the list; `?` or Esc closes it | [x] |
 
 ## 3. Keybar and clock
 
@@ -52,7 +52,7 @@ What text can check (reading the repository, the git version, the command line) 
 | 4.4 | Change the theme, and the size | The whole window follows at once; the logo and the chip stay readable in light and dark |
 | 4.5 | Press Esc, click the `,` button, or click a tab | Each leaves the settings; a tab opens its view |
 | 4.6 | Edit common.toml by hand while michi is open | michi follows within a second |
-| 4.7 | In the settings open the Keys page; press `+ Add` on a row, press `Ctrl+Shift+K`, Enter; then `Ctrl+=`, `Ctrl+-`, `Ctrl+0` in the graph; edit keymap.toml (beside common.toml) by hand | The page lists the keys by layer (names in the language chosen); the new key is written to keymap.toml under `prepend_keymap` and a toast says `keymap.toml: 1 changed`; the keys zoom the window and say the size; a hand edit shows in the page within a second; Esc while a key is being pressed ends that, not the settings | [ ] |
+| 4.7 | In the settings open the Keys page; press `+ Add` on a row, press `Ctrl+Shift+K`, Enter; then `Ctrl+=`, `Ctrl+-`, `Ctrl+0` in the graph; edit keymap.toml (beside common.toml) by hand | The page lists the keys by layer (names in the language chosen); the new key is written to keymap.toml under `prepend_keymap` and a toast says `keymap.toml: 1 changed`; the keys zoom the window and say the size; a hand edit shows in the page within a second; Esc while a key is being pressed ends that, not the settings | [x] |
 
 ## 5. git and errors
 
@@ -398,10 +398,10 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 22.1 | Press `b`, select a local branch not checked out, `F2`, type a new name, Enter; then `F2` and Enter with the same or a taken name | The box shows `Rename <old> to:` with the old name in it and no rows; Enter toasts `Renamed <old> to <new>` and the graph's chip shows the new name after the next read; the same name does nothing, a taken or bad name toasts git's reason; Esc closes | [ ] |
-| 22.2 | With a remote branch of the same name (`origin/x`), press `b`, select the local `x`, `Ctrl+U`; then on a branch with no such remote | Toast `x now follows origin/x` (`git rev-parse x@{upstream}` says so); without a remote of that name a toast says no remote branch is named so | [ ] |
-| 22.3 | In a worktree on a branch, press `b`, select another branch (or a remote one), `Ctrl+R` and yes; once more with a clashing branch | A band names the branch, the worktree and the target; yes rebases and toasts the backup of the old tip (`refs/michi/backup/…`); a clash leaves the worktree as it was (no rebase in progress) and toasts git's words; the same branch or a worktree in the middle of something is refused with a toast; a Claude at work adds its warning to the band | [ ] |
-| 22.4 | In the graph select a commit and press `m`, yes; once on a clashing commit | A band names the commit and the window's branch; yes merges (a toast with the new commit); a clash opens the `4` view; on the uncommitted row or a detached worktree a toast says why not | [ ] |
+| 22.1 | Press `b`, select a local branch not checked out, `F2`, type a new name, Enter; then `F2` and Enter with the same or a taken name | The box shows `Rename <old> to:` with the old name in it and no rows; Enter toasts `Renamed <old> to <new>` and the graph's chip shows the new name after the next read; the same name does nothing, a taken or bad name toasts git's reason; Esc closes | [~] |
+| 22.2 | With a remote branch of the same name (`origin/x`), press `b`, select the local `x`, `Ctrl+U`; then on a branch with no such remote | Toast `x now follows origin/x` (`git rev-parse x@{upstream}` says so); without a remote of that name a toast says no remote branch is named so | [x] |
+| 22.3 | In a worktree on a branch, press `b`, select another branch (or a remote one), `Ctrl+R` and yes; once more with a clashing branch | A band names the branch, the worktree and the target; yes rebases and toasts the backup of the old tip (`refs/michi/backup/…`); a clash leaves the worktree as it was (no rebase in progress) and toasts git's words; the same branch or a worktree in the middle of something is refused with a toast; a Claude at work adds its warning to the band | [x] |
+| 22.4 | In the graph select a commit and press `m`, yes; once on a clashing commit | A band names the commit and the window's branch; yes merges (a toast with the new commit); a clash opens the `4` view; on the uncommitted row or a detached worktree a toast says why not | [x] |
 
 ## 23. Notifications, bug report and window
 
@@ -409,24 +409,24 @@ files under `refs/michi/backup/<time>` first.
 | --- | --- | --- |
 | 23.1 | With the window behind another, let a handed Claude stop; then make a fetch fail (a remote that is not there); open settings, the Notifications page, turn each column on and off, press the test buttons | The system's notification with michi's icon, and a sound if on, come for each event only while the window is not in front; a webhook set on the page gets the event; the test buttons send at once; edits are written to `config.toml`'s `[notify]` and a hand edit is read back | [ ] |
 | 23.2 | Press `F12` in any view; read the form that opens; then add `{ on = "<F9>", run = "bugreport" }` to `prepend_keymap` in `keymap.toml` and press `F9` | The browser opens michi's issue form with `version` (`michi 0.41.0 (x86_64)`), `os` and `context` filled (Scale, Config named like `uchmk\michi\config.toml`, the last failure if there was one) and no user name in any of it; a toast says nothing is sent until you submit; `F9` does the same | [ ] |
-| 23.3 | Move and resize the window, wait a second, close it, start michi again; maximise, close, start again; start with `--keys` and move the window | The window opens where and as big as it was (on the same screen, maximized if it was, with the size it had before when you restore it); `window.toml` sits beside `config.toml`; a start with `--keys` neither reads nor writes it | [ ] |
+| 23.3 | Move and resize the window, wait a second, close it, start michi again; maximise, close, start again; start with `--keys` and move the window | The window opens where and as big as it was (on the same screen, maximized if it was, with the size it had before when you restore it); `window.toml` sits beside `config.toml`; a start with `--keys` neither reads nor writes it | [x] |
 
 ## 24. Command palette
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 24.1 | Press `Ctrl+Shift+P` (or click the field in the title bar); type `fet`, `branch`, `wor`; arrows or `Ctrl+N` / `Ctrl+P` move, Enter picks; press Esc; open it over the Settings; open it while the branch box is open | A box at the top lists the keymap's commands, the tabs and the keys of the view in front, each with its key at the right; typing narrows and lights the letters; Enter does what the key does (a fetch starts, the branch box opens, the Worktrees tab shows); Esc or a click outside closes it; over the settings a pick returns to the main window; with the branch box open it does not open | [ ] |
+| 24.1 | Press `Ctrl+Shift+P` (or click the field in the title bar); type `fet`, `branch`, `wor`; arrows or `Ctrl+N` / `Ctrl+P` move, Enter picks; press Esc; open it over the Settings; open it while the branch box is open | A box at the top lists the keymap's commands, the tabs and the keys of the view in front, each with its key at the right; typing narrows and lights the letters; Enter does what the key does (a fetch starts, the branch box opens, the Worktrees tab shows); Esc or a click outside closes it; over the settings a pick returns to the main window; with the branch box open it does not open | [x] |
 
 ## 25. Warnings from keymap.toml / config.toml
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 25.1 | Write a bad line into keymap.toml (an unknown key name), save it while michi is open; then fix it | A toast names the number of warnings and the first one; it is not said again until the warnings change; fixing the file says nothing | [ ] |
+| 25.1 | Write a bad line into keymap.toml (an unknown key name), save it while michi is open; then fix it | A toast names the number of warnings and the first one; it is not said again until the warnings change; fixing the file says nothing | [~] |
 
 ## 26. Dragging the column widths
 
 | # | Do | Expect |
 | --- | --- | --- |
 | 26.1 | In the graph view, drag the two lines between the side column, the graph and the detail (a line shows when the pointer is near); double-click a line; with a wide diff drag the line after the graph; close and open michi | The pointer turns to a left-right arrow over a line; the columns follow the pointer and no column goes under its least width; a double click halves that split; the widths come back at the next start; a double click on an edge brings the default width back | [ ] |
-| 26.2 | Drag the left edge of Author, Date and Commit in the graph's header | The column gets wider as the edge goes left, narrower to the right (40–300); the rows follow; a double click on an edge brings the default width back | [ ] |
-| 26.3 | In the worktree table drag the left edge of each header (Claude, from main, uncommitted, unseen, clash, buttons) and the edge between the name and Claude | Each column follows the pointer; the name and Claude share what is left; the widths come back at the next start; a double click on an edge brings the default width back | [ ] |
+| 26.2 | Drag the left edge of Author, Date and Commit in the graph's header | The column gets wider as the edge goes left, narrower to the right (40–300); the rows follow; a double click on an edge brings the default width back | [x] |
+| 26.3 | In the worktree table drag the left edge of each header (Claude, from main, uncommitted, unseen, clash, buttons) and the edge between the name and Claude | Each column follows the pointer; the name and Claude share what is left; the widths come back at the next start; a double click on an edge brings the default width back | [~] |
