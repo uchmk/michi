@@ -2,6 +2,21 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.62.0] - 2026-10-17
+
+### 追加
+
+- submodule の状態を見て、`u` で `submodule update --init --recursive` を回す（#29）。
+- Git LFS のポインタの diff に「中身は未取得」の注記を出す（#30）。
+- sparse checkout が有効なとき、帯で知らせる（#31）。
+- GitLab・Bitbucket・Azure DevOps の remote から PR の新規ページを開く（#33）。
+- コミットの詳細に署名の印（有効・不正・未確認）（#35）。
+- blame とファイルの履歴を `B` / `H` で開く（#37）。
+- `/` の絞り込みに中身の検索: `s:text`（`log -S`）と `g:regex`（`log -G`）。Enter で探す（#38）。
+- remote の一覧・追加・削除を `M` のパレットで（#40）。
+- コミットの詳細から、ファイルをそのコミットの版に戻す（戻す前の姿は `refs/michi/backup` に退避）（#52）。
+- 設定 `[commit] co_author = "Name <email>"` で、michi のコミットに Co-Authored-By を付ける。既定は付けない（#54）。
+
 ## [0.61.0] - 2026-10-17
 
 ### 追加
