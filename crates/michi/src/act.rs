@@ -293,6 +293,19 @@ pub enum Task {
         wt: PathBuf,
         name: String,
     },
+    /// A Claude of the worktree at `wt` (on `branch`) stopped working: its
+    /// folder is kept as a new turn.
+    Turn {
+        wt: PathBuf,
+        branch: String,
+    },
+    /// Reads the turns kept for `branch`; the one `back` from the newest is
+    /// to be shown.
+    FindTurns {
+        wt: PathBuf,
+        branch: String,
+        back: usize,
+    },
 }
 
 /// The word-table key of what a tool is called.
@@ -372,6 +385,8 @@ impl Task {
             Task::Rerere { .. } => "config",
             Task::ReadDetached { .. } => "rev-list",
             Task::Back { .. } => "switch",
+            Task::Turn { .. } => "commit-tree",
+            Task::FindTurns { .. } => "for-each-ref",
         }
     }
 }
@@ -411,6 +426,8 @@ pub enum Acted {
     Markers(Option<usize>),
     /// Why a worktree is on no branch.
     Detached(michi_core::detached::Info),
+    /// The turns kept for a branch, the oldest first.
+    Turns(Vec<michi_core::turn::Turn>),
 }
 
 /// A place solved, or a file put back as git left it.
@@ -486,6 +503,8 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Rerere { wt, on } => rerere::set(wt, *on).map(|()| Acted::Done),
         Task::ReadDetached { wt } => michi_core::detached::read(wt).map(Acted::Detached),
         Task::Back { wt, name } => michi_core::detached::back(wt, name).map(Acted::Kept),
+        Task::Turn { wt, branch } => michi_core::turn::snapshot(wt, branch).map(|_| Acted::Done),
+        Task::FindTurns { wt, branch, .. } => michi_core::turn::list(wt, branch).map(Acted::Turns),
     }
 }
 
@@ -588,7 +607,13 @@ impl App {
         }
         let (text, secs) = match (&task, result) {
             // Not being able to ask is not worth a toast.
-            (Task::AskRerere { .. } | Task::Markers { .. } | Task::ReadDetached { .. }, Err(_)) => return,
+            // A turn kept in the background is not worth a toast either way.
+            (Task::AskRerere { .. } | Task::Markers { .. } | Task::ReadDetached { .. } | Task::Turn { .. }, Err(_)) => return,
+            (Task::Turn { .. }, Ok(_)) => return,
+            (Task::FindTurns { wt, branch, back }, Ok(Acted::Turns(turns))) => {
+                self.turns_found(wt, branch, *back, turns);
+                return;
+            }
             (Task::ReadDetached { wt }, Ok(Acted::Detached(i))) => {
                 self.detached_read(wt, i);
                 return;

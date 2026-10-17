@@ -611,6 +611,17 @@
 - [ ] **93.11** Land with a Claude working in the worktree → The band notes a Claude is working there and that its tabs close at the last stage 〔未訳〕
 - [ ] **93.12** Switch to JA and press `l` → The band, the buttons and every toast read in Japanese; `?` lists `l` among the worktree keys 〔未訳〕
 
+## 91. A snapshot and diff per Claude turn (`y`)
+
+- [ ] **91.1** Let a Claude in a worktree edit a file and stop to wait (tsumugi shows it `waiting` or `done`) → Within a few seconds `git for-each-ref refs/michi/turn/` lists `refs/michi/turn/<branch>/1`; the index, HEAD and files are untouched; no toast appears → | [ ] 〔未訳〕
+- [ ] **91.2** In the `3` view select that worktree and press `y` → The compare review opens titled `Turn 1 of 1 on <branch>` listing what the Claude changed in that turn → | [ ] 〔未訳〕
+- [ ] **91.3** Give the Claude a second instruction that changes another file; after it stops press `y` → `Turn 2 of 2`: only the second instruction's change is listed → | [ ] 〔未訳〕
+- [ ] **91.4** In the turn review press `y`, then `Y` → `y` goes to the older turn and `Y` to the newer one; at the ends a toast says "That is the oldest turn kept" / "That is the newest turn" → | [ ] 〔未訳〕
+- [ ] **91.5** Let a Claude stop without changing any file → No new turn ref is made → | [ ] 〔未訳〕
+- [ ] **91.6** Press `y` on a worktree whose Claude never stopped under michi → A toast says no turn is kept yet → | [ ] 〔未訳〕
+- [ ] **91.7** Restart michi while a Claude is already waiting, then let it work and stop → Only the turn ended after michi looked is kept (the first list is a baseline) → | [ ] 〔未訳〕
+- [ ] **91.8** Switch to JA; press `?` in the worktree table and in the review → Titles and toasts read in Japanese; `y` and `y Y` are listed → | [ ] 〔未訳〕
+
 ## 78. Sync: fetch, pull and push in one (`S`)
 
 - [ ] **78.1** In the graph view look at the tool band → A `Sync S` button sits after `Push P`, before the line; its icon is a down and an up arrow; hover says `Sync (S)` → | [ ] 〔未訳〕

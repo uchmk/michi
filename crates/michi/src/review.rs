@@ -104,6 +104,9 @@ pub struct Review {
     pub editing: Option<String>,
     /// Two commits compared (`a` to `b`) instead of a worktree's branch.
     pub cmp: Option<(Oid, Oid)>,
+    /// The turns of the branch being stepped through (`y`), and the one shown.
+    /// With the branch's name (the review's own `branch` is the title).
+    pub turn: Option<(Vec<michi_core::turn::Turn>, usize, String)>,
 }
 
 impl Review {
@@ -131,6 +134,7 @@ impl Review {
             notes: Vec::new(),
             editing: None,
             cmp: None,
+            turn: None,
         }
     }
 
