@@ -2,6 +2,13 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.44.0] - 2026-10-17
+
+### 変更
+
+- TESTING-CHECKS.md の生成を ito の `ito-testcheck` に替えた（`examples/make-testcheck.rs` は設定だけ）。印（`[x]` `[~]`）は引き継がれる。ito を v0.56.1 に上げた。
+- TESTING.md の 22・23 の節に見出しと表の頭が無かったのを足した。
+
 ## [0.43.0] - 2026-10-17
 
 ### 追加
