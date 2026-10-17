@@ -213,6 +213,8 @@ pub struct App {
     pub handed: Vec<Handed>,
     /// Whether the window is in front (a notification is told only when it is not).
     pub front: bool,
+    /// The last failure told in a toast, for the bug report (F12).
+    pub last_error: Option<String>,
     /// The worktree table's selected row.
     pub wt_sel: usize,
     /// The branch review (`d`), over the worktree table.
@@ -281,6 +283,7 @@ impl App {
             unseen: Unseen::default(),
             handed: Vec::new(),
             front: true,
+            last_error: None,
             wt_sel: 0,
             review: None,
             kept_notes: Vec::new(),
@@ -1129,10 +1132,23 @@ impl App {
                 let text = self.tr("later").replace("{}", self.tr("key.palette"));
                 self.say(text);
             }
+            Act::BugReport => self.bug_report(),
             Act::Quit => self.quit = true,
             Act::Scale(to) => self.scale(to),
             Act::Noop => {}
         }
+    }
+
+    /// F12: the bug report form in the browser, with the version, the OS and
+    /// what michi knew filled in (by name, never by path). The browser is
+    /// started off the UI thread.
+    fn bug_report(&mut self) {
+        let url = crate::bugreport::url(self.prefs.base.as_deref(), self.prefs.common.scale_or_one(), self.last_error.as_deref());
+        std::thread::spawn(move || {
+            let _ = michi_core::pr::open_url(&url);
+        });
+        let text = self.tr("bugreport.opened").to_owned();
+        self.say_for(text, 6);
     }
 
     /// Zoom in, out or back to 100%, kept in common.toml.

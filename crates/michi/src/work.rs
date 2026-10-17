@@ -327,6 +327,7 @@ impl App {
                 }
                 let title = self.tr("notify.title_failed").replace("{job}", kind.word());
                 self.tell("failed", &title, &e.to_string());
+                self.last_error = Some(text.clone());
                 (text, 10)
             }
         };

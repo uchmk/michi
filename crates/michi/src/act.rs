@@ -472,7 +472,11 @@ impl App {
                 self.conflict_unpick(wt, path);
                 (failed(self, &e), 10)
             }
-            (_, Err(e)) => (failed(self, &e), 10),
+            (_, Err(e)) => {
+                let text = failed(self, &e);
+                self.last_error = Some(text.clone());
+                (text, 10)
+            }
             (Task::Create { name, at, switch: None }, Ok(_)) => {
                 (self.tr("act.created").replace("{name}", name).replace("{at}", &at.short()), 4)
             }

@@ -65,6 +65,11 @@ pub fn open(wt: &Path, branch: &str) -> Result<String, git::Error> {
     Ok(page)
 }
 
+/// Opens `url` in the browser.
+pub fn open_url(url: &str) -> Result<(), git::Error> {
+    opener().arg(url).spawn().map(|_| ()).map_err(|e| git::Error::Io(format!("{url}: {e}")))
+}
+
 #[cfg(windows)]
 fn opener() -> Command {
     let mut c = Command::new("explorer");

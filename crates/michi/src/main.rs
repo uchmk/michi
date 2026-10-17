@@ -8,6 +8,7 @@
 
 mod act;
 mod app;
+mod bugreport;
 mod changes;
 mod changes_ui;
 mod conflict_ui;

@@ -32,6 +32,7 @@ ito-keys = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e
 ito-keymap = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 ito-help = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 ito-keyscript = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
+ito-bugreport = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 ito-notify = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 ito-console = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 # eframe's own defaults, but for `winit/default` (see tsumugi): the Wayland

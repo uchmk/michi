@@ -2,6 +2,13 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.41.0] - 2026-10-17
+
+### 追加
+
+- `F12` でバグ報告の画面（GitHub の issue フォーム）をブラウザで開く。版・OS・倍率・読んだ設定ファイル（パスではなく `uchmk\michi\config.toml` の形の名前）・最後の失敗の文を `ito-bugreport` が埋める。ホームのフォルダは `~` に直す。送るのはフォームで人が押したときだけ。キーは `keymap.toml` の `run = "bugreport"` で変えられる。
+- `.github/ISSUE_TEMPLATE/bug_report.yml` は `ito_bugreport::template()` から作り、テストで一致を確かめる（直すときは `cargo test write_the_form -- --ignored`）。
+
 ## [0.40.0] - 2026-10-17
 
 ### 追加

@@ -23,6 +23,8 @@ pub enum Act {
     /// Open the key list, or close it.
     Help,
     Palette,
+    /// Open the bug report form in the browser.
+    BugReport,
     Quit,
     Scale(ScaleTo),
     /// Does nothing: a key taken away from a built-in operation.
@@ -36,6 +38,7 @@ pub fn parse(s: &str) -> Result<Act, String> {
         (Some("settings"), None) => Act::Settings,
         (Some("help"), None) => Act::Help,
         (Some("palette"), None) => Act::Palette,
+        (Some("bugreport"), None) => Act::BugReport,
         (Some("quit"), None) => Act::Quit,
         (Some("noop"), None) => Act::Noop,
         (Some("scale"), Some("in")) => Act::Scale(ScaleTo::In),
@@ -111,6 +114,7 @@ mod tests {
         assert_eq!(km.act(key("?")), Some(Act::Help));
         assert_eq!(km.act(key("<F1>")), Some(Act::Help));
         assert_eq!(km.act(key("<C-S-p>")), Some(Act::Palette));
+        assert_eq!(km.act(key("<F12>")), Some(Act::BugReport));
         assert_eq!(km.act(key("<C-q>")), Some(Act::Quit));
         for k in ["<C-=>", "<C-+>", "<C-;>"] {
             assert_eq!(km.act(key(k)), Some(Act::Scale(ScaleTo::In)), "{k}");
@@ -152,6 +156,7 @@ mod tests {
         assert_eq!(at(K::Comma, ctrl), Some(Act::Settings));
         assert_eq!(at(K::F1, M::NONE), Some(Act::Help));
         assert_eq!(at(K::P, shift), Some(Act::Palette));
+        assert_eq!(at(K::F12, M::NONE), Some(Act::BugReport));
         assert_eq!(at(K::Q, ctrl), Some(Act::Quit));
         assert_eq!(at(K::Minus, ctrl), Some(Act::Scale(ScaleTo::Out)));
         assert_eq!(at(K::Num0, ctrl), Some(Act::Scale(ScaleTo::Reset)));
