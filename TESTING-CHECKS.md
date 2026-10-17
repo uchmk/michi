@@ -1119,3 +1119,22 @@
 - [ ] **116.7** Start michi with git 2.38 or newer and a name and email set → No panel opens and the palette has no "Getting ready" entry 〔未訳〕
 - [ ] **116.8** Read the panel's last lines → It points to `K` for the sign-in check; `K` still opens the sign-in help 〔未訳〕
 - [ ] **116.9** Switch EN and JA → The panel reads well in both 〔未訳〕
+
+## 117. Practice repository
+
+- [ ] **117.1** Open the palette (`<C-S-p>`), type "practice", pick "Make a practice repository" → A toast says it is being made, then another gives the folder (`michi-practice-1` in the temp folder); a new tab opens on it, with the window staying responsive meanwhile 〔未訳〕
+- [ ] **117.2** Look at the graph of the practice tab → About ten commits, a merge, branches `main`, `fix/list`, `feature/greeting`, `topic-a` (checked out), `topic-b`, the tag `v1.0`, and a dashed WIP row on top 〔未訳〕
+- [ ] **117.3** Merge `topic-b` into `topic-a` (stash or commit the waiting change first if asked) → It stops at a real conflict in `colors.txt`; the conflict screen opens and can be solved and committed 〔未訳〕
+- [ ] **117.4** Make a second practice repository → It gets its own folder (`michi-practice-2`); the first is untouched 〔未訳〕
+- [ ] **117.5** Close the tab and delete the folder → Nothing else is affected; michi keeps running; your own git config and repositories are unchanged 〔未訳〕
+- [ ] **117.6** Commit in the practice repository on a machine with no `user.name` set → The commit works (the name is kept in the repository's own config) 〔未訳〕
+- [ ] **117.7** Switch EN and JA and open the palette → The command reads well in both 〔未訳〕
+
+## 118. Legend of the graph
+
+- [ ] **118.1** In the graph (`1`), look at the header → A "Legend" button sits left of "Fold PRs"; it hides on a very narrow window instead of overlapping 〔未訳〕
+- [ ] **118.2** Click it → A panel lists lane colours, commit, merge, uncommitted, conflict, faded or dashed ends, branch, worktree, remote, tag, "+ origin", both warning pills and the new-commit dot 〔未訳〕
+- [ ] **118.3** Compare each drawing with the real one in the graph → Each looks the same as in the graph (dot, ring, dashes, pill styles and colours) 〔未訳〕
+- [ ] **118.4** Press any key, Esc, or click outside → It closes 〔未訳〕
+- [ ] **118.5** Palette: "Show the legend of the graph" → The graph view opens with the legend on top 〔未訳〕
+- [ ] **118.6** Switch EN and JA, and the themes → Words read well in both; the drawings stay readable on light and dark themes 〔未訳〕
