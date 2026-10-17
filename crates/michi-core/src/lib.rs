@@ -42,6 +42,7 @@ pub mod summary;
 pub mod tag;
 pub mod tidy;
 pub mod track;
+pub mod tree;
 pub mod unseen;
 pub mod wip;
 pub mod words;

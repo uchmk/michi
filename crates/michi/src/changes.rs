@@ -16,6 +16,7 @@ use michi_core::git;
 use michi_core::oid::Oid;
 use michi_core::show::{File, Kind, Status};
 use michi_core::stage::{self, Lists, Side};
+use michi_core::tree::{self, Row};
 
 use crate::detail::Rows;
 use crate::review::next_gen;
@@ -176,6 +177,10 @@ pub struct Changes {
     pending: u32,
     /// The diff side by side.
     pub wide: bool,
+    /// The files as a tree of folders (`t`), not kept between runs.
+    pub tree: bool,
+    /// The folders folded in the tree, per side.
+    pub folded: HashSet<(Side, String)>,
     /// Pages to scroll the diff by, for the frame to take: down is more.
     pub pages: i32,
     /// The diff goes back to its top: another file is selected.
@@ -448,7 +453,70 @@ impl Changes {
     }
 
     pub fn move_by(&mut self, by: i64) -> Option<Wish> {
+        if self.tree {
+            let order = self.order_of(true);
+            let Some(at) = order.iter().position(|&k| k == self.sel) else {
+                // The selection is folded away: the nearest shown file in the direction.
+                let full = self.order_of(false);
+                let p = full.iter().position(|&k| k == self.sel).unwrap_or(0);
+                let shown = |k: &&usize| order.contains(k);
+                let near = if by > 0 { full[p..].iter().find(shown) } else { full[..p].iter().rev().find(shown) };
+                return near.and_then(|&k| self.select(k));
+            };
+            let to = (at as i64 + by).clamp(0, order.len() as i64 - 1) as usize;
+            return self.select(order[to]);
+        }
         self.select((self.sel as i64 + by).max(0) as usize)
+    }
+
+    /// The tree's rows for `side`.
+    pub fn tree_rows(&self, side: Side) -> Vec<Row> {
+        self.rows_of(side, true)
+    }
+
+    fn rows_of(&self, side: Side, fold: bool) -> Vec<Row> {
+        let Some(l) = self.lists() else { return Vec::new() };
+        tree::rows(l.of(side), |p| fold && self.folded.contains(&(side, p.to_owned())))
+    }
+
+    /// The files shown, counted as [`Changes::at`] does, in the order the
+    /// list has them (the tree's when it is on), the folded folders open
+    /// when not `fold`.
+    fn order_of(&self, fold: bool) -> Vec<usize> {
+        let Some(l) = self.lists() else { return Vec::new() };
+        if !self.tree {
+            return (0..l.staged.len() + l.unstaged.len()).collect();
+        }
+        let mut out = tree::visible(&self.rows_of(Side::Staged, fold));
+        out.extend(tree::visible(&self.rows_of(Side::Unstaged, fold)).into_iter().map(|i| i + l.staged.len()));
+        out
+    }
+
+    /// `t`: the list as a tree of folders, or as a flat list again.
+    pub fn toggle_tree(&mut self) {
+        self.tree = !self.tree;
+    }
+
+    /// A folder of the tree folded, or opened again.
+    pub fn fold(&mut self, side: Side, dir: &str) {
+        let key = (side, dir.to_owned());
+        if !self.folded.remove(&key) {
+            self.folded.insert(key);
+        }
+    }
+
+    /// A folder staged whole, or taken out of the index whole when `side`
+    /// is the staged one.
+    pub fn toggle_dir(&mut self, side: Side, dir: &str, claude: bool) -> Option<Wish> {
+        let l = self.lists()?;
+        let op = match side {
+            Side::Unstaged => Op::Stage(tree::under(&l.unstaged, dir, false)),
+            Side::Staged => Op::Unstage(tree::under(&l.staged, dir, true)),
+        };
+        if matches!(&op, Op::Stage(p) | Op::Unstage(p) if p.is_empty()) {
+            return None;
+        }
+        self.act(op, claude)
     }
 
     /// The lines between the anchor and the cursor, as `(hunk, line)`.
@@ -1126,5 +1194,38 @@ pub(crate) mod tests {
         assert_eq!((c.count(), c.selected()), (0, None));
         assert_eq!(c.toggle_file(false), Ok(None));
         assert_eq!(c.toggle_all(false), Err("changes.unread"));
+    }
+
+    #[test]
+    fn the_tree_walks_in_its_own_order_stages_folders_whole_and_skips_folded_files() {
+        let mut c = Changes::default();
+        let w = c.open(PathBuf::from(WT));
+        c.take_list(list_gen(&Vec::from_iter(w)), Ok(lists(&["src/m.rs"], &["z.txt", "src/b.rs", "src/a/c.rs"])));
+        c.toggle_tree();
+        // Staged: src/m.rs (0). Unstaged, as the tree has them: src/a/c.rs, src/b.rs, z.txt.
+        assert_eq!(c.order_of(true), [0, 3, 2, 1]);
+        c.select(0);
+        c.move_by(1);
+        assert_eq!(c.sel, 3);
+        c.move_by(1);
+        assert_eq!(c.sel, 2);
+        assert_eq!(
+            c.toggle_dir(Side::Unstaged, "src", false),
+            Some(Wish::Do { wt: WT.into(), op: Op::Stage(vec!["src/b.rs".into(), "src/a/c.rs".into()]) })
+        );
+        assert!(matches!(c.toggle_dir(Side::Staged, "src", false), Some(Wish::Do { op: Op::Unstage(p), .. }) if p == ["src/m.rs"]));
+        assert_eq!(c.toggle_dir(Side::Unstaged, "nothing", false), None);
+        // Folded: its files are not walked to, and a selection folded away moves on.
+        c.fold(Side::Unstaged, "src");
+        assert_eq!(c.order_of(true), [0, 1]);
+        c.move_by(-1);
+        assert_eq!(c.sel, 0);
+        c.select(2);
+        c.move_by(1);
+        assert_eq!(c.sel, 1);
+        c.fold(Side::Unstaged, "src");
+        assert_eq!(c.order_of(true), [0, 3, 2, 1]);
+        c.toggle_tree();
+        assert_eq!(c.order_of(true), [0, 1, 2, 3]);
     }
 }

@@ -739,6 +739,14 @@ impl App {
         self.changes_did(done);
     }
 
+    /// A folder of the `2` view's tree staged whole (taken out of the index
+    /// whole on the staged side).
+    pub fn changes_dir(&mut self, side: michi_core::stage::Side, dir: &str) {
+        let claude = self.claude_writing();
+        let done = Ok(self.changes.toggle_dir(side, dir, claude));
+        self.changes_did(done);
+    }
+
     /// Sends what the `2` view wants, or says why it could not.
     fn changes_did(&mut self, done: Result<impl IntoIterator<Item = StageWish>, &'static str>) {
         match done {
@@ -798,6 +806,10 @@ impl App {
                 none()
             }
             'A' => Ok(ch.toggle_amend()),
+            't' if !lines => {
+                ch.toggle_tree();
+                none()
+            }
             's' => ch.split(),
             'd' => ch.discard(claude),
             'i' => ch.ignore(claude),
