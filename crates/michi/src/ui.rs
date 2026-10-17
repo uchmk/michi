@@ -42,10 +42,35 @@ const NARROW: f32 = 1100.0;
 const EDGE: f32 = 6.0;
 
 /// What the frame asks of the app.
+/// What a click on a keybar entry stands for: the key typed, or Esc.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BarKey {
+    Char(char),
+    Esc,
+}
+
+/// The key a keybar entry (`keys`, as the tables spell it) stands for when it
+/// is clicked; `None` for the ones that are not one key (`j k`, `Ctrl+Tab`).
+pub fn bar_key(keys: &str) -> Option<BarKey> {
+    match keys {
+        "Esc" | "? Esc" => Some(BarKey::Esc),
+        "Space" => Some(BarKey::Char(' ')),
+        k => {
+            let mut cs = k.chars();
+            match (cs.next(), cs.next()) {
+                (Some(c), None) => Some(BarKey::Char(c)),
+                _ => None,
+            }
+        }
+    }
+}
+
 pub struct Out {
     pub view: Option<View>,
     pub settings: bool,
     pub palette: bool,
+    /// A key of the keybar that was clicked (#123).
+    pub key: Option<BarKey>,
     /// Between the title bar and the keybar: where the settings go.
     pub body: Rect,
 }
@@ -64,7 +89,7 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     let under = title.left_bottom() + vec2(0.0, tabs.map_or(0.0, |t| t.height()));
     let strip = (app.mode != Mode::Settings && app.strip_shown()).then(|| Rect::from_min_size(under, vec2(rect.width(), STRIP_H)));
     let body = Rect::from_min_max(under + vec2(0.0, strip.map_or(0.0, |s| s.height())), keybar.right_top());
-    let mut out = Out { view: None, settings: false, palette: false, body };
+    let mut out = Out { view: None, settings: false, palette: false, key: None, body };
     if app.mode != Mode::Settings {
         // The key list goes over the view; the mouse is the list's then.
         // The columns stay clear of the window's resize edge.
@@ -105,7 +130,7 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
         tab_bar(ui, app, t);
     }
     title_bar(ui, app, title, &mut out);
-    key_bar(ui, app, keybar);
+    out.key = key_bar(ui, app, keybar);
     out
 }
 
@@ -734,7 +759,7 @@ fn net_status(ui: &Ui, app: &App, p: &egui::Painter, right: f32, mid: f32) -> f3
 
 /// The keybar: the keys of the view at the left, the best one lit; git's
 /// state, the network's and the clock at the right.
-fn key_bar(ui: &mut Ui, app: &App, r: Rect) {
+fn key_bar(ui: &mut Ui, app: &App, r: Rect) -> Option<BarKey> {
     let c = ito_theme::colors();
     let p = ui.painter().clone();
     p.rect_filled(r, 0.0, c.side);
@@ -766,6 +791,7 @@ fn key_bar(ui: &mut Ui, app: &App, r: Rect) {
         Mode::Main => app.listed(app.keys()).into_iter().take(KEYBAR_KEYS).chain([("?", "key.help")]).collect(),
     };
     let mut x = r.left() + 10.0;
+    let mut clicked = None;
     for (k, (key, word)) in keys.iter().enumerate() {
         let kc = if k == 0 { accent() } else { c.fg };
         let kg = ui.fonts_mut(|f| f.layout_no_wrap((*key).to_owned(), FontId::monospace(11.5), kc));
@@ -773,11 +799,26 @@ fn key_bar(ui: &mut Ui, app: &App, r: Rect) {
         if x + kg.size().x + 4.0 + wg.size().x > right {
             break;
         }
+        // An entry that is one key is a button: a click does what the key does.
+        let width = kg.size().x + 4.0 + wg.size().x;
+        let hit = Rect::from_min_size(pos2(x - 4.0, r.top() + 1.0), vec2(width + 8.0, r.height() - 1.0));
+        let hot = bar_key(key).map(|b| (b, ui.interact(hit, ui.id().with(("keybar", k)), Sense::CLICK)));
+        let hovered = hot.as_ref().is_some_and(|(_, resp)| resp.hovered());
+        if hovered {
+            p.rect_filled(hit, CornerRadius::same(4), c.panel);
+            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+        }
+        if let Some((b, resp)) = hot {
+            if resp.clicked() {
+                clicked = Some(b);
+            }
+        }
         p.galley(pos2(x, mid - kg.size().y / 2.0), kg.clone(), kc);
         x += kg.size().x + 4.0;
-        p.galley(pos2(x, mid - wg.size().y / 2.0), wg.clone(), c.dim);
+        p.galley(pos2(x, mid - wg.size().y / 2.0), wg.clone(), if hovered { c.fg } else { c.dim });
         x += wg.size().x + 12.0;
     }
+    clicked
 }
 
 /// The list of every key: the global ones, then the view's, two to a line
@@ -919,5 +960,15 @@ mod tests {
         assert_eq!(stacked.graph.unwrap().bottom() + 1.0, stacked.detail.top());
         let alone = columns(r(800.0), true, &s);
         assert_eq!((alone.graph, alone.detail), (None, r(800.0)));
+    }
+
+    #[test]
+    fn a_keybar_entry_is_a_button_only_when_it_is_one_key() {
+        assert_eq!(bar_key("c"), Some(BarKey::Char('c')));
+        assert_eq!(bar_key("?"), Some(BarKey::Char('?')));
+        assert_eq!(bar_key("Space"), Some(BarKey::Char(' ')));
+        assert_eq!(bar_key("Esc"), Some(BarKey::Esc));
+        assert_eq!(bar_key("j k"), None);
+        assert_eq!(bar_key("Ctrl+Tab"), None);
     }
 }

@@ -711,6 +711,11 @@ impl eframe::App for Michi {
         if out.palette {
             self.app.toggle_palette();
         }
+        match out.key {
+            Some(ui::BarKey::Char(c)) => self.app.run_pick(cmdpalette::Pick::Key(c)),
+            Some(ui::BarKey::Esc) => _ = self.app.escape(),
+            None => {}
+        }
         if let Some(p) = cmdpalette::show(&ctx, &mut self.app) {
             self.app.run_pick(p);
         }

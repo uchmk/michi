@@ -84,6 +84,7 @@ pub mod summary;
 pub mod syntax;
 pub mod tabs;
 pub mod tag;
+pub mod terms;
 pub mod tidy;
 pub mod track;
 pub mod tree;

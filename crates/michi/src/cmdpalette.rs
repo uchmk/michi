@@ -51,7 +51,14 @@ pub fn entries(app: &App) -> Vec<Entry<Pick>> {
     let mut seen = Vec::new();
     for (keys, word) in app.keys().iter().chain(GLOBAL_KEYS.iter().skip(1)) {
         let mut chars = keys.chars();
-        let (Some(c), None) = (chars.next(), chars.next()) else { continue };
+        let (Some(c), None) = (chars.next(), chars.next()) else {
+            // Space (stage, pick) has no letter but is a key all the same.
+            if *keys == "Space" && !seen.contains(&' ') {
+                seen.push(' ');
+                out.push(Entry::new(app.tr(word), keys.to_string(), Pick::Key(' ')));
+            }
+            continue;
+        };
         if !seen.contains(&c) {
             seen.push(c);
             out.push(Entry::new(app.tr(word), keys.to_string(), Pick::Key(c)));

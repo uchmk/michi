@@ -493,6 +493,10 @@ const EN: &[(&str, &str)] = &[
     ("changes.do_amend", "Amend"),
     ("changes.staged_n", "{} staged"),
     ("changes.staged_n_easy", "{} in the next commit"),
+    ("changes.guide_empty", "First line: what changed, about 50 characters. e.g. Fix the crash when a repository has no commits"),
+    ("changes.guide_long", "The first line is {} characters: about 50 reads best (put the rest below a blank line)"),
+    ("changes.guide_terse", "The first line is very short: say what changed"),
+    ("changes.guide_fine", "First line {}/50"),
     ("changes.amend", "Amend"),
     ("changes.tree", "Tree"),
     ("changes.yes", "Go ahead"),
@@ -1351,11 +1355,11 @@ const JA: &[(&str, &str)] = &[
     ("trial.already", "取り込み済み"),
     ("trial.binary", "バイナリ"),
     ("key.file", "ファイルを選ぶ"),
-    ("key.line", "diff の行を選ぶ"),
+    ("key.line", "差分の行を選ぶ"),
     ("key.note", "行にメモを書く"),
     ("key.hand_notes", "メモをこのブランチの Claude に渡す"),
     ("review.notes", "メモ {n}"),
-    ("review.no_line", "このファイルの diff には、書ける行がありません"),
+    ("review.no_line", "このファイルの 差分には、書ける行がありません"),
     ("review.no_notes", "メモがありません。J / K で行を選び、n で書きます"),
     ("review.note_keys", "Ctrl+Enter で決める（空にするとメモを消す）· Esc でそのまま戻る"),
     ("act.noted", "{wt} の Claude にメモ {n} 件を送りました（ファイルを直すだけで、コミットはしません）"),
@@ -1367,7 +1371,7 @@ const JA: &[(&str, &str)] = &[
     ("key.lines", "行を選ぶ・ファイルに戻る"),
     ("key.stage_all", "全部をステージ（行ではハンク）"),
     ("key.range", "行の範囲"),
-    ("key.split", "hunk を変更のかたまりごとに分ける・戻す"),
+    ("key.split", "ハンク を変更のかたまりごとに分ける・戻す"),
     ("key.next_change", "差分の次・前の変更へ飛ぶ"),
     ("key.amend", "直前のコミットを amend"),
     ("key.discard", "変更を捨てる（先に確かめる）"),
@@ -1512,7 +1516,7 @@ const JA: &[(&str, &str)] = &[
     ("claude.asks", "{wt} の Claude が待っています: {q}（W で答える）"),
     ("claude.asks_blank", "{wt} の Claude が待っています（W で答える）"),
     ("notify.title_waiting", "michi: Claude が待っています"),
-    ("key.waiting", "待っている Claude へ飛ぶ: その diff と質問を見て答える"),
+    ("key.waiting", "待っている Claude へ飛ぶ: その 差分と質問を見て答える"),
     ("reply.title", "{wt}: タブ {n} の Claude が待っています"),
     ("reply.blank", "（何を聞いているか書かれていません。o でそのタブを見てください）"),
     ("reply.hint", "Enter で Claude に送る · Esc で閉じる · W で次の待っている Claude"),
@@ -1522,8 +1526,8 @@ const JA: &[(&str, &str)] = &[
     ("reply.sent", "タブ {n} に答えを送りました"),
     ("claude.waiting", "待ち"),
     ("claude.markers_left", "{wt} にはまだ衝突のマーカーが残る場所が {n} 件あります（4）"),
-("claude.markers_gone", "{wt}: 衝突のマーカーはもうありません。diff を見て 4 で仕上げてください"),
-("claude.handed_done", "{wt} の Claude が止まりました（待ちか済み）: diff を見てください"),
+("claude.markers_gone", "{wt}: 衝突のマーカーはもうありません。差分を見て 4 で仕上げてください"),
+("claude.handed_done", "{wt} の Claude が止まりました（待ちか済み）: 差分を見てください"),
     ("claude.done", "済み"),
     ("claude.failed", "止まった"),
     ("claude.at", "（タブ {tab} · {title}、{since} から）"),
@@ -1634,7 +1638,7 @@ const JA: &[(&str, &str)] = &[
     ("ext.line_template", "引数"),
     ("ext.line_note", "エディタが行を受け取る形。例: -g {path}:{line}"),
     ("ext.add", "追加"),
-    ("ext.remove", "削除"),
+    ("ext.remove", "消す"),
     ("wt.take", "{} を取り込む"),
     ("wt.pr", "PR を作る"),
     (
@@ -1679,7 +1683,7 @@ const JA: &[(&str, &str)] = &[
     ("mx.tip_wip", "未コミットの分を数えると"),
     (
         "mx.foot",
-        "2 本ずつ git merge-tree --write-tree で合わせてみます（フォルダが変わったとき。監視できない場所では 5 秒ごと。合わせ直すのは HEAD か未コミットの変更が動いた組だけ）。未コミットの変更は、作業フォルダの中身から一時の tree を作って数えます。ブランチも index も動かしません。",
+        "2 本ずつ git merge-tree --write-tree で合わせてみます（フォルダが変わったとき。監視できない場所では 5 秒ごと。合わせ直すのは HEAD か未コミットの変更が動いた組だけ）。未コミットの変更は、作業ツリーの中身から一時の tree を作って数えます。ブランチも index も動かしません。",
     ),
     ("review.detached", "この worktree はブランチにいません"),
     ("review.no_trunk", "比べる幹が見つかりません"),
@@ -1710,7 +1714,7 @@ const JA: &[(&str, &str)] = &[
     ("changes.whole_note", "このファイルは丸ごと扱います（行は選べません）"),
     ("changes.whole", "このファイルは丸ごと扱います（行は選べません）"),
     ("changes.no_lines", "選べる行がありません"),
-    ("changes.no_split", "分けられる hunk がありません（どの hunk も変更が 1 か所）"),
+    ("changes.no_split", "分けられる ハンク がありません（どの ハンク も変更が 1 か所）"),
     ("changes.lines_hint", "Space 出し入れ · v 範囲 · a ハンク · s 分ける · d 捨てる · h 戻る"),
     ("changes.lines_enter", "l 行を選ぶ"),
     ("changes.message", "コミットメッセージ"),
@@ -1721,6 +1725,10 @@ const JA: &[(&str, &str)] = &[
     ("changes.do_amend", "amend"),
     ("changes.staged_n", "{} 件"),
     ("changes.staged_n_easy", "次のコミットに {} 件"),
+    ("changes.guide_empty", "1 行目に何を変えたかを 50 文字ほどで。例: コミットの無いリポジトリで落ちるのを直す"),
+    ("changes.guide_long", "1 行目が {} 文字です。50 文字ほどが読みやすい（続きは空行のあとに）"),
+    ("changes.guide_terse", "1 行目がとても短い: 何を変えたかを書く"),
+    ("changes.guide_fine", "1 行目 {}/50"),
     ("changes.amend", "amend"),
     ("changes.tree", "ツリー"),
     ("changes.yes", "進める"),
@@ -1935,7 +1943,7 @@ const JA: &[(&str, &str)] = &[
     ("reorder.title", "{wt} の rebase: {trunk} から {n} 個のコミット（古い順）"),
     ("reorder.keys", "j k 選ぶ · J K 動かす · s squash · f fixup · r 題を直す · d 外す · p そのまま · Enter 実行 · Esc 閉じる"),
     ("reorder.edit_keys", "Ctrl+Enter でメッセージを決める · Esc で元のまま"),
-    ("reorder.on_trunk", "{trunk} はトランクです。PR の前に整えるものがありません"),
+    ("reorder.on_trunk", "{trunk} は幹です。PR の前に整えるものがありません"),
     ("reorder.nothing", "まだ何も変わっていません。先に動かす・まとめる・題を直す・外すをしてください"),
     ("reorder.first_folds", "先頭のコミットは上のコミットにまとめられません"),
     ("reorder.empty", "全部のコミットが外れています"),
@@ -2039,7 +2047,7 @@ const JA: &[(&str, &str)] = &[
     ("blame.keys", "j k 動く · Tab で blame と履歴を切り替え · Enter でそのコミットを樹形図で見る · Esc で閉じる"),
     ("blame.reading", "読んでいます…"),
     ("blame.no_file", "blame するファイルが選ばれていません"),
-    ("blame.deleted", "{path} はここで削除されています。blame するものがありません"),
+    ("blame.deleted", "{path} はここで消されています。blame するものがありません"),
     ("blame.nothing", "{path} には blame するものがありません"),
     ("blame.uncommitted", "この行はまだコミットされていません"),
     ("blame.not_committed", "未コミット"),
@@ -2173,7 +2181,7 @@ const JA: &[(&str, &str)] = &[
     ("picker.in", "{} で使用中"),
     ("picker.create", "{} に作る"),
     ("picker.tag_at", "{} に付ける"),
-    ("picker.branch_keys", "Enter 切り替え · Shift+Enter 作って切り替え · F2 改名 · Ctrl+U 上流 · Ctrl+R rebase · Del 消す · Esc 閉じる"),
+    ("picker.branch_keys", "Enter 切り替え · Shift+Enter 作って切り替え · F2 改名 · Ctrl+U upstream · Ctrl+R rebase · Del 消す · Esc 閉じる"),
     ("picker.tag_keys", "Enter 付ける・見る · Shift+Enter 付けて push · Del 消す · Esc 閉じる"),
     ("picker.stash_keys", "Enter しまう・当てる · Shift+Enter 取り出す · Del 捨てる · Esc 閉じる"),
     ("picker.remote", "push 先の remote を選ぶ"),
@@ -2187,7 +2195,7 @@ const JA: &[(&str, &str)] = &[
     ("remote.need_url", "名前の後ろに URL を打ってください: 名前 https://host/repo.git"),
     ("remote.at", "{name} の URL は {url}"),
     ("remote.added", "remote {name} を {url} で足しました。まだ何も fetch していません。f で fetch します。"),
-    ("remote.ask_remove", "remote {name}（{url}）を外しますか？ その remote の追跡ブランチも消え、それを上流にしているブランチは上流を失います。コミットはリポジトリに残ります。M でもう一度足せば取り戻せます。"),
+    ("remote.ask_remove", "remote {name}（{url}）を外しますか？ その remote の追跡ブランチも消え、それを upstream にしているブランチはupstream を失います。コミットはリポジトリに残ります。M でもう一度足せば取り戻せます。"),
     ("remote.removed", "remote {name} を外しました。URL は {url} でした。M でまた足せます。"),
     ("picker.none", "一致するものはありません"),
     ("view.conflict", "衝突"),
@@ -2215,7 +2223,7 @@ const JA: &[(&str, &str)] = &[
     ("land.row_1", "{trunk} を {branch} に取り込む"),
     ("land.row_2", "検証を回す（scripts/verify.sh か verify.ps1。無ければ飛ばす）"),
     ("land.row_3", "{trunk} を {branch} まで進める（fast-forward のみ）"),
-    ("land.row_4", "worktree {wt} を消し、{branch} を削除する"),
+    ("land.row_4", "worktree {wt} を消し、{branch} を消す"),
     ("land.here", "この窓の worktree はここから消せないため、最後の段階は選べません"),
     ("land.sessions", "この worktree の Claude のタブは最後の段階で閉じます"),
     ("land.self", "{wt} は {trunk} そのものなので、着地させるものはありません"),
@@ -2267,7 +2275,7 @@ const JA: &[(&str, &str)] = &[
     ("act.concluded", "{wt} の{doing}をコミットしました: {new}"),
     ("act.rerere_ask", "解いた衝突を覚えて、同じ衝突が来たら同じに当てますか（git rerere。このリポジトリの設定に書きます）。 y: 有効にする ・ n: しない ・ Esc: 今はしない"),
     ("act.rerere_on", "rerere を有効にしました。同じ衝突は解いたとおりに当たります（git config rerere.enabled）"),
-    ("act.handed", "{wt} の Claude に衝突を解くよう頼みました（git add までで、diff を見て確かめてからコミットします）"),
+    ("act.handed", "{wt} の Claude に衝突を解くよう頼みました（git add までで、差分を見て確かめてからコミットします）"),
     ("act.pr_opened", "{b} の PR のページをブラウザで開きました"),
 ("act.no_branch", "この worktree はブランチにいません"),
 ("key.pr", "PR を開く"),
@@ -2318,7 +2326,7 @@ const JA: &[(&str, &str)] = &[
     ("act.remove_main", "{wt} は本体の worktree なので消せません"),
     ("act.removed", "{wt} を消しました"),
     ("act.removed_kept", "{wt} を消しました。未コミットの変更は {saved} に退避しました"),
-    ("act.handed_new", "{wt} の衝突を解く Claude を新しいタブで始めました（git add までで、diff を見て確かめてからコミットします）"),
+    ("act.handed_new", "{wt} の衝突を解く Claude を新しいタブで始めました（git add までで、差分を見て確かめてからコミットします）"),
     ("key.cf_handoff", "衝突を Claude に渡す"),
     ("cf.handoff", "Claude に渡す"),
     ("cf.open_external", "外部ツールで開く"),
@@ -2327,16 +2335,16 @@ const JA: &[(&str, &str)] = &[
     ("act.external_file", "{path} をシステムの既定のプログラムで開きました"),
     ("cf.hand_none", "渡せる場所が残っていません"),
     ("cf.strip_wait", "Claude はまだ作業中です"),
-    ("cf.strip_left", "場所が残っています。先に diff を見るか、差し戻してください"),
+    ("cf.strip_left", "場所が残っています。先に 差分を見るか、差し戻してください"),
     ("act.sent_back", "{wt} の Claude に解き直しを頼みました"),
     ("act.sent_back_new", "{wt} の解き直しのために Claude を新しいタブで始めました"),
     ("cf.strip_asked", "{wt} の Claude に頼みました。止まるのを待っています..."),
     ("cf.strip_left_n", "{wt} の Claude が止まりました。マーカーが残る場所が {n} 件あります。"),
     ("cf.strip_done", "{wt} の Claude が止まり、すべて解けました。やったことを見て、採用か差し戻しを選んでください。"),
-    ("cf.strip_review", "diff を見る"),
+    ("cf.strip_review", "差分を見る"),
     ("cf.strip_adopt", "採用"),
     ("cf.strip_back", "差し戻す"),
-    ("key.cf_strip", "渡したあと: diff を見る・採用・差し戻し"),
+    ("key.cf_strip", "渡したあと: 差分を見る・採用・差し戻し"),
     ("act.rerere_off", "rerere は使いません（git config rerere.enabled false）"),
     ("act.aborted", "{wt} の{doing}を中止しました"),
     ("act.aborted_kept", "。ファイルは {} に退避しました"),
@@ -2427,7 +2435,7 @@ const JA: &[(&str, &str)] = &[
     ("cf.why_binary", "バイナリなので行ごとには合わせられません。"),
     ("cf.why_other", "行ごとには合わせられない衝突です（名前の変更など）。"),
     ("cf.why_moved_both", "両方の側がこの名前を移した（または消した）: 名前の変更が両側で食い違いました。新しい名前を一覧から探してください。"),
-    ("cf.why_moved_one", "この名前は片方の側だけにあり、base にはありません: 名前の変更の新しい名前か、ファイルとフォルダーの衝突です。"),
+    ("cf.why_moved_one", "この名前は片方の側だけにあり、base にはありません: 名前の変更の新しい名前か、ファイルとフォルダの衝突です。"),
     ("cf.did", "自分: {ours}。相手: {theirs}。"),
     ("cf.did_deleted", "消した"),
     ("cf.did_added", "足した"),
@@ -2527,5 +2535,47 @@ mod tests {
         assert_eq!(tr("ja", "nope"), "nope");
         assert_eq!(tr("ja", "view.graph"), "樹形図");
         assert_eq!(tr("fr", "view.graph"), "Graph");
+    }
+
+    /// The words of both tables follow the one table of terms (#125).
+    #[test]
+    fn the_tables_use_the_terms_of_the_term_table() {
+        let mut bad = Vec::new();
+        for (k, v) in JA {
+            for (w, t) in michi_core::terms::banned_ja() {
+                if v.contains(w) {
+                    bad.push(format!("ja `{k}` says `{w}`: the {} is `{}`", t.what, t.ja));
+                }
+            }
+        }
+        for (k, v) in EN {
+            let low = v.to_lowercase();
+            for (w, t) in michi_core::terms::banned_en() {
+                if low.contains(w) {
+                    bad.push(format!("en `{k}` says `{w}`: the {} is `{}`", t.what, t.en));
+                }
+            }
+        }
+        assert!(
+            bad.is_empty(),
+            "{}",
+            bad.join(
+                "
+"
+            )
+        );
+    }
+
+    /// GLOSSARY.md shows every term of the table, in both languages.
+    #[test]
+    fn the_glossary_lists_every_term() {
+        let doc = include_str!("../../../GLOSSARY.md");
+        for t in michi_core::terms::TERMS {
+            let row = doc.lines().find(|l| l.starts_with('|') && l.contains(&format!("| {} |", t.what)));
+            let row = row.unwrap_or_else(|| panic!("GLOSSARY.md has no row for {}", t.what));
+            let cells: Vec<&str> = row.split('|').map(str::trim).collect();
+            assert_eq!(cells.get(2), Some(&t.en), "{}: English", t.what);
+            assert_eq!(cells.get(3), Some(&t.ja), "{}: Japanese", t.what);
+        }
     }
 }

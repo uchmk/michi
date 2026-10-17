@@ -67,6 +67,41 @@ pub fn template_text(raw: &str) -> Option<String> {
     }
 }
 
+/// The subject length (in characters) a message is nudged to stay within.
+pub const SUBJECT_AIM: usize = 50;
+
+/// A subject shorter than this many characters reads as "fix" alone.
+pub const SUBJECT_MIN: usize = 6;
+
+/// What the guide under the message box says about the message being
+/// written (#124). Nothing here stops a commit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Guide {
+    /// Nothing written yet: show how to write one, with an example.
+    Empty,
+    /// The subject (first line) is `n` characters, over [`SUBJECT_AIM`].
+    Long(usize),
+    /// The subject is too short to say what changed.
+    Terse,
+    /// The subject is `n` characters and fine.
+    Fine(usize),
+}
+
+/// The guide for `message`.
+pub fn guide(message: &str) -> Guide {
+    let subject = message.trim_start().lines().next().unwrap_or("").trim();
+    let n = subject.chars().count();
+    if message.trim().is_empty() {
+        Guide::Empty
+    } else if n > SUBJECT_AIM {
+        Guide::Long(n)
+    } else if n < SUBJECT_MIN {
+        Guide::Terse
+    } else {
+        Guide::Fine(n)
+    }
+}
+
 /// Where stepping through the past is: nowhere (the message being written)
 /// or the `n`th past message, 0 the newest.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -148,6 +183,19 @@ mod tests {
         w.step(&p, true, "");
         assert_eq!(w.step(&p, true, "m0 edited").as_deref(), Some("m0"));
         assert_eq!(w.step(&p, false, "m0").as_deref(), Some("m0 edited"));
+    }
+
+    #[test]
+    fn the_guide_warns_about_empty_long_and_terse_subjects() {
+        assert_eq!(guide(""), Guide::Empty);
+        assert_eq!(guide("  \n\n"), Guide::Empty);
+        assert_eq!(guide("fix"), Guide::Terse);
+        assert_eq!(guide("Fix the crash on start"), Guide::Fine(22));
+        let long = "x".repeat(SUBJECT_AIM + 1);
+        assert_eq!(guide(&format!("{long}\n\nbody")), Guide::Long(SUBJECT_AIM + 1));
+        assert_eq!(guide(&format!("{}\n\n{long}", "x".repeat(SUBJECT_AIM))), Guide::Fine(SUBJECT_AIM));
+        // Characters, not bytes: 50 Japanese letters fit.
+        assert_eq!(guide(&"あ".repeat(SUBJECT_AIM)), Guide::Fine(SUBJECT_AIM));
     }
 
     #[test]
