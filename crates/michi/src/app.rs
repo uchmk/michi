@@ -1626,6 +1626,24 @@ impl App {
         lines
     }
 
+    /// The key list as titled groups, to be dealt into columns.
+    pub fn help_groups(&self) -> Vec<ito_help::Group> {
+        use ito_help::Line;
+        let mut out: Vec<ito_help::Group> = Vec::new();
+        for l in self.help_lines() {
+            match l {
+                Line::Head(title) => out.push(ito_help::Group { title, rows: Vec::new() }),
+                Line::Bind { keys, desc } => {
+                    if let Some(g) = out.last_mut() {
+                        g.rows.push((keys, desc));
+                    }
+                }
+                _ => {}
+            }
+        }
+        out
+    }
+
     /// `keys` as the level lists them in the keybar and `?`. Every key still
     /// works, and the command palette has all of them (#115).
     pub fn listed(&self, keys: &'static [(&'static str, &'static str)]) -> Vec<(&'static str, &'static str)> {
@@ -2770,6 +2788,14 @@ pub(crate) mod tests {
         assert!(!a.detail.wide);
         a.named("ArrowDown");
         assert_eq!(a.detail.lines, 1, "narrow: the graph has the keys");
+    }
+
+    #[test]
+    fn the_key_list_is_dealt_in_groups_each_with_a_title() {
+        let a = read();
+        let g = a.help_groups();
+        assert!(g.len() >= 2 && g.iter().all(|g| !g.title.is_empty()));
+        assert!(g.iter().map(|g| g.rows.len()).sum::<usize>() > 10);
     }
 
     #[test]

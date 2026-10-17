@@ -1296,3 +1296,5 @@
 
 - [ ] **272.1** In the graph select a commit with a long diff, press Enter, then Down, PageDown, End, Home → The detail scrolls by line, page, to the end and to the top; the graph selection stays; Enter narrows it and the arrows move the graph again 〔未訳〕
 - [ ] **272.2** Select a commit and press `#`, then paste elsewhere; also Ctrl+C with no text picked → The full 40-character hash is pasted; a toast names its first 10 characters 〔未訳〕
+- [ ] **272.3** In the Worktrees view press `E` on a worktree → Explorer opens that worktree's folder, not the user folder 〔未訳〕
+- [ ] **272.4** Press F1 in a wide window, then in a narrow one; scroll with the wheel and the arrow keys → Two columns when wide, one when narrow; both scroll when the list is taller than the card 〔未訳〕

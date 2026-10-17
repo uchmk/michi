@@ -588,6 +588,16 @@ impl Task {
     }
 }
 
+/// `wt` spelt the way the OS does: git hands over `C:/dev/x`, and Explorer
+/// opens the user's folder instead when given forward slashes.
+fn native(wt: &std::path::Path) -> PathBuf {
+    if cfg!(windows) {
+        PathBuf::from(wt.to_string_lossy().replace('/', "\\"))
+    } else {
+        wt.to_path_buf()
+    }
+}
+
 /// How a task ended, when git did not refuse it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Acted {
@@ -774,7 +784,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::CreatePr { wt, req } => michi_core::prcreate::create(wt, req).map(Acted::PrUrl),
         Task::OpenPr { wt, branch } => michi_core::pr::open(wt, branch).map(|_| Acted::Done),
         Task::OpenIn { wt, command, .. } => {
-            ito_openin::open(command, &ito_openin::Vars::path(wt), Some(wt)).map(|()| Acted::Done).map_err(git::Error::Io)
+            ito_openin::open(command, &ito_openin::Vars::path(&native(wt)), Some(wt)).map(|()| Acted::Done).map_err(git::Error::Io)
         }
         Task::OpenFile { wt, path, line, command, line_args } => {
             ito_openin::open_file(command, &wt.join(path), *line, line_args).map(Acted::Line).map_err(git::Error::Io)
@@ -1345,6 +1355,14 @@ impl App {
 
 #[cfg(test)]
 mod tests {
+    use super::native;
+
+    #[test]
+    fn a_folder_is_spelt_natively_for_the_tools() {
+        let n = native(std::path::Path::new("C:/dev/michi")).to_string_lossy().into_owned();
+        assert_eq!(n, if cfg!(windows) { r"C:\dev\michi" } else { "C:/dev/michi" });
+    }
+
     use super::*;
     use crate::app::tests::{app, toast};
     use crate::work::{Kind, Running};

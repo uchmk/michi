@@ -886,18 +886,30 @@ fn key_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
 /// The list of every key: the global ones, then the view's, two to a line
 /// as the mock has them (one when the window is narrow), each its word at
 /// the left and its keys at the right.
-fn help(ui: &mut Ui, app: &App, r: Rect) {
+fn help(ui: &mut Ui, app: &mut App, r: Rect) {
     const LINE: f32 = 20.0;
+    // Two columns when the window is wide enough for them, one when it is not.
+    const COLUMN: f32 = 400.0;
     let c = ito_theme::colors();
     let p = ui.painter().clone();
-    let lines = app.help_lines();
-    let w = r.width().min(720.0);
-    let need = 50.0 + lines.len() as f32 * LINE + 36.0;
+    let w = r.width().min(1000.0);
+    let cols = ito_help::columns_for(w - 40.0, COLUMN, 2);
+    let columns = ito_help::deal(&app.help_groups(), cols);
+    let tall = columns.iter().map(Vec::len).max().unwrap_or(0);
+    let plan = ito_help::Plan { columns, scale: 1.0, scrolls: false };
+    let need = 50.0 + tall as f32 * LINE + 36.0;
     let card = Rect::from_center_size(r.center(), vec2(w, need.min(r.height() - 24.0).max(120.0)));
     p.rect_filled(card, CornerRadius::same(10), c.raised());
     p.rect_stroke(card, CornerRadius::same(10), Stroke::new(1.0, c.border_strong()), StrokeKind::Inside);
     p.text(pos2(card.left() + 20.0, card.top() + 18.0), Align2::LEFT_TOP, app.tr("help.title"), FontId::proportional(16.0), c.fg);
     let body = Rect::from_min_max(pos2(card.left() + 20.0, card.top() + 50.0), pos2(card.right() - 20.0, card.bottom() - 36.0));
+    // The wheel scrolls it by lines, as the arrow keys do.
+    let wheel = ui.input(|i| i.smooth_scroll_delta.y);
+    if wheel != 0.0 {
+        if let Some(d) = app.help_drawn.get() {
+            app.help_scroll = ito_help::scrolled(d.scroll, (-wheel / LINE).round() as i64, d.max);
+        }
+    }
     let style = ito_help::Style {
         font: FontId::monospace(12.0),
         row_h: LINE,
@@ -908,7 +920,7 @@ fn help(ui: &mut Ui, app: &App, r: Rect) {
         dim: c.dim,
         bar: c.border_strong(),
     };
-    let drawn = ito_help::draw(&p, body, &lines, app.help_scroll, &style);
+    let drawn = ito_help::draw_plan(&p, body, &plan, app.help_scroll, &style);
     app.help_drawn.set(Some(drawn));
     p.text(pos2(card.left() + 20.0, card.bottom() - 22.0), Align2::LEFT_CENTER, app.tr("help.close"), FontId::proportional(11.5), c.dim);
 }
