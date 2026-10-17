@@ -356,7 +356,7 @@ const EN: &[(&str, &str)] = &[
 ("motion.on", "On"),
 ("motion.off", "Off (reduce motion)"),
     ("settings.level", "How much to show"),
-    ("settings.level_lead", "Basic lists only the everyday keys in the key bar and in ?. Reset, discard, rebase, force push and the like stay in the command palette (Ctrl+Shift+P), and every key still works. Written to [view] level in config.toml."),
+    ("settings.level_lead", "Basic lists only the everyday keys in the key bar and in ?. Reset, throw away changes, rebase, force push and the like stay in the command palette (Ctrl+Shift+P), and every key still works. Written to [view] level in config.toml."),
     ("level.basic", "Basic"),
     ("level.full", "Full"),
     ("level.more", "{n} more commands are in the command palette (Ctrl+Shift+P)"),
@@ -633,7 +633,7 @@ const EN: &[(&str, &str)] = &[
     ("gerr.no_path.cause", "git does not know that file."),
     ("gerr.no_path.next", " Check the name, or add it first if it is new."),
     ("gerr.tree_dirty.cause", "That worktree still has changes that are not committed."),
-    ("gerr.tree_dirty.next", " Commit or discard them first; removing it anyway loses them."),
+    ("gerr.tree_dirty.next", " Commit or throw them away first; removing it anyway loses them."),
     ("act.created", "Made branch {name} at {at}"),
     ("act.created_switched", "Made branch {name}; {wt} is on it"),
     ("act.switched", "{wt} is on {name} now"),
@@ -1585,7 +1585,7 @@ const JA: &[(&str, &str)] = &[
 ("motion.on", "入"),
 ("motion.off", "切（動きを減らす）"),
     ("settings.level", "表示の量"),
-    ("settings.level_lead", "基本は、キーバーと ? に毎日使うキーだけを並べます。リセット・変更の破棄・rebase・強制 push などはコマンドパレット（Ctrl+Shift+P）にだけ出ます。どのキーも今までどおり使えます。config.toml の [view] level に書きます。"),
+    ("settings.level_lead", "基本は、キーバーと ? に毎日使うキーだけを並べます。リセット・変更を捨てる・rebase・強制 push などはコマンドパレット（Ctrl+Shift+P）にだけ出ます。どのキーも今までどおり使えます。config.toml の [view] level に書きます。"),
     ("level.basic", "基本"),
     ("level.full", "すべて"),
     ("level.more", "ほかの {n} 個のコマンドはコマンドパレット（Ctrl+Shift+P）にあります"),
@@ -2549,7 +2549,8 @@ mod tests {
             }
         }
         for (k, v) in EN {
-            let low = v.to_lowercase();
+            // `safe.directory` is git's own setting name, not our word for a folder.
+            let low = v.to_lowercase().replace("safe.directory", "");
             for (w, t) in michi_core::terms::banned_en() {
                 if low.contains(w) {
                     bad.push(format!("en `{k}` says `{w}`: the {} is `{}`", t.what, t.en));
