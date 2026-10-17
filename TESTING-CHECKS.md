@@ -869,3 +869,11 @@
 - [ ] **246.8** With a rebase or merge stopped in the worktree, paste a patch → A toast says the worktree is in the middle of it and to finish first 〔未訳〕
 - [ ] **246.9** Paste a patch while a Claude is working in the worktree → The question ends with the note that a Claude is working there 〔未訳〕
 - [ ] **246.10** Check the keybar and `?` over the graph; switch EN and JA → `Y` and Ctrl+V are listed with their words in both languages 〔未訳〕
+
+## 258. Run a refused commit again (#58)
+
+- [ ] **258.1** Add a pre-commit hook that prints five lines and exits 1; stage a file, write a message, commit; in the panel of what git said press `r` → The panel shows `Run again` with an `r` key cap left of `Close`; `r` runs the commit again (the hook runs again, a new panel or toast follows) with the same message and staged files 〔未訳〕
+- [ ] **258.2** Click `Run again` in the same panel → The same as `r` 〔未訳〕
+- [ ] **258.3** Fix the hook so it passes (or remove it), then press `r` over the panel → The commit goes through, the panel closes and the message box is cleared 〔未訳〕
+- [ ] **258.4** Make a write other than a commit fail with several lines → The panel has `Close` only, no `Run again`; `r` does nothing 〔未訳〕
+- [ ] **258.5** Switch EN and JA → `Run again` and `もう一度回す` 〔未訳〕

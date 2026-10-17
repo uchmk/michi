@@ -839,6 +839,14 @@ impl App {
         self.changes_did(done);
     }
 
+    /// A commit the hooks refused is run again (`r` over what git said, or
+    /// its button): the message and the staged files are as they were.
+    pub fn changes_run_again(&mut self) {
+        if self.changes.told.as_ref().is_some_and(|t| t.commit) {
+            self.changes_commit();
+        }
+    }
+
     /// The message box has the keys: what helps writing a message is read
     /// once, and Alt+Up / Alt+Down in it step through the past messages.
     pub fn changes_help(&mut self) {
@@ -879,6 +887,10 @@ impl App {
                 'n' => ch.confirm = None,
                 _ => {}
             }
+            return true;
+        }
+        if c == 'r' && ch.told.as_ref().is_some_and(|t| t.commit) {
+            self.changes_run_again();
             return true;
         }
         let lines = ch.focus == Focus::Lines;

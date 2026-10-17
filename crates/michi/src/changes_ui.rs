@@ -92,6 +92,8 @@ enum Act {
     No,
     /// What git said is put away.
     Untell,
+    /// The refused commit is run again.
+    Again,
 }
 
 /// The `2` view in `r`.
@@ -151,8 +153,8 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     }
     let ch = &app.changes;
     if let Some(told) = &ch.told {
-        if told_of(ui, app, told, dr, live, pointer, pages) {
-            act = Some(Act::Untell);
+        if let Some(a) = told_of(ui, app, told, dr, live, pointer, pages) {
+            act = Some(a);
         }
     } else if let Some((side, f)) = ch.selected() {
         if let Some(a) = title_row(ui, app, side, f, Rect::from_min_size(dr.min, vec2(dr.width(), TITLE_H)), live, pointer) {
@@ -195,14 +197,15 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             app.escape();
         }
         Act::Untell => app.changes.told = None,
+        Act::Again => app.changes_run_again(),
     }
     ctx.request_repaint();
 }
 
 /// All git said when a write failed, in place of the diff: what failed
 /// over the words as git wrote them, scrolled as the diff is. Whether
-/// "close" was clicked.
-fn told_of(ui: &Ui, app: &App, told: &Told, dr: Rect, live: bool, pointer: Option<Pos2>, pages: i32) -> bool {
+/// "close" or "run again" was clicked.
+fn told_of(ui: &Ui, app: &App, told: &Told, dr: Rect, live: bool, pointer: Option<Pos2>, pages: i32) -> Option<Act> {
     let c = ito_theme::colors();
     let ctx = ui.ctx();
     let rr = Rect::from_min_size(dr.min, vec2(dr.width(), TITLE_H));
@@ -213,10 +216,20 @@ fn told_of(ui: &Ui, app: &App, told: &Told, dr: Rect, live: bool, pointer: Optio
     let cap = kbd(ui, &p, pos2(rr.right() - X, mid), "Esc");
     let w = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, app.tr("changes.told_close"), FontId::proportional(12.0), c.dim);
     let closed = clicked(ui, &p, w.union(cap).expand(3.0), "changes-untell", live, pointer);
+    // A refused commit can be run again (the hooks run again too).
+    let mut again = false;
+    let mut left = w.left().min(cap.left());
+    if told.commit {
+        let cap2 = kbd(ui, &p, pos2(left - 14.0 - 6.0, mid), "r");
+        let w2 =
+            p.text(pos2(cap2.left() - 6.0, mid), Align2::RIGHT_CENTER, app.tr("changes.told_again"), FontId::proportional(12.0), c.dim);
+        again = clicked(ui, &p, w2.union(cap2).expand(3.0), "changes-again", live, pointer);
+        left = w2.left();
+    }
     let title = app.tr(if told.commit { "changes.told_commit" } else { "changes.told" });
     let g = ui.fonts_mut(|f| {
         let mut job = LayoutJob::simple_singleline(title.to_owned(), FontId::proportional(12.5), c.err);
-        job.wrap = TextWrapping::truncate_at_width((w.left() - 12.0 - rr.left() - X).max(0.0));
+        job.wrap = TextWrapping::truncate_at_width((left - 12.0 - rr.left() - X).max(0.0));
         f.layout_job(job)
     });
     p.galley(pos2(rr.left() + X, mid - g.size().y / 2.0), g, c.err);
@@ -233,7 +246,13 @@ fn told_of(ui: &Ui, app: &App, told: &Told, dr: Rect, live: bool, pointer: Optio
     scroll = scroll.clamp(0.0, (total - body.height()).max(0.0));
     ctx.data_mut(|d| d.insert_temp(told_id(), scroll));
     p.galley(pos2(body.left() + X, body.top() + 10.0 - scroll), g, c.fg);
-    closed
+    if again {
+        Some(Act::Again)
+    } else if closed {
+        Some(Act::Untell)
+    } else {
+        None
+    }
 }
 
 /// Whether `hit` was clicked; a hand over it.
@@ -1138,6 +1157,29 @@ mod tests {
             app.toast.as_ref().map(|(t, _)| t.as_str()),
             Some("Threw away 3 lines of a.txt; kept in michi/backup/2026-10-16T10-00-00")
         );
+    }
+
+    #[test]
+    fn a_refused_commit_is_run_again_with_r_over_what_git_said() {
+        let ctx = egui::Context::default();
+        let mut app = opened();
+        take_list(&mut app, lists(&["s.txt"], &["a.txt"]));
+        take_file(&mut app, Some(two_hunks("s.txt")));
+        let wt = PathBuf::from("C:/r/wt");
+        let told = || michi_core::git::Error::Told { line: "lint".into(), all: "lint\nmore".into() };
+        // A write that is not a commit: `r` does nothing.
+        app.take(Answer::ChangesDone { wt: wt.clone(), commit: false, result: Err(told()) });
+        app.toast = None;
+        app.feed('r');
+        assert!(app.toast.is_none(), "{:?}", app.toast);
+        // A refused commit: `r` runs the commit again (no message, so it says so).
+        app.take(Answer::ChangesDone { wt, commit: true, result: Err(told()) });
+        take_list(&mut app, lists(&["s.txt"], &["a.txt"]));
+        app.toast = None;
+        assert!(app.feed('r'));
+        assert_eq!(app.toast.as_ref().map(|(t, _)| t.as_str()), Some("Write a commit message first (c)"));
+        let drawn = frame(&ctx, &mut app, 900.0, Vec::new());
+        assert!(drawn.iter().any(|t| t == "Run again"), "{drawn:?}");
     }
 
     #[test]
