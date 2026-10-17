@@ -21,6 +21,7 @@ pub mod conflict;
 pub mod density;
 pub mod detached;
 pub mod discard;
+pub mod explain;
 pub mod external;
 pub mod extool;
 pub mod find;

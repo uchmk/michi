@@ -538,6 +538,53 @@ const EN: &[(&str, &str)] = &[
     ("band.reset_mixed", "mixed"),
     ("band.reset_hard", "hard (loses changes)"),
     ("act.failed", "{job} failed: {e}"),
+    ("gerr.fmt", "{cause}{next} (git said: {raw})"),
+    ("gerr.non_ff.cause", "The remote has commits this branch does not have."),
+    ("gerr.non_ff.next", " Fetch (f), bring them in with pull (p) or a rebase, and push again."),
+    ("gerr.dirty.cause", "Uncommitted changes would be overwritten by this."),
+    ("gerr.dirty.next", " Commit them or stash them first, then try again."),
+    ("gerr.untracked.cause", "Files git does not track yet would be overwritten."),
+    ("gerr.untracked.next", " Move or delete those files (or commit them), then try again."),
+    ("gerr.unmerged.cause", "A merge is unfinished: some files still have conflicts."),
+    ("gerr.unmerged.next", " Resolve them in the Conflicts view (4), or call the merge off."),
+    ("gerr.conflict.cause", "The two sides changed the same lines, so git could not join them."),
+    ("gerr.conflict.next", " Resolve the conflict in the Conflicts view (4)."),
+    ("gerr.rebasing.cause", "A rebase is already in progress here."),
+    ("gerr.rebasing.next", " Finish it or call it off first."),
+    ("gerr.unmerged_branch.cause", "This branch has commits no other branch has, so deleting it would lose them."),
+    ("gerr.unmerged_branch.next", " Merge it first, or delete it on purpose (michi keeps a backup)."),
+    ("gerr.checked_out.cause", "That branch is open in another worktree, and git allows a branch in only one."),
+    ("gerr.checked_out.next", " Switch to that worktree, or make a new branch from here."),
+    ("gerr.branch_exists.cause", "A branch with that name already exists."),
+    ("gerr.branch_exists.next", " Pick another name, or switch to the existing one."),
+    ("gerr.path_exists.cause", "That folder or name is already taken."),
+    ("gerr.path_exists.next", " Pick another one, or remove the old one first."),
+    ("gerr.locked.cause", "Another git is working in this repository (or one stopped and left its lock)."),
+    ("gerr.locked.next", " Wait a moment and try again; if nothing is running, delete the index.lock file named in the detail."),
+    ("gerr.no_upstream.cause", "This branch does not follow a remote branch yet."),
+    ("gerr.no_upstream.next", " Push it once to create the remote branch; after that pull and push work."),
+    ("gerr.identity.cause", "git does not know who you are, so it cannot sign the commit."),
+    ("gerr.identity.next", " Set user.name and user.email with git config, then commit again."),
+    ("gerr.nothing.cause", "There is nothing to commit."),
+    ("gerr.nothing.next", " Stage some changes first (Changes view, 2)."),
+    ("gerr.empty_message.cause", "The commit message was empty."),
+    ("gerr.empty_message.next", " Write a line saying what changed, then commit again."),
+    ("gerr.protected.cause", "The remote does not let anyone push to this branch directly."),
+    ("gerr.protected.next", " Push to another branch and open a pull request."),
+    ("gerr.hook.cause", "A hook (a check set up in this repository) turned it down."),
+    ("gerr.hook.next", " Fix what the hook complains of (see the detail), then try again."),
+    ("gerr.large.cause", "A file is too big for the remote."),
+    ("gerr.large.next", " Take the file out of the commit, or use Git LFS for it."),
+    ("gerr.ownership.cause", "git does not trust this folder, because someone else owns it."),
+    ("gerr.ownership.next", " If you trust it, add it to safe.directory in git config."),
+    ("gerr.detached.cause", "This worktree is on no branch, so there is no branch to push."),
+    ("gerr.detached.next", " Make a branch from here, or go back to your branch (the strip at the top)."),
+    ("gerr.no_ref.cause", "git does not know that branch, tag or commit."),
+    ("gerr.no_ref.next", " Check the spelling, or fetch (f) if it is on the remote."),
+    ("gerr.no_path.cause", "git does not know that file."),
+    ("gerr.no_path.next", " Check the name, or add it first if it is new."),
+    ("gerr.tree_dirty.cause", "That worktree still has changes that are not committed."),
+    ("gerr.tree_dirty.next", " Commit or discard them first; removing it anyway loses them."),
     ("act.created", "Made branch {name} at {at}"),
     ("act.created_switched", "Made branch {name}; {wt} is on it"),
     ("act.switched", "{wt} is on {name} now"),
@@ -1671,6 +1718,53 @@ const JA: &[(&str, &str)] = &[
     ("band.reset_mixed", "mixed"),
     ("band.reset_hard", "hard（変更が消える）"),
     ("act.failed", "{job} に失敗しました: {e}"),
+    ("gerr.fmt", "{cause}{next}（git の出力: {raw}）"),
+    ("gerr.non_ff.cause", "リモートに、このブランチに無いコミットがあります。"),
+    ("gerr.non_ff.next", " f で fetch してから、pull (p) か rebase で取り込み、もう一度 push してください。"),
+    ("gerr.dirty.cause", "まだコミットしていない変更が、この操作で上書きされてしまいます。"),
+    ("gerr.dirty.next", " 先にコミットするか stash に退避してから、もう一度試してください。"),
+    ("gerr.untracked.cause", "git がまだ管理していないファイルが、上書きされてしまいます。"),
+    ("gerr.untracked.next", " そのファイルを移すか消して（またはコミットして）から、もう一度試してください。"),
+    ("gerr.unmerged.cause", "マージが終わっていません。衝突が残っているファイルがあります。"),
+    ("gerr.unmerged.next", " 衝突の画面 (4) で直すか、マージを取りやめてください。"),
+    ("gerr.conflict.cause", "両方が同じ行を変えたので、git は自動でつなげられませんでした。"),
+    ("gerr.conflict.next", " 衝突の画面 (4) で直してください。"),
+    ("gerr.rebasing.cause", "ここでは rebase がすでに途中です。"),
+    ("gerr.rebasing.next", " 先に終えるか、取りやめてください。"),
+    ("gerr.unmerged_branch.cause", "このブランチには、ほかのブランチに無いコミットがあり、消すと失われます。"),
+    ("gerr.unmerged_branch.next", " 先にマージするか、わかったうえで消してください（michi は退避を残します）。"),
+    ("gerr.checked_out.cause", "そのブランチは別の worktree で開かれています。git は 1 つのブランチを 1 つの worktree にしか置けません。"),
+    ("gerr.checked_out.next", " その worktree に移るか、ここから新しいブランチを作ってください。"),
+    ("gerr.branch_exists.cause", "同じ名前のブランチがすでにあります。"),
+    ("gerr.branch_exists.next", " 別の名前にするか、あるブランチに切り替えてください。"),
+    ("gerr.path_exists.cause", "そのフォルダか名前はすでに使われています。"),
+    ("gerr.path_exists.next", " 別のものにするか、古い方を先に消してください。"),
+    ("gerr.locked.cause", "このリポジトリで別の git が動いています（止まって鍵が残っている場合もあります）。"),
+    ("gerr.locked.next", " 少し待ってからもう一度試してください。何も動いていなければ、詳細に出ている index.lock を消してください。"),
+    ("gerr.no_upstream.cause", "このブランチは、まだリモートのブランチと結び付いていません。"),
+    ("gerr.no_upstream.next", " 一度 push してリモートのブランチを作ると、pull と push が使えます。"),
+    ("gerr.identity.cause", "git があなたが誰か知らないため、コミットに名前を付けられません。"),
+    ("gerr.identity.next", " git config で user.name と user.email を決めてから、もう一度コミットしてください。"),
+    ("gerr.nothing.cause", "コミットするものがありません。"),
+    ("gerr.nothing.next", " 先に変更をステージしてください（変更の画面 2）。"),
+    ("gerr.empty_message.cause", "コミットメッセージが空でした。"),
+    ("gerr.empty_message.next", " 何を変えたかを 1 行書いてから、もう一度コミットしてください。"),
+    ("gerr.protected.cause", "リモートは、このブランチへの直接の push を許していません。"),
+    ("gerr.protected.next", " 別のブランチに push して、プルリクエストを作ってください。"),
+    ("gerr.hook.cause", "フック（このリポジトリに仕込まれた確認）が受け付けませんでした。"),
+    ("gerr.hook.next", " フックの指摘（詳細）を直してから、もう一度試してください。"),
+    ("gerr.large.cause", "ファイルが大きすぎて、リモートが受け付けません。"),
+    ("gerr.large.next", " そのファイルをコミットから外すか、Git LFS を使ってください。"),
+    ("gerr.ownership.cause", "このフォルダは持ち主が違うため、git が信用していません。"),
+    ("gerr.ownership.next", " 信用できるなら、git config の safe.directory に加えてください。"),
+    ("gerr.detached.cause", "この worktree はブランチにいないため、push するブランチがありません。"),
+    ("gerr.detached.next", " ここからブランチを作るか、元のブランチに戻ってください（窓の上の帯）。"),
+    ("gerr.no_ref.cause", "そのブランチ・タグ・コミットを git は知りません。"),
+    ("gerr.no_ref.next", " つづりを確かめるか、リモートにあるなら fetch (f) してください。"),
+    ("gerr.no_path.cause", "そのファイルを git は知りません。"),
+    ("gerr.no_path.next", " 名前を確かめるか、新しいファイルなら先に追加してください。"),
+    ("gerr.tree_dirty.cause", "その worktree には、まだコミットしていない変更が残っています。"),
+    ("gerr.tree_dirty.next", " 先にコミットするか捨ててください。そのまま消すと失われます。"),
     ("act.created", "ブランチ {name} を {at} に作りました"),
     ("act.created_switched", "ブランチ {name} を作り、{wt} を切り替えました"),
     ("act.switched", "{wt} を {name} に切り替えました"),
@@ -2311,6 +2405,31 @@ mod tests {
                 assert!(seen.insert(*k), "{name} defines `{k}` twice");
             }
         }
+    }
+
+    /// Every explained git refusal has words in both languages (#108).
+    #[test]
+    fn every_git_refusal_rule_has_words() {
+        for r in michi_core::explain::RULES {
+            for key in [r.cause, r.next] {
+                for (name, t) in [("EN", EN), ("JA", JA)] {
+                    assert!(t.iter().any(|(k, v)| *k == key && !v.is_empty()), "{name} lacks `{key}`");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_known_refusal_is_told_with_cause_next_step_and_detail() {
+        let mut a = crate::app::tests::app();
+        let e = michi_core::git::Error::Git("rejected main -> main (fetch first)".into());
+        let en = a.git_says(&e);
+        assert!(en.starts_with("The remote has commits"), "{en}");
+        assert!(en.contains("pull (p)") && en.ends_with("(git said: rejected main -> main (fetch first))"), "{en}");
+        a.lang = "ja".into();
+        assert!(a.git_says(&e).contains("リモートに"));
+        let odd = michi_core::git::Error::Git("fatal: odd".into());
+        assert_eq!(a.git_says(&odd), "fatal: odd");
     }
 
     #[test]

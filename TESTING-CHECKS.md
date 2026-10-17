@@ -1075,3 +1075,11 @@
 - [ ] **114.3** Select a row and press `g` → The list closes and the graph shows that commit selected; for a commit not in the graph a toast says so 〔未訳〕
 - [ ] **114.4** Select a row and press Enter → The band asks to bring it back as a new branch (the undo path); nothing moves until `y` 〔未訳〕
 - [ ] **114.5** Check the keybar and `?` with the list open; switch EN and JA → `g` and `r` are listed; both languages read well 〔未訳〕
+
+## 108. Git errors as a cause and a next step (#108)
+
+- [ ] **108.1** Make the remote ahead of a branch (commit from another clone), then press `P` (push) without fetching → The toast says the remote has commits this branch does not have, to fetch and pull or rebase, and ends with `(git said: …)` holding git's own words 〔未訳〕
+- [ ] **108.2** Edit a file that another branch also changes, then switch to that branch from the picker → The toast says uncommitted changes would be overwritten, to commit or stash first; the detail names the file 〔未訳〕
+- [ ] **108.3** Create a worktree for a branch that is already open in another worktree → The toast says the branch is open in another worktree and offers switching or a new branch 〔未訳〕
+- [ ] **108.4** Switch the language to Japanese and repeat 108.1 → The same sentence in Japanese, the detail still in git's English; the toast stays readable at its width 〔未訳〕
+- [ ] **108.5** Trigger a refusal michi has no sentence for (an odd hook output) → git's words are shown as before, nothing extra 〔未訳〕
