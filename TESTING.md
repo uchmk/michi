@@ -1206,3 +1206,18 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 | 244.10 | Give `keys` a template without `{key}` or a non-http address | A warning toast names the setting; keys are not linked |
 | 244.11 | Open a repo with no GitHub remote, with `#123` in a message | No link for `#123`; `owner/repo#123` still links |
 | 244.12 | Check the keybar and `?` in the graph and the worktree table; switch EN and JA | `I` is listed with its words in both languages |
+
+## 247. Statistics: contributors and activity (`Z`)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 247.1 | In the graph of a repository with some history, press `Z` | A panel opens at once ("Reading…" for a moment), then shows a row of bars for commits per week (oldest at the left, newest at the right edge), and the contributors, most commits first, each with a bar, a count and a share |
+| 247.2 | Hover a bar | A tooltip gives the week and its commit count; empty weeks between are gaps, not skipped |
+| 247.3 | Press `j` `k`, PageDown, PageUp, Home, End; click a contributor row | The selection moves and stops at the ends; the selected row also shows the dates of their first and last commit |
+| 247.4 | Press `r` three times | The range goes: all branches and tags / last 90 days / current branch (HEAD) / all again; the title line names it, the numbers are read again and the old ones are not shown meanwhile |
+| 247.5 | Press `r` twice in quick succession on a large repository | The screen ends on the numbers of the last range, never the earlier one's |
+| 247.6 | Press `w` | The bars switch between weeks and months and the title says which |
+| 247.7 | Add a `.mailmap` joining two spellings of a person in a repository with both | They appear as one contributor |
+| 247.8 | Open it over the worktree table (`3`) and in a repository with no commit yet | It opens from both; with no commit it says there are no commits in the range |
+| 247.9 | Press Esc, or click outside the panel | The panel closes; no git index.lock is taken while it reads (a Claude committing in the same worktree is not blocked) |
+| 247.10 | Check the keybar and `?` over the graph and the worktree table, and over the panel; switch EN and JA | `Z` is listed, the panel lists j k, r, w, Esc; text reads well in both languages and the bars stay inside the panel in a narrow window |

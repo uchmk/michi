@@ -95,6 +95,7 @@ impl View {
                 ("s", "key.stash"),
                 ("M", "key.remotes"),
                 ("L", "key.reflog"),
+                ("Z", "key.stats"),
                 ("B", "key.blame"),
                 ("H", "key.file_history"),
                 ("Y", "key.copy_patch"),
@@ -143,6 +144,7 @@ impl View {
                 ("c", "key.tidy"),
                 ("T", "key.trial"),
                 ("L", "key.reflog"),
+                ("Z", "key.stats"),
                 ("y", "key.turns"),
                 ("u", "key.submodules"),
                 ("v", "key.move_changes"),
@@ -201,6 +203,8 @@ pub const TIDY_KEYS: [(&str, &str); 5] =
     [("j k", "key.move"), ("Space", "key.pick"), ("a", "key.pick_all"), ("Enter", "key.run"), ("Esc", "key.back")];
 /// The keys of the reflog list (`L`).
 pub const REFLOG_KEYS: [(&str, &str); 3] = [("j k", "key.move"), ("Enter", "key.bring_back"), ("Esc", "key.back")];
+/// The keys of the statistics screen (`I`).
+pub const STATS_KEYS: [(&str, &str); 4] = [("j k", "key.move"), ("r", "key.stats_range"), ("w", "key.stats_grain"), ("Esc", "key.back")];
 /// The keys of the blame screen (`B` over the graph or the changes).
 pub const BLAME_KEYS: [(&str, &str); 5] = [
     ("j k", "key.move"),
@@ -362,6 +366,7 @@ pub struct App {
     /// The clean-up list, over the worktree table.
     pub tidy: Option<crate::tidy::Tidy>,
     pub reflog: Option<crate::reflog::Reflog>,
+    pub stats: Option<crate::stats::Statistics>,
     pub blame: Option<crate::blame::Blame>,
     /// Text for the clipboard, taken by the window on its next frame.
     pub clipboard: Option<String>,
@@ -455,6 +460,7 @@ impl App {
             turn_states: None,
             tidy: None,
             reflog: None,
+            stats: None,
             blame: None,
             clipboard: None,
             trial: None,
@@ -1231,6 +1237,8 @@ impl App {
             (&TIDY_KEYS, "key.tidy")
         } else if self.reflog.is_some() {
             (&REFLOG_KEYS, "key.reflog")
+        } else if self.stats.is_some() {
+            (&STATS_KEYS, "key.stats_screen")
         } else if self.blame.is_some() {
             (&BLAME_KEYS, "key.blame_screen")
         } else if self.trial.is_some() {
@@ -1503,6 +1511,7 @@ impl App {
         let over = self.band.is_some()
             || self.tidy.is_some()
             || self.reflog.is_some()
+            || self.stats.is_some()
             || self.blame.is_some()
             || self.trial.is_some()
             || self.reorder.is_some();
@@ -1545,6 +1554,7 @@ impl App {
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
             (Mode::Main, c) if self.tidy.is_some() => return self.tidy_key(c),
             (Mode::Main, c) if self.reflog.is_some() => return self.reflog_key(c),
+            (Mode::Main, c) if self.stats.is_some() => return self.stats_key(c),
             (Mode::Main, c) if self.blame.is_some() => return self.blame_key(c),
             (Mode::Main, c) if self.trial.is_some() => return self.trial_key(c),
             (Mode::Main, c) if self.reorder.is_some() => return self.reorder_key(c),
@@ -1578,6 +1588,7 @@ impl App {
             's' => self.open_picker(PickKind::Stash),
             'M' => self.open_remotes(),
             'L' => self.open_reflog(),
+            'Z' => self.open_stats(),
             'B' => self.open_blame(crate::blame::Tab::Blame),
             'H' => self.open_blame(crate::blame::Tab::History),
             'Y' => self.copy_patch(),
@@ -1613,6 +1624,7 @@ impl App {
             'c' => self.open_tidy(),
             'T' => self.open_trial(),
             'L' => self.open_reflog(),
+            'Z' => self.open_stats(),
             'y' => self.open_turns(),
             'u' => self.open_submodules(),
             'v' => self.open_move(),
@@ -1714,6 +1726,9 @@ impl App {
         if self.reflog.is_some() {
             return self.reflog_named(name);
         }
+        if self.stats.is_some() {
+            return self.stats_named(name);
+        }
         if self.blame.is_some() {
             return self.blame_named(name);
         }
@@ -1810,7 +1825,7 @@ impl App {
         if self.tidy.take().is_some() {
             return true;
         }
-        if self.reflog.take().is_some() || self.blame.take().is_some() {
+        if self.reflog.take().is_some() || self.stats.take().is_some() || self.blame.take().is_some() {
             return true;
         }
         if self.trial.take().is_some() {
@@ -1994,6 +2009,7 @@ pub(crate) mod tests {
             ("key.asking", &BAND_KEYS[..]),
             ("key.tidy", &TIDY_KEYS[..]),
             ("key.reflog", &REFLOG_KEYS[..]),
+            ("key.stats_screen", &STATS_KEYS[..]),
             ("key.blame_screen", &BLAME_KEYS[..]),
             ("key.trial", &TRIAL_KEYS[..]),
             ("key.reorder", &REORDER_KEYS[..]),

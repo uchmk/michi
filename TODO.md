@@ -122,6 +122,8 @@ All wait for the owner; none is started.
 - [x] Patch export / apply（要確認: #46）
 - [ ] Statistics and contributor graphs（要確認: #47）
 - [x] Diff extras (word diff was there already; ignore whitespace with `w`; images and an external tool not done)（要確認: #48）
+- [x] Statistics and contributor graphs（要確認: #47）
+- [ ] Diff extras (images, word diff, ignore whitespace, external tool)（要確認: #48）
 - [ ] .gitignore editing（要確認: #49）
 - [x] reflog screen（要確認: #50）
 - [x] Commit search scope in the `/` filter（要確認: #51）
