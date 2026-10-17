@@ -3,15 +3,81 @@
 //! hash, or when its letters come in order (ito-match's fuzzy rule, the one
 //! the palettes use) in the subject, the author or one of the names. Case is
 //! ignored.
+//!
+//! A word that starts with `s:` or `g:` (and what follows it, spaces too)
+//! asks for a content search instead: `s:text` is git's pickaxe (`log -S`,
+//! the commits that add or remove that text), `g:regex` is `log -G` (the
+//! commits whose diff has a line matching the regex). The words before it
+//! still filter by the rules above.
+
+use std::collections::HashSet;
+use std::path::Path;
 
 use ito_match::fuzzy;
 
+use crate::git;
 use crate::history::History;
 use crate::log::Commit;
+use crate::oid::Oid;
+
+/// How a content search matches.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Kind {
+    /// `s:` - `git log -S`: the number of occurrences of the text changes.
+    Text,
+    /// `g:` - `git log -G`: a changed line matches the regex (any case).
+    Regex,
+}
+
+/// A content search typed in the filter.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Content {
+    pub kind: Kind,
+    pub text: String,
+}
+
+/// Splits `text` into the part that filters by words and the content search
+/// after it, if any. An empty search (`s:` alone) is none.
+fn split(text: &str) -> (&str, Option<Content>) {
+    let mut at = 0;
+    for word in text.split_inclusive(char::is_whitespace) {
+        let kind = match word.get(..2) {
+            Some("s:") => Some(Kind::Text),
+            Some("g:") => Some(Kind::Regex),
+            _ => None,
+        };
+        if let Some(kind) = kind {
+            let body = text[at + 2..].trim();
+            let content = (!body.is_empty()).then(|| Content { kind, text: body.to_owned() });
+            return (&text[..at], content);
+        }
+        at += word.len();
+    }
+    (text, None)
+}
+
+/// The commits of every branch, remote branch and tag whose changes match
+/// `content`, found by git (slow in a big repository: ask off the UI thread).
+pub fn search(wt: &Path, content: &Content) -> Result<HashSet<Oid>, git::Error> {
+    let pattern = match content.kind {
+        Kind::Text => format!("-S{}", content.text),
+        Kind::Regex => format!("-G{}", content.text),
+    };
+    let mut args = vec!["log", "--branches", "--remotes", "--tags", "--format=%H", "--no-ext-diff"];
+    if content.kind == Kind::Regex {
+        args.push("--regexp-ignore-case");
+    }
+    args.push(&pattern);
+    args.push("--");
+    let out = git::read(wt, &args)?;
+    Ok(String::from_utf8_lossy(&out).lines().filter_map(|l| Oid::parse(l.trim())).collect())
+}
 
 /// What the filter looks in for one commit.
 #[derive(Clone, Debug)]
 pub struct Hay {
+    /// The commit.
+    id: Oid,
     /// The hash, in lower case.
     hash: Box<str>,
     /// The subject, the author and the names, in lower case.
@@ -29,11 +95,20 @@ impl Hay {
                 fields.push(format!("{r}/{n}").to_lowercase().into());
             }
         }
-        Hay { hash: c.id.to_string().to_lowercase().into(), fields }
+        Hay { id: c.id, hash: c.id.to_string().to_lowercase().into(), fields }
     }
 
     /// Whether the filter `query` (see [`Query::new`]) hits it.
     pub fn hits(&self, query: &Query) -> bool {
+        self.hits_in(query, None)
+    }
+
+    /// [`hits`](Self::hits), and with a content search in `query`, the commit
+    /// must be among `found` (what [`search`] gave; none yet: no hit).
+    pub fn hits_in(&self, query: &Query, found: Option<&HashSet<Oid>>) -> bool {
+        if query.content.is_some() && !found.is_some_and(|f| f.contains(&self.id)) {
+            return false;
+        }
         query.words.iter().all(|w| self.hash.starts_with(w.as_str()) || self.fields.iter().any(|f| fuzzy::match_str(w, f, false).is_some()))
     }
 }
@@ -42,22 +117,30 @@ impl Hay {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Query {
     words: Vec<String>,
+    content: Option<Content>,
 }
 
 impl Query {
-    /// The words of `text`, in lower case. No word, no filter.
+    /// The words of `text`, in lower case, and its content search. Neither,
+    /// no filter.
     pub fn new(text: &str) -> Query {
-        Query { words: text.split_whitespace().map(str::to_lowercase).collect() }
+        let (words, content) = split(text);
+        Query { words: words.split_whitespace().map(str::to_lowercase).collect(), content }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.words.is_empty()
+        self.words.is_empty() && self.content.is_none()
+    }
+
+    /// The content search typed, if any.
+    pub fn content(&self) -> Option<&Content> {
+        self.content.as_ref()
     }
 
     /// Whether `self` can only hit what `shorter` hit: typing on (a word
     /// grows, or a word is added) looks only among the hits.
     pub fn narrows(&self, shorter: &Query) -> bool {
-        if shorter.is_empty() || self.words.len() < shorter.words.len() {
+        if shorter.is_empty() || self.words.len() < shorter.words.len() || shorter.content.is_some() && shorter.content != self.content {
             return false;
         }
         // Every word of the shorter query is the start of a word here, in order.
@@ -72,7 +155,11 @@ mod tests {
     use crate::oid::Oid;
 
     fn hay(hash: &str, fields: &[&str]) -> Hay {
-        Hay { hash: hash.into(), fields: fields.iter().map(|f| f.to_lowercase().into()).collect() }
+        Hay {
+            id: Oid::parse(&"cd".repeat(20)).unwrap(),
+            hash: hash.into(),
+            fields: fields.iter().map(|f| f.to_lowercase().into()).collect(),
+        }
     }
 
     #[test]
@@ -108,6 +195,51 @@ mod tests {
     }
 
     #[test]
+    fn s_and_g_ask_for_a_content_search() {
+        let q = Query::new("fix s:foo bar");
+        assert_eq!(q.content(), Some(&Content { kind: Kind::Text, text: "foo bar".into() }));
+        assert!(!q.is_empty());
+        let q = Query::new("g:^fn +main");
+        assert_eq!(q.content(), Some(&Content { kind: Kind::Regex, text: "^fn +main".into() }));
+        assert!(Query::new("s:").is_empty(), "an empty search is none");
+        assert!(Query::new("s: ").content().is_none());
+        assert!(Query::new("abs:x").content().is_none(), "only at the start of a word");
+        assert!(!Query::new("abs:x").is_empty());
+    }
+
+    #[test]
+    fn a_content_search_needs_the_commit_among_the_found() {
+        let h = hay("abc123", &["fix the flaky test"]);
+        let q = Query::new("fix s:foo");
+        let mut found = HashSet::new();
+        assert!(!h.hits_in(&q, None), "not searched yet");
+        assert!(!h.hits_in(&q, Some(&found)));
+        found.insert(Oid::parse(&"cd".repeat(20)).unwrap());
+        assert!(h.hits_in(&q, Some(&found)));
+        assert!(!h.hits_in(&Query::new("nobody s:foo"), Some(&found)), "the words still count");
+    }
+
+    #[test]
+    fn content_searches_search_a_real_history() {
+        use crate::testrepo::TempRepo;
+        let r = TempRepo::new("find-content");
+        r.write(&r.repo, "a.txt", "hello\n");
+        r.git(&r.repo, &["add", "."]);
+        r.git(&r.repo, &["commit", "-q", "-m", "one"]);
+        r.write(&r.repo, "a.txt", "hello\nneedle here\n");
+        r.git(&r.repo, &["commit", "-q", "-a", "-m", "two"]);
+        let two = Oid::parse(&r.out(&r.repo, &["rev-parse", "HEAD"])).unwrap();
+        r.write(&r.repo, "b.txt", "other\n");
+        r.git(&r.repo, &["add", "."]);
+        r.git(&r.repo, &["commit", "-q", "-m", "three"]);
+        let text = search(&r.repo, &Content { kind: Kind::Text, text: "needle".into() }).unwrap();
+        assert!(text.len() == 1 && text.contains(&two));
+        let re = search(&r.repo, &Content { kind: Kind::Regex, text: "NEEDLE.h".into() }).unwrap();
+        assert!(re.len() == 1 && re.contains(&two));
+        assert!(search(&r.repo, &Content { kind: Kind::Regex, text: "(".into() }).is_err(), "a bad regex is refused");
+    }
+
+    #[test]
     fn typing_on_narrows() {
         let q = Query::new;
         assert!(q("ab").narrows(&q("a")));
@@ -116,6 +248,8 @@ mod tests {
         assert!(!q("a").narrows(&q("ab")));
         assert!(!q("xy").narrows(&q("a")));
         assert!(!q("a").narrows(&q("")), "from nothing is a fresh search");
+        assert!(q("a s:x").narrows(&q("a")), "a search added");
+        assert!(!q("s:xy").narrows(&q("s:x")), "another search is fresh");
     }
 
     #[test]

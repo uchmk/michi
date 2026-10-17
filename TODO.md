@@ -109,7 +109,7 @@ All wait for the owner; none is started.
 - [x] Signature status (Verified) marker（要確認: #35）
 - [ ] Dedicated screens for conflicts a 3-way view cannot show（要確認: #36）
 - [ ] blame and per-file history（要確認: #37）
-- [ ] Content search (git grep, pickaxe) in the `/` filter（要確認: #38）
+- [x] Content search (pickaxe `s:`, regex `g:`) in the `/` filter, asked with Enter（要確認: #38）
 - [ ] clone / init (with #26)（要確認: #39）
 - [ ] Remote management（要確認: #40）
 - [ ] Authentication guidance（要確認: #41）

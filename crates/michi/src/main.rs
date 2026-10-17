@@ -342,7 +342,7 @@ impl Michi {
                     i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp),
                 )
             });
-            if next || back {
+            if (next || back) && !self.app.ask_content() {
                 self.app.graph.next_hit(back);
             }
             if down {

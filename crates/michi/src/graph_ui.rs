@@ -231,7 +231,10 @@ fn filter(ui: &mut Ui, app: &mut App, field: Rect, live: bool) {
     let mid = field.center().y;
     let slash = p.text(pos2(field.left() + 8.0, mid), Align2::LEFT_CENTER, "/", FontId::monospace(11.0), c.dim);
     let mut right = field.right() - 8.0;
-    if let Some(n) = app.graph.hit_count() {
+    if app.graph.content_wanted().is_some() {
+        let t = p.text(pos2(right, mid), Align2::RIGHT_CENTER, app.tr("filter.ask"), FontId::proportional(11.0), c.dim);
+        right = t.left() - 6.0;
+    } else if let Some(n) = app.graph.hit_count() {
         let text = app.tr("filter.count").replace("{}", &n.to_string());
         let t = p.text(pos2(right, mid), Align2::RIGHT_CENTER, text, FontId::proportional(11.0), c.dim);
         right = t.left() - 6.0;
