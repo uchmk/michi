@@ -926,6 +926,12 @@ impl App {
     }
 
     /// The `2` view selects its `k`th file (a click).
+    /// A Shift+click (`range`) or Ctrl+click on file `k`.
+    pub fn changes_click_multi(&mut self, k: usize, range: bool) {
+        let wish = if range { self.changes.click_range(k) } else { self.changes.click_toggle(k) };
+        self.stage_wish(wish);
+    }
+
     pub fn changes_select(&mut self, k: usize) {
         let wish = self.changes.select(k);
         self.stage_wish(wish);

@@ -164,6 +164,9 @@ pub struct Changes {
     /// Where a multiple selection started (Shift+Up / Down): the files from
     /// here to `sel`, on one side, are acted on together.
     mark: Option<usize>,
+    /// Files added one by one with Ctrl+click; with `sel` they are acted on
+    /// together, on one side.
+    picks: Vec<usize>,
     /// The diff last asked for, and the one read: kept for the same file
     /// while it is read again.
     file_asked: Option<(Side, String)>,
@@ -527,18 +530,60 @@ impl Changes {
     }
 
     /// The files a Space acts on: the marked range, or the selected one.
-    pub fn marked(&self) -> std::ops::RangeInclusive<usize> {
+    pub fn marked(&self) -> Vec<usize> {
         let staged = self.lists().map_or(0, |l| l.staged.len());
-        match self.mark {
-            Some(m) if (m < staged) == (self.sel < staged) => m.min(self.sel)..=m.max(self.sel),
-            _ => self.sel..=self.sel,
+        if !self.picks.is_empty() {
+            let mut v: Vec<usize> = self.picks.iter().copied().filter(|k| (*k < staged) == (self.sel < staged)).collect();
+            v.push(self.sel);
+            v.sort_unstable();
+            v.dedup();
+            return v;
         }
+        match self.mark {
+            Some(m) if (m < staged) == (self.sel < staged) => (m.min(self.sel)..=m.max(self.sel)).collect(),
+            _ => vec![self.sel],
+        }
+    }
+
+    /// Shift+click: the files from where the selection was to `k` (on the
+    /// same side) are marked together.
+    pub fn click_range(&mut self, k: usize) -> Option<Wish> {
+        let staged = self.lists().map_or(0, |l| l.staged.len());
+        if k >= self.count() || (k < staged) != (self.sel < staged) {
+            return self.select(k);
+        }
+        let mark = self.mark.unwrap_or(self.sel);
+        self.picks.clear();
+        let wish = self.select(k);
+        self.mark = Some(mark);
+        wish
+    }
+
+    /// Ctrl+click: `k` joins the marked files, or leaves them when it was in.
+    pub fn click_toggle(&mut self, k: usize) -> Option<Wish> {
+        let staged = self.lists().map_or(0, |l| l.staged.len());
+        if k >= self.count() || (k < staged) != (self.sel < staged) {
+            return self.select(k);
+        }
+        let mut set = self.marked();
+        match set.iter().position(|x| *x == k) {
+            Some(i) if set.len() > 1 => {
+                set.remove(i);
+            }
+            Some(_) => {}
+            None => set.push(k),
+        }
+        let sel = if set.contains(&k) { k } else { *set.last().unwrap_or(&k) };
+        let wish = self.select(sel);
+        self.mark = None;
+        self.picks = if set.len() > 1 { set } else { Vec::new() };
+        wish
     }
 
     /// Whether file `k` is in a multiple selection (of more than the one).
     pub fn is_marked(&self, k: usize) -> bool {
         let r = self.marked();
-        r.start() != r.end() && r.contains(&k)
+        r.len() > 1 && r.contains(&k)
     }
 
     /// Shift+Down / Shift+Up: widen or narrow the multiple selection by one
@@ -550,6 +595,7 @@ impl Changes {
             return None;
         }
         let mark = self.mark.unwrap_or(self.sel);
+        self.picks.clear();
         let wish = self.select(to as usize);
         self.mark = Some(mark);
         wish
@@ -557,7 +603,9 @@ impl Changes {
 
     /// Esc: the multiple selection goes. Whether there was one.
     pub fn unmark(&mut self) -> bool {
-        self.mark.take().is_some()
+        let had = !self.picks.is_empty();
+        self.picks.clear();
+        self.mark.take().is_some() || had
     }
 
     /// Selects the `k`th file (the last when there are fewer).
@@ -568,6 +616,7 @@ impl Changes {
         }
         let k = k.min(n - 1);
         self.mark = None;
+        self.picks.clear();
         if k != self.sel {
             self.sel = k;
             self.to_top = true;
@@ -772,6 +821,7 @@ impl Changes {
             }
         }
         self.mark = None;
+        self.picks.clear();
         let op = match side {
             Side::Unstaged => Op::Stage(paths),
             Side::Staged => Op::Unstage(paths),
@@ -1120,6 +1170,25 @@ pub(crate) mod tests {
         reread(&mut c, lists(&[], &[]));
         assert_eq!((c.sel, c.selected()), (0, None));
         assert_eq!(c.select(3), None);
+    }
+
+    #[test]
+    fn shift_click_marks_a_range_and_ctrl_click_adds_one_by_one() {
+        let mut c = opened();
+        reread(&mut c, lists(&["s.txt"], &["a.txt", "b.txt", "c.txt", "d.txt"]));
+        c.select(1);
+        c.click_range(3);
+        assert!((1..=3).all(|k| c.is_marked(k)) && !c.is_marked(4));
+        c.select(1);
+        c.click_toggle(3);
+        c.click_toggle(4);
+        assert!(c.is_marked(1) && !c.is_marked(2) && c.is_marked(3) && c.is_marked(4));
+        c.click_toggle(3);
+        assert_eq!(c.marked(), vec![1, 4]);
+        // Not across to the staged side.
+        c.click_toggle(0);
+        assert_eq!(c.marked(), vec![0]);
+        assert!(matches!(c.toggle_file(false), Ok(Some(Wish::Do { op: Op::Unstage(p), .. })) if p == ["s.txt"]));
     }
 
     #[test]

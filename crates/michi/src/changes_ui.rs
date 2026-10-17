@@ -82,6 +82,10 @@ enum Act {
     Key(char),
     Open(std::path::PathBuf),
     Select(usize),
+    /// Shift+click: the range up to the file.
+    Range(usize),
+    /// Ctrl+click: the file joins the marked ones, or leaves them.
+    Pick(usize),
     /// A file double-clicked: staged or unstaged.
     Toggle(usize),
     /// A pick in a file's right-click menu: the key, typed on that file.
@@ -203,6 +207,12 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
                 app.changes.leave_lines();
             }
             app.changes_select(k);
+        }
+        Act::Range(k) | Act::Pick(k) => {
+            if app.changes.focus == Focus::Lines {
+                app.changes.leave_lines();
+            }
+            app.changes_click_multi(k, matches!(a, Act::Range(_)));
         }
         Act::Toggle(k) => {
             app.changes_select(k);
@@ -634,7 +644,13 @@ fn list(ui: &Ui, app: &App, lr: Rect, live: bool, pointer: Option<Pos2>, act: &m
                 if live && resp.double_clicked() {
                     *act = Some(Act::Toggle(k));
                 } else if live && (resp.clicked() || resp.secondary_clicked()) {
-                    *act = Some(Act::Select(k));
+                    let (shift, ctrl) = ctx.input(|i| (i.modifiers.shift, i.modifiers.command));
+                    *act = Some(match () {
+                        _ if resp.secondary_clicked() => Act::Select(k),
+                        _ if shift => Act::Range(k),
+                        _ if ctrl => Act::Pick(k),
+                        _ => Act::Select(k),
+                    });
                 }
                 if live {
                     resp.context_menu(|ui| {
