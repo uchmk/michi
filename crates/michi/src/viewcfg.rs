@@ -26,6 +26,8 @@ struct Net {
 #[serde(default)]
 struct Commit {
     co_author: Option<toml::Value>,
+    protect: Option<toml::Value>,
+    large_mb: Option<toml::Value>,
 }
 
 #[derive(Deserialize, Default)]
@@ -101,12 +103,34 @@ pub fn auto_fetch(text: Option<&str>) -> (Every, Vec<String>) {
 /// (none when not written), with what to warn of.
 pub fn co_author(text: Option<&str>) -> (CoAuthor, Vec<String>) {
     match text.map(toml::from_str::<File>) {
-        Some(Ok(File { commit: Commit { co_author: Some(v) }, .. })) => match v.as_str().map(CoAuthor::parse) {
+        Some(Ok(File { commit: Commit { co_author: Some(v), .. }, .. })) => match v.as_str().map(CoAuthor::parse) {
             Some(Some(c)) => (c, Vec::new()),
             _ => (CoAuthor::default(), vec!["config.toml: [commit] co_author is not \"Name <email>\"".to_owned()]),
         },
         _ => (CoAuthor::default(), Vec::new()),
     }
+}
+
+/// `[commit] protect = ["main", "release/*"]` (the branches a commit asks about;
+/// `[]` for none) and `large_mb = 50` (0 for never), with what to warn of (#110, #111).
+pub fn guard(text: Option<&str>) -> (michi_core::guard::Config, Vec<String>) {
+    let mut cfg = michi_core::guard::Config::default();
+    let mut warn = Vec::new();
+    let Some(Ok(File { commit: c, .. })) = text.map(toml::from_str::<File>) else { return (cfg, warn) };
+    if let Some(v) = c.protect {
+        let list: Option<Vec<String>> = v.as_array().and_then(|a| a.iter().map(|x| x.as_str().map(str::to_owned)).collect());
+        match list {
+            Some(l) => cfg.protect = l,
+            None => warn.push("config.toml: [commit] protect is not a list of branch names".to_owned()),
+        }
+    }
+    if let Some(v) = c.large_mb {
+        match v.as_integer().filter(|n| *n >= 0) {
+            Some(n) => cfg.large = (n as u64).saturating_mul(1024 * 1024),
+            None => warn.push("config.toml: [commit] large_mb is not a number of MiB (0 or more)".to_owned()),
+        }
+    }
+    (cfg, warn)
 }
 
 /// `[issues]`: `github = false` stops `#123` linking to the GitHub remote,
@@ -224,6 +248,32 @@ co_author = {bad}
             )));
             assert!(!c.is_set() && w.len() == 1, "{bad}");
         }
+    }
+
+    #[test]
+    fn the_guard_has_defaults_and_reads_protect_and_large_mb() {
+        assert_eq!(guard(None), (michi_core::guard::Config::default(), vec![]));
+        let (g, w) = guard(Some(
+            "[commit]
+protect = [\"main\", \"release/*\"]
+large_mb = 10
+",
+        ));
+        assert_eq!((g.protect, g.large, w.len()), (vec!["main".to_owned(), "release/*".to_owned()], 10 << 20, 0));
+        let (g, _) = guard(Some(
+            "[commit]
+protect = []
+large_mb = 0
+",
+        ));
+        assert_eq!((g.protect.len(), g.large), (0, 0));
+        let (g, w) = guard(Some(
+            "[commit]
+protect = \"main\"
+large_mb = -1
+",
+        ));
+        assert_eq!((g, w.len()), (michi_core::guard::Config::default(), 2));
     }
 
     #[test]

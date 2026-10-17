@@ -1067,3 +1067,21 @@
 - [ ] **261.3** Change the theme and a key, press Import once, then again → The first press only arms the button; the second reads the file back, a toast says what was read, and the theme and the key are as exported within a couple of seconds 〔未訳〕
 - [ ] **261.4** Import a file that is not a settings bundle → A toast gives the reason and nothing in the settings folder changes 〔未訳〕
 - [ ] **261.5** Search "backup" in the settings → The Advanced page is listed 〔未訳〕
+
+## 110. A commit on main asks first (#110)
+
+- [ ] **110.1** In a worktree on `main`, stage a file, write a message, press Ctrl+Enter in the `2` view → A band asks before committing, saying the commit is on main itself; Esc leaves everything as it was, `y` commits → | [ ] 〔未訳〕
+- [ ] **110.2** Do the same on a feature branch → The commit goes straight, with no band → | [ ] 〔未訳〕
+- [ ] **110.3** Write `[commit]` `protect = ["release/*"]` in config.toml (no restart); commit on `release/1.0`, then on `main` → `release/1.0` asks, `main` does not → | [ ] 〔未訳〕
+- [ ] **110.4** Write `protect = []` and commit on `main` → No band → | [ ] 〔未訳〕
+- [ ] **110.5** Commit on `main` while a Claude is writing in the worktree → One band tells both reasons; one `y` covers both → | [ ] 〔未訳〕
+
+## 111. A commit warns of big files and secrets (#111)
+
+- [ ] **111.1** Stage a `.env` (or `server.pem`) on a feature branch and press Ctrl+Enter → A band names the file and says it looks like a secret; Esc, unstage it, and the commit then goes straight → | [ ] 〔未訳〕
+- [ ] **111.2** Stage a text file holding `-----BEGIN OPENSSH PRIVATE KEY-----` or an `AKIA...` key id → The band names it with what it looks like (private key, AWS access key id) → | [ ] 〔未訳〕
+- [ ] **111.3** Stage a file of 60 MB → The band names it with its size; `y` commits anyway → | [ ] 〔未訳〕
+- [ ] **111.4** Stage `.env.example` and a 2 MB file → No band → | [ ] 〔未訳〕
+- [ ] **111.5** Write `large_mb = 1` under `[commit]` (no restart) and stage the 2 MB file → The band appears; with `large_mb = 0` it does not → | [ ] 〔未訳〕
+- [ ] **111.6** Stage five secret-looking files → The band names three and says "and 2 more"; the text is cut off with an ellipsis if narrow → | [ ] 〔未訳〕
+- [ ] **111.7** Stage a few thousand files and watch the `2` view → It stays quick; the check runs off the UI thread → | [ ] 〔未訳〕

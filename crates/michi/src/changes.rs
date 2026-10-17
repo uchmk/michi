@@ -13,6 +13,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use michi_core::git;
+use michi_core::guard::{self, Note};
 use michi_core::msghelp::{Help, Walk};
 use michi_core::oid::Oid;
 use michi_core::show::{File, Kind, Status};
@@ -114,6 +115,10 @@ pub struct Confirm {
     pub claude: bool,
     /// It amends a commit some remote has.
     pub pushed: bool,
+    /// The commit is on this branch, one kept clear of direct commits (#110).
+    pub branch: Option<String>,
+    /// Staged files that are big or look like secrets (#111).
+    pub notes: Vec<Note>,
 }
 
 /// A file's diff as read, cut into rows, with its added and deleted lines
@@ -146,6 +151,8 @@ pub type Read = Result<Option<Box<Shown>>, git::Error>;
 pub struct Changes {
     /// `[commit] co_author`: the trailer added to the message committed (#54).
     pub co_author: michi_core::coauthor::CoAuthor,
+    /// `[commit] protect` and `large_mb`: what a commit asks about first (#110, #111).
+    pub guard: guard::Config,
     /// The worktree shown; `None` until the window picks one.
     pub wt: Option<PathBuf>,
     list_gen: u32,
@@ -838,17 +845,33 @@ impl Changes {
         if self.amend && self.pushed.is_none() {
             return Err("changes.reading");
         }
-        Ok(self.act(Op::Commit { message: self.co_author.apply(&self.message), amend: self.amend }, claude))
+        let op = Op::Commit { message: self.co_author.apply(&self.message), amend: self.amend };
+        let (branch, notes) = self.look(l);
+        Ok(self.act_with(op, claude, branch, notes))
+    }
+
+    /// Before a commit: the branch when it is one to keep clear of commits,
+    /// and the staged files worth a word.
+    fn look(&self, l: &Lists) -> (Option<String>, Vec<Note>) {
+        let branch = l.branch.clone().filter(|b| guard::is_protected(b, &self.guard.protect));
+        let notes = l.notes.iter().filter(|n| n.counts(self.guard.large)).cloned().collect();
+        (branch, notes)
     }
 
     /// The write `op`, or a question first: a Claude writes in the worktree
     /// (`claude`) and no yes was given for it, the commit to amend is a
     /// remote's too, or it throws changes away.
     fn act(&mut self, op: Op, claude: bool) -> Option<Wish> {
+        self.act_with(op, claude, None, Vec::new())
+    }
+
+    /// [`act`](Self::act) for a commit that is on a protected `branch` or
+    /// has `notes` to tell of.
+    fn act_with(&mut self, op: Op, claude: bool, branch: Option<String>, notes: Vec<Note>) -> Option<Wish> {
         let claude = claude && !self.claude_ok;
         let pushed = op.is_commit() && self.amend && self.pushed == Some(true);
-        if claude || pushed || matches!(op, Op::Discard { .. }) {
-            self.confirm = Some(Confirm { op, claude, pushed });
+        if claude || pushed || branch.is_some() || !notes.is_empty() || matches!(op, Op::Discard { .. }) {
+            self.confirm = Some(Confirm { op, claude, pushed, branch, notes });
             return None;
         }
         self.send(op)
@@ -925,6 +948,8 @@ pub(crate) mod tests {
             unstaged: unstaged.iter().map(|p| file(p)).collect(),
             cut: false,
             head: Some(oid(1)),
+            branch: None,
+            notes: Vec::new(),
         }
     }
 
@@ -1203,7 +1228,7 @@ pub(crate) mod tests {
         // A file: asked first, always.
         assert_eq!(c.discard(false), Ok(None));
         let discard = |path: &str, untracked| Op::Discard { path: path.into(), untracked, patch: None, lines: 0 };
-        assert_eq!(c.confirm, Some(Confirm { op: discard("a.txt", false), claude: false, pushed: false }));
+        assert_eq!(c.confirm, Some(Confirm { op: discard("a.txt", false), claude: false, pushed: false, branch: None, notes: vec![] }));
         assert_eq!(c.yes(), Some(Wish::Do { wt: WT.into(), op: discard("a.txt", false) }));
         assert_eq!(c.discard(false), Err("changes.busy"));
         let w = c.take_done(Path::new(WT), false, true);
@@ -1280,6 +1305,53 @@ pub(crate) mod tests {
         assert_eq!(c.message, "x");
     }
 
+    fn commit_on(branch: Option<&str>, notes: Vec<Note>) -> Changes {
+        let mut c = opened();
+        let mut l = lists(&["a.txt"], &[]);
+        l.branch = branch.map(str::to_owned);
+        l.notes = notes;
+        reread(&mut c, l);
+        c.message = "x".into();
+        c
+    }
+
+    fn note(path: &str, size: u64, secret: Option<guard::Secret>) -> Note {
+        Note { path: path.into(), size, secret }
+    }
+
+    #[test]
+    fn a_commit_on_a_protected_branch_asks_first() {
+        let mut c = commit_on(Some("main"), vec![]);
+        assert_eq!(c.commit(false), Ok(None));
+        assert_eq!(c.confirm.as_ref().and_then(|c| c.branch.as_deref()), Some("main"));
+        let w = c.yes();
+        assert!(matches!(w, Some(Wish::Do { op: Op::Commit { .. }, .. })));
+        // A feature branch, a detached head, and a branch left out go straight.
+        for (branch, protect) in [(Some("feat"), vec!["main"]), (None, vec!["main"]), (Some("main"), vec![])] {
+            let mut c = commit_on(branch, vec![]);
+            c.guard.protect = protect.into_iter().map(str::to_owned).collect();
+            assert!(matches!(c.commit(false), Ok(Some(Wish::Do { .. }))), "{branch:?}");
+        }
+    }
+
+    #[test]
+    fn big_files_and_secrets_ask_first_by_the_limit() {
+        let key = Some(guard::Secret::Name(".env file"));
+        let mut c = commit_on(Some("feat"), vec![note(".env", 10, key), note("big.bin", 60 << 20, None), note("mid.bin", 2 << 20, None)]);
+        assert_eq!(c.commit(false), Ok(None));
+        let paths: Vec<_> = c.confirm.as_ref().unwrap().notes.iter().map(|n| n.path.as_str()).collect();
+        assert_eq!(paths, [".env", "big.bin"]);
+        // Esc: nothing sent, and the commit can be tried again.
+        c.confirm = None;
+        c.guard.large = 0;
+        assert_eq!(c.commit(false), Ok(None));
+        assert_eq!(c.confirm.as_ref().unwrap().notes.len(), 1);
+        // Only a file of a size and no secret goes straight when sizes do not count.
+        let mut c = commit_on(Some("feat"), vec![note("big.bin", 60 << 20, None)]);
+        c.guard.large = 0;
+        assert!(matches!(c.commit(false), Ok(Some(Wish::Do { .. }))));
+    }
+
     #[test]
     fn the_help_is_read_once_fills_a_template_and_steps_through_the_past() {
         use michi_core::msghelp::Help;
@@ -1330,7 +1402,7 @@ pub(crate) mod tests {
         c.take_last(gen, Ok(("Add a".into(), true)));
         assert_eq!((c.message.as_str(), c.pushed), ("Add a", Some(true)));
         assert_eq!(c.commit(false), Ok(None));
-        let Some(Confirm { op: Op::Commit { amend: true, .. }, pushed: true, claude: false }) = &c.confirm else {
+        let Some(Confirm { op: Op::Commit { amend: true, .. }, pushed: true, claude: false, .. }) = &c.confirm else {
             panic!("{:?}", c.confirm)
         };
         assert!(c.yes().is_some());

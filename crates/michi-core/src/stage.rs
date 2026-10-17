@@ -31,6 +31,10 @@ pub struct Lists {
     pub cut: bool,
     /// What the worktree has checked out; `None` before the first commit.
     pub head: Option<Oid>,
+    /// The branch checked out; `None` when the head is detached.
+    pub branch: Option<String>,
+    /// The staged files that are big or look like secrets (#110, #111).
+    pub notes: Vec<crate::guard::Note>,
 }
 
 impl Lists {
@@ -52,14 +56,23 @@ pub enum Side {
 
 /// The changes of the worktree at `dir`.
 pub fn lists(dir: &Path) -> Result<Lists, git::Error> {
-    let ((staged, unstaged), (untracked, head)) = git::both(
+    let ((staged, unstaged), ((untracked, head), branch)) = git::both(
         || git::both(|| diff_files(dir, Side::Staged), || diff_files(dir, Side::Unstaged)),
-        || git::both(|| untracked(dir), || git::read_maybe(dir, &["rev-parse", "-q", "--verify", "HEAD^{commit}"])),
+        || {
+            git::both(
+                || git::both(|| untracked(dir), || git::read_maybe(dir, &["rev-parse", "-q", "--verify", "HEAD^{commit}"])),
+                || git::read_maybe(dir, &["symbolic-ref", "-q", "--short", "HEAD"]),
+            )
+        },
     );
     let (mut unstaged, (more, cut)) = (unstaged?, untracked?);
     unstaged.extend(more);
     let head = head?.and_then(|out| Oid::parse(String::from_utf8_lossy(&out).trim()));
-    Ok(Lists { staged: staged?, unstaged, cut, head })
+    let staged = staged?;
+    let branch = branch?.map(|b| String::from_utf8_lossy(&b).trim().to_owned()).filter(|b| !b.is_empty());
+    // A failed look is no note: the commit is not held up by it.
+    let notes = crate::guard::scan(dir, &staged).unwrap_or_default();
+    Ok(Lists { staged, unstaged, cut, head, branch, notes })
 }
 
 /// `git diff` of one side, with its options; `paths` limit it.
