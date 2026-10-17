@@ -128,7 +128,7 @@ All wait for the owner; none is started.
 - [x] Co-Authored-By on michi commits (recommended option of #54: `[commit] co_author = "Name <email>"` in config.toml, off by default)（要確認: #54）
 - [x] Moving uncommitted changes between worktrees（要確認: #55）
 - [ ] Conflict-prediction marks on the graph（要確認: #56）
-- [ ] Pre-merge checklist (test / verify results)（要確認: #57）
+- [x] Pre-merge checklist (test / verify results)（要確認: #57）
 - [ ] Hook output and rerun on failure（要確認: #58）
 - [ ] Speed target for very large repositories（要確認: #59）
 - [ ] Accessibility（要確認: #60）

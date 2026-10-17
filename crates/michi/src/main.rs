@@ -38,6 +38,8 @@ mod patch;
 mod picker;
 mod picker_ui;
 mod prefs;
+mod ready;
+mod ready_ui;
 mod reflog;
 mod reflog_ui;
 mod reorder;
@@ -515,6 +517,7 @@ impl eframe::App for Michi {
         reply_ui::show(&ctx, &mut self.app);
         tidy_ui::show(&ctx, &mut self.app);
         reflog_ui::show(&ctx, &mut self.app);
+        ready_ui::show(&ctx, &mut self.app);
         blame_ui::show(&ctx, &mut self.app);
         trial_ui::show(&ctx, &mut self.app);
         reorder_ui::show(&ctx, &mut self.app);

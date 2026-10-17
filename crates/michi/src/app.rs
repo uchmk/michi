@@ -137,6 +137,7 @@ impl View {
                 ("y", "key.turns"),
                 ("u", "key.submodules"),
                 ("v", "key.move_changes"),
+                ("g", "key.ready"),
             ],
             View::Conflict => &[
                 ("] [", "key.place"),
@@ -189,6 +190,8 @@ pub const BAND_KEYS: [(&str, &str); 3] = [("y", "key.yes"), ("n", "key.no"), ("E
 /// The keys of the clean-up list (`c` over the worktree table).
 pub const TIDY_KEYS: [(&str, &str); 5] =
     [("j k", "key.move"), ("Space", "key.pick"), ("a", "key.pick_all"), ("Enter", "key.run"), ("Esc", "key.back")];
+/// The keys of the pre-merge checklist (`g` over the worktree table).
+pub const READY_KEYS: [(&str, &str); 1] = [("Esc", "key.back")];
 /// The keys of the reflog list (`L`).
 pub const REFLOG_KEYS: [(&str, &str); 3] = [("j k", "key.move"), ("Enter", "key.bring_back"), ("Esc", "key.back")];
 /// The keys of the blame screen (`B` over the graph or the changes).
@@ -344,6 +347,7 @@ pub struct App {
     /// The clean-up list, over the worktree table.
     pub tidy: Option<crate::tidy::Tidy>,
     pub reflog: Option<crate::reflog::Reflog>,
+    pub ready: Option<crate::ready::Ready>,
     pub blame: Option<crate::blame::Blame>,
     /// Text for the clipboard, taken by the window on its next frame.
     pub clipboard: Option<String>,
@@ -426,6 +430,7 @@ impl App {
             turn_states: None,
             tidy: None,
             reflog: None,
+            ready: None,
             blame: None,
             clipboard: None,
             trial: None,
@@ -1170,6 +1175,8 @@ impl App {
             (&BAND_KEYS, "key.asking")
         } else if self.tidy.is_some() {
             (&TIDY_KEYS, "key.tidy")
+        } else if self.ready.is_some() {
+            (&READY_KEYS, "key.ready")
         } else if self.reflog.is_some() {
             (&REFLOG_KEYS, "key.reflog")
         } else if self.blame.is_some() {
@@ -1440,6 +1447,7 @@ impl App {
         let over = self.band.is_some()
             || self.tidy.is_some()
             || self.reflog.is_some()
+            || self.ready.is_some()
             || self.blame.is_some()
             || self.trial.is_some()
             || self.reorder.is_some();
@@ -1481,6 +1489,7 @@ impl App {
             (Mode::Main, _) if self.picker.is_some() || self.new_work.is_some() || self.reply.is_some() => return false,
             (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
             (Mode::Main, c) if self.tidy.is_some() => return self.tidy_key(c),
+            (Mode::Main, c) if self.ready.is_some() => return self.ready_key(c),
             (Mode::Main, c) if self.reflog.is_some() => return self.reflog_key(c),
             (Mode::Main, c) if self.blame.is_some() => return self.blame_key(c),
             (Mode::Main, c) if self.trial.is_some() => return self.trial_key(c),
@@ -1549,6 +1558,7 @@ impl App {
             'y' => self.open_turns(),
             'u' => self.open_submodules(),
             'v' => self.open_move(),
+            'g' => self.open_ready(),
             'm' => self.ask_merge(),
             'l' => self.ask_land(),
             'x' => self.ask_remove(),
@@ -1641,6 +1651,9 @@ impl App {
         }
         if self.trial.is_some() {
             return self.trial_named(name);
+        }
+        if self.ready.is_some() {
+            return true;
         }
         if self.reflog.is_some() {
             return self.reflog_named(name);
@@ -1741,7 +1754,7 @@ impl App {
         if self.tidy.take().is_some() {
             return true;
         }
-        if self.reflog.take().is_some() || self.blame.take().is_some() {
+        if self.reflog.take().is_some() || self.blame.take().is_some() || self.ready.take().is_some() {
             return true;
         }
         if self.trial.take().is_some() {
@@ -1924,6 +1937,7 @@ pub(crate) mod tests {
             ("key.branch_diff", &REVIEW_KEYS[..]),
             ("key.asking", &BAND_KEYS[..]),
             ("key.tidy", &TIDY_KEYS[..]),
+            ("key.ready", &READY_KEYS[..]),
             ("key.reflog", &REFLOG_KEYS[..]),
             ("key.blame_screen", &BLAME_KEYS[..]),
             ("key.trial", &TRIAL_KEYS[..]),

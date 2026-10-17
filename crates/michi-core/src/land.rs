@@ -134,7 +134,17 @@ pub fn run(dir: &Path, req: &Request, until: Stage, before_clean_up: impl FnOnce
     match verify_command(&req.wt) {
         None => out.unchecked = true,
         Some(cmd) => {
-            if let Err(why) = verify(&req.wt, &cmd) {
+            let result = verify(&req.wt, &cmd);
+            // The checklist (`ready`) reads this back for the same commit.
+            if let Some(head) = git::read_text(&req.wt, &["rev-parse", "HEAD"]).ok().and_then(|h| Oid::parse(h.trim())) {
+                match &result {
+                    Ok(()) => crate::ready::record_verify(&req.wt, &head, None),
+                    Err(Why::Failed { code, .. }) => crate::ready::record_verify(&req.wt, &head, Some(*code)),
+                    // The check could not be run at all: nothing to record.
+                    Err(_) => {}
+                }
+            }
+            if let Err(why) = result {
                 stop(&mut out, Stage::Verify, why);
                 return out;
             }

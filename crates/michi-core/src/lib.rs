@@ -47,6 +47,7 @@ pub mod paths;
 pub mod pr;
 pub mod predict;
 pub mod queue;
+pub mod ready;
 pub mod rebase;
 pub mod recent;
 pub mod reflog;

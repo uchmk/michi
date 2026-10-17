@@ -172,6 +172,11 @@ pub enum Task {
         rev: Option<Oid>,
         path: String,
     },
+    /// Gathers the pre-merge checklist facts for a branch (`g`).
+    Ready {
+        input: michi_core::ready::Input,
+        trunk: String,
+    },
     /// Lists HEAD's reflog (as the worktree at `here` has it) and the backups.
     FindReflog {
         here: PathBuf,
@@ -424,6 +429,7 @@ impl Task {
             Task::UpdateSubmodules { .. } => "submodule update",
             Task::FindTidy { .. } => "for-each-ref",
             Task::FindReflog { .. } => "reflog",
+            Task::Ready { .. } => "ready",
             Task::FindContent { content, .. } => match content.kind {
                 michi_core::find::Kind::Text => "log -S",
                 michi_core::find::Kind::Regex => "log -G",
@@ -494,6 +500,7 @@ pub enum Acted {
     Found(Found),
     Submodules(Vec<michi_core::submodule::Sub>),
     Reflog(Vec<michi_core::reflog::Entry>),
+    Ready(Vec<michi_core::ready::Fact>),
     /// The commits a content search hits.
     Content(std::collections::HashSet<Oid>),
     Remotes(Vec<michi_core::remote::Remote>),
@@ -564,6 +571,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::FindSubmodules { wt } => michi_core::submodule::list(wt).map(Acted::Submodules),
         Task::UpdateSubmodules { wt } => michi_core::submodule::update(wt).map(Acted::Submodules),
         Task::FindTidy { here } => tidy::find(dir, here).map(Acted::Found),
+        Task::Ready { input, .. } => Ok(Acted::Ready(michi_core::ready::check(input))),
         Task::FindReflog { here } => michi_core::reflog::list(here).map(Acted::Reflog),
         Task::FindContent { here, content } => michi_core::find::search(here, content).map(Acted::Content),
         Task::FindBlame { dir, rev, path } => michi_core::blame::read(dir, rev.as_ref(), path).map(|b| Acted::Blamed(Box::new(b))),
@@ -947,6 +955,7 @@ impl App {
             (Task::FindSubmodules { wt }, Ok(Acted::Submodules(subs))) => return self.submodules_found(wt.clone(), subs),
             (Task::UpdateSubmodules { wt }, Ok(Acted::Submodules(subs))) => self.submodules_updated(wt, &subs),
             (Task::FindTidy { .. }, Ok(Acted::Found(found))) => return self.tidy_found(found),
+            (Task::Ready { input, trunk }, Ok(Acted::Ready(facts))) => return self.ready_found(input, trunk, facts),
             (Task::FindReflog { .. }, Ok(Acted::Reflog(rows))) => return self.reflog_found(rows),
             (Task::FindContent { content, .. }, Ok(Acted::Content(ids))) => {
                 self.graph.set_content(content.clone(), ids);

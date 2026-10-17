@@ -1083,3 +1083,17 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 246.8 | With a rebase or merge stopped in the worktree, paste a patch | A toast says the worktree is in the middle of it and to finish first |
 | 246.9 | Paste a patch while a Claude is working in the worktree | The question ends with the note that a Claude is working there |
 | 246.10 | Check the keybar and `?` over the graph; switch EN and JA | `Y` and Ctrl+V are listed with their words in both languages |
+
+## 257. Pre-merge checklist (`g`)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 257.1 | In the `3` view select a worktree on a feature branch and press `g` | A toast says it is checking, then a list opens: `Before merging <branch> into <trunk>` with six rows, each marked OK, !! or ?? and a reason | [ ] |
+| 257.2 | Press `g` on the trunk's own row, and on a detached worktree | No list; a toast says why (the trunk itself, or on no branch) | [ ] |
+| 257.3 | Edit a file in the worktree and press `g` again | The Working tree row is !! and counts the changed files | [ ] |
+| 257.4 | Make the branch clash with the trunk (same lines changed) and press `g` | The clash row is !! and names the files; a clean branch says the trunk merges in without a conflict | [ ] |
+| 257.5 | Press `g` on a branch with an unpushed commit, then on one with no upstream | The Pushed row is !! with the count, then with `no upstream` | [ ] |
+| 257.6 | Land the branch with `l` (verify runs) or run a failing verify, then press `g` on the same commit | The verify row says passed (OK) or failed with the exit code (!!); a new commit goes back to `no result recorded` (??) | [ ] |
+| 257.7 | With a GitHub remote and gh signed in, push the branch and press `g` | The GitHub checks row counts passed, failed or pending; with the network off it says it could not be read (??) and the list still opens | [ ] |
+| 257.8 | Press any key, then Esc; click outside the list | Other keys do nothing; Esc and an outside click close it | [ ] |
+| 257.9 | Check the keybar, `?` and the palette in both languages | `g` is listed as `Check before merging` / `マージ前の確認` | [ ] |
