@@ -89,8 +89,8 @@
 - [x] 7. The shared spec through ito (v0.37.0–v0.44.0, ito v0.56.1): `--keys` script (`ito-keyscript`), keymap.toml and the Keys page
   (`ito-keymap`, `ito-keys`), the key list (`ito-help`), notifications and the Notifications page (`ito-notify`), F12 bug report
   (`ito-bugreport`), window place saved (`ito_common::window`), TESTING-CHECKS.md by `ito-testcheck`, command palette `Ctrl+Shift+P` (`ito-palette`).
-  - [ ] The branch / tag / stash `Picker` and the `Band` confirmation are not moved onto `ito-palette` / ito's confirm: only after the owner answers （要確認: #26）
-  - [ ] Replace the `Picker` with `ito-palette`: wait for ito-7e's `Answer::Key(key, T)` (Shift+Enter, Delete, F2, Ctrl+U, Ctrl+R on the selected row), then move it in one go
+  - [ ] The `Band` confirmation is not moved onto ito-confirm: only after the owner answers （要確認: #27）
+  - [x] The `Picker` drawn and keyed by `ito-palette` (v0.49.0, TESTING 27); its matching and rows stay in `picker.rs`
   - [x] Header / table column widths moved onto ito-layout's `grips` / `columns` (v0.48.0, ito#7)
   - [x] Draggable column widths (v0.46.0, panes on `ito-layout` since v0.47.0, TESTING 26): the graph view's three columns, the graph header's columns, the worktree table's columns; kept in `layout.toml`
   - [x] Show `keymap_warn` / `notify_warn` (the warnings read from keymap.toml and config.toml) to the user as a toast (v0.45.0, TESTING 25.1)

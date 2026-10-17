@@ -167,8 +167,8 @@ impl Michi {
             return;
         }
         let events = ctx.input(|i| i.events.clone());
+        // The branch, tag, stash and remote palette takes its own keys (ito-palette).
         if self.app.picker.is_some() {
-            self.picker_keys(ctx);
             return;
         }
         if self.app.new_work.is_some() {
@@ -305,49 +305,6 @@ impl Michi {
                 }
                 _ => {}
             }
-        }
-    }
-
-    /// The branch or tag palette's keys: the arrows move, Enter (Shift+Enter)
-    /// picks, Delete deletes, Escape closes; what is typed goes in its box.
-    fn picker_keys(&mut self, ctx: &egui::Context) {
-        let (enter, shift_enter, up, down, delete, esc, rename, upstream, rebase) = ctx.input_mut(|i| {
-            let shift_enter = i.consume_key(egui::Modifiers::SHIFT, egui::Key::Enter);
-            let mut plain = |k| i.consume_key(egui::Modifiers::NONE, k);
-            (
-                plain(egui::Key::Enter),
-                shift_enter,
-                plain(egui::Key::ArrowUp),
-                plain(egui::Key::ArrowDown),
-                plain(egui::Key::Delete),
-                plain(egui::Key::Escape),
-                plain(egui::Key::F2),
-                i.consume_key(egui::Modifiers::COMMAND, egui::Key::U),
-                i.consume_key(egui::Modifiers::COMMAND, egui::Key::R),
-            )
-        });
-        if esc {
-            self.app.escape();
-            return;
-        }
-        if let Some(p) = &mut self.app.picker {
-            if up {
-                p.move_by(-1);
-            }
-            if down {
-                p.move_by(1);
-            }
-        }
-        if enter || shift_enter {
-            self.app.picker_enter(shift_enter);
-        } else if delete {
-            self.app.picker_delete();
-        } else if rename {
-            self.app.picker_rename();
-        } else if upstream {
-            self.app.picker_upstream();
-        } else if rebase {
-            self.app.picker_rebase();
         }
     }
 }

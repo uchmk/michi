@@ -2,6 +2,15 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.49.0] - 2026-10-17
+
+### 変更
+
+- ブランチ・タグ・stash・リモートのパレット（`b` `T` `s` と push 先）の表示とキーを `ito-palette` に替えた
+  （絞り込みと行づくりは今までどおり michi。一致した文字の色・作る行の色・上の「…のために」の行・下のキーの案内は ito-palette が描く）。
+  `Shift+Enter`・`Delete`・`F2`・`Ctrl+U`・`Ctrl+R` は `View::keys` で受ける。名前の変更中は入力欄だけ。
+  `Ctrl+P` / `Ctrl+N` でも選びを動かせる。
+
 ## [0.48.0] - 2026-10-17
 
 ### 変更
