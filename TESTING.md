@@ -504,3 +504,15 @@ files under `refs/michi/backup/<time>` first.
 | 34.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] |
 | 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] |
 | 34.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] |
+
+## 97. Open a worktree's folder in a terminal, editor or file manager (#75)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 97.1 | In the worktree tab select a row; press `t` | A tsumugi tab opens in that worktree's folder; a toast says it was opened | | [ ] |
+| 97.2 | Press `e`, then `E` | VS Code opens on the folder; the file manager shows the folder (Explorer on Windows) | | [ ] |
+| 97.3 | Click the Terminal, Editor and Explorer buttons on a row (also on the main worktree's row) | Same as the keys, for the clicked row | | [ ] |
+| 97.4 | Open the palette (Ctrl+Shift+P) and type "worktree in" | Three entries (terminal, editor, file manager); picking one opens the window's worktree (the selected row when the worktree tab is in front) | | [ ] |
+| 97.5 | Write `[open]` `editor = "notepad {path}"` into config.toml, wait 2 s, press `e` | Notepad is started with the folder as its argument; Settings > General shows the line | | [ ] |
+| 97.6 | Write `editor = "no-such-program"`, press `e` | A toast "open failed: ..." with the program's name; michi keeps running and does not freeze | | [ ] |
+| 97.7 | Write `editor = "a \"b"` (unclosed quote) | A warning about config.toml names the key; `e` still uses the default | | [ ] |

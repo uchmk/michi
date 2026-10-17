@@ -54,6 +54,9 @@ pub struct Prefs {
     /// `[notify]` of config.toml, and what it warns of.
     pub notify: NotifyCfg,
     pub notify_warn: Vec<String>,
+    /// `[open]` of config.toml: the commands that open a worktree's folder.
+    pub open: crate::opencfg::OpenCfg,
+    pub open_warn: Vec<String>,
     /// The Notifications page's drafts (a webhook's address being typed).
     pub notify_drafts: ito_prefs::Drafts,
     /// The Keys page's search, filter and the keys being pressed.
@@ -83,6 +86,8 @@ impl Prefs {
             said: None,
             notify: NotifyCfg::default(),
             notify_warn: Vec::new(),
+            open: Default::default(),
+            open_warn: Vec::new(),
             notify_drafts: ito_prefs::Drafts::new(),
             keys_edit: ito_prefs::KeysEdit::default(),
             tx,
@@ -105,7 +110,9 @@ impl Prefs {
             p.theme_warn = warn;
             let (km, warn) = Keymap::load(read_keymap(b).as_deref());
             (p.keymap, p.keymap_warn) = (km, warn);
-            (p.notify, p.notify_warn) = NotifyCfg::read(read_config(b).as_deref());
+            let config = read_config(b);
+            (p.notify, p.notify_warn) = NotifyCfg::read(config.as_deref());
+            (p.open, p.open_warn) = crate::opencfg::OpenCfg::read(config.as_deref());
         }
         p.base = base;
         p
@@ -161,7 +168,10 @@ impl Prefs {
                         self.said = said;
                     }
                 }
-                Reload::Config(text) => (self.notify, self.notify_warn) = NotifyCfg::read(text.as_deref()),
+                Reload::Config(text) => {
+                    (self.notify, self.notify_warn) = NotifyCfg::read(text.as_deref());
+                    (self.open, self.open_warn) = crate::opencfg::OpenCfg::read(text.as_deref());
+                }
                 Reload::Failed(e) => self.failed = Some(e),
             }
         }

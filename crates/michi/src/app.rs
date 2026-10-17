@@ -9,6 +9,7 @@ use michi_core::clash::{Clashes, Outcome, Side};
 use michi_core::claude::{Session, State};
 use michi_core::git::{self, Version};
 use michi_core::oid::Oid;
+use michi_core::openin::Tool;
 use michi_core::paths;
 use michi_core::summary::{self, Summary};
 use michi_core::track::{Tree, Trees};
@@ -109,6 +110,7 @@ impl View {
                 ("j k", "key.select"),
                 ("o", "key.tab"),
                 ("p", "key.pr"),
+                ("t e E", "key.open_in"),
                 ("r", "key.reorder"),
                 ("M", "key.rebase_trunk"),
                 ("Enter", "key.in_graph"),
@@ -1276,6 +1278,9 @@ impl App {
             'm' => self.ask_merge(),
             'x' => self.ask_remove(),
             'p' => self.open_pr(),
+            't' => self.open_in(Tool::Terminal, true),
+            'e' => self.open_in(Tool::Editor, true),
+            'E' => self.open_in(Tool::Explorer, true),
             'r' => self.open_reorder(),
             'M' => self.ask_rebase_trunk(),
             'N' => self.open_new_work(),
@@ -1311,6 +1316,15 @@ impl App {
             Some(branch) => self.act(crate::act::Task::OpenPr { wt, branch }),
             None => self.say(self.tr("act.no_branch")),
         }
+    }
+
+    /// Opens the folder of the selected worktree (`table`; else the window's
+    /// own) in the terminal, the editor or the file manager `[open]` names.
+    pub(crate) fn open_in(&mut self, tool: Tool, table: bool) {
+        let wt = if table { self.wt_selected().map(|t| t.wt.path.clone()) } else { self.repo_top() };
+        let Some(wt) = wt else { return self.say(self.tr("act.no_tree")) };
+        let command = self.prefs.open.command(tool);
+        self.act(crate::act::Task::OpenIn { wt, tool, command });
     }
 
     /// The window's own worktree, once the repository is read.

@@ -27,6 +27,7 @@ fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
         (GENERAL, "language"),
         (GENERAL, "scale"),
         (GENERAL, "[clock]"),
+        (GENERAL, "[open]"),
         (THEME, w.mode),
         (THEME, w.themes),
         (THEME, w.preview),
@@ -69,6 +70,7 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     let prefs = &mut app.prefs;
     let keys_edit = &mut prefs.keys_edit;
     let (notify, drafts) = (&prefs.notify, &mut prefs.notify_drafts);
+    let open = &prefs.open;
     let (common, themes, base) = (&prefs.common, &prefs.themes, prefs.base.as_deref());
     let out = ito_prefs::show(ui, ito_theme::colors(), &mut prefs.state, &nav, keys, |ui, page, l| match page {
         GENERAL => {
@@ -79,6 +81,15 @@ pub fn show(ui: &mut Ui, app: &mut App) {
                 asked.extend(ito_prefs::scale_row(ui, l, w, common.scale_or_one(), ""));
             });
             asked.extend(ito_prefs::clock_card(ui, l, w, &common.clock_or(None)));
+            section(ui, l, tr("settings.open"), |ui| {
+                ui.label(egui::RichText::new(tr("settings.open_lead")).color(l.c.dim));
+                for t in michi_core::openin::Tool::ALL {
+                    ui.horizontal(|ui| {
+                        ui.label(tr(crate::act::open_word(t)));
+                        ui.label(egui::RichText::new(open.command(t)).monospace().color(l.c.dim));
+                    });
+                }
+            });
         }
         THEME => {
             let (t, d, li) = common.theme_choice(None);
