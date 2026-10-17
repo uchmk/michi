@@ -460,11 +460,11 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 30.1 | Select a commit; drag the mouse over some diff lines, the subject and the body | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) | | [ ] |
-| 30.2 | Double-click a word, then triple-click a line; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] |
-| 30.3 | Put a web address in a commit message; double-click it; Ctrl+click it | The whole address is picked up; Ctrl+click shows the pointing hand and opens it in the browser | | [ ] |
-| 30.4 | Click a parent hash, a file row and a merged commit; click an empty place | The click still does what it did (go to the commit, scroll to the file); an empty click lets the selection go | | [ ] |
-| 30.5 | Select a diff line and move to another commit | The selection is gone | | [ ] |
+| 30.1 | Select a commit; drag the mouse over some diff lines, the subject and the body | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) | | [x] |
+| 30.2 | Double-click a word, then triple-click a line; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [x] |
+| 30.3 | Put a web address in a commit message; double-click it; Ctrl+click it | The whole address is picked up; Ctrl+click shows the pointing hand and opens it in the browser | | [~] |
+| 30.4 | Click a parent hash, a file row and a merged commit; click an empty place | The click still does what it did (go to the commit, scroll to the file); an empty click lets the selection go | | [x] |
+| 30.5 | Select a diff line and move to another commit | The selection is gone | | [x] |
 
 ## 31. michi mcp（Claude Code に worktree の様子を渡す）
 
