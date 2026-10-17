@@ -63,7 +63,11 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
         let live = app.mode == Mode::Main;
         // A job waiting for a yes is asked over the view.
         band(ui, app, live);
-        let r = Rect::from_min_max(body.left_top(), pos2(body.right() - EDGE, body.bottom()));
+        // A view that has just been switched to fades in and slides up a few px (#88).
+        let shown = crate::motion::enter(ui.ctx(), app.prefs.motion, egui::Id::new(("michi-view", app.view as u8, app.review.is_some())));
+        let slide = app.prefs.motion.offset(shown);
+        let r = Rect::from_min_max(body.left_top() + vec2(0.0, slide), pos2(body.right() - EDGE, body.bottom()));
+        ui.set_opacity(shown);
         if app.view == View::Worktree && app.review.is_some() {
             crate::review_ui::show(ui, app, r, live);
         } else if app.view == View::Worktree {
@@ -81,6 +85,7 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
         } else {
             empty_view(ui, app, body);
         }
+        ui.set_opacity(1.0);
         if app.mode == Mode::Help {
             help(ui, app, body);
         }

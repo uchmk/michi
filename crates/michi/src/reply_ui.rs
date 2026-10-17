@@ -20,10 +20,11 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
     let title = app.tr("reply.title").replace("{wt}", &crate::act::name(&r.wt)).replace("{n}", &r.session.to_string());
     let question = if r.question.is_empty() { app.tr("reply.blank").to_owned() } else { r.question.clone() };
     let hint = app.tr("reply.hint").to_owned();
+    let (slide, _) = crate::motion::overlay(ctx, app.prefs.motion, Id::new("michi-reply-area"), 1.0);
     egui::Area::new(Id::new("michi-reply-area"))
         .order(egui::Order::Foreground)
         .pivot(Align2::CENTER_BOTTOM)
-        .fixed_pos(pos2(screen.center().x, screen.bottom() - 40.0))
+        .fixed_pos(pos2(screen.center().x, screen.bottom() - 40.0 + slide))
         .show(ctx, |ui| {
             egui::Frame::new().fill(c.panel).stroke(Stroke::new(1.0, c.wait)).corner_radius(6.0).inner_margin(10.0).show(ui, |ui| {
                 ui.set_width(width);

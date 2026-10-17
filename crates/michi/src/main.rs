@@ -26,6 +26,7 @@ mod icon;
 mod keymap;
 mod land;
 mod mcp;
+mod motion;
 mod newwork;
 mod newwork_ui;
 mod notify;
@@ -434,6 +435,7 @@ impl eframe::App for Michi {
         self.app.set_language();
         // common.toml's theme, or the OS's light or dark under `system`.
         self.app.prefs.apply_theme(&ctx);
+        motion::apply(&ctx, self.app.prefs.motion);
         ctx.set_zoom_factor(self.app.prefs.common.scale_or_one());
         if let Some(e) = self.app.prefs.failed.take() {
             self.app.say(e);

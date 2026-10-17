@@ -29,6 +29,7 @@ fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
         (GENERAL, "[clock]"),
         (GENERAL, "[open]"),
         (GENERAL, "density"),
+        (GENERAL, "motion"),
         (GENERAL, "[view]"),
         (THEME, w.mode),
         (THEME, w.themes),
@@ -75,6 +76,8 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     let open = &prefs.open;
     let density = prefs.density;
     let mut density_new = None;
+    let motion = prefs.motion;
+    let mut motion_new = None;
     let (common, themes, base) = (&prefs.common, &prefs.themes, prefs.base.as_deref());
     let out = ito_prefs::show(ui, ito_theme::colors(), &mut prefs.state, &nav, keys, |ui, page, l| match page {
         GENERAL => {
@@ -102,6 +105,17 @@ pub fn show(ui: &mut Ui, app: &mut App) {
                             && d != density
                         {
                             density_new = Some(d);
+                        }
+                    }
+                });
+            });
+            section(ui, l, tr("settings.motion"), |ui| {
+                ui.label(egui::RichText::new(tr("settings.motion_lead")).color(l.c.dim));
+                ui.horizontal(|ui| {
+                    for m in michi_core::motion::Motion::ALL {
+                        let word = tr(if m.is_on() { "motion.on" } else { "motion.off" });
+                        if ui.selectable_label(m == motion, word).clicked() && m != motion {
+                            motion_new = Some(m);
                         }
                     }
                 });
@@ -170,6 +184,9 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     }
     if let Some(d) = density_new {
         app.prefs.density_set(d, no_folder);
+    }
+    if let Some(m) = motion_new {
+        app.prefs.motion_set(m, no_folder);
     }
     app.prefs.notify_edit(notify_edits, webhooks, no_folder);
     if !key_edits.is_empty() {

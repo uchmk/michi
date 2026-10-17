@@ -20,9 +20,10 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
     let screen = ctx.content_rect();
     let width = WIDTH.min(screen.width() - 32.0);
     let mut start = false;
+    let (slide, _) = crate::motion::overlay(ctx, app.prefs.motion, Id::new("michi-newwork"), -1.0);
     let area = egui::Area::new(Id::new("michi-newwork"))
         .order(egui::Order::Foreground)
-        .fixed_pos(pos2(screen.center().x - width / 2.0 - 8.0, screen.top() + 40.0))
+        .fixed_pos(pos2(screen.center().x - width / 2.0 - 8.0, screen.top() + 40.0 + slide))
         .show(ctx, |ui| {
             egui::Frame::new().fill(c.panel).stroke(Stroke::new(1.0, c.border)).corner_radius(6.0).inner_margin(10.0).show(ui, |ui| {
                 ui.set_width(width);

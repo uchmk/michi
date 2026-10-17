@@ -23,6 +23,7 @@ pub mod land;
 pub mod log;
 pub mod menu;
 pub mod minimap;
+pub mod motion;
 pub mod msghelp;
 pub mod net;
 pub mod newwork;

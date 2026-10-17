@@ -533,6 +533,16 @@
 - [ ] **86.5** Edit `density` in config.toml by hand (also a wrong word) → The rows change within a few seconds without restart; a wrong word gives a toast warning and the standard rows → | [ ] 〔未訳〕
 - [ ] **86.6** Switch EN and JA in the settings → The section and its three choices read well in both → | [ ] 〔未訳〕
 
+## 88. Short animations (fade and slide, can be turned off)
+
+- [ ] **88.1** Press `1`, `2`, `3` in turn (and `4` while something clashes) → Each view fades in and slides up a few px in about 130 ms; it feels soft, not slow, and the keys work at once during the move → | [ ] 〔未訳〕
+- [ ] **88.2** Open the new-work window, the reflog, the tidy list, reorder, the trial merge, and a Claude reply box → Each window fades in and slides a few px (down from above; the reply box up from below); closing them is at once → | [ ] 〔未訳〕
+- [ ] **88.3** Open a confirmation band, `?` and the settings → They fade in without a jump; no flicker on the first frame → | [ ] 〔未訳〕
+- [ ] **88.4** Open the settings (`,`), General: look for "Motion" and pick Off → `config.toml` has `[view]` `motion = "off"`; from now on views and windows appear at once, with no fade or slide, and the hover blends are gone → | [ ] 〔未訳〕
+- [ ] **88.5** Pick On again; edit `motion` in config.toml by hand (also a wrong word) → Animations come back within a few seconds without restart; a wrong word gives a toast warning and keeps them on → | [ ] 〔未訳〕
+- [ ] **88.6** Leave the window idle on a view for a while (Task Manager) → CPU stays near 0: nothing keeps repainting after the animation ends → | [ ] 〔未訳〕
+- [ ] **88.7** Switch EN and JA in the settings → The Motion section and its two choices read well in both → | [ ] 〔未訳〕
+
 ## 94. Review queue of finished Claude work (Review column)
 
 - [ ] **94.1** Open the worktree table (`3`) with two or more branch worktrees that differ from main → A Review column sits between Unseen and Clash; a worktree never opened in the review (`d`) reads `Not looked at` (dim) with `0 / N files checked`; the main worktree reads `—`; in the narrow card layout it is a `Review` line 〔未訳〕
