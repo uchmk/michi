@@ -14,6 +14,7 @@ struct View {
     density: Option<String>,
     motion: Option<String>,
     avatars: Option<toml::Value>,
+    easy: Option<toml::Value>,
 }
 
 #[derive(Deserialize, Default)]
@@ -82,6 +83,18 @@ pub fn avatars(text: Option<&str>) -> (bool, Vec<String>) {
             None => (true, vec!["config.toml: [view] avatars is not true or false".to_owned()]),
         },
         _ => (true, Vec::new()),
+    }
+}
+
+/// `[view] easy` (false unless the file says `true`): the plain wording of
+/// Git's terms (#104), with what to warn of.
+pub fn easy(text: Option<&str>) -> (bool, Vec<String>) {
+    match text.map(toml::from_str::<File>) {
+        Some(Ok(File { view: View { easy: Some(v), .. }, .. })) => match v.as_bool() {
+            Some(b) => (b, Vec::new()),
+            None => (false, vec!["config.toml: [view] easy is not true or false".to_owned()]),
+        },
+        _ => (false, Vec::new()),
     }
 }
 
@@ -271,6 +284,16 @@ density = \"cozy\"
             .0,
             Density::Cozy
         );
+    }
+
+    #[test]
+    fn easy_is_off_unless_the_file_says_true() {
+        assert_eq!(easy(None), (false, vec![]));
+        assert_eq!(easy(Some("[view]\ndensity = \"cozy\"\n")), (false, vec![]));
+        assert_eq!(easy(Some("[view]\neasy = true\n")), (true, vec![]));
+        let (on, warn) = easy(Some("[view]\neasy = \"yes\"\n"));
+        assert!(!on);
+        assert_eq!(warn.len(), 1);
     }
 
     #[test]

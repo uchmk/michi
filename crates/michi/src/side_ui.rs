@@ -36,6 +36,8 @@ pub struct Row {
     /// On the right: how far a branch is ahead of its upstream and behind
     /// it (`↑2 ↓1`).
     pub note: String,
+    /// A heading that is a glossary term: its hover explains it.
+    pub term: Option<&'static str>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -88,14 +90,20 @@ pub fn rows(app: &App) -> Vec<Row> {
         }
         None => String::new(),
     };
-    let item = |kind, text: String, sub, id, tip| Row { kind, text, sub, id, tip, note: String::new() };
-    let heading = |key: &'static str, n: usize| Row {
-        kind: Kind::Heading(n),
-        text: app.tr(key).to_owned(),
-        sub: false,
-        id: None,
-        tip: None,
-        note: String::new(),
+    let item = |kind, text: String, sub, id, tip| Row { kind, text, sub, id, tip, note: String::new(), term: None };
+    let heading = |key: &'static str, n: usize| {
+        // The headings that are Git's words are glossary terms (#104, #105).
+        let term = match key {
+            "side.worktrees" => Some("worktree"),
+            "side.tags" => Some("tag"),
+            "side.stash" => Some("stash"),
+            _ => None,
+        };
+        let text = match term {
+            Some(t) => app.term(key, t),
+            None => app.tr(key).to_owned(),
+        };
+        Row { kind: Kind::Heading(n), text, sub: false, id: None, tip: None, note: String::new(), term }
     };
 
     // The worktrees; the one the window is on lit.
@@ -226,15 +234,13 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             let count = p.text(pos2(right, mid), Align2::RIGHT_CENTER, n.to_string(), FontId::monospace(10.5), c.dim);
             let title = row.text.to_uppercase();
             let title: String = title.chars().flat_map(|ch| [ch, '\u{200A}']).collect();
-            clipped(
-                ui,
-                &p,
-                pos2(rr.left() + 12.0, mid),
-                title.trim_end(),
-                FontId::proportional(11.0),
-                c.dim,
-                count.left() - 6.0 - rr.left() - 12.0,
-            );
+            let room = count.left() - 6.0 - rr.left() - 12.0;
+            clipped(ui, &p, pos2(rr.left() + 12.0, mid), title.trim_end(), FontId::proportional(11.0), c.dim, room);
+            if let Some(t) = row.term {
+                let g = ui.fonts_mut(|f| f.layout_no_wrap(title.trim_end().to_owned(), FontId::proportional(11.0), c.dim));
+                let w = g.size().x.min(room.max(0.0));
+                crate::terms::hover(ui, &p, Rect::from_min_size(pos2(rr.left() + 12.0, mid - 6.0), vec2(w, 12.0)), t, &app.lang, "side");
+            }
             continue;
         }
         let clickable = row.id.is_some() || matches!(row.kind, Kind::Group { .. });
