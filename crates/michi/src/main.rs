@@ -32,6 +32,7 @@ mod prefs;
 mod reorder;
 mod reorder_ui;
 mod repo;
+mod repos;
 mod review;
 mod review_notes;
 mod review_ui;
@@ -102,6 +103,33 @@ impl Michi {
         }
     }
 
+    /// A folder the repository screen picked is read on a thread; when it
+    /// is a repository the window starts over on it, else it stays where it
+    /// is and says why.
+    fn switch(&mut self, ctx: &egui::Context) {
+        if let Some(dir) = self.app.open_req.take() {
+            self.app.opening = Some(repos::start_opening(ctx, dir));
+        }
+        let Some(found) = self.app.opening.as_ref().and_then(|o| o.answer.try_recv().ok()) else { return };
+        let Some(o) = self.app.opening.take() else { return };
+        match found {
+            Ok(_) => {
+                let prefs = std::mem::replace(&mut self.app.prefs, prefs::Prefs::empty());
+                let recent = std::mem::take(&mut self.app.recent);
+                let mut app = App::new(prefs, o.dir.clone());
+                app.recent = recent;
+                app.front = self.app.front;
+                app.reading = Some(repo::start(o.dir, ctx.clone()));
+                self.app = app;
+            }
+            Err(e) => {
+                let word = self.app.tr(app::failed_word(&e));
+                let text = format!("{word} — {}", o.dir.display());
+                self.app.say_for(text, 10);
+            }
+        }
+    }
+
     fn script(&mut self, ctx: &egui::Context) {
         let Some(script) = &mut self.script else { return };
         if let Some(err) = script.shot(ctx) {
@@ -134,7 +162,7 @@ impl Michi {
     /// quit, the scale), taken out of the frame's events before the views
     /// see them. Not while the Keys page is taking keys.
     fn keymap_keys(&mut self, ctx: &egui::Context) {
-        if self.app.prefs.keys_edit.busy() || self.app.cmd.is_some() {
+        if self.app.prefs.keys_edit.busy() || self.app.cmd.is_some() || self.app.repos.is_some() {
             return;
         }
         let events = ctx.input(|i| i.events.clone());
@@ -163,7 +191,7 @@ impl Michi {
     /// message has them, only Ctrl+Enter (commit) is taken; the Escape that
     /// let go of it goes no further.
     fn keys(&mut self, ctx: &egui::Context) {
-        if self.app.cmd.is_some() {
+        if self.app.cmd.is_some() || self.app.repos.is_some() {
             return;
         }
         let events = ctx.input(|i| i.events.clone());
@@ -340,6 +368,7 @@ impl eframe::App for Michi {
         if let Some(t) = &mut self.place {
             t.follow(&ctx);
         }
+        self.switch(&ctx);
         self.keymap_keys(&ctx);
         if self.app.mode != Mode::Settings {
             self.keys(&ctx);
@@ -386,6 +415,7 @@ impl eframe::App for Michi {
             settings::show(&mut body, &mut self.app);
         }
         picker_ui::show(&ctx, &mut self.app);
+        repos::show(&ctx, &mut self.app);
         newwork_ui::show(&ctx, &mut self.app);
         tidy_ui::show(&ctx, &mut self.app);
         reorder_ui::show(&ctx, &mut self.app);

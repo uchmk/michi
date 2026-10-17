@@ -338,3 +338,10 @@
 
 - [ ] **27.1** Open `b`, `T`, `s` and the remote choice of a push; type, move with the arrows and `Ctrl+N` / `Ctrl+P`, click a row, press Esc, click outside → The same box as before: the matched letters lit, the make / save rows in the accent colour, the `for <worktree> at <commit>` line above and the keys below; a click on a row is Enter on it; Esc and a click outside close it 〔未訳〕
 - [ ] **27.2** In `b`: `Shift+Enter`, `Delete`, `F2` (type a name, Enter; Esc cancels), `Ctrl+U`, `Ctrl+R` on a row → Each does what it did in v0.48.0; during a rename only the box shows 〔未訳〕
+
+## 28. The repository screen
+
+- [ ] **28.1** Press `Ctrl+O` (also: `Ctrl+Shift+P`, type "repo", Enter); Esc; `Ctrl+O` twice → The repositories michi was opened on, newest first, the folder name with its parent beside it and "here" on the one in the window; Esc and the second `Ctrl+O` close it; no other key reaches the views while it is open → | [ ] 〔未訳〕
+- [ ] **28.2** Type part of a name, two words, then clear; move with the arrows; press Enter on another repository → The list narrows to the paths holding every word; Enter switches this window: the title, the graph, the worktree table and the Claude column are the other repository's, the old one is no longer read → | [ ] 〔未訳〕
+- [ ] **28.3** Type `C:\dev\some-repo` (or `~/...`, `./...`), Enter; then a folder that is not a repository → A first row "Open <path>" in the accent colour; a repository opens and joins the list; a folder that is not one leaves the window as it was and says so in a toast → | [ ] 〔未訳〕
+- [ ] **28.4** `Delete` on a row; close michi and open it again → The row is gone, and stays gone; the repositories opened since are at the top (`recent.txt` in michi's folder) → | [ ] 〔未訳〕

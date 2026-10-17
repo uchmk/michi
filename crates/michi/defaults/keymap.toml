@@ -20,6 +20,7 @@ keymap = [
     { on = "?", run = "help", desc = "Keys" },
     { on = "<F1>", run = "help", desc = "Keys" },
     { on = "<C-S-p>", run = "palette", desc = "Search commands" },
+    { on = "<C-o>", run = "repos", desc = "Switch repository" },
     { on = "<F12>", run = "bugreport", desc = "Report a bug" },
     { on = "<C-q>", run = "quit", desc = "Quit" },
     { on = "<C-=>", run = "scale in", desc = "Zoom in" },
