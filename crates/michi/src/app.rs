@@ -103,6 +103,7 @@ impl View {
                 ("v", "key.range"),
                 ("s", "key.split"),
                 ("d", "key.discard"),
+                ("i", "key.ignore"),
                 ("A", "key.amend"),
                 ("[ ]", "key.worktree"),
                 ("Enter", "key.side"),
@@ -595,6 +596,11 @@ impl App {
                         let text = self.tr(key).replace("{file}", path).replace("{n}", &lines.to_string());
                         self.say_for(text.replace("{saved}", michi_core::backup::short(saved)), 10);
                     }
+                    Ok(Did::Ignored { path, line, already }) => {
+                        let key = if *already { "changes.ignored_already" } else { "changes.ignored" };
+                        let text = self.tr(key).replace("{file}", path).replace("{line}", line);
+                        self.say_for(text, 8);
+                    }
                     Ok(Did::Staged) => {}
                     Err(e) => {
                         let text = self.tr("changes.failed").replace("{}", &e.to_string());
@@ -794,6 +800,7 @@ impl App {
             'A' => Ok(ch.toggle_amend()),
             's' => ch.split(),
             'd' => ch.discard(claude),
+            'i' => ch.ignore(claude),
             '[' | ']' => {
                 self.changes_step(if c == ']' { 1 } else { -1 });
                 return true;

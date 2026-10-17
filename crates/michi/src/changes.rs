@@ -59,6 +59,10 @@ pub enum Op {
         patch: Option<Vec<u8>>,
         lines: usize,
     },
+    /// The untracked file at `path` added to the worktree's `.gitignore`.
+    Ignore {
+        path: String,
+    },
 }
 
 impl Op {
@@ -80,6 +84,13 @@ pub enum Did {
         untracked: bool,
         lines: usize,
         saved: String,
+    },
+    /// The untracked `path` is ignored by the `.gitignore` line `line`
+    /// (`already` when the line was there).
+    Ignored {
+        path: String,
+        line: String,
+        already: bool,
     },
 }
 
@@ -600,6 +611,21 @@ impl Changes {
         Ok(self.act(op, claude))
     }
 
+    /// `i`: the selected untracked file added to the worktree's `.gitignore`.
+    /// No question: the line is easy to take out. Err with the word saying
+    /// why not.
+    pub fn ignore(&mut self, claude: bool) -> Result<Option<Wish>, &'static str> {
+        if !self.settled() {
+            return Err("changes.busy");
+        }
+        let Some((side, f)) = self.selected() else { return Ok(None) };
+        if side == Side::Staged || f.status != Status::Untracked {
+            return Err("changes.ignore_untracked");
+        }
+        let op = Op::Ignore { path: f.path.clone() };
+        Ok(self.act(op, claude))
+    }
+
     /// `A`: the next commit takes the head's place, or no longer. Its
     /// message comes to amend; one filled in and not changed goes again.
     pub fn toggle_amend(&mut self) -> Option<Wish> {
@@ -1000,6 +1026,24 @@ pub(crate) mod tests {
         c.take_list(list_gen(&Vec::from_iter(w)), Ok(lists(&["s.txt"], &["a.txt"])));
         c.select(0);
         assert_eq!(c.discard(false), Err("changes.discard_staged"));
+    }
+
+    #[test]
+    fn i_ignores_an_untracked_file_without_asking() {
+        let mut c = opened();
+        // a.txt is tracked: refused.
+        assert_eq!(c.ignore(false), Err("changes.ignore_untracked"));
+        let w = c.take_done(Path::new(WT), false, true);
+        let mut l = lists(&["s.txt"], &["a.txt", "b.txt"]);
+        l.unstaged[1].status = Status::Untracked;
+        c.take_list(list_gen(&Vec::from_iter(w)), Ok(l));
+        // A staged file is refused too.
+        c.select(0);
+        assert_eq!(c.ignore(false), Err("changes.ignore_untracked"));
+        c.select(2);
+        assert_eq!(c.ignore(false), Ok(Some(Wish::Do { wt: WT.into(), op: Op::Ignore { path: "b.txt".into() } })));
+        assert!(c.confirm.is_none());
+        assert_eq!(c.ignore(false), Err("changes.busy"));
     }
 
     #[test]
