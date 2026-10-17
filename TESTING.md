@@ -667,3 +667,14 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 74.7 | Commit, then press `c` again | The history has the new message at the top; the template fills the empty box again | | [ ] |
 | 74.8 | In a repository with no commits press `c` and Alt+Up | Nothing breaks; Alt+Up does nothing | | [ ] |
 | 74.9 | Click the box with the mouse (not `c`), then press Alt+Up | The history works the same | | [ ] |
+
+## 86. Row density (compact / standard / cozy)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 86.1 | Open the settings (`,`), General: look for "Row density" | Three choices, Compact / Standard / Cozy; Standard is lit by default | | [ ] |
+| 86.2 | Pick Compact | The graph rows, the side column's rows and the reflog / tidy / reorder lists shrink at once (about 20% shorter); text stays readable and nothing is clipped; config.toml has `[view]` `density = "compact"` | | [ ] |
+| 86.3 | Pick Cozy | The same rows grow (about 20% taller); the graph dots and lines stay joined across rows; the scrollbar marks still sit at their rows | | [ ] |
+| 86.4 | Click a row, scroll with the wheel and drag the scrollbar in each density | Clicks land on the row under the pointer; the selected row stays in view | | [ ] |
+| 86.5 | Edit `density` in config.toml by hand (also a wrong word) | The rows change within a few seconds without restart; a wrong word gives a toast warning and the standard rows | | [ ] |
+| 86.6 | Switch EN and JA in the settings | The section and its three choices read well in both | | [ ] |

@@ -4,6 +4,7 @@
 //! (docs/design.md: the graph's is the one).
 
 use egui::{pos2, vec2, Align2, CornerRadius, CursorIcon, FontId, Id, Rect, Sense, Shape, Stroke, StrokeKind, Ui};
+use michi_core::density::Density;
 use michi_core::oid::Oid;
 use michi_core::paths;
 
@@ -61,11 +62,11 @@ pub enum Kind {
 }
 
 impl Row {
-    fn height(&self) -> f32 {
-        match self.kind {
+    fn height(&self, d: Density) -> f32 {
+        d.px(match self.kind {
             Kind::Heading(_) => HEAD_H,
             _ => ROW_H,
-        }
+        })
     }
 }
 
@@ -199,7 +200,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let ctx = ui.ctx().clone();
     ui.painter().rect_filled(r, 0.0, c.side);
     let rows = rows(app);
-    let total: f32 = TOP_PAD + rows.iter().map(Row::height).sum::<f32>() + 12.0;
+    let total: f32 = TOP_PAD + rows.iter().map(|r| r.height(app.prefs.density)).sum::<f32>() + 12.0;
     let mut scroll = ctx.data(|d| d.get_temp::<f32>(scroll_id())).unwrap_or(0.0);
     if live && ui.rect_contains_pointer(r) {
         scroll -= ui.input(|i| i.smooth_scroll_delta.y);
@@ -213,7 +214,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let shown = app.stash_shown();
     let mut y = r.top() + TOP_PAD - scroll;
     for (k, row) in rows.iter().enumerate() {
-        let h = row.height();
+        let h = row.height(app.prefs.density);
         let rr = Rect::from_min_size(pos2(r.left(), y), vec2(r.width(), h));
         y += h;
         if rr.bottom() < r.top() || rr.top() > r.bottom() {

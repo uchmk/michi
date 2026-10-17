@@ -55,7 +55,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 let n = r.list.len();
                 let first = r.sel.saturating_sub(ROWS - 1).min(n.saturating_sub(ROWS));
                 for k in first..n.min(first + ROWS) {
-                    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
+                    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), app.prefs.density.px(ROW_H)), Sense::click());
                     row(ui, &r, k, rect);
                     if resp.clicked() {
                         clicked = Some(k);
