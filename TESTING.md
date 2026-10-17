@@ -653,3 +653,17 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 47.7 | Start `git rebase -i` and stop it at an edit | The strip says it is a rebase, with no buttons; it goes when the rebase ends | | [ ] |
 | 47.8 | With a Claude working in the worktree press `R` | A yes is asked first, as for a switch | | [ ] |
 | 47.9 | Open the settings (`,`) or the key list (`?`) while the strip is up; switch EN and JA | The strip stays tidy at a narrow width (the text is cut with an ellipsis, the buttons stay); both languages read well | | [ ] |
+
+## 74. Commit message help (history and template)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 74.1 | In the `2` view press `c` and look at the empty box | The hint reads "What changed, and why (Alt+Up / Alt+Down: earlier messages)"; EN and JA both read well and are not cut off | | [ ] |
+| 74.2 | With the box focused press Alt+Up | The box takes the latest commit's message (all lines); again: the one before; at the oldest nothing happens | | [ ] |
+| 74.3 | Type "wip", press Alt+Up twice, then Alt+Down twice | You are back at "wip" (the draft is kept); the same message is never listed twice | | [ ] |
+| 74.4 | Step to an old message, edit a word, press Alt+Up | The edited text is kept as the draft (Alt+Down from the next message comes back to it) | | [ ] |
+| 74.5 | Run `git config commit.template tpl.txt` (a file with `# help` lines and a `feat: ` line), then press `c` on an empty box | The box is filled with `feat:` without the `#` lines; committing it as it is leaves no `#` line in the message | | [ ] |
+| 74.6 | Type a message first, then press `c` | The template does not replace what was typed; with `A` (amend) the head's message fills, not the template | | [ ] |
+| 74.7 | Commit, then press `c` again | The history has the new message at the top; the template fills the empty box again | | [ ] |
+| 74.8 | In a repository with no commits press `c` and Alt+Up | Nothing breaks; Alt+Up does nothing | | [ ] |
+| 74.9 | Click the box with the mouse (not `c`), then press Alt+Up | The history works the same | | [ ] |

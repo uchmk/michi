@@ -110,6 +110,8 @@ pub enum Answer {
     ChangesFile { gen: u32, result: Result<Option<Box<stage::Diff>>, git::Error> },
     /// The head's message and whether a remote has the head.
     ChangesLast { gen: u32, result: Result<(String, bool), git::Error> },
+    /// The past messages and the template, to help write one.
+    ChangesHelp { gen: u32, help: michi_core::msghelp::Help },
     /// A write in the worktree `wt` is done (`commit` when it committed),
     /// and what it did.
     ChangesDone { wt: PathBuf, commit: bool, result: Result<Did, git::Error> },
@@ -154,7 +156,7 @@ pub struct Reading {
     /// What the `2` view wants, and the newest list's, diff's and message's
     /// numbers.
     stages: Sender<staging::Wish>,
-    stage_latest: Arc<[AtomicU32; 3]>,
+    stage_latest: Arc<[AtomicU32; 4]>,
     /// The fetches, pulls and pushes to run.
     nets: Sender<Order>,
     /// The branches, tags and reverts to do.
@@ -231,6 +233,7 @@ impl Reading {
             staging::Wish::List { gen, .. } => self.stage_latest[0].store(*gen, Ordering::SeqCst),
             staging::Wish::File { gen, .. } => self.stage_latest[1].store(*gen, Ordering::SeqCst),
             staging::Wish::Last { gen, .. } => self.stage_latest[2].store(*gen, Ordering::SeqCst),
+            staging::Wish::Help { gen, .. } => self.stage_latest[3].store(*gen, Ordering::SeqCst),
             staging::Wish::Do { .. } => {}
         }
         let _ = self.stages.send(wish);
@@ -303,7 +306,7 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         reviews(&look_dir, &look_rx, &latests, send);
     });
     let (stages, stage_rx) = mpsc::channel();
-    let stage_latest = Arc::new([AtomicU32::new(0), AtomicU32::new(0), AtomicU32::new(0)]);
+    let stage_latest = Arc::new([AtomicU32::new(0), AtomicU32::new(0), AtomicU32::new(0), AtomicU32::new(0)]);
     let (stage_tx, stage_ctx, latests) = (tx.clone(), ctx.clone(), stage_latest.clone());
     // No thread for the `2` view: it stays empty.
     let _ = std::thread::Builder::new().name("changes".into()).spawn(move || {
@@ -753,14 +756,15 @@ fn reviews(dir: &Path, wishes: &Receiver<Wish>, latest: &[AtomicU32; 2], send: i
 /// Does and reads what the `2` view wants, until the window is gone: every
 /// write in turn first, then of the reads that came meanwhile the newest
 /// list, diff and message.
-fn stagings(wishes: &Receiver<staging::Wish>, latest: &[AtomicU32; 3], send: impl Fn(Answer)) {
+fn stagings(wishes: &Receiver<staging::Wish>, latest: &[AtomicU32; 4], send: impl Fn(Answer)) {
     use staging::Wish as W;
     let mut writes = VecDeque::new();
-    let mut reads: [Option<W>; 3] = [None, None, None];
-    let take = |w: W, writes: &mut VecDeque<(PathBuf, Op)>, reads: &mut [Option<W>; 3]| match w {
+    let mut reads: [Option<W>; 4] = [None, None, None, None];
+    let take = |w: W, writes: &mut VecDeque<(PathBuf, Op)>, reads: &mut [Option<W>; 4]| match w {
         W::List { .. } => reads[0] = Some(w),
         W::File { .. } => reads[1] = Some(w),
         W::Last { .. } => reads[2] = Some(w),
+        W::Help { .. } => reads[3] = Some(w),
         W::Do { wt, op } => writes.push_back((wt, op)),
     };
     loop {
@@ -817,6 +821,11 @@ fn stagings(wishes: &Receiver<staging::Wish>, latest: &[AtomicU32; 3], send: imp
             if fresh(2, gen) {
                 let result = stage::last_message(&wt).and_then(|m| Ok((m, stage::is_pushed(&wt)?)));
                 send(Answer::ChangesLast { gen, result });
+            }
+        }
+        if let Some(W::Help { gen, wt }) = reads[3].take() {
+            if fresh(3, gen) {
+                send(Answer::ChangesHelp { gen, help: michi_core::msghelp::read(&wt) });
             }
         }
     }

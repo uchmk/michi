@@ -586,6 +586,7 @@ impl App {
             }
             Answer::ChangesFile { gen, result } => self.changes.take_file(gen, result.map(|d| d.map(|d| *d))),
             Answer::ChangesLast { gen, result } => self.changes.take_last(gen, result),
+            Answer::ChangesHelp { gen, help } => self.changes.take_help(gen, help),
             Answer::ChangesDone { wt, commit, result } => {
                 match &result {
                     Ok(Did::Committed(id)) => {
@@ -744,6 +745,13 @@ impl App {
         self.changes_did(done);
     }
 
+    /// The message box has the keys: what helps writing a message is read
+    /// once, and Alt+Up / Alt+Down in it step through the past messages.
+    pub fn changes_help(&mut self) {
+        let wish = self.changes.ask_help();
+        self.stage_wish(wish);
+    }
+
     /// A folder of the `2` view's tree staged whole (taken out of the index
     /// whole on the staged side).
     pub fn changes_dir(&mut self, side: michi_core::stage::Side, dir: &str) {
@@ -806,10 +814,7 @@ impl App {
             }
             // `v` and `l` in the lines, `h` in the files: nothing to do.
             'v' | 'l' | 'h' => none(),
-            'c' => {
-                ch.focus_message = true;
-                none()
-            }
+            'c' => Ok(ch.focus_message()),
             'A' => Ok(ch.toggle_amend()),
             't' if !lines => {
                 ch.toggle_tree();

@@ -13,6 +13,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use michi_core::git;
+use michi_core::msghelp::{Help, Walk};
 use michi_core::oid::Oid;
 use michi_core::show::{File, Kind, Status};
 use michi_core::stage::{self, Lists, Side};
@@ -30,6 +31,8 @@ pub enum Wish {
     File { gen: u32, wt: PathBuf, side: Side, file: File },
     /// The head's message and whether a remote has the head, to amend it.
     Last { gen: u32, wt: PathBuf },
+    /// The past messages and the template, to help write one (#74).
+    Help { gen: u32, wt: PathBuf },
     /// A write, done in turn after those before it.
     Do { wt: PathBuf, op: Op },
 }
@@ -189,6 +192,11 @@ pub struct Changes {
     /// frame is to give them to it.
     pub typing: bool,
     pub focus_message: bool,
+    /// The past messages and the template of the worktree, read when the box
+    /// is first given the keys; read again after a commit.
+    help: Option<Help>,
+    help_gen: u32,
+    walk: Walk,
     /// The messages of the other worktrees, kept while another is shown.
     drafts: HashMap<PathBuf, String>,
     /// All git said when a write failed and it said more than a line (a
@@ -215,6 +223,7 @@ impl Changes {
             }
         }
         self.message = self.drafts.remove(&wt).unwrap_or_default();
+        self.forget_help();
         self.wt = Some(wt);
         self.lists = None;
         self.sel = 0;
@@ -348,6 +357,57 @@ impl Changes {
         }
     }
 
+    /// What was read for help is let go: it is read again, newer, when the
+    /// box next gets the keys.
+    fn forget_help(&mut self) {
+        (self.help, self.help_gen) = (None, 0);
+        self.walk.reset();
+    }
+
+    /// `c`: the box gets the keys. The help is read if it was not yet.
+    pub fn focus_message(&mut self) -> Option<Wish> {
+        self.focus_message = true;
+        self.ask_help()
+    }
+
+    /// The help is read if it was not yet (the box has the keys).
+    pub fn ask_help(&mut self) -> Option<Wish> {
+        if self.help.is_some() || self.help_gen != 0 {
+            return None;
+        }
+        let wt = self.wt.clone()?;
+        self.help_gen = next_gen();
+        Some(Wish::Help { gen: self.help_gen, wt })
+    }
+
+    /// The help read for wish `gen`. The template fills a box that is empty
+    /// (git does the same); an amend has its own message.
+    pub fn take_help(&mut self, gen: u32, help: Help) {
+        if gen != self.help_gen {
+            return;
+        }
+        if self.message.trim().is_empty() && !self.amend {
+            if let Some(t) = &help.template {
+                self.message = t.clone();
+            }
+        }
+        self.help = Some(help);
+    }
+
+    /// Alt+Up (`older`) or Alt+Down in the box: the message of an earlier
+    /// commit in its place, and back to what was being written. Whether the
+    /// box changed.
+    pub fn step_history(&mut self, older: bool) -> bool {
+        let Some(help) = &self.help else { return false };
+        match self.walk.step(&help.past, older, &self.message) {
+            Some(text) => {
+                self.message = text;
+                true
+            }
+            None => false,
+        }
+    }
+
     /// A write in `wt` is done (`commit` when it was a commit): a commit's
     /// message goes, and the files are read again.
     pub fn take_done(&mut self, wt: &Path, commit: bool, ok: bool) -> Option<Wish> {
@@ -361,6 +421,7 @@ impl Changes {
         if commit && ok {
             self.message.clear();
             (self.amend, self.filled, self.pushed) = (false, None, None);
+            self.forget_help();
         }
         if ok {
             self.told = None;
@@ -1132,6 +1193,46 @@ pub(crate) mod tests {
         c.commit(false).unwrap();
         c.take_done(Path::new(WT), true, false);
         assert_eq!(c.message, "x");
+    }
+
+    #[test]
+    fn the_help_is_read_once_fills_a_template_and_steps_through_the_past() {
+        use michi_core::msghelp::Help;
+        let mut c = opened();
+        assert!(!c.step_history(true), "nothing read yet");
+        let Some(Wish::Help { gen, .. }) = c.focus_message() else { panic!() };
+        assert!(c.focus_message);
+        assert_eq!(c.ask_help(), None, "asked once");
+        // An answer to an older ask is dropped.
+        c.take_help(gen + 1, Help { past: vec!["old".into()], template: None });
+        assert!(!c.step_history(true));
+        let help = Help {
+            past: vec!["Add b".into(), "Add a".into()],
+            template: Some(
+                "type:
+"
+                .into(),
+            ),
+        };
+        c.take_help(gen, help);
+        assert_eq!(
+            c.message,
+            "type:
+",
+            "the template fills an empty box"
+        );
+        c.message = "wip".into();
+        assert!(c.step_history(true));
+        assert_eq!(c.message, "Add b");
+        assert!(c.step_history(true));
+        assert_eq!(c.message, "Add a");
+        assert!(!c.step_history(true));
+        assert!(c.step_history(false) && c.step_history(false));
+        assert_eq!(c.message, "wip");
+        // A commit lets the help go: it is read again for the next one.
+        c.commit(false).unwrap();
+        c.take_done(Path::new(WT), true, true);
+        assert!(matches!(c.ask_help(), Some(Wish::Help { .. })));
     }
 
     #[test]
