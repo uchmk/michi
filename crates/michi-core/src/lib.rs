@@ -11,6 +11,7 @@ pub mod claude;
 pub mod conflict;
 pub mod discard;
 pub mod external;
+pub mod find;
 pub mod git;
 pub mod handoff;
 pub mod history;

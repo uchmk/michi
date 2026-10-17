@@ -551,3 +551,13 @@ files under `refs/michi/backup/<time>` first.
 | 38.4 | In the graph view hover Fetch, Pull, Push, Branch, Stash and New work | Each tooltip shows its key, for example `Fetch (f)`, `New work (N)` | | [ ] |
 | 38.5 | During a merge hover Pull and Stash | The tooltip still says they are held, not the key | | [ ] |
 | 38.6 | In the worktree view hover New work and the re-read button | `New work (N)`; the re-read button shows just its name | | [ ] |
+
+## 39. Graph filter with fuzzy matching (ito-match)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 39.1 | Press `/` over the graph and type the first letters of a long subject, skipping the rest (e.g. `fxflk` for "Fix the flaky test") | The commit is a hit (the others fade) and the hit count shows it | | [ ] |
+| 39.2 | Type two words, one of a subject and one of an author or a branch name | Only commits that hold both words are hits | | [ ] |
+| 39.3 | Type the first 7 characters of a commit hash, then characters from the middle of one | The first selects that commit; the middle of a hash hits nothing by itself | | [ ] |
+| 39.4 | Type a word, then add letters; then take letters off | Adding letters never lights new rows; taking them off lights rows again, with no lag on a long history | | [ ] |
+| 39.5 | Type in capitals (`FIX`) | The same hits as `fix` | | [ ] |
