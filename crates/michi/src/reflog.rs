@@ -3,7 +3,7 @@
 //! Enter asks, then brings the row back as a new branch (nothing moves or
 //! goes). reflog_ui.rs draws it.
 
-use michi_core::reflog::{Entry, Source};
+use michi_core::reflog::{Entry, Op, Source};
 
 use crate::act::Task;
 use crate::app::{App, Repo};
@@ -13,11 +13,14 @@ use crate::work::{Band, Then};
 pub struct Reflog {
     pub entries: Vec<Entry>,
     pub sel: usize,
+    /// Rows in git's own wording (`checkout: moving from a to b`) instead of
+    /// plain words.
+    pub raw: bool,
 }
 
 impl Reflog {
     pub fn new(entries: Vec<Entry>) -> Reflog {
-        Reflog { entries, sel: 0 }
+        Reflog { entries, sel: 0, raw: false }
     }
 
     /// Moves the selection by `by` rows, stopping at the ends.
@@ -55,9 +58,40 @@ impl App {
         match c {
             'j' => r.move_by(1),
             'k' => r.move_by(-1),
+            'r' => r.raw = !r.raw,
+            'g' => self.reflog_show_commit(),
             _ => {}
         }
         true
+    }
+
+    /// `g`: closes the list and selects the row's commit in the graph.
+    fn reflog_show_commit(&mut self) {
+        let Some(id) = self.reflog.as_ref().and_then(Reflog::selected).map(|e| e.id) else { return };
+        self.reflog = None;
+        self.view = crate::app::View::Graph;
+        self.go_to(id);
+    }
+
+    /// The row in plain words: `Switched from a to b`.
+    pub(crate) fn reflog_plain(&self, e: &Entry) -> String {
+        let (key, a, b) = match e.op() {
+            Op::Commit(a) => ("reflog.op.commit", a, String::new()),
+            Op::FirstCommit(a) => ("reflog.op.first", a, String::new()),
+            Op::Amend(a) => ("reflog.op.amend", a, String::new()),
+            Op::MergeCommit(a) => ("reflog.op.merge_commit", a, String::new()),
+            Op::Switch { from, to } => ("reflog.op.switch", from, to),
+            Op::Reset(a) => ("reflog.op.reset", a, String::new()),
+            Op::Merge(a) => ("reflog.op.merge", a, String::new()),
+            Op::Pull => ("reflog.op.pull", String::new(), String::new()),
+            Op::Rebase => ("reflog.op.rebase", String::new(), String::new()),
+            Op::CherryPick(a) => ("reflog.op.cherry_pick", a, String::new()),
+            Op::Revert(a) => ("reflog.op.revert", a, String::new()),
+            Op::Clone => ("reflog.op.clone", String::new(), String::new()),
+            Op::Kept(a) => ("reflog.op.kept", a, String::new()),
+            Op::Other(raw) => return raw,
+        };
+        self.tr(key).replace("{a}", &a).replace("{b}", &b)
     }
 
     /// A named key while the list is open; under the band, none.
@@ -141,6 +175,35 @@ mod tests {
         assert!(a.reflog.is_some());
         assert!(a.escape());
         assert!(a.reflog.is_none());
+    }
+
+    #[test]
+    fn rows_read_in_plain_words_and_r_shows_gits_own() {
+        let mut a = app();
+        let mut e = entry(1, false);
+        e.what = "checkout: moving from main to topic".into();
+        assert_eq!(a.reflog_plain(&e), "Switched from main to topic");
+        e.what = "commit: fix".into();
+        assert_eq!(a.reflog_plain(&e), "Committed: fix");
+        e.what = "something new: x".into();
+        assert_eq!(a.reflog_plain(&e), "something new: x");
+        let kept = entry(2, true);
+        assert_eq!(a.reflog_plain(&kept), "michi kept this before: reset: moving to HEAD~1");
+        a.view = View::Graph;
+        a.reflog_found(vec![e]);
+        assert!(!a.reflog.as_ref().unwrap().raw);
+        assert!(a.feed('r'));
+        assert!(a.reflog.as_ref().unwrap().raw);
+    }
+
+    #[test]
+    fn g_closes_the_list_and_goes_to_the_graph() {
+        let mut a = app();
+        a.view = View::Worktree;
+        a.reflog_found(vec![entry(1, false)]);
+        assert!(a.feed('g'));
+        assert!(a.reflog.is_none());
+        assert_eq!(a.view, View::Graph);
     }
 
     #[test]

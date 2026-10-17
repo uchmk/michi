@@ -89,8 +89,11 @@ fn row(ui: &egui::Ui, app: &App, r: &Reflog, k: usize, rect: Rect) {
     let label_ink = if e.is_backup() { c.wait } else { c.fg };
     let mut job = LayoutJob::default();
     job.append(&format!("{}   ", ago(app, when, SystemTime::now())), 0.0, TextFormat::simple(font.clone(), c.dim));
-    job.append(&e.label(), 0.0, TextFormat::simple(font.clone(), label_ink));
-    job.append(&format!("   {}", e.what), 0.0, TextFormat::simple(font.clone(), c.fg));
+    if r.raw {
+        job.append(&format!("{}   {}", e.label(), e.what), 0.0, TextFormat::simple(font.clone(), label_ink));
+    } else {
+        job.append(&app.reflog_plain(e), 0.0, TextFormat::simple(font.clone(), label_ink));
+    }
     job.append(&format!("   {}", e.subject), 0.0, TextFormat::simple(font, c.dim));
     // Nothing leaves the row: what does not fit ends in "…".
     job.wrap = TextWrapping::truncate_at_width((rect.right() - left - id.size().x - 20.0).max(rect.width() / 3.0));
