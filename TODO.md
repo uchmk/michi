@@ -129,7 +129,7 @@ All wait for the owner; none is started.
 - [x] Moving uncommitted changes between worktrees（要確認: #55）
 - [ ] Conflict-prediction marks on the graph（要確認: #56）
 - [ ] Pre-merge checklist (test / verify results)（要確認: #57）
-- [ ] Hook output and rerun on failure（要確認: #58）
+- [x] Hook output and rerun on failure (`r` over a refused commit's panel runs it again; recommended option of #58)（要確認: #58）
 - [ ] Speed target for very large repositories（要確認: #59）
 - [ ] Accessibility（要確認: #60）
 - [ ] Key list (`?`) and macOS Cmd check（要確認: #61）
