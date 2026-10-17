@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Datelike, TimeZone, Timelike};
 use ito_graph::{Colors, Dot, Layout, Placed};
-use michi_core::find::{Hay, Query};
+use michi_core::find::{Content, Hay, Query};
 use michi_core::git;
 use michi_core::history::{merged_name, Fold, History, Row, Setup};
 use michi_core::log::Commit;
@@ -131,6 +131,9 @@ pub struct Graph {
     query: Query,
     /// The history's rows the filter hits, in order.
     hits: Vec<u32>,
+    /// What git found for the filter's content search (`s:` `g:`), and for
+    /// which search.
+    found: Option<(Content, HashSet<Oid>)>,
     /// What the filter looks in, for each of the history's rows read so
     /// far: made as they are read, so the filter's first key is quick.
     hay: Vec<Hay>,
@@ -167,6 +170,7 @@ impl Default for Graph {
             filter: String::new(),
             query: Query::default(),
             hits: Vec::new(),
+            found: None,
             hay: Vec::new(),
             marks: Vec::new(),
             page: 20,
@@ -326,8 +330,9 @@ impl Graph {
             return;
         }
         self.fill_hay();
+        let found = self.found.as_ref().map(|f| &f.1);
         for (i, h) in self.hay.iter().enumerate().skip(from) {
-            if h.hits(&self.query) {
+            if h.hits_in(&self.query, found) {
                 self.hits.push(i as u32);
             }
         }
@@ -753,14 +758,35 @@ impl Graph {
         // looks only among the hits.
         let narrower = query.narrows(&self.query);
         self.query = query;
+        if self.found.as_ref().is_some_and(|f| Some(&f.0) != self.query.content()) {
+            self.found = None;
+        }
         if narrower {
             self.fill_hay();
-            let (hay, query) = (&self.hay, &self.query);
-            self.hits.retain(|&i| hay[i as usize].hits(query));
+            let (hay, query, found) = (&self.hay, &self.query, self.found.as_ref().map(|f| &f.1));
+            self.hits.retain(|&i| hay[i as usize].hits_in(query, found));
         } else {
             self.hits.clear();
             self.hit_from(0);
         }
+        self.mark();
+    }
+
+    /// The content search the filter asks for and git has not answered yet
+    /// (the window asks on Enter).
+    pub fn content_wanted(&self) -> Option<&Content> {
+        self.query.content().filter(|c| self.found.as_ref().is_none_or(|f| &f.0 != *c))
+    }
+
+    /// Git found `ids` for the content search `content`: kept when the filter
+    /// still asks for it, and the hits are made again.
+    pub fn set_content(&mut self, content: Content, ids: HashSet<Oid>) {
+        if self.query.content() != Some(&content) {
+            return;
+        }
+        self.found = Some((content, ids));
+        self.hits.clear();
+        self.hit_from(0);
         self.mark();
     }
 
@@ -1201,6 +1227,34 @@ mod tests {
         g.home();
         assert_eq!(g.selected_row(), Some(0));
         assert!(g.reveal);
+    }
+
+    #[test]
+    fn a_content_search_waits_for_its_answer_and_is_dropped_when_stale() {
+        use michi_core::find::Kind;
+        let mut g = read();
+        g.set_filter("s:needle");
+        let want = Content { kind: Kind::Text, text: "needle".into() };
+        assert_eq!(g.content_wanted(), Some(&want));
+        assert_eq!(g.hit_count(), Some(0), "nothing hits before git answers");
+
+        // An answer for another search is dropped.
+        g.set_content(Content { kind: Kind::Text, text: "other".into() }, HashSet::from([id(7)]));
+        assert_eq!(g.hit_count(), Some(0));
+
+        g.set_content(want.clone(), HashSet::from([id(7)]));
+        assert_eq!(g.content_wanted(), None);
+        assert_eq!(g.hit_count(), Some(1));
+
+        // The words still narrow it.
+        g.set_filter("zzzz s:needle");
+        assert_eq!(g.content_wanted(), None, "the answer for the same search is kept");
+        assert_eq!(g.hit_count(), Some(0), "no commit has both");
+        g.set_filter("s:needle2");
+        assert!(g.content_wanted().is_some(), "other text: asked again");
+        assert_eq!(g.hit_count(), Some(0));
+        g.set_filter("");
+        assert_eq!(g.hit_count(), None);
     }
 
     #[test]

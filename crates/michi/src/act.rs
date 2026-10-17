@@ -19,7 +19,7 @@ use michi_core::stash::{self, Applied, Saved};
 use michi_core::tidy::{self, Found, Item, Outcome};
 use michi_core::{branch, tag, worktree};
 
-use crate::app::{App, View};
+use crate::app::{App, Repo, View};
 use crate::work::{Band, Job, Then};
 
 /// What the act thread is to do.
@@ -123,6 +123,12 @@ pub enum Task {
     /// Lists HEAD's reflog (as the worktree at `here` has it) and the backups.
     FindReflog {
         here: PathBuf,
+    },
+    /// Asks git which commits the filter's content search (`s:` `g:`) hits,
+    /// the window being on the worktree at `here`.
+    FindContent {
+        here: PathBuf,
+        content: michi_core::find::Content,
     },
     /// Merges `branches` into `trunk` in memory, in their order (the trial merge).
     Trial {
@@ -352,6 +358,10 @@ impl Task {
             Task::DropStash { .. } => "stash drop",
             Task::FindTidy { .. } => "for-each-ref",
             Task::FindReflog { .. } => "reflog",
+            Task::FindContent { content, .. } => match content.kind {
+                michi_core::find::Kind::Text => "log -S",
+                michi_core::find::Kind::Regex => "log -G",
+            },
             Task::Trial { .. } => "merge-tree",
             Task::Recover { .. } => "branch",
             Task::FindReorder { .. } => "log",
@@ -409,6 +419,8 @@ pub enum Acted {
     Unstashed(Applied),
     Found(Found),
     Reflog(Vec<michi_core::reflog::Entry>),
+    /// The commits a content search hits.
+    Content(std::collections::HashSet<Oid>),
     Trialed(Box<michi_core::trial::Trial>),
     Recovered(String),
     Planned(michi_core::rebase::Plan),
@@ -463,6 +475,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::DropStash { id } => stash::drop(dir, id).map(|saved| Acted::Kept(Some(saved))),
         Task::FindTidy { here } => tidy::find(dir, here).map(Acted::Found),
         Task::FindReflog { here } => michi_core::reflog::list(here).map(Acted::Reflog),
+        Task::FindContent { here, content } => michi_core::find::search(here, content).map(Acted::Content),
         Task::Trial { trunk, branches } => michi_core::trial::run(dir, trunk, branches).map(|t| Acted::Trialed(Box::new(t))),
         Task::Recover { id } => michi_core::reflog::recover(dir, id).map(Acted::Recovered),
         Task::FindReorder { wt, trunk } => michi_core::rebase::plan(wt, trunk).map(Acted::Planned),
@@ -567,6 +580,17 @@ pub fn name(wt: &Path) -> String {
 
 impl App {
     /// Sends `task` to the act thread.
+    /// Enter in the filter with a content search typed (`s:` `g:`) that git
+    /// has not answered: asks, off the UI thread. False when there is
+    /// nothing to ask (Enter then goes to the next hit).
+    pub(crate) fn ask_content(&mut self) -> bool {
+        let Some(content) = self.graph.content_wanted().cloned() else { return false };
+        let Repo::Ready(s) = &self.repo else { return false };
+        let here = s.top.clone();
+        self.act(Task::FindContent { here, content });
+        true
+    }
+
     pub(crate) fn act(&mut self, task: Task) {
         if let Some(r) = &self.reading {
             r.act(task);
@@ -780,6 +804,10 @@ impl App {
             }
             (Task::FindTidy { .. }, Ok(Acted::Found(found))) => return self.tidy_found(found),
             (Task::FindReflog { .. }, Ok(Acted::Reflog(rows))) => return self.reflog_found(rows),
+            (Task::FindContent { content, .. }, Ok(Acted::Content(ids))) => {
+                self.graph.set_content(content.clone(), ids);
+                return;
+            }
             (Task::Trial { branches, .. }, Ok(Acted::Trialed(found))) => return self.trial_done(branches, *found),
             (Task::Recover { id }, Ok(Acted::Recovered(name))) => {
                 (self.tr("reflog.done").replace("{id}", &id.short()).replace("{name}", &name), 6)
