@@ -180,7 +180,7 @@ Worktrees and parallel Claude work are the base; no other client has them.
 - [ ] Answer a waiting Claude from a notification in one step（要確認: #98）
 - [ ] Hand-off of a conflict to Claude through to review, in one band（要確認: #99）
 - [ ] Trial merge of several worktrees in a chosen order（要確認: #100）
-- [ ] Ideas from the other uchmk apps (2026-10-17): drag-select copy through `ito-select` （要確認: #101）; `michi mcp` through `ito-mcp` / `ito-ipc`, shared pattern asked of ito (ito#11) （要確認: #102）; PR / CI state from minato （要確認: #103）
+- [ ] Ideas from the other uchmk apps (2026-10-17): drag-select copy through `ito-select` in the commit detail (v0.52.0; the changes, conflict and review panes are next) （要確認: #101）; `michi mcp` through `ito-mcp` / `ito-ipc`, shared pattern asked of ito (ito#11) （要確認: #102）; PR / CI state from minato （要確認: #103）
 
 ## Easy for beginners (2026-10-17)
 

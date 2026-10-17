@@ -37,6 +37,7 @@ mod review;
 mod review_notes;
 mod review_ui;
 mod script;
+mod select;
 mod settings;
 mod side_ui;
 mod sizes;
@@ -303,6 +304,12 @@ impl Michi {
         let mut events = events.into_iter();
         while let Some(e) = events.next() {
             match e {
+                // egui hands Ctrl+C over as this, not as a key.
+                egui::Event::Copy => {
+                    if let Some(text) = select::text() {
+                        ctx.copy_text(text);
+                    }
+                }
                 egui::Event::Key { key: egui::Key::Escape, pressed: true, .. } if !let_go => {
                     self.app.escape();
                 }

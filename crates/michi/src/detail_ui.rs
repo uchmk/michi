@@ -143,6 +143,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         Some(Err(e)) => return note(&app.tr("detail.failed").replace("{}", &e.to_string())),
         Some(Ok(d)) => d,
     };
+    crate::select::begin(&d.id.to_string());
     let merged = app.detail.merged(d.id, app.graph.read()).unwrap_or(&[]);
     let blocks = blocks(d, merged.len(), app.detail.all_files);
     let wide = app.detail.wide;
@@ -180,6 +181,8 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     scroll = scroll.clamp(0.0, (total - r.height()).max(0.0));
     ctx.data_mut(|dt| dt.insert_temp(scroll_id(), scroll));
 
+    // Under the rows' own clicks: a drag over the text picks it up.
+    let grab = ui.interact(r, Id::new("detail-select"), Sense::click_and_drag());
     let mut act = None;
     let pointer = if live { ui.input(|i| i.pointer.hover_pos()).filter(|at| r.contains(*at)) } else { None };
     let max_count = d.files.iter().filter_map(|f| f.counts).map(|(a, x)| a + x).max().unwrap_or(0).max(1);
@@ -291,6 +294,22 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         }
     }
 
+    if live {
+        let driven = crate::select::drive(&grab, r);
+        if let Some(text) = driven.copy {
+            ctx.copy_text(text);
+        }
+        if let Some(url) = driven.open {
+            std::thread::spawn(move || {
+                let _ = michi_core::pr::open_url(&url);
+            });
+        }
+        if ui.input(|i| i.modifiers.command) && grab.hover_pos().is_some_and(|at| crate::select::url_at(at, r)) {
+            ctx.set_cursor_icon(CursorIcon::PointingHand);
+        }
+    }
+    crate::select::paint();
+
     let Some(a) = act else { return };
     match a {
         Act::Go(id) => app.go_to(id),
@@ -326,6 +345,7 @@ fn header(ui: &Ui, app: &App, d: &Detail, at: Pos2, width: f32, paint: Option<(&
     let title = ui.fonts_mut(|f| f.layout(d.subject.clone(), FontId::proportional(14.0), c.fg, inner));
     if let Some((p, _)) = paint {
         // No bold face: the title is drawn twice, a hair apart.
+        crate::select::note(p, pos2(x0, y), &title);
         p.galley(pos2(x0, y), title.clone(), c.fg);
         p.galley(pos2(x0 + 0.45, y), title.clone(), c.fg);
     }
@@ -360,6 +380,7 @@ fn header(ui: &Ui, app: &App, d: &Detail, at: Pos2, width: f32, paint: Option<(&
         }
         let at = Rect::from_min_size(pos2(x, y + (line_h - g.size().y) / 2.0), g.size());
         if let Some((p, live)) = paint {
+            crate::select::note(p, at.min, &g);
             p.galley(at.min, g.clone(), run.color);
             if let Some(id) = run.link {
                 let resp = ui.interact(at.intersect(p.clip_rect()), Id::new(("detail-parent", id.short())), Sense::CLICK);
@@ -399,6 +420,7 @@ fn header(ui: &Ui, app: &App, d: &Detail, at: Pos2, width: f32, paint: Option<(&
     if !body.is_empty() {
         let g = ui.fonts_mut(|f| f.layout(body.to_owned(), FontId::proportional(12.5), c.fg, inner.min(BODY_W)));
         if let Some((p, _)) = paint {
+            crate::select::note(p, pos2(x0, y), &g);
             p.galley(pos2(x0, y), g.clone(), c.fg);
         }
         y += g.size().y + 8.0;
@@ -774,7 +796,9 @@ fn line_text(ui: &Ui, p: &Painter, at: Pos2, l: &Line, mark: Option<Color32>, wi
     let more = ((rows.bottom() - at.y - first_h / 2.0) / first_h).round().max(0.0) as usize;
     job.wrap = TextWrapping { max_width: width, max_rows: 1 + more, break_anywhere: true, overflow_character: Some('…') };
     let g = ui.fonts_mut(|f| f.layout_job(job));
-    p.galley(pos2(at.x, at.y - first_h / 2.0), g, c.fg);
+    let top = pos2(at.x, at.y - first_h / 2.0);
+    crate::select::note(p, top, &g);
+    p.galley(top, g, c.fg);
 }
 
 fn unified_row(ui: &Ui, p: &Painter, rr: Rect, l: &Line) {

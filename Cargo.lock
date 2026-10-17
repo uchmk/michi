@@ -2028,7 +2028,7 @@ dependencies = [
 
 [[package]]
 name = "michi"
-version = "0.51.1"
+version = "0.52.0"
 dependencies = [
  "chrono",
  "eframe",
@@ -2048,6 +2048,7 @@ dependencies = [
  "ito-notify",
  "ito-palette",
  "ito-prefs",
+ "ito-select",
  "ito-testcheck",
  "ito-theme",
  "ito-winres",
@@ -2060,7 +2061,7 @@ dependencies = [
 
 [[package]]
 name = "michi-core"
-version = "0.51.1"
+version = "0.52.0"
 dependencies = [
  "chrono",
  "serde",
