@@ -9,6 +9,7 @@
 # C = Ctrl on Windows and Linux, Cmd on macOS (where Ctrl works too).
 # <C-,> is Ctrl+, (Cmd+, on a Mac).
 #
+# Tabs (#45): <C-o> and <C-t> open the repository screen, which opens into a tab.
 # These are the keys every uchmk app has. The keys of the views (the graph's
 # `j` `k` `b`, the worktree table's `d` `m`, ...) are michi's own and are
 # not here yet.
@@ -21,6 +22,21 @@ keymap = [
     { on = "<F1>", run = "help", desc = "Keys" },
     { on = "<C-S-p>", run = "palette", desc = "Search commands" },
     { on = "<C-o>", run = "repos", desc = "Switch repository" },
+    { on = "<C-t>", run = "repos", desc = "Switch repository" },
+    { on = "<C-w>", run = "closetab", desc = "Close tab" },
+    { on = "<C-Tab>", run = "nexttab", desc = "Next tab" },
+    { on = "<C-S-Tab>", run = "prevtab", desc = "Previous tab" },
+    { on = "<C-PageDown>", run = "nexttab", desc = "Next tab" },
+    { on = "<C-PageUp>", run = "prevtab", desc = "Previous tab" },
+    { on = "<A-1>", run = "tab 1", desc = "Go to tab" },
+    { on = "<A-2>", run = "tab 2", desc = "Go to tab" },
+    { on = "<A-3>", run = "tab 3", desc = "Go to tab" },
+    { on = "<A-4>", run = "tab 4", desc = "Go to tab" },
+    { on = "<A-5>", run = "tab 5", desc = "Go to tab" },
+    { on = "<A-6>", run = "tab 6", desc = "Go to tab" },
+    { on = "<A-7>", run = "tab 7", desc = "Go to tab" },
+    { on = "<A-8>", run = "tab 8", desc = "Go to tab" },
+    { on = "<A-9>", run = "tab 9", desc = "Go to tab" },
     { on = "<F12>", run = "bugreport", desc = "Report a bug" },
     { on = "<C-q>", run = "quit", desc = "Quit" },
     { on = "<C-=>", run = "scale in", desc = "Zoom in" },
