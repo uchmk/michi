@@ -57,6 +57,7 @@ pub mod reset;
 pub mod restore;
 pub mod revert;
 pub mod review;
+pub mod scale;
 pub mod show;
 pub mod signature;
 pub mod skeleton;
