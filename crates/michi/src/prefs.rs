@@ -78,6 +78,8 @@ pub struct Prefs {
     pub view_warn: Vec<String>,
     /// `[view] avatars` of config.toml: whether authors' pictures are fetched from GitHub.
     pub avatars: bool,
+    /// `[view] easy` of config.toml: Git's terms in plain words (#104).
+    pub easy: bool,
     /// `[net] auto_fetch` of config.toml: how often to fetch by itself (#70).
     pub auto_fetch: michi_core::autofetch::Every,
     /// `[commit] co_author` of config.toml: the trailer added to michi's commits (#54).
@@ -124,6 +126,7 @@ impl Prefs {
             density: Default::default(),
             motion: Default::default(),
             avatars: true,
+            easy: false,
             auto_fetch: Default::default(),
             co_author: Default::default(),
             issues: Default::default(),
@@ -373,6 +376,9 @@ impl Prefs {
         let (on, warn) = crate::viewcfg::avatars(text);
         self.avatars = on;
         self.view_warn.extend(warn);
+        let (on, warn) = crate::viewcfg::easy(text);
+        self.easy = on;
+        self.view_warn.extend(warn);
         let (every, warn) = crate::viewcfg::auto_fetch(text);
         self.auto_fetch = every;
         self.view_warn.extend(warn);
@@ -387,6 +393,11 @@ impl Prefs {
     /// Write `[view] avatars` into config.toml on a thread, then read it again.
     pub fn avatars_set(&self, on: bool, no_folder: &str) {
         self.view_set(("avatars", on.to_string()), no_folder);
+    }
+
+    /// Write `[view] easy` into config.toml on a thread, then read it again.
+    pub fn easy_set(&self, on: bool, no_folder: &str) {
+        self.view_set(("easy", on.to_string()), no_folder);
     }
 
     /// Write `[view] density` into config.toml on a thread, then read it again.

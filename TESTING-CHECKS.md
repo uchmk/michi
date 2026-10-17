@@ -1067,3 +1067,16 @@
 - [ ] **261.3** Change the theme and a key, press Import once, then again → The first press only arms the button; the second reads the file back, a toast says what was read, and the theme and the key are as exported within a couple of seconds 〔未訳〕
 - [ ] **261.4** Import a file that is not a settings bundle → A toast gives the reason and nothing in the settings folder changes 〔未訳〕
 - [ ] **261.5** Search "backup" in the settings → The Advanced page is listed 〔未訳〕
+
+## 104. Easy display (plain wording of Git's terms)
+
+- [ ] **104.1** Open settings (`,`), General page, find "Easy display" (also by searching "easy") → A card with a checkbox "Show Git terms in plain words"; off by default; EN and JA both read well 〔未訳〕
+- [ ] **104.2** Tick it, open the `2` view and the `1` view → The list headings read "In the next commit (Staged)" / "Not in the next commit (Not staged)"; the footer reads "N in the next commit"; the side column's headings read "working folder (worktree)", "name for a commit (tag)", "set aside for later (stash)"; JA reads "次のコミットに入る（Staged）", "あとで使うために置いておく（stash）" 〔未訳〕
+- [ ] **104.3** Untick it (or delete `easy` from `[view]` in config.toml) → The usual words come back within a couple of seconds, without restarting 〔未訳〕
+- [ ] **104.4** Write `easy = "yes"` under `[view]` in config.toml → A warning about `[view] easy` shows and the usual words stay 〔未訳〕
+
+## 105. Hover glossary
+
+- [ ] **105.1** Look at the `2` view's list headings, the file title over the diff and the side column's worktree / tag / stash headings → Each of these terms has a dotted underline 〔未訳〕
+- [ ] **105.2** Rest the pointer on one for a moment → A small card shows the Git word, its plain wording and a one or two line explanation; it goes when the pointer leaves; it does not hide the click targets nearby 〔未訳〕
+- [ ] **105.3** Repeat with the easy display on, and with EN and JA → The card is the same either way and reads well in both languages; the dots line up under the whole label 〔未訳〕

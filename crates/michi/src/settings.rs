@@ -32,6 +32,8 @@ fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
         (GENERAL, "density"),
         (GENERAL, "motion"),
         (GENERAL, "avatars"),
+        (GENERAL, "easy"),
+        (GENERAL, "glossary"),
         (GENERAL, "[view]"),
         (THEME, w.mode),
         (THEME, w.themes),
@@ -133,6 +135,8 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     let mut motion_new = None;
     let avatars = prefs.avatars;
     let mut avatars_new = None;
+    let easy = prefs.easy;
+    let mut easy_new = None;
     let (common, themes, base) = (&prefs.common, &prefs.themes, prefs.base.as_deref());
     let out = ito_prefs::show(ui, ito_theme::colors(), &mut prefs.state, &nav, keys, |ui, page, l| match page {
         GENERAL => {
@@ -180,6 +184,13 @@ pub fn show(ui: &mut Ui, app: &mut App) {
                 let mut on = avatars;
                 if ui.checkbox(&mut on, tr("settings.avatars_check")).changed() {
                     avatars_new = Some(on);
+                }
+            });
+            section(ui, l, tr("settings.easy"), |ui| {
+                ui.label(egui::RichText::new(tr("settings.easy_lead")).color(l.c.dim));
+                let mut on = easy;
+                if ui.checkbox(&mut on, tr("settings.easy_check")).changed() {
+                    easy_new = Some(on);
                 }
             });
         }
@@ -251,6 +262,9 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     }
     if let Some(on) = avatars_new {
         app.prefs.avatars_set(on, no_folder);
+    }
+    if let Some(on) = easy_new {
+        app.prefs.easy_set(on, no_folder);
     }
     app.prefs.notify_edit(notify_edits, webhooks, no_folder);
     app.prefs.open_edit(open_edits, no_folder);

@@ -66,6 +66,7 @@ mod stats;
 mod stats_ui;
 mod strip;
 mod submodule;
+mod terms;
 mod tidy;
 mod tidy_ui;
 mod trial;

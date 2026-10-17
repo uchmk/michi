@@ -512,9 +512,11 @@ fn list(ui: &Ui, app: &App, lr: Rect, live: bool, pointer: Option<Pos2>, act: &m
         }
         match it.clone() {
             Item::Head(side, n) => {
-                let word = if side == Side::Staged { "changes.staged" } else { "changes.unstaged" };
-                let text = format!("{} · {n}", app.tr(word));
-                p.text(pos2(rr.left() + X, rr.bottom() - 8.0), Align2::LEFT_BOTTOM, text, FontId::proportional(11.5), c.dim);
+                let (word, term) = if side == Side::Staged { ("changes.staged", "staged") } else { ("changes.unstaged", "unstaged") };
+                let label = app.term(word, term);
+                let r = p.text(pos2(rr.left() + X, rr.bottom() - 8.0), Align2::LEFT_BOTTOM, label, FontId::proportional(11.5), c.dim);
+                crate::terms::hover(ui, &p, r, term, &app.lang, "head");
+                p.text(pos2(r.right(), rr.bottom() - 8.0), Align2::LEFT_BOTTOM, format!(" · {n}"), FontId::proportional(11.5), c.dim);
             }
             Item::Empty(side) => {
                 let word = if side == Side::Staged { "changes.none_staged" } else { "changes.none_unstaged" };
@@ -661,7 +663,7 @@ fn message(ui: &mut Ui, app: &mut App, br: Rect, live: bool, pointer: Option<Pos
     let w = p.text(pos2(cap.left() - 6.0, foot), Align2::RIGHT_CENTER, app.tr(word), FontId::proportional(12.5), ink);
     let hit = w.union(cap).expand(3.0);
     let out = clicked(ui, &p, hit, "changes-commit", live, pointer).then_some(Act::Commit);
-    let text = app.tr("changes.staged_n").replace("{}", &staged.to_string());
+    let text = app.tr(if app.prefs.easy { "changes.staged_n_easy" } else { "changes.staged_n" }).replace("{}", &staged.to_string());
     let mut job = LayoutJob::single_section(text, TextFormat { font_id: FontId::proportional(11.5), color: c.dim, ..Default::default() });
     job.wrap = TextWrapping::truncate_at_width((hit.left() - 10.0 - br.left() - X).max(0.0));
     let g = ui.fonts_mut(|f| f.layout_job(job));
@@ -684,8 +686,9 @@ fn title_row(ui: &Ui, app: &App, side: Side, f: &File, rr: Rect, live: bool, poi
     let hit = w.union(cap).expand(3.0);
     let out = clicked(ui, &p, hit, "changes-wide", live, pointer).then_some(Act::Wide(!ch.wide));
     let x = rr.left() + X;
-    let side_word = if side == Side::Staged { "changes.staged" } else { "changes.unstaged" };
-    let tag = p.text(pos2(x, mid), Align2::LEFT_CENTER, app.tr(side_word), FontId::proportional(11.5), c.dim);
+    let (side_word, side_term) = if side == Side::Staged { ("changes.staged", "staged") } else { ("changes.unstaged", "unstaged") };
+    let tag = p.text(pos2(x, mid), Align2::LEFT_CENTER, app.term(side_word, side_term), FontId::proportional(11.5), c.dim);
+    crate::terms::hover(ui, &p, tag, side_term, &app.lang, "title");
     let letter =
         p.text(pos2(tag.right() + 10.0, mid), Align2::LEFT_CENTER, f.status.letter(), FontId::monospace(12.0), status_ink(f.status));
     let px = letter.right() + 8.0;
