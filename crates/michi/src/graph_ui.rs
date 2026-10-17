@@ -338,7 +338,12 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
             None if g.done() => (app.tr("history.empty").to_owned(), c.dim),
             None => (app.tr("history.reading").to_owned(), c.dim),
         };
-        ui.painter().text(list.center() - vec2(0.0, HEAD_H), Align2::CENTER_CENTER, text, FontId::proportional(13.0), color);
+        let mid = list.center() - vec2(0.0, HEAD_H);
+        ui.painter().text(mid, Align2::CENTER_CENTER, text, FontId::proportional(13.0), color);
+        // An empty history points at the one thing to do next (#81).
+        if let Some(step) = app.next_step().filter(|s| *s == michi_core::nextstep::Step::FirstCommit) {
+            ui.painter().text(mid + vec2(0.0, 24.0), Align2::CENTER_CENTER, app.tr(step.key()), FontId::proportional(12.5), c.fg);
+        }
         return;
     }
     let tail = u32::from(g.started() && !g.done());

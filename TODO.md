@@ -158,7 +158,7 @@ All wait for the owner; none is started.
 - [ ] One-button sync（要確認: #78）
 - [ ] Fuzzy pickers everywhere（要確認: #79）
 - [ ] Same strength of confirmation for destructive operations（要確認: #80）
-- [ ] First-run tour and empty states（要確認: #81）
+- [x] First-run tour and empty states: no tour; the empty graph, a single worktree and a missing tsumugi each show one next step (recommended option of #81)（要確認: #81）
 - [ ] Key hints on hover（要確認: #82）
 - [ ] Keys whose meaning changes per screen（要確認: #83）
 - [x] Author avatars（要確認: #84）

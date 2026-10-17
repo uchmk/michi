@@ -246,6 +246,8 @@ pub struct App {
     /// The Claude sessions in each worktree that has some; `None` when
     /// tsumugi is not there (or not asked yet).
     pub claude: Option<crate::repo::Sessions>,
+    /// tsumugi has been asked at least once (so `claude: None` means it is not there).
+    pub claude_asked: bool,
     /// The worktrees and how they stand, for the worktree table.
     pub trees: Trees,
     /// Each worktree's uncommitted change, those with only files too big to
@@ -350,6 +352,7 @@ impl App {
             graph: Graph::default(),
             detail: Pane::default(),
             claude: None,
+            claude_asked: false,
             trees: Trees::default(),
             wips: Vec::new(),
             clashes: Clashes::default(),
@@ -593,6 +596,7 @@ impl App {
             }
             Answer::Claude(c) => {
                 self.claude = c;
+                self.claude_asked = true;
                 self.handed_stopped();
                 self.waits_changed();
                 self.turns_changed();
@@ -1176,6 +1180,18 @@ impl App {
     pub fn watch_handed(&mut self, wt: PathBuf) {
         self.handed.retain(|h| h.wt != wt);
         self.handed.push(Handed { wt, ran: false, polls: 0, conflict: false });
+    }
+
+    /// The one next step the empty states point at (issue #81), if any.
+    pub fn next_step(&self) -> Option<michi_core::nextstep::Step> {
+        let g = &self.graph;
+        let has_history = if g.error().is_some() || !g.done() { None } else { Some(!g.is_empty()) };
+        michi_core::nextstep::next_step(&michi_core::nextstep::Facts {
+            has_history,
+            worktrees: self.trees.trees.len(),
+            tsumugi: self.claude.is_some(),
+            tsumugi_asked: self.claude_asked,
+        })
     }
 
     /// The Claude sessions in the worktree at `path`, the one to show first

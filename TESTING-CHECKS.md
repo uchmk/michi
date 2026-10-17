@@ -704,3 +704,13 @@
 - [ ] **84.6** Disconnect the network, restart michi and scroll the graph → The window stays responsive (no stall on the UI thread); initials show and the pictures are not retried in a loop → | [ ] 〔未訳〕
 - [ ] **84.7** Switch the theme dark/light and EN/JA in Settings → The initials stay readable on their colours; the Settings text reads in both languages → | [ ] 〔未訳〕
 - [ ] **84.8** Scroll a long history fast → Scrolling stays smooth while pictures arrive; the same author's picture is not fetched twice → | [ ] 〔未訳〕
+
+## 81. Empty-state guidance (one next step, no tour)
+
+- [ ] **81.1** Open a repository with no commit (`git init` only) in the graph view → Under `No commits yet.` one brighter line reads `Next: press 2 to stage your files and make the first commit.`; pressing `2` opens Changes 〔未訳〕
+- [ ] **81.2** Make the first commit → The line goes at once and the graph shows the commit 〔未訳〕
+- [ ] **81.3** Open a repository with commits and one worktree, go to the worktree view (`3`) → Under the table a line reads `Next: press N to start new work in a worktree of its own.`; `N` opens New work 〔未訳〕
+- [ ] **81.4** Add a second worktree (and run tsumugi) → The line is gone 〔未訳〕
+- [ ] **81.5** With two or more worktrees and tsumugi not running, look at the worktree view → The line reads `Next: start tsumugi to see the Claude Code running in each worktree.`; start tsumugi and it goes within a few seconds 〔未訳〕
+- [ ] **81.6** While the history is still being read (a big repository) → No guidance line shows (the skeleton only) 〔未訳〕
+- [ ] **81.7** Switch EN and JA; narrow the window → The line reads well in both and wraps without overlapping the table 〔未訳〕
