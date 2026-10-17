@@ -126,11 +126,26 @@ impl Band {
                 _ => "band.reset_hard",
             };
         }
+        if matches!(self.then, Then::Act(Task::Land { .. })) {
+            return match n {
+                1 => "band.land_merge",
+                2 => "band.land_verify",
+                3 => "band.land_ff",
+                _ => "band.land_all",
+            };
+        }
         if matches!(self.then, Then::Act(Task::CherryPick { .. })) {
             "band.parent_pick"
         } else {
             "band.parent"
         }
+    }
+}
+
+/// A landing's digit: the last stage it goes to (1 is the first).
+pub(crate) fn set_land_stage(task: &mut Task, n: u32) {
+    if let Task::Land { until, .. } = task {
+        *until = michi_core::land::Stage::ALL[(n as usize).clamp(1, 4) - 1];
     }
 }
 
@@ -257,6 +272,9 @@ impl App {
                 }
                 if let (Task::Reset { mode, .. }, Some(n)) = (&mut task, side) {
                     *mode = michi_core::reset::Mode::ALL[(n as usize - 1).min(2)];
+                }
+                if let Some(n) = side {
+                    set_land_stage(&mut task, n);
                 }
                 self.act(task);
             }

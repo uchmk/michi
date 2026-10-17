@@ -18,6 +18,7 @@ pub mod git;
 pub mod handoff;
 pub mod history;
 pub mod ignore;
+pub mod land;
 pub mod log;
 pub mod net;
 pub mod newwork;
