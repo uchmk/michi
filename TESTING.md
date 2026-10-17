@@ -653,3 +653,15 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 47.7 | Start `git rebase -i` and stop it at an edit | The strip says it is a rebase, with no buttons; it goes when the rebase ends | | [ ] |
 | 47.8 | With a Claude working in the worktree press `R` | A yes is asked first, as for a switch | | [ ] |
 | 47.9 | Open the settings (`,`) or the key list (`?`) while the strip is up; switch EN and JA | The strip stays tidy at a narrow width (the text is cut with an ellipsis, the buttons stay); both languages read well | | [ ] |
+
+## 94. Review queue of finished Claude work (Review column)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 94.1 | Open the worktree table (`3`) with two or more branch worktrees that differ from main | A Review column sits between Unseen and Clash; a worktree never opened in the review (`d`) reads `Not looked at` (dim) with `0 / N files checked`; the main worktree reads `—`; in the narrow card layout it is a `Review` line | [ ] |
+| 94.2 | Open a branch's review with `d`, then close it (Esc) and look at the table | That row reads `In review` (blue) within a moment of closing, with the count of files checked | [ ] |
+| 94.3 | In the review check some files (Space) but not all; then check the last one | `In review` with `k / N`; once every file is checked the row reads `Approved` (green) with `N / N` | [ ] |
+| 94.4 | Write a note (`n`) on a line and hand it with `g` | The row reads `Flagged` (yellow) even though all files are checked; the Claude commits again and the row goes back to `In review` or `Approved` by what is checked | [ ] |
+| 94.5 | Commit in an approved worktree a change to a file already checked | The row leaves `Approved` (the changed file lost its check) without opening the review | [ ] |
+| 94.6 | Drag the Review column's left edge in the header; restart michi | The width follows the drag and is kept; the other columns still resize | [ ] |
+| 94.7 | Switch the language EN and JA, and a theme with a light background | The stage words read `Not looked at` / `In review` / `Flagged` / `Approved` and JA `未確認` / `確認中` / `指摘済み` / `承認`; every colour is readable | [ ] |

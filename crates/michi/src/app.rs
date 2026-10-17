@@ -11,6 +11,7 @@ use michi_core::git::{self, Version};
 use michi_core::oid::Oid;
 use michi_core::openin::Tool;
 use michi_core::paths;
+use michi_core::queue::Reviews;
 use michi_core::summary::{self, Summary};
 use michi_core::track::{Tree, Trees};
 use michi_core::unseen::Unseen;
@@ -225,6 +226,8 @@ pub struct App {
     pub clashes: Clashes,
     /// The commits not seen yet, per worktree.
     pub unseen: Unseen,
+    /// Where each worktree's branch stands in review.
+    pub reviews: Reviews,
     /// The worktrees whose Claude was handed a conflict, until it stops.
     pub handed: Vec<Handed>,
     /// Whether the window is in front (a notification is told only when it is not).
@@ -316,6 +319,7 @@ impl App {
             wips: Vec::new(),
             clashes: Clashes::default(),
             unseen: Unseen::default(),
+            reviews: Reviews::default(),
             handed: Vec::new(),
             front: true,
             last_error: None,
@@ -565,6 +569,7 @@ impl App {
                 }
             }
             Answer::Unseen(u) => self.unseen = u,
+            Answer::Reviews(r) => self.reviews = r,
             Answer::ReviewList { gen, result, checks } => {
                 let wish = self.review.as_mut().and_then(|r| r.take_list(gen, result.map(|l| *l), checks));
                 self.wish(wish);
