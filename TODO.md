@@ -135,6 +135,52 @@ All wait for the owner; none is started.
 - [ ] Key list (`?`) and macOS Cmd check（要確認: #61）
 - [ ] Real-machine checks off Windows（要確認: #62）
 
+## Gaps against other Git clients, round 2: features, operability, looks (2026-10-17)
+
+All wait for the owner; none is started.
+
+- [ ] Undo / Redo on one key（要確認: #64）
+- [ ] Compare any two commits or branches（要確認: #65）
+- [ ] Context menus (commit, branch, file)（要確認: #66）
+- [ ] Drag and drop (merge / rebase / cherry-pick)（要確認: #67）
+- [ ] Syntax highlighting in diffs（要確認: #68）
+- [ ] CI / PR state on the graph（要確認: #69）
+- [ ] Auto fetch: interval and failure（要確認: #70）
+- [ ] Hide / solo branches（要確認: #71）
+- [ ] Tree view of changed files（要確認: #72）
+- [ ] Progress and cancel for long operations（要確認: #73）
+- [ ] Commit message help（要確認: #74）
+- [ ] Open the worktree in terminal / editor / explorer（要確認: #75）
+- [ ] autostash on pull / checkout（要確認: #76）
+- [ ] reset: choose soft / mixed / hard（要確認: #77）
+- [ ] One-button sync（要確認: #78）
+- [ ] Fuzzy pickers everywhere（要確認: #79）
+- [ ] Same strength of confirmation for destructive operations（要確認: #80）
+- [ ] First-run tour and empty states（要確認: #81）
+- [ ] Key hints on hover（要確認: #82）
+- [ ] Keys whose meaning changes per screen（要確認: #83）
+- [ ] Author avatars（要確認: #84）
+- [ ] Bundled monospace font（要確認: #85）
+- [ ] Row density (compact / cozy)（要確認: #86）
+- [ ] Diff minimap and next change（要確認: #87）
+- [ ] Short animations（要確認: #88）
+- [ ] HiDPI and Windows 11 frame checks（要確認: #89）
+- [ ] Loading skeletons（要確認: #90）
+
+## What only michi can do (2026-10-17)
+
+Worktrees and parallel Claude work are the base; no other client has them.
+
+- [ ] Snapshot and diff per Claude turn（要確認: #91）
+- [ ] Suggested order to land worktrees on main（要確認: #92）
+- [ ] Land a worktree (merge in, verify, ff, clean up)（要確認: #93）
+- [ ] Review queue of finished Claude work（要確認: #94）
+- [ ] From a commit to the Claude session that made it（要確認: #95）
+- [ ] Warn before a new task overlaps a running worktree（要確認: #97）
+- [ ] Answer a waiting Claude from a notification in one step（要確認: #98）
+- [ ] Hand-off of a conflict to Claude through to review, in one band（要確認: #99）
+- [ ] Trial merge of several worktrees in a chosen order（要確認: #100）
+
 ## Owner
 
 - 【人】 After the skeleton: run the rows of TESTING-CHECKS.md on the real machine (window, title bar, icon, fonts).
