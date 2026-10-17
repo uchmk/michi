@@ -443,7 +443,7 @@ impl App {
     }
 
     /// The worktrees as last read: the table's, else the graph's.
-    fn worktrees(&self) -> Vec<Worktree> {
+    pub(crate) fn worktrees(&self) -> Vec<Worktree> {
         if self.trees.trees.is_empty() {
             self.graph.setup().worktrees.clone()
         } else {
@@ -575,6 +575,12 @@ impl App {
             Some(Item::Remote { remote, name, .. }) => (p.wt.clone(), format!("{remote}/{name}")),
             _ => return,
         };
+        self.ask_rebase_onto(wt, onto);
+    }
+
+    /// Asks before it rebases the branch of the worktree at `wt` onto `onto`
+    /// (Ctrl+R in the palette, and a branch dropped on a worktree).
+    pub(crate) fn ask_rebase_onto(&mut self, wt: PathBuf, onto: String) {
         let branch = self.worktrees().into_iter().find(|w| same(&w.path, &wt)).and_then(|w| w.branch);
         let say = |a: &mut App, key: &'static str| {
             let doing = a.doing_in(&wt).map_or_else(String::new, |d| a.doing_word(d));
@@ -613,11 +619,17 @@ impl App {
             return;
         };
         let (id, subject) = (c.id, c.subject.clone());
-        let rev = id.to_string();
+        self.ask_merge_into(wt, id.to_string(), id.short(), subject);
+    }
+
+    /// Asks before it merges `rev` (shown as `label`; `subject` is the
+    /// commit's) into the branch of the worktree at `wt`: `m` in the graph,
+    /// and a commit or a branch dropped on a worktree.
+    pub(crate) fn ask_merge_into(&mut self, wt: PathBuf, rev: String, label: String, subject: String) {
         let branch = self.worktrees().into_iter().find(|w| same(&w.path, &wt)).and_then(|w| w.branch);
         let say = |a: &mut App, key: &'static str| {
             let doing = a.doing_in(&wt).map_or_else(String::new, |d| a.doing_word(d));
-            let text = a.tr(key).replace("{wt}", &act::name(&wt)).replace("{rev}", &id.short()).replace("{doing}", &doing);
+            let text = a.tr(key).replace("{wt}", &act::name(&wt)).replace("{rev}", &label).replace("{doing}", &doing);
             a.say_for(text, 6);
         };
         let Some(branch) = branch else { return say(self, "act.merge_detached") };
@@ -626,14 +638,14 @@ impl App {
         }
         let mut text = self
             .tr("act.merge_commit")
-            .replace("{id}", &id.short())
+            .replace("{id}", &label)
             .replace("{subject}", &subject)
             .replace("{branch}", &branch)
             .replace("{wt}", &act::name(&wt));
         if self.claude_working(&wt) {
             text.push_str(self.tr("act.revert_claude"));
         }
-        let plan = self.merge_forecast(&wt, &id.short(), None, Outlook::Unknown);
+        let plan = self.merge_forecast(&wt, &rev, None, Outlook::Unknown);
         self.band = Some(Band { plan, ..Band::new(text, Then::Act(Task::Merge { wt, rev })) });
     }
 
@@ -863,6 +875,12 @@ impl App {
             return;
         };
         let (id, subject, parents) = (c.id, c.subject.clone(), c.parents.len());
+        self.ask_cherry_onto(wt, id, subject, parents);
+    }
+
+    /// Asks before it picks the commit `id` (with `parents` parents) onto the
+    /// worktree at `wt`: `C` in the graph, and a commit dropped on a worktree.
+    pub(crate) fn ask_cherry_onto(&mut self, wt: PathBuf, id: Oid, subject: String, parents: usize) {
         if let Some(d) = self.doing_in(&wt) {
             let text = self.tr("act.revert_doing").replace("{wt}", &act::name(&wt)).replace("{doing}", &self.doing_word(d));
             self.say_for(text, 8);

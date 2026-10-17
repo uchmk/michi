@@ -635,6 +635,17 @@
 - [ ] **78.9** Press `S` while a Claude works in the worktree, or in the middle of a merge → The Claude case asks `Sync there anyway?` (y/n); the merge case says sync waits (and the button is greyed) → | [ ] 〔未訳〕
 - [ ] **78.10** Press `S` in the 2, 3 and 4 views; open `?`; switch EN and JA → `S` works in each; the key list has a `S` line; both languages read well → | [ ] 〔未訳〕
 
+## 67. Drag and drop onto a worktree
+
+- [ ] **67.1** In the graph (`1`) press on a commit row, drag it a little and watch → The pointer turns to a grabbing hand and the hash and subject follow it; a click without moving still only selects the row 〔未訳〕
+- [ ] **67.2** Drag that commit over a worktree row in the side column → The worktree's row gets an outline in the run colour while the pointer is on it 〔未訳〕
+- [ ] **67.3** Let go over the worktree row → A small menu at the pointer reads `<hash> onto <branch>` and offers Merge into it and Cherry-pick onto it; nothing has run yet 〔未訳〕
+- [ ] **67.4** Pick Merge into it; then do the same and pick Cherry-pick onto it → The same band as `m` and `C` (plan lines, the backup note, the Claude warning) asks first, for that worktree and not for the one the window is on; y runs it 〔未訳〕
+- [ ] **67.5** Drag a branch row of the side column onto another worktree's row → The menu offers Merge into it and Rebase it onto the dropped branch; Rebase asks the band of the palette's Ctrl+R for that worktree 〔未訳〕
+- [ ] **67.6** Drag a branch onto the worktree that has it checked out; drop a commit outside the side column → The first says nothing can be done and opens no menu; the second does nothing 〔未訳〕
+- [ ] **67.7** Open the menu, press Esc; open it again and click outside it → Both close it without doing anything 〔未訳〕
+- [ ] **67.8** Drag onto a worktree in the middle of a merge, and onto one where a Claude works; switch EN and JA → The band says the worktree is busy / warns about the Claude, as the keys do; both languages read well 〔未訳〕
+
 ## 68. Syntax colours in diffs
 
 - [ ] **68.1** Open a commit that changes a `.rs` file (detail pane), then the Changes view of a worktree with a `.rs` edit → Keywords, strings, comments, numbers and names are coloured on context, added and deleted lines; the green/red line tint and the marked words (changed words) still show → | [ ] 〔未訳〕

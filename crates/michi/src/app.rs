@@ -355,6 +355,10 @@ pub struct App {
     pub fetch_failed: bool,
     /// A job waiting for a yes, under the title bar.
     pub band: Option<Band>,
+    /// A commit or a branch being dragged toward a worktree (#67).
+    pub dnd: Option<michi_core::dnd::Source>,
+    /// The small menu a drop opened: what was dropped, on which worktree, where.
+    pub drop_menu: Option<crate::dnd_ui::DropMenu>,
     /// The window's worktree is on no branch: what was read of it (#109).
     pub detached: Option<crate::strip::Strip>,
     /// The window's worktree is a sparse checkout (#31); None when it is not
@@ -478,6 +482,8 @@ impl App {
             auto_failures: 0,
             fetch_failed: false,
             band: None,
+            dnd: None,
+            drop_menu: None,
             detached: None,
             sparse: None,
             bisect: None,
