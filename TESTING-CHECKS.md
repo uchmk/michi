@@ -199,16 +199,16 @@
 
 - [ ] **15.1** Press `f` (or click `fetch f` in the tool band of `1`); press `f` again; restart michi → While it runs the key bar's right side reads, in amber, `fetch · <step> n%` and `Esc stops`; then the toast `Fetched: n refs moved`, the graph shows the moved remote branches and the key bar reads `⟳ fetch just now` (later `n min ago`); the second `f` says `Fetched: nothing new`; after the restart the key bar still gives the time of the last fetch 〔未訳〕
 - [ ] **15.2** On a branch behind its upstream press `p`; press `p` again; on a branch with no upstream press `p`; on a branch that went its own way press `p` → `Pulled n commits from origin/main` and the graph moves the branch; then `Already up to date with origin/main`; `main has no upstream to pull from: P pushes it`; `origin/main went its own way (↑a ↓b): a pull only goes forward, so nothing was merged` and nothing moves (pull is fast-forward only) 〔未訳〕
-- [~] **15.3** Commit and press `P`; press `P` again; on a new branch with no upstream press `P` → `Pushed to origin/main`; `origin/main has it already`; `Pushed to origin/feat, now its upstream` and `git status -sb` shows `feat...origin/feat` 〔未訳〕
+- [~] **15.3** Commit and press `P` and `y` on the band (112.1); press `P` again; on a new branch with no upstream press `P` → `Pushed to origin/main`; `origin/main has it already`; `Pushed to origin/feat, now its upstream` and `git status -sb` shows `feat...origin/feat` 〔未訳〕
 - [ ] **15.4** Let a second clone push first, commit here and press `P` without fetching → The toast `origin/main refused the push: [rejected] … (fetch first). f fetches its commits; then F pushes over them, asking first`; nothing is rewritten 〔未訳〕
-- [~] **15.5** After 15.4 press `f`, then `P`; then `F`; Esc; `F` again and `y` → `P` only says `origin/main has n commits this branch does not: F pushes over them, asking first` and pushes nothing; `F` shows a band under the top bar: `origin/main has n commits this branch does not. Push over them? What origin/main has now is kept under refs/michi/backup/ first.` with `Go ahead y` and `Not now Esc`; Esc pushes nothing; `y` pushes with `--force-with-lease` and says `Pushed over origin/main; what it had is kept in michi/backup/<time>`; that ref points at the remote's old tip and `git reflog refs/michi/backup/<time>` reads `michi: push --force-with-lease over origin/main` 〔未訳〕
+- [~] **15.5** After 15.4 press `f`, then `P`; then `F`; Esc; `F` again and `y` → `P` only says `origin/main has n commits this branch does not: F pushes over them, asking first` and pushes nothing; `F` shows a red band (112.3) whose note reads `origin/main has n commits this branch does not. Push over them? What origin/main has now is kept under refs/michi/backup/ first.` with `Go ahead y` and `Not now Esc`; Esc pushes nothing; `y` pushes with `--force-with-lease` and says `Pushed over origin/main; what it had is kept in michi/backup/<time>`; that ref points at the remote's old tip and `git reflog refs/michi/backup/<time>` reads `michi: push --force-with-lease over origin/main` 〔未訳〕
 - [ ] **15.6** On a branch only behind its upstream press `P`, then `F` → Both say `Nothing to push: origin/main is n ahead (p pulls)`; no band 〔未訳〕
 - [~] **15.7** Add a remote that does not answer (`git remote add slow https://10.255.255.1/x.git`), press `f`, then `f` again, then Esc → The key bar shows `fetch` and `Esc stops` in amber; the second `f` says `fetch is running: Esc stops it`; Esc says `Stopping fetch…`, then `fetch stopped`; afterwards no `git`, `git-remote-https` process is left (Task Manager); remove the remote after 〔未訳〕
 - [ ] **15.8** In `1` press `p` / `P`; in `3` select another worktree's row and press `P`; click `pull p` on a card; in `2` show another worktree and press `p` → `1` works on the worktree michi was opened in; `3` on the selected worktree; `2` on the worktree shown; a band (15.5) shows over `2` and `3` too 〔未訳〕
 - [ ] **15.9** Start a Claude in a worktree from tsumugi; press `p` for that worktree; Esc; `p` and `y` → The band `A Claude is working in <worktree>. Pull there anyway?`; Esc pulls nothing; `y` pulls 〔未訳〕
 - [ ] **15.10** Fetch from an https remote that needs a sign-in; fetch from an ssh remote whose key has a passphrase and no ssh-agent → The Git Credential Manager window comes up as it does in a terminal and the fetch goes on after it; the ssh one fails at once (no prompt hangs) with `fetch failed: … — start ssh-agent and ssh-add your key` 〔未訳〕
 - [ ] **15.11** Narrow the window to its smallest with a band shown and a fetch running; switch to the light theme → The band wraps its text and grows, its keys stay whole; the key bar folds its keys before the fetch progress or age; both stay readable in both themes 〔未訳〕
-- [ ] **15.12** In a clone with two remotes and no `origin` (`git remote rename origin up`, `git remote add mine <path>`), press `P` on a branch with unpushed commits; type `mi`, Enter; then `P` again on another branch; Esc → The box `Push to: pick a remote` (`pushing <worktree>`) lists `mine` and `up`; the keys read `Enter pushes to it (and sets the upstream) · Esc closes`; `mi` leaves `mine`; Enter closes it and pushes there (`Pushed … to mine`, upstream becomes `mine/<branch>`); Esc pushes nothing. With `origin` or a `pushRemote` set no box shows 〔未訳〕
+- [ ] **15.12** In a clone with two remotes and no `origin` (`git remote rename origin up`, `git remote add mine <path>`), press `P` on a branch with unpushed commits; type `mi`, Enter, `y` on the band (112.1); then `P` again on another branch; Esc → The box `Push to: pick a remote` (`pushing <worktree>`) lists `mine` and `up`; the keys read `Enter pushes to it (and sets the upstream) · Esc closes`; `mi` leaves `mine`; Enter closes it and pushes there (`Pushed … to mine`, upstream becomes `mine/<branch>`); Esc pushes nothing. With `origin` or a `pushRemote` set no box shows 〔未訳〕
 
 ## 16. Branches, tags and revert
 
@@ -421,3 +421,29 @@
 - [ ] **37.5** Write `[open]` `editor = "notepad {path}"` into config.toml, wait 2 s, press `e` → Notepad is started with the folder as its argument; Settings > General shows the line → | [ ] 〔未訳〕
 - [ ] **37.6** Write `editor = "no-such-program"`, press `e` → A toast "open failed: ..." with the program's name; michi keeps running and does not freeze → | [ ] 〔未訳〕
 - [ ] **37.7** Write `editor = "a \"b"` (unclosed quote) → A warning about config.toml names the key; `e` still uses the default → | [ ] 〔未訳〕
+
+## 38. Key hints on hover
+
+- [ ] **38.1** Hover the gear at the top right and the search field beside it → The tooltips read `Settings (,)` and `Search commands (Ctrl+Shift+P)` → | [ ] 〔未訳〕
+- [ ] **38.2** Bind another key to `palette` in keymap.toml (prepend), restart, hover the search field → The tooltip shows the new key → | [ ] 〔未訳〕
+- [ ] **38.3** Hover each view tab (Graph, Changes, Worktrees) → The tooltip names the view and its digit, for example `Graph (1)` → | [ ] 〔未訳〕
+- [ ] **38.4** In the graph view hover Fetch, Pull, Push, Branch, Stash and New work → Each tooltip shows its key, for example `Fetch (f)`, `New work (N)` → | [ ] 〔未訳〕
+- [ ] **38.5** During a merge hover Pull and Stash → The tooltip still says they are held, not the key → | [ ] 〔未訳〕
+- [ ] **38.6** In the worktree view hover New work and the re-read button → `New work (N)`; the re-read button shows just its name → | [ ] 〔未訳〕
+
+## 39. Graph filter with fuzzy matching (ito-match)
+
+- [ ] **39.1** Press `/` over the graph and type the first letters of a long subject, skipping the rest (e.g. `fxflk` for "Fix the flaky test") → The commit is a hit (the others fade) and the hit count shows it → | [ ] 〔未訳〕
+- [ ] **39.2** Type two words, one of a subject and one of an author or a branch name → Only commits that hold both words are hits → | [ ] 〔未訳〕
+- [ ] **39.3** Type the first 7 characters of a commit hash, then characters from the middle of one → The first selects that commit; the middle of a hash hits nothing by itself → | [ ] 〔未訳〕
+- [ ] **39.4** Type a word, then add letters; then take letters off → Adding letters never lights new rows; taking them off lights rows again, with no lag on a long history → | [ ] 〔未訳〕
+- [ ] **39.5** Type in capitals (`FIX`) → The same hits as `fix` → | [ ] 〔未訳〕
+
+## 40. What a push sends
+
+- [ ] **40.1** On `feat` (not on `origin` yet) press `P`; Esc; `P` again and `y` → A band under the top bar: `Push 3 commit(s) to origin/feat, which is not there yet? It becomes this branch's upstream.` with one row per commit (short hash, subject, newest first); Esc pushes nothing (`git ls-remote origin feat` is empty); `y` pushes and says `Pushed to origin/feat, now its upstream` 〔未訳〕
+- [ ] **40.2** Commit once more on `feat` and press `P` → `Push 1 commit(s) to origin/feat?` with just that commit; make 15 commits and `P`: the newest 12 are listed and a last row reads `… and 3 more` 〔未訳〕
+- [ ] **40.3** Let `b` push a commit to `origin/feat`, press `f` here, commit and press `F` → A red band (red outline and note): the commits that go, and the note `origin/feat has 1 commits this branch does not. Push over them? …`; `P` instead only says `F pushes over them, asking first`; `y` pushes with the lease and names the backup 〔未訳〕
+- [ ] **40.4** Press `P` on a branch that origin already has, on one only behind, and in a repository with no remote → `origin/feat has it already`, `Nothing to push: origin/feat is n ahead (p pulls)` and `No remote …`; no band in any of them 〔未訳〕
+- [ ] **40.5** With two remotes and no `origin`, press `P`, pick one → The list of remotes first, then the band for the picked remote 〔未訳〕
+- [ ] **40.6** Switch the language to Japanese and press `P` → The band reads `n 個のコミットを … に push しますか？`; the commit rows do not run off the box 〔未訳〕
