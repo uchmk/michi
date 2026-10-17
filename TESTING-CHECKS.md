@@ -367,3 +367,10 @@
 - [ ] **31.2** Make two worktrees edit the same file, wait for michi's prediction, ask "which worktrees would conflict?" → `michi_conflicts` names the pair and the file → | [ ] 〔未訳〕
 - [ ] **31.3** Close michi and ask again → The tool answers "michi is not running; start michi and ask again" → | [ ] 〔未訳〕
 - [ ] **31.4** Open two michi windows, close the first, ask again after half a minute → The second window answers → | [ ] 〔未訳〕
+
+## 32. 変更の画面の diff の選択とコピー（ito-select）
+
+- [ ] **32.1** In the `2` view pick a file; drag the mouse over some diff lines → The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) → | [ ] 〔未訳〕
+- [ ] **32.2** Double-click a word, then triple-click a line; press Ctrl+C after a drag → A word, then the line is picked up and copied; Ctrl+C copies it again → | [ ] 〔未訳〕
+- [ ] **32.3** Click a file row, a worktree chip, the amend switch and Commit → Each still does what it did; an empty click in the diff lets the selection go → | [ ] 〔未訳〕
+- [ ] **32.4** Select a diff line and pick another file or switch the worktree → The selection is gone; the commit view's selection is not drawn here → | [ ] 〔未訳〕

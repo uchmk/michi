@@ -662,6 +662,10 @@ fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32) {
     scroll = scroll.clamp(0.0, (total - body.height()).max(0.0));
     ctx.data_mut(|dt| dt.insert_temp(scroll_id(), scroll));
 
+    // A drag over the text picks it up; nothing else in the body takes a click.
+    let grab = ui.interact(body, Id::new("changes-select"), Sense::click_and_drag());
+    let side = ch.selected().map_or(String::new(), |(side, _)| format!("{side:?}"));
+    crate::select::begin(&format!("changes:{:?}:{side}:{}", ch.wt, f.path));
     let mut y = body.top() - scroll;
     for (piece, h) in pieces.iter().zip(heights) {
         let rr = Rect::from_min_size(pos2(body.left(), y), vec2(body.width(), h));
@@ -690,6 +694,21 @@ fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32) {
             }
         }
     }
+    if live {
+        let driven = crate::select::drive(&grab, body);
+        if let Some(text) = driven.copy {
+            ctx.copy_text(text);
+        }
+        if let Some(url) = driven.open {
+            std::thread::spawn(move || {
+                let _ = michi_core::pr::open_url(&url);
+            });
+        }
+        if ui.input(|i| i.modifiers.command) && grab.hover_pos().is_some_and(|at| crate::select::url_at(at, body)) {
+            ctx.set_cursor_icon(egui::CursorIcon::PointingHand);
+        }
+    }
+    crate::select::paint();
 }
 
 /// The row that shows the line `at`, in the way the diff is shown.
@@ -982,5 +1001,27 @@ mod tests {
         assert_eq!(app.changes.wt.as_deref(), Some(std::path::Path::new("C:/r/repo")), "another worktree");
         assert!(app.changes.lists.is_none(), "its files are read anew");
         assert!(app.feed(']'));
+    }
+
+    #[test]
+    fn a_drag_over_the_diff_picks_its_text_up() {
+        let ctx = egui::Context::default();
+        let mut app = opened();
+        take_list(&mut app, lists(&["s.txt"], &["a.txt"]));
+        take_file(&mut app, Some(two_hunks("s.txt")));
+        frame(&ctx, &mut app, 1400.0, Vec::new());
+        let ev = |at: Pos2, pressed| egui::Event::PointerButton {
+            pos: at,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: Default::default(),
+        };
+        let (from, to) = (pos2(500.0, 120.0), pos2(1300.0, 400.0));
+        frame(&ctx, &mut app, 1400.0, vec![egui::Event::PointerMoved(from), ev(from, true)]);
+        frame(&ctx, &mut app, 1400.0, vec![egui::Event::PointerMoved(to)]);
+        frame(&ctx, &mut app, 1400.0, vec![ev(to, false)]);
+        frame(&ctx, &mut app, 1400.0, Vec::new());
+        let got = crate::select::text().expect("the drag picked text up");
+        assert!(!got.is_empty());
     }
 }
