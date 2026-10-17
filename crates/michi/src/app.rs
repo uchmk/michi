@@ -1591,7 +1591,7 @@ impl App {
     pub fn help_lines(&self) -> Vec<ito_help::Line> {
         use ito_help::Line;
         let mut lines = vec![Line::Head(self.tr("help.global").to_owned())];
-        let bind = |k: &str, w: &str| Line::Bind { keys: michi_core::keyhelp::native(k).into_owned(), desc: w.to_owned() };
+        let bind = |k: &str, w: &str| Line::Bind { keys: ito_keys::human_text(k).into_owned(), desc: w.to_owned() };
         // The keys of the screen in front are tried first, and a screen over a
         // view takes every key: the list names only the global ones that work.
         let (keys, head) = self.keys_of();

@@ -2650,7 +2650,7 @@ fn mac_spelling(text: &'static str) -> &'static str {
     use std::sync::{Mutex, OnceLock};
     static SPELLED: OnceLock<Mutex<HashMap<&'static str, &'static str>>> = OnceLock::new();
     let mut seen = SPELLED.get_or_init(Default::default).lock().unwrap();
-    seen.entry(text).or_insert_with(|| Box::leak(michi_core::keyhelp::spelled(text, true).into_owned().into_boxed_str()))
+    seen.entry(text).or_insert_with(|| Box::leak(ito_keys::human_text_for(text, true).into_owned().into_boxed_str()))
 }
 
 /// A keymap layer's name in `lang`; the name itself when there are no words.

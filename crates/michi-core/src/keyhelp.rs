@@ -74,33 +74,9 @@ pub fn global_here(global: &Keys, screen: &Keys) -> Vec<(String, &'static str)> 
         .collect()
 }
 
-/// `text` with the Ctrl keys spelled as a Mac reader knows them: `Ctrl+Enter`
-/// is `Cmd+Enter` on macOS, where the keymap's `C` is Cmd (#61). `Ctrl+Tab`
-/// stays: switching pages is the Control key there too. Elsewhere, unchanged.
-pub fn spelled(text: &str, mac: bool) -> std::borrow::Cow<'_, str> {
-    if !mac || !text.contains("Ctrl+") {
-        return std::borrow::Cow::Borrowed(text);
-    }
-    std::borrow::Cow::Owned(text.replace("Ctrl+Tab", "\u{1}").replace("Ctrl+", "Cmd+").replace('\u{1}', "Ctrl+Tab"))
-}
-
-/// [`spelled`] for the machine michi runs on.
-pub fn native(text: &str) -> std::borrow::Cow<'_, str> {
-    spelled(text, cfg!(target_os = "macos"))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn ctrl_is_cmd_on_a_mac_and_only_there() {
-        assert_eq!(spelled("Ctrl+Enter", true), "Cmd+Enter");
-        assert_eq!(spelled("Ctrl+Shift+P  Ctrl+V", true), "Cmd+Shift+P  Cmd+V");
-        assert_eq!(spelled("Ctrl+Tab", true), "Ctrl+Tab");
-        assert_eq!(spelled("Ctrl+Enter", false), "Ctrl+Enter");
-        assert_eq!(spelled("j k", true), "j k");
-    }
 
     const GRAPH: &Keys = &[("j k", "move"), ("t", "revert"), ("T", "tag")];
     const TABLE: &Keys = &[("j k", "select"), ("t e", "open"), ("p", "pr")];
