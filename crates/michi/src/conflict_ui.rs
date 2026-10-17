@@ -1425,6 +1425,7 @@ mod tests {
             clipped(ui, &p, pos2(10.0, 10.0), "side", FontId::monospace(12.0), Color32::WHITE, 200.0);
             crate::select::begin("t");
             clipped(ui, &p, pos2(10.0, 30.0), "line", FontId::monospace(12.0), Color32::WHITE, 200.0);
+            #[allow(clippy::single_range_in_vec_init)]
             marked(ui, &p, pos2(10.0, 50.0), "marked", &[0..2], Color32::RED, 200.0);
             crate::select::paint();
             clipped(ui, &p, pos2(10.0, 70.0), "after", FontId::monospace(12.0), Color32::WHITE, 200.0);

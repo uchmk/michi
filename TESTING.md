@@ -494,3 +494,13 @@ files under `refs/michi/backup/<time>` first.
 | 33.4 | Click a place, a side's pick button, `base` and the buttons of the result; click an empty place | Each click still does what it did (select the place, choose a side, show the base); an empty click lets the selection go | | [ ] |
 | 33.5 | Start writing a result by hand; drag and double-click inside the text box | The text box selects its own text as before; nothing outside it is lit | | [ ] |
 | 33.6 | Select some lines, then scroll the places or solve a place | The selection is gone (no wrong text stays lit) | | [ ] |
+
+## 34. Selecting text in the review (ito-select)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 34.1 | Press `d` over a worktree; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal); no comment opens | | [ ] |
+| 34.2 | Double-click a word in the diff, triple-click a line, press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] |
+| 34.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] |
+| 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] |
+| 34.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] |
