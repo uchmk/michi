@@ -135,6 +135,10 @@ All wait for the owner; none is started.
 - [ ] Pre-merge checklist (test / verify results)（要確認: #57）
 - [x] Hook output and rerun on failure (`r` over a refused commit's panel runs it again; recommended option of #58)（要確認: #58）
 - [x] Speed target for very large repositories (recommended option of #59: budget in `scale.rs`, `bench-large` in CI; first screen from a real repository is checked by hand, TESTING 259)（要確認: #59）
+- [ ] Conflict-prediction marks on the graph（要確認: #56）
+- [x] Pre-merge checklist (test / verify results)（要確認: #57）
+- [ ] Hook output and rerun on failure（要確認: #58）
+- [ ] Speed target for very large repositories（要確認: #59）
 - [ ] Accessibility（要確認: #60）
 - [ ] Key list (`?`) and macOS Cmd check（要確認: #61）
 - [ ] Real-machine checks off Windows（要確認: #62）

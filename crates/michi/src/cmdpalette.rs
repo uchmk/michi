@@ -87,6 +87,7 @@ impl App {
             || self.tidy.is_some()
             || self.reflog.is_some()
             || self.stats.is_some()
+            || self.ready.is_some()
             || self.blame.is_some()
             || self.trial.is_some()
             || self.reorder.is_some()

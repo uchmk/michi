@@ -985,3 +985,15 @@
 - [ ] **247.8** Open it over the worktree table (`3`) and in a repository with no commit yet → It opens from both; with no commit it says there are no commits in the range 〔未訳〕
 - [ ] **247.9** Press Esc, or click outside the panel → The panel closes; no git index.lock is taken while it reads (a Claude committing in the same worktree is not blocked) 〔未訳〕
 - [ ] **247.10** Check the keybar and `?` over the graph and the worktree table, and over the panel; switch EN and JA → `Z` is listed, the panel lists j k, r, w, Esc; text reads well in both languages and the bars stay inside the panel in a narrow window 〔未訳〕
+
+## 257. Pre-merge checklist (`g`)
+
+- [ ] **257.1** In the `3` view select a worktree on a feature branch and press `g` → A toast says it is checking, then a list opens: `Before merging <branch> into <trunk>` with six rows, each marked OK, !! or ?? and a reason 〔未訳〕
+- [ ] **257.2** Press `g` on the trunk's own row, and on a detached worktree → No list; a toast says why (the trunk itself, or on no branch) 〔未訳〕
+- [ ] **257.3** Edit a file in the worktree and press `g` again → The Working tree row is !! and counts the changed files 〔未訳〕
+- [ ] **257.4** Make the branch clash with the trunk (same lines changed) and press `g` → The clash row is !! and names the files; a clean branch says the trunk merges in without a conflict 〔未訳〕
+- [ ] **257.5** Press `g` on a branch with an unpushed commit, then on one with no upstream → The Pushed row is !! with the count, then with `no upstream` 〔未訳〕
+- [ ] **257.6** Land the branch with `l` (verify runs) or run a failing verify, then press `g` on the same commit → The verify row says passed (OK) or failed with the exit code (!!); a new commit goes back to `no result recorded` (??) 〔未訳〕
+- [ ] **257.7** With a GitHub remote and gh signed in, push the branch and press `g` → The GitHub checks row counts passed, failed or pending; with the network off it says it could not be read (??) and the list still opens 〔未訳〕
+- [ ] **257.8** Press any key, then Esc; click outside the list → Other keys do nothing; Esc and an outside click close it 〔未訳〕
+- [ ] **257.9** Check the keybar, `?` and the palette in both languages → `g` is listed as `Check before merging` / `マージ前の確認` 〔未訳〕
