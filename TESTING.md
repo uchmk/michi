@@ -504,3 +504,14 @@ files under `refs/michi/backup/<time>` first.
 | 34.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] |
 | 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] |
 | 34.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] |
+
+## 65. Comparing two commits or branches
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 65.1 | In the graph select a commit, then Ctrl+click (Cmd+click on macOS) another | The first row keeps a tint with an outline (the mark), the clicked one is selected; Ctrl+click the marked row again takes the mark off |
+| 65.2 | With a mark and a selection press `D` | The review opens over the worktree table with "Comparison" and `a...b`, listing the files that changed from where the two parted (or plain a to b when one is the other's ancestor); the diff on the right is the usual one |
+| 65.3 | Press `D` with no mark; press Esc in the graph with a mark | A toast asks to Ctrl+click a second commit; Esc takes the mark off |
+| 65.4 | In the comparison press `u` `s` Space `n` `m`; click a file's check box | Nothing happens (no uncommitted, last look, checks, notes or merge); no "seen" count or switches are shown |
+| 65.5 | Compare two branch tips, then swap which one you Ctrl+click first | The list is each side's own changes since they parted; `j` `k` `J` `K` `Enter` and PageUp/PageDown work as in the branch review; Esc closes it |
+| 65.6 | Open the comparison, then press `d` on a worktree | The branch review of the worktree replaces it with its own list, checks and notes |

@@ -79,6 +79,25 @@ pub fn list(
     Ok(List { base, last, changes })
 }
 
+/// Where a comparison of `a` with `b` reads from: `a` itself when one is
+/// the other's ancestor (or they share no history), else where `b` left
+/// `a` (their merge base), as a branch is compared with the trunk.
+pub fn compare_from(dir: &Path, a: &Oid, b: &Oid) -> Result<Oid, git::Error> {
+    Ok(match merge_base(dir, a, b)? {
+        Some(base) if base != *a && base != *b => base,
+        _ => *a,
+    })
+}
+
+/// What changed from `a` to `b`, any two commits (the review's list of a
+/// comparison): see [`compare_from`]. `base` is where the diff reads from.
+/// Nothing is kept as looked at.
+pub fn compare(dir: &Path, a: &Oid, b: &Oid, stop: &dyn Fn() -> bool) -> Result<List, git::Error> {
+    let from = compare_from(dir, a, b)?;
+    let changes = show::changes(dir, &from, b, false, stop)?;
+    Ok(List { base: Some(from), last: None, changes })
+}
+
 /// A file as the review shows it: its path and its content at the end
 /// (`None` when deleted).
 pub type Key = (String, Option<Oid>);
@@ -246,6 +265,28 @@ mod tests {
         let l = list(&r.repo, "other", &id(&r, "main"), &other, &other, None, &|| false).unwrap();
         assert_eq!(l.base, None);
         assert!(l.changes.files.is_empty());
+    }
+
+    #[test]
+    fn two_commits_are_compared_from_themselves_or_from_where_they_parted() {
+        let r = branched("review-compare");
+        let (main, lane) = (id(&r, "main"), id(&r, "lane"));
+        // Two branches: from where lane left main, without main's own c.txt.
+        let l = compare(&r.repo, &main, &lane, &|| false).unwrap();
+        assert_eq!(l.base, Some(id(&r, "lane~2")));
+        assert_eq!(paths(&l), ["a.txt", "b.txt"]);
+        // The other way round: what main did since.
+        let l = compare(&r.repo, &lane, &main, &|| false).unwrap();
+        assert_eq!(paths(&l), ["c.txt"]);
+        // One the other's ancestor: plain, in either direction.
+        let base = id(&r, "lane~2");
+        let l = compare(&r.repo, &base, &lane, &|| false).unwrap();
+        assert_eq!((l.base, paths(&l)), (Some(base), vec!["a.txt", "b.txt"]));
+        let l = compare(&r.repo, &lane, &base, &|| false).unwrap();
+        assert_eq!((l.base, paths(&l)), (Some(lane), vec!["a.txt", "b.txt"]));
+        assert!(compare(&r.repo, &lane, &lane, &|| false).unwrap().changes.files.is_empty());
+        // Nothing of it is kept as a look.
+        assert_eq!(read_seen(&r.repo, "lane").unwrap(), None);
     }
 
     fn file(path: &str, blob: Option<&str>) -> File {

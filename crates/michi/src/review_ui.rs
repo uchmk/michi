@@ -85,7 +85,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         act = Some(Act::Back);
     }
     let mut right = back.left() - 16.0;
-    if let Some(Ok(_)) = &rv.list {
+    if let (Some(Ok(_)), None) = (&rv.list, rv.cmp) {
         let (n, m) = rv.checked();
         let text = app.tr("review.seen").replace("{n}", &n.to_string()).replace("{m}", &m.to_string());
         let ink = if n == m && m > 0 { c.done } else { c.dim };
@@ -95,7 +95,9 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         let text = app.tr("review.notes").replace("{n}", &rv.notes.len().to_string());
         right = p.text(pos2(right, mid), Align2::RIGHT_CENTER, text, FontId::proportional(12.0), c.wait).left() - 14.0;
     }
-    for (word, key, on) in [("review.since_last", 's', rv.since_last), ("review.uncommitted", 'u', rv.wip)] {
+    let switches: &[(&str, char, bool)] =
+        if rv.cmp.is_some() { &[] } else { &[("review.since_last", 's', rv.since_last), ("review.uncommitted", 'u', rv.wip)] };
+    for &(word, key, on) in switches {
         let (l, hit) = switch(ui, &p, right, mid, app.tr(word), key, on, live);
         if hit {
             act = Some(Act::Key(key));
@@ -104,9 +106,10 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     }
     let mut job = LayoutJob::default();
     job.append(&rv.branch, 0.0, TextFormat { font_id: FontId::proportional(15.0), color: c.fg, ..Default::default() });
-    let range = match rv.since() {
-        Some(since) => app.tr("review.since").replace("{}", &since.short()),
-        None => format!("{trunk}...{}", rv.branch),
+    let range = match (rv.cmp, rv.since()) {
+        (Some((a, b)), _) => format!("{}...{}", a.short(), b.short()),
+        (None, Some(since)) => app.tr("review.since").replace("{}", &since.short()),
+        (None, None) => format!("{trunk}...{}", rv.branch),
     };
     job.append(&range, 12.0, TextFormat { font_id: FontId::monospace(11.5), color: c.dim, ..Default::default() });
     job.wrap = TextWrapping::truncate_at_width((right - 10.0 - left).max(0.0));
@@ -219,6 +222,9 @@ fn prediction(app: &App, rv: &Review) -> Option<(String, Color32)> {
     let c = ito_theme::colors();
     let trunk = app.trees.trunk.as_deref()?;
     let cl = &app.clashes;
+    if rv.cmp.is_some() {
+        return None;
+    }
     let me = cl.side_of(&rv.path)?;
     let them = cl.sides.iter().position(|s| s.name == trunk)?;
     Some(match cl.between(me, them)? {

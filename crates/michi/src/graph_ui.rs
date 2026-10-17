@@ -254,6 +254,8 @@ enum Act {
     Select(u32),
     /// A mark on the scrollbar clicked: selected and brought into sight.
     Mark(u32),
+    /// A row clicked with Ctrl (Cmd): marked to compare the next with.
+    Pick(u32),
     /// A merge's chip clicked.
     Toggle(u32),
     /// The row at the foot clicked.
@@ -322,10 +324,15 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
     let p = ui.painter_at(list);
     let mut acts = Vec::new();
     let selected = g.selected_row();
+    let marked = g.marked_row();
     for k in first..last {
         let rr = row_rect(k);
         if Some(k) == selected {
             p.rect_filled(rr, 0.0, c.selection());
+        } else if Some(k) == marked {
+            // The other end of a comparison.
+            p.rect_filled(rr, 0.0, c.selection());
+            p.rect_stroke(rr.shrink(0.5), 0.0, Stroke::new(1.0, c.run), egui::StrokeKind::Inside);
         } else if Some(k) == hovered && rr.right() > 0.0 {
             p.rect_filled(rr, 0.0, c.fg.gamma_multiply(0.04));
         }
@@ -530,7 +537,8 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
     if live && list_resp.clicked() {
         if let Some(k) = list_resp.interact_pointer_pos().map(|p| ((p.y - top) / row_h).floor()) {
             if k >= 0.0 && (k as u32) < len {
-                acts.insert(0, Act::Select(k as u32));
+                let pick = ui.input(|i| i.modifiers.command);
+                acts.insert(0, if pick { Act::Pick(k as u32) } else { Act::Select(k as u32) });
             }
         }
     }
@@ -543,6 +551,10 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
                 app.graph.reveal = false;
             }
             Act::Mark(k) => app.graph.select(k),
+            Act::Pick(k) => {
+                app.graph.mark_to(k);
+                app.graph.reveal = false;
+            }
             Act::Toggle(k) => app.graph.toggle_group(k),
             Act::More => app.more(),
             Act::Fold => app.fold(),
