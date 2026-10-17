@@ -26,6 +26,7 @@ pub mod rebase;
 pub mod recent;
 pub mod refs;
 pub mod rerere;
+pub mod reset;
 pub mod revert;
 pub mod review;
 pub mod show;

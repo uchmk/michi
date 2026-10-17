@@ -152,7 +152,7 @@ All wait for the owner; none is started.
 - [ ] Commit message help（要確認: #74）
 - [ ] Open the worktree in terminal / editor / explorer（要確認: #75）
 - [ ] autostash on pull / checkout（要確認: #76）
-- [ ] reset: choose soft / mixed / hard（要確認: #77）
+- [x] reset: choose soft / mixed / hard（`R`、1 soft・2 mixed・3 hard。要確認: #77）
 - [ ] One-button sync（要確認: #78）
 - [ ] Fuzzy pickers everywhere（要確認: #79）
 - [ ] Same strength of confirmation for destructive operations（要確認: #80）

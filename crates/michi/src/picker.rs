@@ -551,6 +551,43 @@ impl App {
         self.band = Some(Band { text, then: Then::Act(Task::Revert { wt, id, mainline: None }), parents });
     }
 
+    /// `R`: asks how far to reset the window's worktree's branch to the
+    /// selected commit: `1` soft, `2` mixed, `3` hard, each told what it loses.
+    pub(crate) fn ask_reset(&mut self) {
+        let Repo::Ready(s) = &self.repo else {
+            self.say(self.tr("act.no_tree"));
+            return;
+        };
+        let wt = s.top.clone();
+        let commit = match self.graph.selected_wip() {
+            Some(_) => None,
+            None => self.graph.selected().and_then(|id| self.graph.find_commit(&id)),
+        };
+        let Some(c) = commit else {
+            self.say(self.tr("act.pick_commit"));
+            return;
+        };
+        let (id, subject) = (c.id, c.subject.clone());
+        if let Some(d) = self.doing_in(&wt) {
+            let text = self.tr("act.revert_doing").replace("{wt}", &act::name(&wt)).replace("{doing}", &self.doing_word(d));
+            self.say_for(text, 8);
+            return;
+        }
+        let branch = self.worktrees().into_iter().find(|w| same(&w.path, &wt)).and_then(|w| w.branch);
+        let branch = branch.unwrap_or_else(|| self.tr("act.detached").to_owned());
+        let mut text = self
+            .tr("act.reset")
+            .replace("{id}", &id.short())
+            .replace("{subject}", &subject)
+            .replace("{branch}", &branch)
+            .replace("{wt}", &act::name(&wt));
+        if self.claude_working(&wt) {
+            text.push_str(self.tr("act.revert_claude"));
+        }
+        let task = Task::Reset { wt, id, mode: michi_core::reset::Mode::Mixed };
+        self.band = Some(Band { text, then: Then::Act(task), parents: 3 });
+    }
+
     /// `C`: asks before it picks the selected commit onto the window's
     /// worktree; a merge asks which parent its changes are taken against.
     pub(crate) fn ask_cherry(&mut self) {
@@ -884,7 +921,7 @@ mod tests {
         assert!(a.feed('t'));
         let band = a.band.as_ref().unwrap();
         assert_eq!(band.parents, 2);
-        assert_eq!(band.parent_key(), "band.parent", "a revert keeps a parent's side");
+        assert_eq!(band.parent_key(1), "band.parent", "a revert keeps a parent's side");
         assert!(band.text.contains("is a merge"));
         assert!(a.feed('1'));
         assert!(a.band.is_none());
@@ -913,7 +950,7 @@ mod tests {
         assert!(a.feed('C'));
         let band = a.band.as_ref().unwrap();
         assert_eq!(band.parents, 2);
-        assert_eq!(band.parent_key(), "band.parent_pick", "a pick takes the changes against a parent");
+        assert_eq!(band.parent_key(1), "band.parent_pick", "a pick takes the changes against a parent");
         assert!(band.text.contains("is a merge"), "{}", band.text);
         assert!(a.feed('y'));
         assert!(a.band.is_some(), "y is not a parent");

@@ -504,3 +504,15 @@ files under `refs/michi/backup/<time>` first.
 | 34.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] |
 | 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] |
 | 34.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] |
+
+## 77. Reset: soft, mixed or hard (#77)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 77.1 | In the graph, select an older commit and press `R` | A band asks how far to reset, tells what each of 1 soft / 2 mixed / 3 hard loses, and has the three buttons and No | | [ ] |
+| 77.2 | With a staged change, press `R` on the previous commit, then `1` | The branch moves; the change shows as staged; the toast names the `michi/backup/…` ref of the old tip | | [ ] |
+| 77.3 | Same, with `2` | The branch moves; the change is unstaged but its text is in the file | | [ ] |
+| 77.4 | With an edited tracked file and an untracked file, press `R` and `3` | The edit is gone, the untracked file stays; the toast names two backup refs (the tip, the changes); `git show <changes>:file` has the edit | | [ ] |
+| 77.5 | Press `R`, then Esc (or `n`, or `y`) | Nothing changes (y does nothing: only 1 2 3 choose) | | [ ] |
+| 77.6 | Press `R` in a worktree in the middle of a merge or rebase; with no commit selected | A toast says to finish it first / to pick a commit; no band | | [ ] |
+| 77.7 | Press `R` where a Claude is working | The band ends with the note that a Claude is working there | | [ ] |

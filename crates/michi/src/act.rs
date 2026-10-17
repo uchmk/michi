@@ -80,6 +80,12 @@ pub enum Task {
         id: Oid,
         mainline: Option<u32>,
     },
+    /// Moves the branch of the worktree at `wt` to `id`, the way `mode` says.
+    Reset {
+        wt: PathBuf,
+        id: Oid,
+        mode: michi_core::reset::Mode,
+    },
     /// Starts a worktree and a Claude in it for each of `plans`, through tsumugi.
     NewWork {
         repo: PathBuf,
@@ -250,6 +256,11 @@ impl Task {
             Task::Tag { .. } => "tag",
             Task::Untag { .. } => "tag -d",
             Task::Revert { .. } => "revert",
+            Task::Reset { mode, .. } => match mode {
+                michi_core::reset::Mode::Soft => "reset --soft",
+                michi_core::reset::Mode::Mixed => "reset --mixed",
+                michi_core::reset::Mode::Hard => "reset --hard",
+            },
             Task::Stash { .. } => "stash",
             Task::Unstash { pop: false, .. } => "stash apply",
             Task::Unstash { pop: true, .. } => "stash pop",
@@ -293,6 +304,7 @@ pub enum Acted {
     /// The branch now follows this remote branch.
     Upstream(String),
     Reverted(Reverted),
+    Reset(michi_core::reset::Reset),
     Stashed(Saved),
     Unstashed(Applied),
     Found(Found),
@@ -337,6 +349,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Tag { name, at, message, .. } => tag::create(dir, name, at, message).map(|()| Acted::Done),
         Task::Untag { name } => tag::delete(dir, name).map(|saved| Acted::Kept(Some(saved))),
         Task::Revert { wt, id, mainline } => revert::revert(wt, id, *mainline).map(Acted::Reverted),
+        Task::Reset { wt, id, mode } => michi_core::reset::reset(wt, id, *mode).map(Acted::Reset),
         Task::Stash { wt, message } => stash::save(wt, message).map(Acted::Stashed),
         Task::Unstash { wt, id, pop } => stash::apply(wt, id, *pop).map(Acted::Unstashed),
         Task::DropStash { id } => stash::drop(dir, id).map(|saved| Acted::Kept(Some(saved))),
@@ -520,6 +533,23 @@ impl App {
             (Task::Untag { name }, Ok(Acted::Kept(saved))) => {
                 let saved = saved.as_deref().map_or("", backup::short);
                 (self.tr("act.untagged").replace("{name}", name).replace("{saved}", saved), 10)
+            }
+            (Task::Reset { wt, id, mode }, Ok(Acted::Reset(r))) => {
+                let key = match (r.changes.is_some(), r.tip.is_some()) {
+                    (true, _) => "act.reset_changes",
+                    (false, true) => "act.reset_kept",
+                    (false, false) => "act.reset_same",
+                };
+                let tip = r.tip.as_deref().map_or("", backup::short);
+                let changes = r.changes.as_deref().map_or("", backup::short);
+                let text = self
+                    .tr(key)
+                    .replace("{wt}", &self::name(wt))
+                    .replace("{id}", &id.short())
+                    .replace("{mode}", mode.word())
+                    .replace("{tip}", tip)
+                    .replace("{changes}", changes);
+                (text, 10)
             }
             (Task::Revert { wt, id, .. }, Ok(Acted::Reverted(r))) => match r {
                 Reverted::Made(new) => (

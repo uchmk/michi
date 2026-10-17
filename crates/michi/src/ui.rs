@@ -526,7 +526,7 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
     }
     for n in 1..=u32::from(b.parents) {
         let d = char::from_digit(n, 10).unwrap_or('1');
-        let word = app.tr(b.parent_key()).replace("{}", &n.to_string());
+        let word = app.tr(b.parent_key(n)).replace("{}", &n.to_string());
         hint.push(format!("{d} {word}"));
         buttons.push(word);
         keys.push(d);
