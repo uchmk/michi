@@ -62,6 +62,8 @@ enum Block {
     Diff(usize),
     /// The `k`th file's diff stops short.
     Cut,
+    /// The `k`th file is a picture: before and after.
+    Image(usize),
     Note(&'static str),
 }
 
@@ -115,7 +117,9 @@ fn blocks(d: &Detail, merged: usize, all_files: bool) -> Vec<Block> {
         if michi_core::lfs::of_file(f).is_some() {
             out.push(Block::Note("detail.lfs_note"));
         }
-        if f.is_binary() {
+        if f.is_binary() && michi_core::imagediff::is_image(&f.path) {
+            out.push(Block::Image(k));
+        } else if f.is_binary() {
             out.push(Block::Note("detail.binary_note"));
         } else if f.eol_only {
             out.push(Block::Note("detail.eol_only"));
@@ -158,6 +162,15 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let mut none = None;
     let header_h = header(ui, app, d, pos2(r.left(), 0.0), r.width(), None, &mut none);
     let wrap = Wrap::new(ui, r.width(), wide);
+    let top = match &app.repo {
+        crate::app::Repo::Ready(s) => Some(s.top.clone()),
+        _ => None,
+    };
+    // The pictures of the `k`th file: the first parent against the commit.
+    let image_job = |k: usize| {
+        let dir = top.as_deref()?;
+        Some(crate::images::commit_job(dir, &d.id.to_string(), d.parents.first().map(|p| p.to_string()).as_deref(), &d.files[k]))
+    };
     let height = |b: &Block| -> f32 {
         match *b {
             Block::Header => header_h,
@@ -168,6 +181,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             Block::Title(_) => TITLE_H,
             Block::Diff(k) => app.detail.rows(k).map_or(0.0, |rows| wrap.tops(rows).last().copied().unwrap_or(0.0)) + 6.0,
             Block::Cut => DIFF_H + 6.0,
+            Block::Image(k) => image_job(k).map_or(NOTE_H, |job| crate::images::height(app, &job, r.width())),
             Block::Note(_) => NOTE_H,
         }
     };
@@ -294,6 +308,11 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
                 );
                 let g = ui.fonts_mut(|f| f.layout_job(job));
                 p.galley(pos2(rr.left() + X, rr.top() + (DIFF_H - g.size().y) / 2.0), g, c.dim);
+            }
+            Block::Image(f) => {
+                if let Some(job) = image_job(f) {
+                    crate::images::draw(ui, &p, app, &job, rr, live);
+                }
             }
             Block::Note(key) => {
                 let text = app.tr(key);
@@ -948,6 +967,20 @@ fn half_row(ui: &Ui, p: &Painter, rr: Rect, l: Option<&Line>, old: bool) {
 mod tests {
     use super::*;
     use crate::detail::fixture::detail;
+
+    #[test]
+    fn a_changed_picture_gets_an_image_block_not_the_binary_note() {
+        let a = Oid::parse(&"a".repeat(40)).unwrap();
+        let b = Oid::parse(&"b".repeat(40)).unwrap();
+        let mut d = detail(a, vec![b], 4);
+        d.files[2].path = "art/logo.PNG".into();
+        let got = blocks(&d, 0, false);
+        assert!(got.contains(&Block::Image(2)));
+        assert!(!got.contains(&Block::Note("detail.binary_note")));
+        // A binary that is no picture keeps the note.
+        d.files[2].path = "data.bin".into();
+        assert!(blocks(&d, 0, false).contains(&Block::Note("detail.binary_note")));
+    }
 
     #[test]
     fn the_blocks_follow_the_commit() {

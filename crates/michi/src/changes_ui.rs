@@ -725,6 +725,8 @@ enum Piece {
     Diff,
     /// The diff stops short.
     Cut,
+    /// The file is a picture: before and after.
+    Image,
 }
 
 /// The selected file's diff in `body`, scrolled by the wheel and by the
@@ -754,7 +756,10 @@ fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32, jump: i32) {
     if michi_core::lfs::of_file(f).is_some() {
         pieces.push(Piece::Note("detail.lfs_note"));
     }
-    if f.is_binary() {
+    let image = f.is_binary() && michi_core::imagediff::is_image(&f.path);
+    if image {
+        pieces.push(Piece::Image);
+    } else if f.is_binary() {
         pieces.push(Piece::Note("detail.binary_note"));
     } else if f.eol_only {
         pieces.push(Piece::Note("detail.eol_only"));
@@ -775,9 +780,12 @@ fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32, jump: i32) {
     };
     let wrap = Wrap::new(ui, body.width(), ch.wide);
     let tops = wrap.tops(rows);
+    let image_job =
+        ch.wt.as_deref().zip(ch.selected()).map(|(dir, (side, file))| crate::images::changes_job(dir, side, file, ch.shown_gen));
     let heights: Vec<f32> = pieces
         .iter()
         .map(|piece| match piece {
+            Piece::Image => image_job.as_ref().map_or(NOTE_H, |job| crate::images::height(app, job, body.width())),
             Piece::Note(_) => NOTE_H,
             Piece::Diff => tops.last().copied().unwrap_or(0.0) + 6.0,
             Piece::Cut => DIFF_H + 6.0,
@@ -860,6 +868,11 @@ fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32, jump: i32) {
                 let dr = Rect::from_min_size(rr.min, vec2(rr.width(), rr.height() - 6.0));
                 diff(ui, &p, f, rows, dr, body, &wrap, &crate::detail_ui::Marks::default());
                 marks(&p, ch, s, dr, body, &tops);
+            }
+            Piece::Image => {
+                if let Some(job) = &image_job {
+                    crate::images::draw(ui, &p, app, job, rr, live);
+                }
             }
             Piece::Cut => {
                 let mut job = LayoutJob::default();
@@ -1080,12 +1093,18 @@ mod tests {
         whole.patch = None;
         take_file(&mut app, Some(whole));
         frame(&ctx, &mut app, 900.0, Vec::new());
-        let binary = stage::Diff { file: File { counts: None, ..crate::changes::tests::file("logo.png") }, patch: None };
+        let binary = stage::Diff { file: File { counts: None, ..crate::changes::tests::file("blob.bin") }, patch: None };
         take_file(&mut app, Some(binary));
         let drawn = frame(&ctx, &mut app, 900.0, Vec::new());
         for note in ["This file goes in whole: its lines cannot be picked", "A binary file: no diff to show"] {
             assert!(drawn.iter().any(|t| t == note), "a binary file goes in whole: {drawn:?}");
         }
+        // A picture is read on the side, not called a binary file.
+        let picture = stage::Diff { file: File { counts: None, ..crate::changes::tests::file("logo.png") }, patch: None };
+        take_file(&mut app, Some(picture));
+        let drawn = frame(&ctx, &mut app, 900.0, Vec::new());
+        assert!(drawn.iter().any(|t| t == "Reading the pictures..."), "a picture is asked for: {drawn:?}");
+        assert!(!drawn.iter().any(|t| t == "A binary file: no diff to show"), "{drawn:?}");
         take_file(&mut app, None);
         frame(&ctx, &mut app, 900.0, Vec::new());
         let gen = app.changes.gens().1;

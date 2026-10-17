@@ -927,3 +927,19 @@
 - [ ] **236.3** Merge a branch that changed only a file executable bit while the other changed its content → The second line says one side "made it executable" and the other "changed it" 〔未訳〕
 - [ ] **236.4** Merge a binary file changed on both sides, and a submodule moved on both → The cards say binary / has a submodule; "Open in a tool" (`w`) still works 〔未訳〕
 - [ ] **236.5** Switch EN and JA; narrow the window → Both lines read well and are cut at the card edge, not over the buttons 〔未訳〕
+
+## 260. Image diff (#48)
+
+- [ ] **260.1** Commit a changed `.png` (a different picture, same name); in the graph select the commit → The file shows a "Before" and an "After" picture side by side, with the size in pixels and the bytes of each (`1.5 KB`), not "A binary file" 〔未訳〕
+- [ ] **260.2** Press `I` three times with the pointer over the pictures → The mode name at the right of the line changes: swipe (the new picture shows right of a blue divider that follows the pointer), onion skin (the new one fades in as the pointer moves right), difference (red where the pixels differ, with a count of differing pixels, or "Identical") 〔未訳〕
+- [ ] **260.3** Press `I` once more → Back to side by side; the mode stays when you select another commit 〔未訳〕
+- [ ] **260.4** Select a commit that adds a picture, then one that deletes a picture → Added: "Before: none" and only the after; deleted: only the before; the modes other than side by side fall back to it 〔未訳〕
+- [ ] **260.5** Select a commit that renames a picture and changes it → The before is the old name's picture 〔未訳〕
+- [ ] **260.6** Try `.jpg`, `.gif`, `.webp`, `.bmp` and `.ico` changes → Each shows (a gif shows its first frame); a transparent picture sits on a checkerboard 〔未訳〕
+- [ ] **260.7** Commit a picture over 16 MB, or one with more than 16 million pixels → That side says it is too big (with its size) or has too many pixels; nothing freezes and memory stays low 〔未訳〕
+- [ ] **260.8** Commit a `.png` that is not a picture (a text file renamed) → That side says it cannot be decoded; the rest of the detail is fine 〔未訳〕
+- [ ] **260.9** In the `2` view, replace a tracked picture on disk with another → The unstaged entry shows the index picture against the worktree one; `Space` to stage it and the staged entry shows HEAD against the index 〔未訳〕
+- [ ] **260.10** In the `2` view, add a new untracked picture, then delete a tracked one → New: only the after; deleted: only the before 〔未訳〕
+- [ ] **260.11** While in the `2` view with a picture shown, overwrite it again on disk → The picture updates without the view flickering back to "Reading the pictures..." 〔未訳〕
+- [ ] **260.12** Scroll a commit that changes many pictures → The scroll stays smooth; pictures load as they come into sight, the layout shifts at most a little 〔未訳〕
+- [ ] **260.13** Open `?` in the graph and the `2` view; switch EN and JA → `I` is listed with its words in both languages; the line over the pictures reads well in both 〔未訳〕

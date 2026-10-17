@@ -100,6 +100,7 @@ impl View {
                 ("Y", "key.copy_patch"),
                 ("Ctrl+V", "key.apply_patch"),
                 ("w", "key.ignore_space"),
+                ("I", "key.image_mode"),
                 ("Esc", "key.back"),
             ],
             View::Changes => &[
@@ -114,6 +115,7 @@ impl View {
                 ("d", "key.discard"),
                 ("i", "key.ignore"),
                 ("w", "key.ignore_space"),
+                ("I", "key.image_mode"),
                 ("A", "key.amend"),
                 ("B", "key.blame"),
                 ("H", "key.file_history"),
@@ -250,6 +252,8 @@ pub struct App {
     pub sizes: crate::sizes::Sizes,
     /// The authors' pictures fetched so far.
     pub avatars: crate::avatar::Avatars,
+    /// The pictures of the image diff.
+    pub images: crate::images::Images,
     /// The language in force (`en`, `ja`), from common.toml or the OS.
     pub lang: String,
     /// The folder the window was opened on.
@@ -386,6 +390,7 @@ impl App {
             mode: Mode::Main,
             sizes: crate::sizes::Sizes::load(crate::prefs::window_dir(prefs.base.as_deref()).as_deref()),
             avatars: Default::default(),
+            images: Default::default(),
             prefs,
             lang: "en".into(),
             dir,
@@ -962,6 +967,10 @@ impl App {
             'i' => ch.ignore(claude),
             'w' => {
                 self.toggle_ignore_space();
+                return true;
+            }
+            'I' => {
+                self.images.cycle();
                 return true;
             }
             'B' | 'H' => {
@@ -1561,6 +1570,7 @@ impl App {
             'H' => self.open_blame(crate::blame::Tab::History),
             'Y' => self.copy_patch(),
             'w' => self.toggle_ignore_space(),
+            'I' => self.images.cycle(),
             't' => self.ask_revert(),
             'R' => self.ask_reset(),
             'C' => self.ask_cherry(),
