@@ -170,6 +170,10 @@ pub struct Pane {
     pub scroll_to: Option<usize>,
     /// The detail is of another commit now: back to its top.
     pub to_top: bool,
+    /// The keys asked to scroll the wide detail: lines, pages, and to the end.
+    pub lines: i32,
+    pub pages: i32,
+    pub to_end: bool,
 }
 
 impl Pane {

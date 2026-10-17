@@ -1601,3 +1601,10 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | --- | --- | --- |
 | 271.1 | In Changes press Shift+Down twice on an unstaged file, then Space | The three rows are shaded alike; Space stages all three at once; Shift+Up narrows the range; Esc drops it; it does not cross into the staged list |
 | 271.2 | Type twenty lines in the commit message box | The text stays inside the box and scrolls there; the guide line and the commit row are not covered |
+
+## 272. Graph: scroll the wide detail, copy the hash
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 272.1 | In the graph select a commit with a long diff, press Enter, then Down, PageDown, End, Home | The detail scrolls by line, page, to the end and to the top; the graph selection stays; Enter narrows it and the arrows move the graph again |
+| 272.2 | Select a commit and press `#`, then paste elsewhere; also Ctrl+C with no text picked | The full 40-character hash is pasted; a toast names its first 10 characters |

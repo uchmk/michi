@@ -145,6 +145,8 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let p = ui.painter_at(r);
     let to_top = std::mem::take(&mut app.detail.to_top);
     let scroll_to = app.detail.scroll_to.take();
+    let (lines, pages, to_end) =
+        (std::mem::take(&mut app.detail.lines), std::mem::take(&mut app.detail.pages), std::mem::take(&mut app.detail.to_end));
     let note = |key: &str| {
         p.text(pos2(r.left() + X, r.top() + 10.0), Align2::LEFT_TOP, key, FontId::proportional(12.0), c.dim);
     };
@@ -198,6 +200,10 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         if let Some(at) = blocks.iter().position(|b| *b == Block::Title(k)) {
             scroll = heights[..at].iter().sum();
         }
+    }
+    scroll += lines as f32 * FILE_H + pages as f32 * (r.height() - 40.0).max(40.0);
+    if to_end {
+        scroll = f32::MAX;
     }
     if live && ui.rect_contains_pointer(r) {
         scroll -= ui.input(|i| i.smooth_scroll_delta.y);

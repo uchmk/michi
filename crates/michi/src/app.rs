@@ -99,6 +99,7 @@ impl View {
                 ("B", "key.blame"),
                 ("H", "key.file_history"),
                 ("Y", "key.copy_patch"),
+                ("#", "key.copy_hash"),
                 ("G", "key.flow"),
                 ("I", "key.issue"),
                 ("Ctrl+V", "key.apply_patch"),
@@ -1704,6 +1705,7 @@ impl App {
             'B' => self.open_blame(crate::blame::Tab::Blame),
             'H' => self.open_blame(crate::blame::Tab::History),
             'Y' => self.copy_patch(),
+            '#' => _ = self.copy_hash(),
             'w' => self.toggle_ignore_space(),
             'x' | 'g' | 'u' | 'X' | 'r' => return self.bisect_key(c),
             'G' => self.open_picker(PickKind::Flow),
@@ -1890,6 +1892,21 @@ impl App {
         }
         if self.view == View::Graph {
             let g = &mut self.graph;
+            if self.detail.wide {
+                // The wide detail has the keys: they scroll it, not the graph.
+                let d = &mut self.detail;
+                match name {
+                    "ArrowDown" => d.lines += 1,
+                    "ArrowUp" => d.lines -= 1,
+                    "PageDown" => d.pages += 1,
+                    "PageUp" => d.pages -= 1,
+                    "Home" => d.to_top = true,
+                    "End" => d.to_end = true,
+                    "Enter" => d.wide = false,
+                    _ => return self.later(|token| token == name),
+                }
+                return true;
+            }
             match name {
                 "ArrowDown" => g.move_by(1),
                 "ArrowUp" => g.move_by(-1),
@@ -2736,6 +2753,32 @@ pub(crate) mod tests {
         assert!(a.wip_in(Path::new("C:/r/repo")).is_some_and(|w| w.files.is_empty() && w.left_out.len() == 1));
         assert!(a.wip_in(Path::new("C:/r/wt")).is_some());
         assert!(a.wip_in(Path::new("C:/r/old")).is_none());
+    }
+
+    #[test]
+    fn the_wide_detail_takes_the_scroll_keys_from_the_graph() {
+        let mut a = read();
+        a.view = View::Graph;
+        a.detail.wide = true;
+        let before = a.graph.selected();
+        assert!(a.named("ArrowDown"));
+        assert!(a.named("PageDown"));
+        assert!(a.named("End"));
+        assert_eq!((a.detail.lines, a.detail.pages, a.detail.to_end), (1, 1, true));
+        assert_eq!(a.graph.selected(), before, "the graph does not move");
+        assert!(a.named("Enter"));
+        assert!(!a.detail.wide);
+        a.named("ArrowDown");
+        assert_eq!(a.detail.lines, 1, "narrow: the graph has the keys");
+    }
+
+    #[test]
+    fn the_hash_key_copies_the_selected_commit() {
+        let mut a = read();
+        a.view = View::Graph;
+        a.feed('#');
+        let id = a.graph.selected().map(|i| i.to_string());
+        assert_eq!(a.clipboard, id);
     }
 
     #[test]

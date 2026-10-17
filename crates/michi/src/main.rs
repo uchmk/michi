@@ -560,6 +560,8 @@ impl Michi {
                 egui::Event::Copy => {
                     if let Some(text) = select::text() {
                         ctx.copy_text(text);
+                    } else if self.app.view == View::Graph && self.app.mode == Mode::Main {
+                        self.app.copy_hash();
                     }
                 }
                 egui::Event::Paste(text) => {

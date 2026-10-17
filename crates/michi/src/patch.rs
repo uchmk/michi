@@ -26,6 +26,19 @@ impl App {
         self.act(Task::ExportPatch { wt, id });
     }
 
+    /// `#` (and Ctrl+C with nothing picked in the text): the selected commit's
+    /// full hash to the clipboard. False when no commit is selected.
+    pub(crate) fn copy_hash(&mut self) -> bool {
+        let Some(id) = self.graph.selected().and_then(|id| self.graph.find_commit(&id)).map(|c| c.id.to_string()) else {
+            self.say(self.tr("act.pick_commit"));
+            return false;
+        };
+        let said = self.tr("hash.copied").replace("{h}", &id[..id.len().min(10)]);
+        self.clipboard = Some(id);
+        self.say(said);
+        true
+    }
+
     /// A paste: a patch in it is offered to the window's worktree (a yes
     /// applies it). Other text, and a paste while something else has the
     /// keys, are let be. False when nothing was done with it.
