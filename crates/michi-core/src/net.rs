@@ -67,10 +67,24 @@ pub enum Done {
     /// A push that has not been made: what it would send and where
     /// ([`preview`]).
     Preview(Preview),
+    /// Sync went through: the branch is level with `to` (`origin/main`).
+    /// `pulled` commits came in (`stashed`: the local changes put away for
+    /// it and back); `pushed` when commits went out.
+    Synced { to: String, pulled: usize, pushed: bool, new: bool, stashed: Option<Stashed> },
+    /// Sync stopped at `at`, for `why`; what it did before that (`pulled`,
+    /// `stashed`) stays.
+    SyncHalted { at: Step, why: Why, pulled: usize, stashed: Option<Stashed> },
     /// Stopped on the flag; what git had done stays.
     Stopped,
     /// Not done, and why.
     Not(Why),
+}
+
+/// The half of a sync that stopped.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Step {
+    Pull,
+    Push,
 }
 
 /// What a push of the branch would send, shown before it is made.
@@ -219,6 +233,39 @@ pub fn pull(dir: &Path, stop: &AtomicBool, tell: &mut dyn FnMut(Progress)) -> Re
         }
     })?;
     Ok(Done::Pulled { upstream, count: behind, stashed })
+}
+
+/// Sync: fetch the branch's remote, fast-forward to its upstream, then push
+/// what the branch has over it. Each half is the plain [`pull`] and
+/// [`push`], so nothing is done that those would not: a branch that went its
+/// own way ([`Why::Diverged`]) or a push the remote refuses stops the sync
+/// where it is ([`Done::SyncHalted`]) and the half before it stays. A branch
+/// with no upstream skips the pull and is pushed (its upstream set). Never
+/// pushes over the remote's commits: that stays `F`'s, with its band.
+pub fn sync(dir: &Path, chosen: Option<&str>, stop: &AtomicBool, tell: &mut dyn FnMut(Progress)) -> Result<Done, git::Error> {
+    let (mut pulled, mut stashed) = (0, None);
+    let mut to = None;
+    match pull(dir, stop, tell)? {
+        Done::Pulled { upstream, count, stashed: s } => {
+            (pulled, stashed, to) = (count, s, Some(upstream));
+        }
+        Done::Even { to: up } => to = Some(up),
+        Done::Stopped => return Ok(Done::Stopped),
+        // Nothing to pull from yet: the push makes the upstream.
+        Done::Not(Why::NoUpstream { .. }) => {}
+        Done::Not(why) => return Ok(Done::SyncHalted { at: Step::Pull, why, pulled, stashed }),
+        other => return Err(git::Error::Io(format!("pull said {other:?}"))),
+    }
+    if stop.load(Ordering::Relaxed) {
+        return Ok(Done::Stopped);
+    }
+    Ok(match push(dir, chosen, None, stop, tell)? {
+        Done::Pushed { to, new, .. } => Done::Synced { to, pulled, pushed: true, new, stashed },
+        Done::Even { to: up } => Done::Synced { to: to.unwrap_or(up), pulled, pushed: false, new: false, stashed },
+        Done::Stopped => Done::Stopped,
+        Done::Not(why) => Done::SyncHalted { at: Step::Push, why, pulled, stashed },
+        other => return Err(git::Error::Io(format!("push said {other:?}"))),
+    })
 }
 
 /// Pushes the branch of the worktree at `dir`: to its push remote
@@ -785,6 +832,55 @@ mod tests {
         assert_eq!(pull(&t.repo, &no, &mut quiet()).unwrap(), Done::Not(Why::NoUpstream { branch: "lone".into() }));
         t.git(&t.repo, &["switch", "-q", "--detach"]);
         assert_eq!(pull(&t.repo, &no, &mut quiet()).unwrap(), Done::Not(Why::Detached));
+    }
+
+    #[test]
+    fn sync_pulls_then_pushes_and_stops_where_it_cannot_go() {
+        let (t, other) = with_remote("net-sync");
+        let no = AtomicBool::new(false);
+        let run = |t: &TempRepo| sync(&t.repo, None, &no, &mut quiet()).unwrap();
+        let synced = |to: &str, pulled, pushed, new| Done::Synced { to: to.into(), pulled, pushed, new, stashed: None };
+        assert_eq!(run(&t), synced("origin/main", 0, false, false));
+
+        // Only theirs: pulled, nothing to push.
+        commit(&t, &other, "a.txt");
+        t.git(&other, &["push", "-q"]);
+        assert_eq!(run(&t), synced("origin/main", 1, false, false));
+        // Only mine: pushed.
+        commit(&t, &t.repo, "mine.txt");
+        assert_eq!(run(&t), synced("origin/main", 0, true, false));
+        // Commits on both sides: it stops at the pull, nothing merged or pushed.
+        commit(&t, &t.repo, "mine2.txt");
+        t.git(&other, &["pull", "-q"]);
+        commit(&t, &other, "b.txt");
+        t.git(&other, &["push", "-q"]);
+        let mine = t.out(&t.repo, &["rev-parse", "HEAD"]);
+        let Done::SyncHalted { at: Step::Pull, why: Why::Diverged { ahead: 1, behind: 1, .. }, pulled: 0, .. } = run(&t) else {
+            panic!("not halted at the pull")
+        };
+        assert_eq!(t.out(&t.repo, &["rev-parse", "HEAD"]), mine);
+
+        // A branch with no upstream is pushed, and gets one.
+        t.git(&t.repo, &["switch", "-q", "-c", "feat"]);
+        assert_eq!(run(&t), synced("origin/feat", 0, true, true));
+        assert_eq!(t.out(&t.repo, &["config", "branch.feat.remote"]), "origin");
+
+        let stopped = AtomicBool::new(true);
+        assert_eq!(sync(&t.repo, None, &stopped, &mut quiet()).unwrap(), Done::Stopped);
+
+        t.git(&t.repo, &["switch", "-q", "--detach"]);
+        assert_eq!(run(&t), Done::SyncHalted { at: Step::Pull, why: Why::Detached, pulled: 0, stashed: None });
+    }
+
+    #[test]
+    fn sync_with_no_remote_halts_at_the_push() {
+        let t = TempRepo::configured("net-sync-none");
+        let no = AtomicBool::new(false);
+        // No upstream and no remote: the pull has none to ask, the push says why.
+        assert_eq!(
+            sync(&t.repo, None, &no, &mut quiet()).unwrap(),
+            Done::SyncHalted { at: Step::Push, why: Why::NoRemote, pulled: 0, stashed: None }
+        );
     }
 
     #[test]

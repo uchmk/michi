@@ -146,7 +146,7 @@ impl View {
 }
 
 /// The keys that work in every view.
-pub const GLOBAL_KEYS: [(&str, &str); 7] = [
+pub const GLOBAL_KEYS: [(&str, &str); 8] = [
     ("1 2 3 4", "key.views"),
     ("N", "key.new_work"),
     ("W", "key.waiting"),
@@ -154,6 +154,7 @@ pub const GLOBAL_KEYS: [(&str, &str); 7] = [
     ("p", "key.pull"),
     ("P", "key.push"),
     ("F", "key.push_over"),
+    ("S", "key.sync_help"),
 ];
 
 /// The keys of the branch review, drawn over the worktree table.

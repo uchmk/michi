@@ -32,6 +32,9 @@ pub enum Job {
     Push { wt: PathBuf, remote: Option<String>, lease: Option<Lease>, over: bool, shown: bool },
     /// The tag `tag`, to the remote branches are pushed to.
     PushTag { tag: String },
+    /// Fetch, fast-forward and push the branch of the worktree at `wt` in
+    /// one go, to `remote` when it is chosen.
+    Sync { wt: PathBuf, remote: Option<String> },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -39,12 +42,14 @@ pub enum Kind {
     Fetch,
     Pull,
     Push,
+    Sync,
 }
 
 impl Job {
     pub fn kind(&self) -> Kind {
         match self {
             Job::Fetch => Kind::Fetch,
+            Job::Sync { .. } => Kind::Sync,
             Job::Pull { .. } => Kind::Pull,
             Job::Push { .. } | Job::PushTag { .. } => Kind::Push,
         }
@@ -58,6 +63,7 @@ impl Kind {
             Kind::Fetch => "fetch",
             Kind::Pull => "pull",
             Kind::Push => "push",
+            Kind::Sync => "sync",
         }
     }
 }
@@ -164,7 +170,7 @@ pub fn ago(app: &App, at: SystemTime, now: SystemTime) -> String {
 impl App {
     /// `f`, `p`, `P`, `F`, in every view.
     pub(crate) fn net_key(&mut self, c: char) -> bool {
-        if !matches!(c, 'f' | 'p' | 'P' | 'F') {
+        if !matches!(c, 'f' | 'p' | 'P' | 'F' | 'S') {
             return false;
         }
         if self.net.is_some() {
@@ -173,7 +179,8 @@ impl App {
         }
         match (c, self.net_tree()) {
             ('f', _) => self.order(Job::Fetch),
-            ('p', Some(wt)) => self.pull(wt),
+            ('p', Some(wt)) => self.pull(wt, false),
+            ('S', Some(wt)) => self.pull(wt, true),
             (c, Some(wt)) => self.order(Job::Push { wt, remote: None, lease: None, over: c == 'F', shown: false }),
             (_, None) => self.say(self.tr("net.no_tree")),
         }
@@ -198,18 +205,21 @@ impl App {
     /// `p`: a pull moves the worktree's HEAD and files, so where a Claude
     /// is working it waits for a yes, and in the middle of a merge or the
     /// like it waits for that to be over.
-    fn pull(&mut self, wt: PathBuf) {
+    /// `S` (`sync`) is a pull and then a push, so it waits the same way.
+    fn pull(&mut self, wt: PathBuf, sync: bool) {
+        let (doing, claude) = if sync { ("net.sync_doing", "net.claude_sync") } else { ("net.pull_doing", "net.claude_pull") };
+        let job = if sync { Job::Sync { wt: wt.clone(), remote: None } } else { Job::Pull { wt: wt.clone() } };
         if let Some(d) = self.doing_in(&wt) {
-            let text = self.tr("net.pull_doing").replace("{wt}", &act::name(&wt)).replace("{doing}", &self.doing_word(d));
+            let text = self.tr(doing).replace("{wt}", &act::name(&wt)).replace("{doing}", &self.doing_word(d));
             self.say_for(text, 6);
             return;
         }
         if self.claude_working(&wt) {
-            let text = self.tr("net.claude_pull").replace("{}", &act::name(&wt));
-            self.band = Some(Band::new(text, Then::Net(Job::Pull { wt })));
+            let text = self.tr(claude).replace("{}", &act::name(&wt));
+            self.band = Some(Band::new(text, Then::Net(job)));
             return;
         }
-        self.order(Job::Pull { wt });
+        self.order(job);
     }
 
     /// Whether a Claude is at work in the worktree at `wt`.
@@ -329,6 +339,33 @@ impl App {
         self.band = Some(Band { rows, notes, danger: p.lease.is_some(), ..Band::new(text, Then::Net(job)) });
     }
 
+    /// Why a pull or push was not done, in a sentence (for a sync that
+    /// stopped); how long to show it.
+    fn why_said(&self, why: &Why) -> (String, u64) {
+        match why {
+            Why::NoRemote | Why::Choose { .. } => (self.tr("net.no_remote").to_owned(), 6),
+            Why::Detached => (self.tr("net.detached").to_owned(), 6),
+            Why::NoUpstream { branch } => (self.tr("net.no_upstream").replace("{}", branch), 8),
+            Why::Diverged { upstream, ahead, behind } => (
+                self.tr("net.diverged").replace("{up}", upstream).replace("{a}", &ahead.to_string()).replace("{b}", &behind.to_string()),
+                10,
+            ),
+            Why::Behind { lease, count, ahead: 0 } => {
+                (self.tr("net.behind_only").replace("{to}", &lease.to).replace("{n}", &count.to_string()), 8)
+            }
+            Why::Behind { lease, count, .. } => {
+                (self.tr("net.diverged_push").replace("{to}", &lease.to).replace("{n}", &count.to_string()), 10)
+            }
+            Why::Rejected { to, reason } => {
+                let mut text = self.tr("net.rejected").replace("{to}", to).replace("{why}", reason);
+                if ["fetch first", "non-fast-forward", "stale info"].iter().any(|w| reason.contains(w)) {
+                    text.push_str(self.tr("net.rejected_fetch"));
+                }
+                (text, 10)
+            }
+        }
+    }
+
     /// The job is over: say how it went, or put up the band that asks to
     /// push over the remote's commits.
     pub(crate) fn net_done(&mut self, job: Job, result: Result<Done, git::Error>) {
@@ -356,6 +393,41 @@ impl App {
             Ok(Done::Even { to }) => {
                 let key = if kind == Kind::Push { "net.even_push" } else { "net.even_pull" };
                 (self.tr(key).replace("{}", &to), 4)
+            }
+            Ok(Done::Synced { to, pulled, pushed, new, stashed }) => {
+                let n = pulled.to_string();
+                let key = match (pulled > 0, pushed, new) {
+                    (true, true, _) => "net.synced_both",
+                    (true, false, _) => "net.synced_pulled",
+                    (false, true, true) => "net.synced_pushed_new",
+                    (false, true, false) => "net.synced_pushed",
+                    (false, false, _) => "net.synced_even",
+                };
+                let text = self.tr(key).replace("{to}", &to).replace("{n}", &n);
+                match stashed {
+                    Some(s) => {
+                        let (more, secs) = self.autostash_said(&s);
+                        (text + &more, secs)
+                    }
+                    None => (text, 4),
+                }
+            }
+            Ok(Done::SyncHalted { at, why, pulled, stashed }) => {
+                if let Why::Choose { remotes } = why {
+                    self.picker = Some(Picker::targets(remotes, job.clone()));
+                    return;
+                }
+                let (why, secs) = self.why_said(&why);
+                let done = if pulled > 0 { self.tr("net.sync_done").replace("{n}", &pulled.to_string()) } else { String::new() };
+                let key = if at == net::Step::Pull { "net.sync_halt_pull" } else { "net.sync_halt_push" };
+                let mut text = self.tr(key).replace("{done}", &done).replace("{why}", &why);
+                let mut secs = secs.max(8);
+                if let Some(s) = stashed {
+                    let (more, more_secs) = self.autostash_said(&s);
+                    text.push_str(&more);
+                    secs = secs.max(more_secs);
+                }
+                (text, secs)
             }
             Ok(Done::Preview(p)) => {
                 self.push_preview(job, p);
@@ -462,6 +534,33 @@ mod tests {
         a.net_done(Job::Fetch, Ok(Done::Stopped));
         assert!(a.net.is_none());
         assert_eq!(toast(&a), "fetch stopped");
+    }
+
+    #[test]
+    fn a_sync_says_what_it_did_and_where_it_stopped() {
+        let mut a = app();
+        let job = Job::Sync { wt: PathBuf::from("/r/feat"), remote: None };
+        let mut said = |r: Result<Done, git::Error>| {
+            a.net_done(job.clone(), r);
+            toast(&a).to_owned()
+        };
+        let synced = |pulled, pushed, new| Ok(Done::Synced { to: "origin/main".into(), pulled, pushed, new, stashed: None });
+        assert_eq!(said(synced(0, false, false)), "Already in sync with origin/main");
+        assert_eq!(said(synced(2, false, false)), "Synced with origin/main: pulled 2 commits");
+        assert_eq!(said(synced(0, true, false)), "Synced with origin/main: pushed");
+        assert_eq!(said(synced(0, true, true)), "Synced: pushed to origin/main, now its upstream");
+        assert_eq!(said(synced(2, true, false)), "Synced with origin/main: pulled 2 commits, then pushed");
+        let why = Why::Diverged { upstream: "origin/main".into(), ahead: 1, behind: 2 };
+        assert_eq!(
+            said(Ok(Done::SyncHalted { at: net::Step::Pull, why, pulled: 0, stashed: None })),
+            "Sync stopped at the pull, nothing was pushed: origin/main went its own way (↑1 ↓2): a pull only goes forward, so nothing was merged"
+        );
+        let why = Why::Rejected { to: "origin/main".into(), reason: "hook declined".into() };
+        assert_eq!(
+            said(Ok(Done::SyncHalted { at: net::Step::Push, why, pulled: 3, stashed: None })),
+            "Sync stopped at the push (pulled 3 commits first): origin/main refused the push: hook declined"
+        );
+        assert_eq!(Job::Sync { wt: PathBuf::new(), remote: None }.kind().word(), "sync");
     }
 
     #[test]

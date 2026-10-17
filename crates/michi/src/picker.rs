@@ -175,7 +175,7 @@ impl Picker {
     /// The palette of the remotes the push `job` could go to.
     pub fn targets(remotes: Vec<String>, job: Job) -> Picker {
         let wt = match &job {
-            Job::Push { wt, .. } => wt.clone(),
+            Job::Push { wt, .. } | Job::Sync { wt, .. } => wt.clone(),
             _ => PathBuf::new(),
         };
         let items = remotes.into_iter().map(|name| Item::Target { name }).collect();
@@ -346,8 +346,10 @@ impl App {
             }
             (Kind::Remote, Item::Target { name }) => {
                 let job = self.picker.take().and_then(|p| p.job);
-                if let Some(Job::Push { wt, lease, over, shown, .. }) = job {
-                    self.order(Job::Push { wt, remote: Some(name), lease, over, shown });
+                match job {
+                    Some(Job::Push { wt, lease, over, shown, .. }) => self.order(Job::Push { wt, remote: Some(name), lease, over, shown }),
+                    Some(Job::Sync { wt, .. }) => self.order(Job::Sync { wt, remote: Some(name) }),
+                    _ => {}
                 }
             }
             (Kind::Stash, Item::Save) => self.guarded(Task::Stash { wt: wt.clone(), message }, &wt, "act.stash_doing", "act.claude_stash"),

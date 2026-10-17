@@ -391,6 +391,7 @@ fn networks(dir: &Path, orders: &Receiver<Order>, pokes: &Sender<Poke>, send: im
             Job::Pull { wt } => net::pull(wt, &stop, &mut tell),
             Job::Push { wt, remote, shown: false, .. } => net::preview(wt, remote.as_deref()),
             Job::Push { wt, remote, lease, .. } => net::push(wt, remote.as_deref(), lease.as_ref(), &stop, &mut tell),
+            Job::Sync { wt, remote } => net::sync(wt, remote.as_deref(), &stop, &mut tell),
             Job::PushTag { tag } => net::push_tag(dir, tag, &stop, &mut tell),
         };
         let _ = pokes.send(Poke::Now);
