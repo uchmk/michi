@@ -41,6 +41,7 @@ mod notify;
 mod patch;
 mod picker;
 mod picker_ui;
+mod plain;
 mod prefs;
 mod prform;
 mod prform_ui;

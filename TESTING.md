@@ -1317,3 +1317,28 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 261.3 | Change the theme and a key, press Import once, then again | The first press only arms the button; the second reads the file back, a toast says what was read, and the theme and the key are as exported within a couple of seconds |
 | 261.4 | Import a file that is not a settings bundle | A toast gives the reason and nothing in the settings folder changes |
 | 261.5 | Search "backup" in the settings | The Advanced page is listed |
+
+## 106. A plain forecast before the main operations (#106)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 106.1 | On a worktree with uncommitted files and a followed branch, press `p` | A band asks first and says in plain words how many commits come in and that the uncommitted files are put aside and brought back | [ ] |
+| 106.2 | On a clean, up-to-date branch, press `p` | No band: the pull just runs | [ ] |
+| 106.3 | Where the branch and its remote each have commits, press `p` with uncommitted files | The band says the pull will stop and to merge or rebase instead | [ ] |
+| 106.4 | In the `3` view, press `m` on a worktree | The band says how many commits of the trunk come in and whether it is expected to be clean or to stop on N files | [ ] |
+| 106.5 | In the graph, select a commit and press `m`, then `C` | Both bands carry a forecast line; the cherry-pick one says a copy is added and the original stays | [ ] |
+| 106.6 | Switch branch from the palette with uncommitted files | A band says the files change from A to B and that the uncommitted files are carried over; `y` switches, Esc leaves things as they are | [ ] |
+| 106.7 | Switch with no uncommitted files and no Claude | No band, as before | [ ] |
+| 106.8 | Do 106.1 to 106.6 in EN and in JA | The sentences read well in both and fit the band without being cut | [ ] |
+
+## 107. Where you are now (#107)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 107.1 | Open a repository on a branch | A quiet line under the title bar reads "You are on X." with the uncommitted and remote state, and the key to press next | [ ] |
+| 107.2 | Edit a file, then watch the line | It gains "N files have uncommitted changes. Press 2 to commit them." within a couple of seconds | [ ] |
+| 107.3 | Commit, then push | The line moves to "not pushed ... Press P", then to "It matches origin/X" | [ ] |
+| 107.4 | Switch branches; start a merge that conflicts | The line follows the branch; during the merge it says so and points to `4` | [ ] |
+| 107.5 | Narrow the window | The line stays on one row and ends with an ellipsis; resting the pointer on it shows the whole sentence | [ ] |
+| 107.6 | Check a detached HEAD | The strip is shown as before and the line is not doubled up under it | [ ] |
+| 107.7 | Open settings; switch EN and JA | The line is hidden in settings; in both languages it reads well and the colours follow the theme | [ ] |
