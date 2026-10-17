@@ -90,6 +90,9 @@ pub struct Prefs {
     pub guard: michi_core::guard::Config,
     /// `[issues]` of config.toml: how issue references become links (#44).
     pub issues: michi_core::issues::Config,
+    /// The beginners' explanations that were dismissed (#120 #121 #122),
+    /// kept in guides.txt beside window.toml.
+    pub guides: michi_core::guide::Guides,
     /// The Notifications page's drafts (a webhook's address being typed).
     pub notify_drafts: ito_prefs::Drafts,
     /// The Keys page's search, filter and the keys being pressed.
@@ -136,6 +139,7 @@ impl Prefs {
             co_author: Default::default(),
             guard: Default::default(),
             issues: Default::default(),
+            guides: Default::default(),
             view_warn: Vec::new(),
             notify_drafts: ito_prefs::Drafts::new(),
             keys_edit: ito_prefs::KeysEdit::default(),
@@ -163,9 +167,41 @@ impl Prefs {
             (p.notify, p.notify_warn) = NotifyCfg::read(config.as_deref());
             (p.open, p.open_warn) = ito_openin::Config::read(config.as_deref());
             p.read_view(config.as_deref());
+            if let Some(text) = window_dir(Some(b)).and_then(|d| std::fs::read_to_string(d.join("guides.txt")).ok()) {
+                p.guides = michi_core::guide::Guides::parse(&text);
+            }
         }
         p.base = base;
         p
+    }
+
+    /// Dismiss a beginners' explanation for good (written on a thread).
+    pub fn dismiss_guide(&mut self, t: michi_core::guide::Topic) {
+        if self.guides.dismiss(t) {
+            self.save_guides();
+        }
+    }
+
+    /// Show the beginners' explanations again (all of them, or `only` one).
+    pub fn restore_guides(&mut self, only: Option<michi_core::guide::Topic>) {
+        let changed = match only {
+            Some(t) => self.guides.restore(t),
+            None => self.guides.restore_all(),
+        };
+        if changed {
+            self.save_guides();
+        }
+    }
+
+    fn save_guides(&self) {
+        let Some(file) = window_dir(self.base.as_deref()).map(|d| d.join("guides.txt")) else { return };
+        let text = self.guides.text();
+        std::thread::spawn(move || {
+            if let Some(dir) = file.parent() {
+                let _ = std::fs::create_dir_all(dir);
+            }
+            let _ = ito_common::write_atomic(&file, text);
+        });
     }
 
     /// Look at the files and the OS's light or dark every 2 s from now on,

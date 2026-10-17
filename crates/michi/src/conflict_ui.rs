@@ -21,7 +21,9 @@ use crate::act;
 use crate::app::App;
 use crate::conflicts::{places, Place, Tag};
 use crate::detail_ui::left_cut;
+use crate::intro_ui;
 use crate::ui::kbd;
+use michi_core::guide::{Topic, CONFLICT_CARDS};
 
 const BAR_H: f32 = 40.0;
 const ABORT_H: f32 = 34.0;
@@ -71,6 +73,9 @@ pub fn message_id() -> Id {
     Id::new("conflict-message")
 }
 
+/// The height of the row with the link to the conflict explanation.
+const GUIDE_LINK_H: f32 = 22.0;
+
 /// What a click does, once everything is drawn.
 enum Act {
     /// The place, an index into the places.
@@ -89,6 +94,14 @@ enum Act {
     AbortYes,
     Commit,
     Offer(Offer),
+    /// The explanation of conflicts (#121): dismissed, or another card.
+    Guide(intro_ui::Act),
+    /// The link that brings it back.
+    GuideShow,
+}
+
+fn guide_card_id() -> Id {
+    Id::new("conflict-guide-card")
 }
 
 /// The `4` view in `r`.
@@ -130,6 +143,22 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             act = a;
         }
         top += h;
+    }
+    // What a conflict is (#121): three cards until dismissed, then a link.
+    if app.prefs.guides.shown(Topic::Conflict) {
+        let at = ctx.data(|x| x.get_temp::<usize>(guide_card_id())).unwrap_or(0).min(CONFLICT_CARDS - 1);
+        let (a, h) = intro_ui::conflict_card(ui, app, &p, pos2(mr.left(), top), mr.width(), at, live, pointer);
+        if let Some(a) = a {
+            act = Some(Act::Guide(a));
+        }
+        top += h;
+    } else {
+        let row = Rect::from_min_size(pos2(mr.left(), top), vec2(mr.width(), GUIDE_LINK_H));
+        let (_, hit) = intro_ui::link(ui, &p, row.right() - 14.0, row.center().y, app.tr("guide.link.conflict"), "conflict", live, pointer);
+        if hit {
+            act = Some(Act::GuideShow);
+        }
+        top += GUIDE_LINK_H;
     }
     let body = Rect::from_min_max(pos2(mr.left(), top), mr.max);
     let (a, field) = d.body(body, pages, follow);
@@ -218,6 +247,13 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         Act::AbortYes => app.conflict_abort(),
         Act::Commit => app.conflict_commit(),
         Act::Offer(o) => app.conflict_offer(o),
+        Act::Guide(intro_ui::Act::Dismiss) => app.prefs.dismiss_guide(Topic::Conflict),
+        Act::Guide(g) => {
+            let at = ctx.data(|x| x.get_temp::<usize>(guide_card_id())).unwrap_or(0);
+            let delta = if g == intro_ui::Act::Next { 1 } else { -1 };
+            ctx.data_mut(|x| x.insert_temp(guide_card_id(), michi_core::guide::card(at, delta)));
+        }
+        Act::GuideShow => app.prefs.restore_guides(Some(Topic::Conflict)),
     }
     ctx.request_repaint();
 }

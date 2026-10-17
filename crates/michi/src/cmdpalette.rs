@@ -28,6 +28,8 @@ pub enum Pick {
     Calm,
     /// Do the suggested next step (#119).
     Next,
+    /// Show the beginners' explanations again (#120 #121 #122).
+    Guides,
 }
 
 /// The entries the palette offers now: the keymap's commands, then those of
@@ -56,6 +58,7 @@ pub fn entries(app: &App) -> Vec<Entry<Pick>> {
     if let Some(s) = app.suggestion() {
         out.push(Entry::new(format!("{} ({})", app.tr("suggest.cmd"), app.tr(s.key())), "", Pick::Next));
     }
+    out.push(Entry::new(app.tr("guide.again"), "", Pick::Guides));
     let mut seen = Vec::new();
     for (keys, word) in app.keys().iter().chain(GLOBAL_KEYS.iter().skip(1)) {
         let mut chars = keys.chars();
@@ -155,6 +158,11 @@ impl App {
             }
             Pick::Calm => self.calm(),
             Pick::Next => self.run_suggestion(),
+            Pick::Guides => {
+                self.prefs.restore_guides(None);
+                let said = self.tr("guide.restored").to_owned();
+                self.say(said);
+            }
             Pick::Key(c) => {
                 self.mode = crate::app::Mode::Main;
                 self.feed(c);

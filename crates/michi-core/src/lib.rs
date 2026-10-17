@@ -30,6 +30,7 @@ pub mod flow;
 pub mod git;
 pub mod glossary;
 pub mod guard;
+pub mod guide;
 pub mod handoff;
 pub mod history;
 pub mod identity;

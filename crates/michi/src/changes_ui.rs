@@ -18,7 +18,9 @@ use crate::app::App;
 use crate::changes::{Changes, Focus, Op, Shown, Told};
 use crate::detail::{Paired, Unified};
 use crate::detail_ui::{diff, left_cut, status_ink, Wrap, DIFF_H, FILE_H, NOTE_H, TITLE_H, X};
+use crate::intro_ui;
 use crate::ui::{accent, kbd};
+use michi_core::guide::Topic;
 
 const PAD_X: f32 = 18.0;
 const PAD_TOP: f32 = 14.0;
@@ -95,6 +97,10 @@ enum Act {
     Untell,
     /// The refused commit is run again.
     Again,
+    /// The stage diagram was dismissed.
+    Guide,
+    /// The link that brings the stage diagram back.
+    GuideShow,
 }
 
 /// The `2` view in `r`.
@@ -126,6 +132,17 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     if hit {
         act = Some(Act::Key('t'));
     }
+    // What the stage is (#120): a diagram under the bar until it is dismissed,
+    // then a link in the bar that brings it back.
+    let guide = app.prefs.guides.shown(Topic::Stage);
+    let mut l = l;
+    if !guide {
+        let (left, hit) = intro_ui::link(ui, &p, l - 14.0, mid, app.tr("guide.link.stage"), "stage", live, pointer);
+        if hit {
+            act = Some(Act::GuideShow);
+        }
+        l = left - 2.0;
+    }
     if let Some(a) = worktrees(ui, app, &p, r.left() + PAD_X, l - 16.0, mid, live, pointer) {
         act = Some(a);
     }
@@ -136,6 +153,14 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             act = Some(a);
         }
         top = band.bottom();
+    }
+    if let Some(lists) = app.changes.lists().filter(|_| guide) {
+        let now = michi_core::guide::stage(lists.staged.len(), app.changes.message.trim().is_empty());
+        let (a, h) = intro_ui::stage_band(ui, app, &p, pos2(r.left(), top), r.width(), now, live, pointer);
+        if a.is_some() {
+            act = Some(Act::Guide);
+        }
+        top += h;
     }
 
     // The files over the message on the left, the selected one's diff on
@@ -199,6 +224,8 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         }
         Act::Untell => app.changes.told = None,
         Act::Again => app.changes_run_again(),
+        Act::Guide => app.prefs.dismiss_guide(Topic::Stage),
+        Act::GuideShow => app.prefs.restore_guides(Some(Topic::Stage)),
     }
     ctx.request_repaint();
 }
@@ -1050,6 +1077,8 @@ mod tests {
     fn opened() -> App {
         let mut app = App::new(crate::prefs::Prefs::empty(), "C:/r/wt".into());
         app.lang = "en".into();
+        // The stage diagram would move the rows these tests click at.
+        app.prefs.guides.dismiss(Topic::Stage);
         let top = PathBuf::from("C:/r/wt");
         app.take(Answer::Summary(Ok(Summary { name: "r".into(), head: Head::Branch("wip".into()), worktrees: 3, top })));
         app.take(Answer::Trees(fixture::trees()));
