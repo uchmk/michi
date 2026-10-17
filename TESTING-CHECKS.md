@@ -633,6 +633,7 @@
 - [ ] **68.5** Open a big commit (hundreds of files, a huge generated file) → The window does not stall while it loads; a file of over 6000 diff lines, or a line of over 1500 characters, is left plain → | [ ] 〔未訳〕
 - [ ] **68.6** Select diff text with the mouse and copy it → The copied text is the plain text (no colour effects) → | [ ] 〔未訳〕
 
+<<<<<<< HEAD
 ## 92. Suggested order to land the worktrees
 
 - [ ] **92.1** With three worktrees ahead of main, two of which edit the same lines and one which touches other files: open the worktree table → The name cell of each shows a note `Land 1 of 3` / `2 of 3` / `3 of 3`; the one that conflicts with nothing is `1 of 3` → | [ ] 〔未訳〕
@@ -641,3 +642,14 @@
 - [ ] **92.4** Commit in a worktree so the order would change; wait for the table to refresh → The numbers follow the new predictions without a restart → | [ ] 〔未訳〕
 - [ ] **92.5** Start a merge in one worktree → The notes go away while the merge is under way and come back after → | [ ] 〔未訳〕
 - [ ] **92.6** Switch to JA → The notes read `main へ入れる順 1 / 3`, and the yellow one adds `先に入れた分との衝突 N 箇所` → | [ ] 〔未訳〕
+=======
+## 80. How hard a question asks (three steps)
+
+- [ ] **80.1** Press `m` on a branch to merge, or rebase: look at the band → A plain band titled `Are you sure?` in the waiting colour; `y` goes on, Esc stops → | [ ] 〔未訳〕
+- [ ] **80.2** Delete a branch, drop a stash, remove a worktree or run the tidy (Enter on picked rows), and start a reset → The band is titled `This is hard to undo` and drawn in red; `y` (or the digits for a reset) and Esc work as before → | [ ] 〔未訳〕
+- [ ] **80.3** Make the remote go ahead (push from another clone), then press `F` → The band is red, titled `This overwrites the remote`, lists the commits, says what is overwritten and `To go on, type origin/<b> and press Enter.`; there is no Yes button, only No → | [ ] 〔未訳〕
+- [ ] **80.4** In that band press `y`, `n` and a digit → They appear after `>` in the band as typed letters; the band stays and nothing is pushed → | [ ] 〔未訳〕
+- [ ] **80.5** Press Enter with a wrong or half-typed name; then Backspace over it and type the whole `origin/<b>`, Enter → The first Enter only toasts `Type origin/<b> first, then Enter`; the full name pushes (with the lease) → | [ ] 〔未訳〕
+- [ ] **80.6** In the same band press Esc, or click No → The band closes and nothing is pushed → | [ ] 〔未訳〕
+- [ ] **80.7** Switch to JA and repeat 80.2 and 80.3 → Titles, the typing note and the toast read in Japanese → | [ ] 〔未訳〕
+>>>>>>> worktree-agent-ac98932a54de0ddeb

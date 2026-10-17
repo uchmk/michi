@@ -11,6 +11,7 @@ use ito_layout::ui::Moved;
 use ito_layout::{Dir, Node};
 use michi_core::branch::Doing;
 use michi_core::git;
+use michi_core::strength::Strength;
 use michi_core::summary::Head;
 
 use crate::app::{failed_word, App, Mode, Repo, View};
@@ -565,18 +566,23 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
     let style = ito_confirm::Style {
         panel: c.panel,
         border: c.border,
-        accent: Some(if b.danger { c.err } else { c.wait }),
+        accent: Some(if b.danger() { c.err } else { c.wait }),
         title: c.fg,
         text: c.fg,
         dim: c.dim,
-        warn: if b.danger { c.err } else { c.wait },
+        warn: if b.danger() { c.err } else { c.wait },
         button_bg: c.border,
         button_text: c.fg,
     };
     let mut buttons = Vec::new();
     let mut keys = Vec::new();
     let mut hint = Vec::new();
-    if b.parents == 0 {
+    // The strongest step has no button to click: the name is typed.
+    let mut notes = b.notes.clone();
+    if b.typing() {
+        notes.push(format!("> {}_", b.typed));
+        hint.push(format!("Enter {}", app.tr("changes.yes")));
+    } else if b.parents == 0 {
         buttons.push(app.tr("changes.yes").to_owned());
         keys.push('y');
         hint.push(format!("y {}", app.tr("changes.yes")));
@@ -593,16 +599,25 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
     hint.push(format!("Esc {}", app.tr("changes.no")));
     let body = [b.text.clone()];
     let q = ito_confirm::Question {
-        title: app.tr("band.title"),
+        title: app.tr(match b.strength {
+            Strength::Easy => "band.title",
+            Strength::Loud => "band.title_loud",
+            Strength::Typed => "band.title_typed",
+        }),
         rows: &b.rows,
         body: &body,
-        notes: &b.notes,
+        notes: &notes,
         buttons: &buttons,
         hint: &hint.join(" · "),
     };
     let clicked = ito_confirm::show(ui.ctx(), &q, &style);
     if let (true, Some(i)) = (live, clicked) {
-        app.band_key(keys[i]);
+        if app.band.as_ref().is_some_and(|b| b.typing()) {
+            // The only button left is No; `n` would be a letter of the name.
+            app.band = None;
+        } else {
+            app.band_key(keys[i]);
+        }
     }
 }
 

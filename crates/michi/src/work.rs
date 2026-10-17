@@ -11,6 +11,7 @@ use std::time::{Duration, SystemTime};
 
 use michi_core::claude::State;
 use michi_core::net::{self, Done, Lease, Preview, Progress, Why};
+use michi_core::strength::{self, Strength};
 use michi_core::{git, paths};
 
 use crate::act::{self, Task};
@@ -110,8 +111,12 @@ pub struct Band {
     pub rows: Vec<(String, String)>,
     /// Lines in the warning colour under them.
     pub notes: Vec<String>,
-    /// Drawn red: it overwrites what the remote has.
-    pub danger: bool,
+    /// How hard it asks (#80): a plain yes, a red yes, or the name typed.
+    pub strength: Strength,
+    /// What is to be typed, with `Strength::Typed`.
+    pub word: String,
+    /// What has been typed so far.
+    pub typed: String,
     /// A merge's revert: `1`, `2`… run it with that parent's side kept,
     /// not `y`. 0 for the rest.
     pub parents: u8,
@@ -119,7 +124,18 @@ pub struct Band {
 
 impl Band {
     pub fn new(text: String, then: Then) -> Band {
-        Band { text, then, rows: Vec::new(), notes: Vec::new(), danger: false, parents: 0 }
+        let strength = strength_of(&then);
+        Band { text, then, rows: Vec::new(), notes: Vec::new(), strength, word: String::new(), typed: String::new(), parents: 0 }
+    }
+
+    /// Drawn red.
+    pub fn danger(&self) -> bool {
+        self.strength.is_red()
+    }
+
+    /// Whether the name has to be typed.
+    pub fn typing(&self) -> bool {
+        self.strength == Strength::Typed
     }
 
     /// The word on a parent's button: a revert keeps that parent's side, a
@@ -145,6 +161,22 @@ impl Band {
         } else {
             "band.parent"
         }
+    }
+}
+
+/// How hard a job asks: what drops a branch, a tag, a stash, a worktree,
+/// the tidy's rows or the work a reset can lose is red; the rest is plain.
+fn strength_of(then: &Then) -> Strength {
+    match then {
+        Then::Act(
+            Task::Delete { .. }
+            | Task::Untag { .. }
+            | Task::DropStash { .. }
+            | Task::RemoveWorktree { .. }
+            | Task::Tidy { .. }
+            | Task::Reset { .. },
+        ) => Strength::Loud,
+        _ => Strength::Easy,
     }
 }
 
@@ -250,6 +282,11 @@ impl App {
     /// A key while the band is up: `y` (a merge's revert: the parent's
     /// digit) runs what it waits to do, `n` drops it, the rest do nothing.
     pub(crate) fn band_key(&mut self, c: char) -> bool {
+        // A band that asks for the name takes every character into it.
+        if let Some(b) = self.band.as_mut().filter(|b| b.typing()) {
+            strength::type_char(&mut b.typed, c);
+            return true;
+        }
         let parents = self.band.as_ref().map_or(0, |b| u32::from(b.parents));
         let side = c.to_digit(10).filter(|n| (1..=parents).contains(n));
         match c {
@@ -260,6 +297,30 @@ impl App {
                 if let Some(Band { then: Then::Act(Task::Rerere { wt, .. }), .. }) = self.band.take() {
                     self.act(Task::Rerere { wt, on: false });
                 }
+            }
+            _ => {}
+        }
+        true
+    }
+
+    /// Enter and Backspace under a band that asks for the name: Enter goes
+    /// on when it is typed out, Backspace takes a character back. Any other
+    /// band leaves the key alone.
+    pub(crate) fn band_named(&mut self, name: &str) -> bool {
+        let Some((word, ok)) = self.band.as_ref().filter(|b| b.typing()).map(|b| (b.word.clone(), strength::typed_ok(&b.word, &b.typed)))
+        else {
+            return false;
+        };
+        match name {
+            "Backspace" => {
+                if let Some(b) = self.band.as_mut() {
+                    b.typed.pop();
+                }
+            }
+            "Enter" if ok => self.band_yes(None),
+            "Enter" => {
+                let text = self.tr("band.type_first").replace("{}", &word);
+                self.say(text);
             }
             _ => {}
         }
@@ -331,12 +392,16 @@ impl App {
         };
         let text = self.tr(key).replace("{to}", &p.to).replace("{n}", &p.total.to_string());
         let notes = if p.lease.is_some() {
-            vec![self.tr("net.lease").replace("{to}", &p.to).replace("{n}", &p.behind.to_string())]
+            vec![
+                self.tr("net.lease").replace("{to}", &p.to).replace("{n}", &p.behind.to_string()),
+                self.tr("band.type").replace("{}", &p.to),
+            ]
         } else {
             Vec::new()
         };
         let job = Job::Push { wt, remote, lease: p.lease.clone(), over, shown: true };
-        self.band = Some(Band { rows, notes, danger: p.lease.is_some(), ..Band::new(text, Then::Net(job)) });
+        let (strength, word) = if p.lease.is_some() { (Strength::Typed, p.to.clone()) } else { (Strength::Easy, String::new()) };
+        self.band = Some(Band { rows, notes, strength, word, ..Band::new(text, Then::Net(job)) });
     }
 
     /// Why a pull or push was not done, in a sentence (for a sync that
@@ -698,7 +763,7 @@ mod tests {
         let band = a.band.take().expect("a band");
         assert_eq!(band.text, "Push 2 commit(s) to origin/feat?");
         assert_eq!(band.rows, [("bbbbbbb".to_owned(), "Second".to_owned()), ("aaaaaaa".to_owned(), "First".to_owned())]);
-        assert!(!band.danger && band.notes.is_empty());
+        assert!(!band.danger() && band.notes.is_empty());
         assert_eq!(band.then, Then::Net(job(false, true)));
         // More than the list holds: a last row says how many.
         a.net_done(job(false, false), Ok(Done::Preview(preview(15, 0, false))));
@@ -714,10 +779,50 @@ mod tests {
         // F: the same list in red, with the overwrite said, and a yes that pushes with the lease.
         a.net_done(job(true, false), Ok(Done::Preview(preview(2, 3, false))));
         let band = a.band.take().expect("a band");
-        assert!(band.danger);
+        assert!(band.danger() && band.typing());
+        assert_eq!(band.word, "origin/feat");
         assert_eq!(band.rows.len(), 2);
         assert!(band.notes[0].contains("origin/feat has 3 commits"), "{:?}", band.notes);
         assert_eq!(band.then, Then::Net(Job::Push { wt: wt.clone(), remote: None, lease: Some(lease()), over: true, shown: true }));
+    }
+
+    #[test]
+    fn a_push_over_the_remote_asks_for_the_name() {
+        let mut a = app();
+        let wt = PathBuf::from("/r/feat");
+        let job = Job::Push { wt: wt.clone(), remote: None, lease: None, over: true, shown: false };
+        a.net_done(job, Ok(Done::Preview(preview(2, 3, false))));
+        // y, n and the digits are letters of the name here, not answers.
+        for c in "yn1".chars() {
+            assert!(a.band_key(c));
+        }
+        assert_eq!(a.band.as_ref().unwrap().typed, "yn1");
+        // Enter before the name is typed does not go on.
+        assert!(a.band_named("Enter"));
+        assert!(a.band.is_some());
+        assert!(a.band_named("Backspace") && a.band_named("Backspace") && a.band_named("Backspace"));
+        for c in "origin/feat".chars() {
+            a.band_key(c);
+        }
+        assert!(a.band_named("ArrowDown"), "other keys are swallowed");
+        assert!(a.band_named("Enter"));
+        assert!(a.band.is_none(), "the typed name goes on");
+    }
+
+    #[test]
+    fn strength_follows_what_can_be_brought_back() {
+        let loud = |t: Task| Band::new(String::new(), Then::Act(t)).strength;
+        assert_eq!(loud(Task::Delete { name: "x".into() }), Strength::Loud);
+        assert_eq!(
+            loud(Task::DropStash { id: michi_core::oid::Oid::parse("1111111111111111111111111111111111111111").unwrap() }),
+            Strength::Loud
+        );
+        assert_eq!(loud(Task::Merge { wt: PathBuf::new(), rev: "x".into() }), Strength::Easy);
+        assert_eq!(Band::new(String::new(), Then::Net(Job::Fetch)).strength, Strength::Easy);
+        // The Enter of a plain band is left to the view.
+        let mut a = app();
+        a.band = Some(Band::new(String::new(), Then::Net(Job::Fetch)));
+        assert!(!a.band_named("Enter"));
     }
 
     #[test]
