@@ -11,6 +11,7 @@ mod app;
 mod bugreport;
 mod changes;
 mod changes_ui;
+mod cmdpalette;
 mod conflict_ui;
 mod conflicts;
 mod detail;
@@ -130,7 +131,7 @@ impl Michi {
     /// quit, the scale), taken out of the frame's events before the views
     /// see them. Not while the Keys page is taking keys.
     fn keymap_keys(&mut self, ctx: &egui::Context) {
-        if self.app.prefs.keys_edit.busy() {
+        if self.app.prefs.keys_edit.busy() || self.app.cmd.is_some() {
             return;
         }
         let events = ctx.input(|i| i.events.clone());
@@ -159,6 +160,9 @@ impl Michi {
     /// message has them, only Ctrl+Enter (commit) is taken; the Escape that
     /// let go of it goes no further.
     fn keys(&mut self, ctx: &egui::Context) {
+        if self.app.cmd.is_some() {
+            return;
+        }
         let events = ctx.input(|i| i.events.clone());
         if self.app.picker.is_some() {
             self.picker_keys(ctx);
@@ -343,12 +347,6 @@ impl Michi {
             self.app.picker_rebase();
         }
     }
-
-    /// The palette comes with the commands (stage 6).
-    fn palette(&mut self) {
-        let text = self.app.tr("later").replace("{}", self.app.tr("key.palette"));
-        self.app.say(text);
-    }
 }
 
 impl eframe::App for Michi {
@@ -433,7 +431,10 @@ impl eframe::App for Michi {
             self.app.mode = if self.app.mode == Mode::Settings { Mode::Main } else { Mode::Settings };
         }
         if out.palette {
-            self.palette();
+            self.app.toggle_palette();
+        }
+        if let Some(p) = cmdpalette::show(&ctx, &mut self.app) {
+            self.app.run_pick(p);
         }
         // A click in the frame may have moved the selection: ask for it now,
         // not a frame late.

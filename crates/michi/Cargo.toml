@@ -31,6 +31,7 @@ ito-match = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7
 ito-keys = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652", features = ["egui"] }
 ito-keymap = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 ito-help = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
+ito-palette = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 ito-keyscript = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 ito-bugreport = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }
 ito-notify = { git = "https://github.com/uchmk/ito", rev = "4c7db9e2254386cd362f7e6d4e6afc9452e95652" }

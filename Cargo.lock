@@ -1717,6 +1717,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ito-palette"
+version = "0.55.0"
+source = "git+https://github.com/uchmk/ito?rev=4c7db9e2254386cd362f7e6d4e6afc9452e95652#4c7db9e2254386cd362f7e6d4e6afc9452e95652"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "ito-prefs"
 version = "0.55.0"
 source = "git+https://github.com/uchmk/ito?rev=4c7db9e2254386cd362f7e6d4e6afc9452e95652#4c7db9e2254386cd362f7e6d4e6afc9452e95652"
@@ -1995,7 +2003,7 @@ dependencies = [
 
 [[package]]
 name = "michi"
-version = "0.42.0"
+version = "0.43.0"
 dependencies = [
  "chrono",
  "eframe",
@@ -2011,6 +2019,7 @@ dependencies = [
  "ito-keyscript",
  "ito-match",
  "ito-notify",
+ "ito-palette",
  "ito-prefs",
  "ito-theme",
  "ito-winres",
@@ -2023,7 +2032,7 @@ dependencies = [
 
 [[package]]
 name = "michi-core"
-version = "0.42.0"
+version = "0.43.0"
 dependencies = [
  "chrono",
  "serde",

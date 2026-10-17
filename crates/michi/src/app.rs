@@ -258,6 +258,8 @@ pub struct App {
     /// selected then: the detail shows the stash until that moves.
     pub side_stash: Option<(Oid, Option<Oid>)>,
     pub quit: bool,
+    /// The command palette while it is open.
+    pub cmd: Option<ito_palette::View>,
     /// The key list's first line, and how much of it the last frame showed.
     pub help_scroll: usize,
     pub help_drawn: std::cell::Cell<Option<ito_help::Drawn>>,
@@ -305,6 +307,7 @@ impl App {
             reorder: None,
             side_stash: None,
             quit: false,
+            cmd: None,
             help_scroll: 0,
             help_drawn: std::cell::Cell::new(None),
         };
@@ -1120,7 +1123,7 @@ impl App {
         }
     }
 
-    fn run_key(&mut self, a: crate::keymap::Act) {
+    pub(crate) fn run_key(&mut self, a: crate::keymap::Act) {
         use crate::keymap::Act;
         match a {
             Act::Settings => self.mode = if self.mode == Mode::Settings { Mode::Main } else { Mode::Settings },
@@ -1128,10 +1131,7 @@ impl App {
                 self.help_scroll = 0;
                 self.mode = if self.mode == Mode::Help { Mode::Main } else { Mode::Help };
             }
-            Act::Palette => {
-                let text = self.tr("later").replace("{}", self.tr("key.palette"));
-                self.say(text);
-            }
+            Act::Palette => self.toggle_palette(),
             Act::BugReport => self.bug_report(),
             Act::Quit => self.quit = true,
             Act::Scale(to) => self.scale(to),
