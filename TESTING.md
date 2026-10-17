@@ -1307,3 +1307,13 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 260.11 | While in the `2` view with a picture shown, overwrite it again on disk | The picture updates without the view flickering back to "Reading the pictures..." | [ ] |
 | 260.12 | Scroll a commit that changes many pictures | The scroll stays smooth; pictures load as they come into sight, the layout shifts at most a little | [ ] |
 | 260.13 | Open `?` in the graph and the `2` view; switch EN and JA | `O` is listed with its words in both languages; the line over the pictures reads well in both | [ ] |
+
+## 261. Settings backup (Advanced page)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 261.1 | Open settings (`,`), go to the Advanced page | A Backup card with a file name (in the home folder), Export and Import; EN and JA both read well |
+| 261.2 | Press Export | A toast says how many settings files were written; the file holds common.toml, themes, and michi's config.toml / keymap.toml, not the window's place |
+| 261.3 | Change the theme and a key, press Import once, then again | The first press only arms the button; the second reads the file back, a toast says what was read, and the theme and the key are as exported within a couple of seconds |
+| 261.4 | Import a file that is not a settings bundle | A toast gives the reason and nothing in the settings folder changes |
+| 261.5 | Search "backup" in the settings | The Advanced page is listed |

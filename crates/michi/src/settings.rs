@@ -13,6 +13,7 @@ const THEME: usize = 1;
 const KEYS: usize = 2;
 const NOTIFY: usize = 3;
 const EXTERNAL: usize = 4;
+const ADVANCED: usize = 5;
 
 /// The rows on each page, for the search.
 fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
@@ -54,6 +55,7 @@ fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
         (EXTERNAL, "merge"),
         (EXTERNAL, "WinMerge"),
     ]);
+    v.extend(ito_prefs::backup_index(ito_prefs::MoreWords::of(lang)).into_iter().map(|t| (ADVANCED, t)));
     v.extend(open_words(lang).tools.into_iter().map(|t| (EXTERNAL, t)));
     v
 }
@@ -89,6 +91,7 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     // The installed diff / merge tools are looked for once, on a thread.
     app.prefs.find_tools();
     let w = Words::of(&app.lang);
+    let mw = ito_prefs::MoreWords::of(&app.lang);
     // The Keys page takes every key while it is setting one, Esc included.
     let keys = if app.prefs.keys_edit.busy() { ito_prefs::Keys::default() } else { ito_prefs::Keys::standard(ui, false) };
     let pages = [
@@ -97,11 +100,12 @@ pub fn show(ui: &mut Ui, app: &mut App) {
         (app.tr("settings.keys"), app.tr("settings.keys_lead")),
         (w.notify, app.tr("settings.notify_lead")),
         (app.tr("settings.external"), app.tr("settings.external_lead")),
+        (mw.p_advanced, mw.p_advanced_lead),
     ];
     let index = index(w, &app.lang);
     let file = match app.prefs.state.page {
         KEYS => "keymap.toml",
-        NOTIFY | EXTERNAL => "config.toml",
+        NOTIFY | EXTERNAL | ADVANCED => "config.toml",
         _ => "common.toml",
     };
     let nav = ito_prefs::Nav { pages: &pages, index: &index, words: w, file };
@@ -121,6 +125,8 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     let (open_drafts, open_form) = (&mut prefs.open_drafts, &mut prefs.open_form);
     let open_words = open_words(&lang);
     let mut open_edits: Vec<ito_openin::Edit> = Vec::new();
+    let mut backup: Vec<ito_prefs::Backup> = Vec::new();
+    let backup_file = ito_common::home_dir().unwrap_or_default().join("michi-settings.toml");
     let density = prefs.density;
     let mut density_new = None;
     let motion = prefs.motion;
@@ -222,6 +228,7 @@ pub fn show(ui: &mut Ui, app: &mut App) {
             let known = found_known.then_some(found);
             open_edits = ito_prefs::open_card(ui, l, &open_words, open, known, open_drafts, open_form);
         }
+        ADVANCED => backup.extend(ito_prefs::backup_card(ui, l, mw, &backup_file)),
         _ => {}
     });
     if out.close {
@@ -247,6 +254,9 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     }
     app.prefs.notify_edit(notify_edits, webhooks, no_folder);
     app.prefs.open_edit(open_edits, no_folder);
+    for what in backup {
+        app.prefs.backup(what, no_folder);
+    }
     if !key_edits.is_empty() {
         app.prefs.keymap_edit(key_edits, no_folder);
     }

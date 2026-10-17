@@ -30,6 +30,8 @@ pub enum Reload {
     /// config.toml's text (none when there is no file).
     Config(Option<String>),
     Failed(String),
+    /// What an export or import did, for a toast.
+    Notice(String),
 }
 
 pub struct Prefs {
@@ -51,6 +53,8 @@ pub struct Prefs {
     pub keymap_warn: Vec<String>,
     /// How many changes the last write on the Keys page made, for a toast.
     pub said: Option<usize>,
+    /// What the last export or import of the settings did, for a toast.
+    pub notice: Option<String>,
     /// `[notify]` of config.toml, and what it warns of.
     pub notify: NotifyCfg,
     pub notify_warn: Vec<String>,
@@ -107,6 +111,7 @@ impl Prefs {
             keymap: Keymap::load(None).0,
             keymap_warn: Vec::new(),
             said: None,
+            notice: None,
             notify: NotifyCfg::default(),
             notify_warn: Vec::new(),
             open: Default::default(),
@@ -226,6 +231,7 @@ impl Prefs {
                     self.read_view(text.as_deref());
                 }
                 Reload::Failed(e) => self.failed = Some(e),
+                Reload::Notice(s) => self.notice = Some(s),
             }
         }
     }
@@ -235,6 +241,34 @@ impl Prefs {
         if let Some(ctx) = wake {
             ctx.request_repaint();
         }
+    }
+
+    /// Write the settings to a file, or read them back from one
+    /// (`ito_common::bundle`), on a thread. common.toml and michi's files are
+    /// read again by their watchers.
+    pub fn backup(&self, what: ito_prefs::Backup, no_folder: &str) {
+        let (tx, wake) = (self.tx.clone(), self.wake.clone());
+        let Some(base) = self.base.clone() else {
+            Self::send_back(&tx, &wake, Reload::Failed(no_folder.into()));
+            return;
+        };
+        let app_dir = keymap_path(&base).with_file_name("");
+        std::thread::spawn(move || {
+            let r = match what {
+                ito_prefs::Backup::Export(file) => {
+                    ito_common::bundle::export(&file, &base, &app_dir, "michi", env!("CARGO_PKG_VERSION"), &backup_keeps)
+                        .map(|n| format!("Wrote {n} settings files to {}", file.display()))
+                }
+                ito_prefs::Backup::Import(file) => ito_common::bundle::import(&file, &base, &app_dir, "michi", &backup_keeps).map(|r| {
+                    let mut s = format!("Read {} settings files from {} ({} unchanged)", r.written.len(), file.display(), r.unchanged);
+                    for (name, why) in &r.skipped {
+                        s.push_str(&format!("; skipped {name}: {why}"));
+                    }
+                    s
+                }),
+            };
+            Self::send_back(&tx, &wake, r.map_or_else(Reload::Failed, Reload::Notice));
+        });
     }
 
     /// Write `changes` into common.toml on a thread, then read it again.
@@ -436,6 +470,12 @@ pub fn config_path(base: &Path) -> PathBuf {
     keymap_path(base).with_file_name("config.toml")
 }
 
+/// The files of michi's folder a settings bundle carries: the two the user
+/// edits, not the window's place or other state.
+fn backup_keeps(name: &str) -> bool {
+    matches!(name, "config.toml" | "keymap.toml")
+}
+
 /// config.toml's text; none when there is no file.
 fn read_config(base: &Path) -> Option<String> {
     std::fs::read_to_string(config_path(base)).ok()
@@ -547,6 +587,12 @@ fn open_path(path: &Path) -> Result<(), String> {
 mod tests {
     use super::*;
     use ito_keymap::Edit;
+
+    #[test]
+    fn a_settings_bundle_carries_the_two_files_and_not_the_window_place() {
+        assert!(backup_keeps("config.toml") && backup_keeps("keymap.toml"));
+        assert!(!backup_keeps("window.toml") && !backup_keeps("backup/x.json"));
+    }
 
     #[test]
     fn a_key_added_is_written_ahead_of_the_defaults_and_reset_takes_it_back() {

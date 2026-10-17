@@ -615,6 +615,9 @@ impl eframe::App for Michi {
         if let Some(e) = self.app.prefs.failed.take() {
             self.app.say(e);
         }
+        if let Some(text) = self.app.prefs.notice.take() {
+            self.app.say(text);
+        }
         if let Some(n) = self.app.prefs.said.take().filter(|n| *n > 0) {
             let text = self.app.tr("toast.keymap_saved").replace("{}", &n.to_string());
             self.app.say(text);

@@ -2,6 +2,13 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.66.0] - 2026-10-17
+
+### 追加
+
+- 設定に「Advanced」ページを足し、設定の書き出し・読み込み（ito の `backup_card`）を載せた。束には common.toml、共通のテーマ、michi の config.toml と keymap.toml が入り、窓の場所などの状態は入らない。結果はトーストに出る。
+- ito を 0.76.0（a9fda25）にそろえた。
+
 ## [0.65.1] - 2026-10-17
 
 ### 変更
