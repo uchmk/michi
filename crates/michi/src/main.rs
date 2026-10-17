@@ -571,6 +571,11 @@ impl Michi {
                 egui::Event::Key { key: egui::Key::Enter, pressed: true, modifiers, .. } if modifiers.is_none() => {
                     self.app.named("Enter");
                 }
+                egui::Event::Key { key: key @ (egui::Key::ArrowDown | egui::Key::ArrowUp), pressed: true, modifiers, .. }
+                    if modifiers.shift && !modifiers.command && !modifiers.alt =>
+                {
+                    self.app.named(if key == egui::Key::ArrowDown { "Shift+ArrowDown" } else { "Shift+ArrowUp" });
+                }
                 egui::Event::Key { key, pressed: true, modifiers, .. } if modifiers.is_none() => {
                     if let Some((_, name)) = MOVES.iter().find(|(k, _)| *k == key) {
                         self.app.named(name);

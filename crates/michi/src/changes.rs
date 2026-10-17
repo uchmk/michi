@@ -161,6 +161,9 @@ pub struct Changes {
     pub lists: Option<Result<Lists, git::Error>>,
     /// The selected file, counted over the staged ones then the unstaged.
     pub sel: usize,
+    /// Where a multiple selection started (Shift+Up / Down): the files from
+    /// here to `sel`, on one side, are acted on together.
+    mark: Option<usize>,
     /// The diff last asked for, and the one read: kept for the same file
     /// while it is read again.
     file_asked: Option<(Side, String)>,
@@ -523,6 +526,40 @@ impl Changes {
         }
     }
 
+    /// The files a Space acts on: the marked range, or the selected one.
+    pub fn marked(&self) -> std::ops::RangeInclusive<usize> {
+        let staged = self.lists().map_or(0, |l| l.staged.len());
+        match self.mark {
+            Some(m) if (m < staged) == (self.sel < staged) => m.min(self.sel)..=m.max(self.sel),
+            _ => self.sel..=self.sel,
+        }
+    }
+
+    /// Whether file `k` is in a multiple selection (of more than the one).
+    pub fn is_marked(&self, k: usize) -> bool {
+        let r = self.marked();
+        r.start() != r.end() && r.contains(&k)
+    }
+
+    /// Shift+Down / Shift+Up: widen or narrow the multiple selection by one
+    /// file. It stays on one side (staged or not).
+    pub fn extend(&mut self, by: i64) -> Option<Wish> {
+        let staged = self.lists().map_or(0, |l| l.staged.len());
+        let to = self.sel as i64 + by;
+        if to < 0 || to as usize >= self.count() || ((to as usize) < staged) != (self.sel < staged) {
+            return None;
+        }
+        let mark = self.mark.unwrap_or(self.sel);
+        let wish = self.select(to as usize);
+        self.mark = Some(mark);
+        wish
+    }
+
+    /// Esc: the multiple selection goes. Whether there was one.
+    pub fn unmark(&mut self) -> bool {
+        self.mark.take().is_some()
+    }
+
     /// Selects the `k`th file (the last when there are fewer).
     pub fn select(&mut self, k: usize) -> Option<Wish> {
         let n = self.count();
@@ -530,6 +567,7 @@ impl Changes {
             return None;
         }
         let k = k.min(n - 1);
+        self.mark = None;
         if k != self.sel {
             self.sel = k;
             self.to_top = true;
@@ -723,14 +761,20 @@ impl Changes {
 
     /// Space on the files: the selected file in, or out when it is staged.
     pub fn toggle_file(&mut self, claude: bool) -> Result<Option<Wish>, &'static str> {
-        let Some((side, f)) = self.selected() else { return Ok(None) };
-        let mut paths = vec![f.path.clone()];
+        let Some((side, _)) = self.selected() else { return Ok(None) };
+        let mut paths = Vec::new();
+        for k in self.marked() {
+            if let Some((_, f)) = self.at(k) {
+                paths.push(f.path.clone());
+                if side == Side::Staged {
+                    paths.extend(f.from.clone());
+                }
+            }
+        }
+        self.mark = None;
         let op = match side {
             Side::Unstaged => Op::Stage(paths),
-            Side::Staged => {
-                paths.extend(f.from.clone());
-                Op::Unstage(paths)
-            }
+            Side::Staged => Op::Unstage(paths),
         };
         Ok(self.act(op, claude))
     }
@@ -1076,6 +1120,27 @@ pub(crate) mod tests {
         reread(&mut c, lists(&[], &[]));
         assert_eq!((c.sel, c.selected()), (0, None));
         assert_eq!(c.select(3), None);
+    }
+
+    #[test]
+    fn shift_arrows_mark_a_range_that_space_stages_together() {
+        let mut c = opened();
+        reread(&mut c, lists(&["s.txt"], &["a.txt", "b.txt", "c.txt"]));
+        c.select(1);
+        // Not across to the staged side.
+        assert!(c.extend(-1).is_none() && !c.is_marked(0) && !c.is_marked(1));
+        c.extend(1);
+        c.extend(1);
+        assert!((1..=3).all(|k| c.is_marked(k)) && !c.is_marked(0));
+        assert!(c.extend(1).is_none());
+        c.extend(-1);
+        assert!(c.is_marked(1) && c.is_marked(2) && !c.is_marked(3));
+        assert!(matches!(c.toggle_file(false), Ok(Some(Wish::Do { op: Op::Stage(p), .. })) if p == ["a.txt", "b.txt"]));
+        assert!(!c.unmark(), "staging ends the selection");
+        c.select(1);
+        c.extend(1);
+        assert!(c.unmark());
+        assert!(!c.is_marked(2));
     }
 
     #[test]

@@ -1104,6 +1104,8 @@ impl App {
             }
             "ArrowDown" => ch.move_by(1),
             "ArrowUp" => ch.move_by(-1),
+            "Shift+ArrowDown" => ch.extend(1),
+            "Shift+ArrowUp" => ch.extend(-1),
             "Home" => ch.select(0),
             "End" => ch.select(usize::MAX),
             "ArrowRight" => return self.changes_key('l'),
@@ -2015,6 +2017,9 @@ impl App {
         if self.view == View::Changes {
             let ch = &mut self.changes;
             if ch.confirm.take().is_some() || ch.told.take().is_some() {
+                return true;
+            }
+            if ch.unmark() {
                 return true;
             }
             if ch.focus == Focus::Lines {

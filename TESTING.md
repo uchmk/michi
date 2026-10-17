@@ -1594,3 +1594,10 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | --- | --- | --- |
 | 270.1 | In the settings, General, choose "Full date and time" under Dates | The graph, the worktree table, the detail pane and the conflict list write every date as `YYYY/MM/DD hh:mm` at once; config.toml has `[view] dates = "full"` |
 | 270.2 | Change the clock's date format (e.g. DD/MM/YYYY) and 12-hour time, then go back to "Short" | The full form follows the clock's format; Short shows today's time, "yesterday" and so on again |
+
+## 271. Multiple selection in Changes, message box
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 271.1 | In Changes press Shift+Down twice on an unstaged file, then Space | The three rows are shaded alike; Space stages all three at once; Shift+Up narrows the range; Esc drops it; it does not cross into the staged list |
+| 271.2 | Type twenty lines in the commit message box | The text stays inside the box and scrolls there; the guide line and the commit row are not covered |

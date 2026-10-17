@@ -621,6 +621,8 @@ fn list(ui: &Ui, app: &App, lr: Rect, live: bool, pointer: Option<Pos2>, act: &m
                     if ch.focus == Focus::Files {
                         p.rect_filled(Rect::from_min_size(rr.min, vec2(2.0, rr.height())), 0.0, accent());
                     }
+                } else if ch.is_marked(k) {
+                    p.rect_filled(rr, 0.0, c.selection());
                 } else if hot {
                     p.rect_filled(rr, 0.0, c.fg.gamma_multiply(0.03));
                 }
@@ -700,8 +702,21 @@ fn message(ui: &mut Ui, app: &mut App, br: Rect, live: bool, pointer: Option<Pos
         .font(FontId::monospace(12.0))
         .text_color(c.fg)
         .desired_width(field.width())
+        .desired_rows(1)
+        .min_size(field.size())
         .interactive(live);
-    let resp = ui.put(field, edit);
+    // A long message scrolls inside its box instead of growing out of it over the guide and the commit row.
+    let resp = ui
+        .scope_builder(egui::UiBuilder::new().max_rect(field), |ui| {
+            ui.set_clip_rect(field.intersect(ui.clip_rect()));
+            egui::ScrollArea::vertical()
+                .id_salt("commit-message")
+                .max_height(field.height())
+                .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
+                .show(ui, |ui| ui.add(edit))
+                .inner
+        })
+        .inner;
     app.changes.typing = resp.has_focus();
     if resp.has_focus() {
         app.changes_help();
