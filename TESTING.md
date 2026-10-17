@@ -715,3 +715,18 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 87.6 | Press `l` (pick lines) then `n` / `N` | The cursor moves to the first line of the next / previous run of changed lines and the diff follows it; `N` in the middle of a run goes to that run's start |
 | 87.7 | Select a file with no diff text (binary, deleted-empty) and press `n` | No strip, nothing happens; no error |
 | 87.8 | Press `?`; switch EN and JA | The key list names `n N` as jumping to the next or previous change in both languages; the strip looks right in Dark and Light themes |
+
+## 100. Trial merge of several worktrees into the trunk
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 100.1 | In the worktree table press `T` with two or more worktrees on branches other than the trunk | A list opens at the top with those worktrees (branch and folder), each with a `·` mark | | [ ] |
+| 100.2 | Press `T` with fewer than two such worktrees | A toast says a trial merge needs at least two worktrees; no list opens | | [ ] |
+| 100.3 | Press `j` `k` and Space on three rows in the order c, a, b; click a row | The picked rows show 1, 2, 3 in the order picked; Space or a click on a picked row takes it back and later marks shift; `u` clears all | | [ ] |
+| 100.4 | Press Enter with nothing picked | A toast asks to pick with Space first | | [ ] |
+| 100.5 | Pick two branches that touch different files and press Enter | "Merging in memory…" shows briefly, then each step reads "clean" and the summary counts the changed files with +/- lines | | [ ] |
+| 100.6 | Pick two branches that edit the same lines, run, then pick them in the other order and run again | The clashing step is named with its files and tinted; which step clashes depends on the order | | [ ] |
+| 100.7 | Pick a branch that is already merged into the trunk | Its step reads "already in" | | [ ] |
+| 100.8 | After a run, check `git status`, `git branch -v` and the worktree folders in a terminal | Nothing moved: no branch, index, HEAD or file changed | | [ ] |
+| 100.9 | Change the picks after a run; press Esc; try Ctrl+Shift+P over the list | The old result goes when the picks change; Esc closes the list; the palette does not open over it | | [ ] |
+| 100.10 | Switch EN and JA; use a narrow window | Both languages read well; long paths are cut with an ellipsis | | [ ] |
