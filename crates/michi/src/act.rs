@@ -115,6 +115,14 @@ pub enum Task {
     DropStash {
         id: Oid,
     },
+    /// Reads where the submodules of the worktree at `wt` stand.
+    FindSubmodules {
+        wt: PathBuf,
+    },
+    /// Puts the submodules of the worktree at `wt` on their recorded commits.
+    UpdateSubmodules {
+        wt: PathBuf,
+    },
     /// Lists what can be cleaned up, the window being on the worktree at
     /// `here`.
     FindTidy {
@@ -350,6 +358,8 @@ impl Task {
             Task::Unstash { pop: false, .. } => "stash apply",
             Task::Unstash { pop: true, .. } => "stash pop",
             Task::DropStash { .. } => "stash drop",
+            Task::FindSubmodules { .. } => "submodule status",
+            Task::UpdateSubmodules { .. } => "submodule update",
             Task::FindTidy { .. } => "for-each-ref",
             Task::FindReflog { .. } => "reflog",
             Task::Trial { .. } => "merge-tree",
@@ -408,6 +418,7 @@ pub enum Acted {
     Switched(Option<Autostashed>),
     Unstashed(Applied),
     Found(Found),
+    Submodules(Vec<michi_core::submodule::Sub>),
     Reflog(Vec<michi_core::reflog::Entry>),
     Trialed(Box<michi_core::trial::Trial>),
     Recovered(String),
@@ -461,6 +472,8 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Stash { wt, message } => stash::save(wt, message).map(Acted::Stashed),
         Task::Unstash { wt, id, pop } => stash::apply(wt, id, *pop).map(Acted::Unstashed),
         Task::DropStash { id } => stash::drop(dir, id).map(|saved| Acted::Kept(Some(saved))),
+        Task::FindSubmodules { wt } => michi_core::submodule::list(wt).map(Acted::Submodules),
+        Task::UpdateSubmodules { wt } => michi_core::submodule::update(wt).map(Acted::Submodules),
         Task::FindTidy { here } => tidy::find(dir, here).map(Acted::Found),
         Task::FindReflog { here } => michi_core::reflog::list(here).map(Acted::Reflog),
         Task::Trial { trunk, branches } => michi_core::trial::run(dir, trunk, branches).map(|t| Acted::Trialed(Box::new(t))),
@@ -778,6 +791,8 @@ impl App {
                 let saved = saved.as_deref().map_or("", backup::short);
                 (self.tr("act.dropped").replace("{id}", &id.short()).replace("{saved}", saved), 10)
             }
+            (Task::FindSubmodules { wt }, Ok(Acted::Submodules(subs))) => return self.submodules_found(wt.clone(), subs),
+            (Task::UpdateSubmodules { wt }, Ok(Acted::Submodules(subs))) => self.submodules_updated(wt, &subs),
             (Task::FindTidy { .. }, Ok(Acted::Found(found))) => return self.tidy_found(found),
             (Task::FindReflog { .. }, Ok(Acted::Reflog(rows))) => return self.reflog_found(rows),
             (Task::Trial { branches, .. }, Ok(Acted::Trialed(found))) => return self.trial_done(branches, *found),

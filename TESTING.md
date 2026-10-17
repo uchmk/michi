@@ -908,3 +908,19 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 70.7 | With the network cut, press `f` yourself | The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` | | [ ] |
 | 70.8 | Start a pull or push while the timer is due | The timer waits; it never interrupts a job | | [ ] |
 | 70.9 | Switch EN and JA | The keybar's `· failed` / `· 失敗` reads well and fits | | [ ] |
+
+## 129. Submodules: state and update (#29)
+
+(`## 29.` was taken by the confirmation window, so this section is 129.)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 129.1 | In the worktree table of a repository with no submodule press `u` | A toast says the worktree has no submodules | [ ] |
+| 129.2 | In a repository whose submodules are all on the recorded commit press `u` | A toast says all N submodules are on their recorded commits; no question | [ ] |
+| 129.3 | `cd` into a submodule and `git checkout HEAD~1`, then press `u` on its worktree | The band lists the submodule as off its commit and asks about `submodule update --init --recursive`; `n`/Esc leaves it as it is | [ ] |
+| 129.4 | Answer yes to 129.3 | A toast says the submodules were put on their recorded commits; `git submodule status` shows no `+` | [ ] |
+| 129.5 | Clone a repository with submodules without `--recurse-submodules`, press `u`, then yes | The missing (`-`) submodules are listed, then cloned and checked out | [ ] |
+| 129.6 | Leave an uncommitted change in a submodule file the update would overwrite, then `u` and yes | git refuses, michi shows `submodule update failed: ...` and the change is still there | [ ] |
+| 129.7 | Press `u` on a worktree in the middle of a merge, with a stale submodule, then yes | The update is refused with a message naming the merge | [ ] |
+| 129.8 | Open `?` in the worktree table; switch EN and JA | `u` reads "Submodules: state and update" / "submodule の状態と更新"; the question and toasts read well and fit | [ ] |
+| 129.9 | Open the command palette (`Ctrl+Shift+P`) in the worktree table | A "Submodules: state and update" entry with `u` is listed and works | [ ] |

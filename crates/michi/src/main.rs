@@ -52,6 +52,7 @@ mod settings;
 mod side_ui;
 mod sizes;
 mod strip;
+mod submodule;
 mod tidy;
 mod tidy_ui;
 mod trial;
