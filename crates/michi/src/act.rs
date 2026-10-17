@@ -130,6 +130,11 @@ pub enum Task {
         wt: PathBuf,
         sessions: Vec<u64>,
     },
+    /// Keeps the whole state of the worktree at `wt` (`HEAD`, index, working
+    /// folder) under a backup, touching nothing (#113).
+    Calm {
+        wt: PathBuf,
+    },
     /// Puts the changes of the worktree at `wt` away, with `message`
     /// (git's own when empty).
     Stash {
@@ -506,6 +511,7 @@ impl Task {
                 michi_core::reset::Mode::Hard => "reset --hard",
             },
             Task::Restore { .. } => "restore",
+            Task::Calm { .. } => "calm",
             Task::Stash { .. } => "stash",
             Task::Unstash { pop: false, .. } => "stash apply",
             Task::Unstash { pop: true, .. } => "stash pop",
@@ -599,6 +605,7 @@ pub enum Acted {
     Reset(michi_core::reset::Reset),
     Restored(michi_core::restore::Restored),
     Stashed(Saved),
+    Calmed(michi_core::calm::Calmed),
     /// Switched; with the changes that were stashed around it, if any.
     Switched(Option<Autostashed>),
     Unstashed(Applied),
@@ -678,6 +685,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::ApplyPatch { wt, patch } => michi_core::patch::apply(wt, patch).map(Acted::Patched),
         Task::Reset { wt, id, mode } => michi_core::reset::reset(wt, id, *mode).map(Acted::Reset),
         Task::Restore { wt, id, path } => michi_core::restore::file(wt, id, path).map(Acted::Restored),
+        Task::Calm { wt } => michi_core::calm::save(wt).map(Acted::Calmed),
         Task::Stash { wt, message } => stash::save(wt, message).map(Acted::Stashed),
         Task::Unstash { wt, id, pop } => stash::apply(wt, id, *pop).map(Acted::Unstashed),
         Task::MoveChanges { from, to } => michi_core::carry::changes(from, to).map(Acted::Moved),
@@ -1090,6 +1098,19 @@ impl App {
                     (self.tr("act.revert_clash").replace("{id}", &id.short()).replace("{files}", &self.few(&files)), 8)
                 }
             },
+            (Task::Calm { wt }, Ok(Acted::Calmed(c))) => {
+                let key = if c.changes { "act.calmed" } else { "act.calmed_clean" };
+                let mut text = self
+                    .tr(key)
+                    .replace("{wt}", &self::name(wt))
+                    .replace("{ref}", backup::short(&c.backup))
+                    .replace("{cmd}", &michi_core::calm::way_back(&c));
+                if !c.left_out.is_empty() {
+                    text.push(' ');
+                    text.push_str(&self.tr("act.calmed_left").replace("{n}", &c.left_out.len().to_string()));
+                }
+                (text, 14)
+            }
             (Task::Stash { wt, .. }, Ok(Acted::Stashed(Saved::Made(id)))) => {
                 (self.tr("act.stashed").replace("{wt}", &self::name(wt)).replace("{id}", &id.short()), 4)
             }
@@ -1336,6 +1357,17 @@ mod tests {
             Ok(Acted::Switched(Some(Autostashed { saved: "refs/michi/backup/x".into(), back: AutoBack::Clash(vec!["a.txt".into()]) })))
         )
         .contains("clashed in a.txt"));
+        let calmed = michi_core::calm::Calmed {
+            backup: "refs/michi/backup/20261016-142233".into(),
+            head: oid('a'),
+            changes: true,
+            staged: false,
+            left_out: Vec::new(),
+        };
+        let text = said(Task::Calm { wt: wt.clone() }, Ok(Acted::Calmed(calmed.clone())));
+        assert!(text.contains("feat") && text.contains("git restore --source=michi/backup/20261016-142233"), "{text}");
+        let text = said(Task::Calm { wt: wt.clone() }, Ok(Acted::Calmed(michi_core::calm::Calmed { changes: false, ..calmed })));
+        assert!(text.contains("no changes"), "{text}");
         assert_eq!(
             said(Task::Stash { wt: wt.clone(), message: String::new() }, Ok(Acted::Stashed(Saved::Made(oid('e'))))),
             "Put the changes of feat away: eeeeeee"

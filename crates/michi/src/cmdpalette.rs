@@ -24,6 +24,10 @@ pub enum Pick {
     Practice,
     /// Show the legend of the graph (#118).
     Legend,
+    /// Keep the whole state of the worktree safely (#113).
+    Calm,
+    /// Do the suggested next step (#119).
+    Next,
 }
 
 /// The entries the palette offers now: the keymap's commands, then those of
@@ -48,6 +52,10 @@ pub fn entries(app: &App) -> Vec<Entry<Pick>> {
     }
     out.push(Entry::new(app.tr("practice.cmd"), "", Pick::Practice));
     out.push(Entry::new(app.tr("legend.cmd"), "", Pick::Legend));
+    out.push(Entry::new(app.tr("calm.cmd"), "", Pick::Calm));
+    if let Some(s) = app.suggestion() {
+        out.push(Entry::new(format!("{} ({})", app.tr("suggest.cmd"), app.tr(s.key())), "", Pick::Next));
+    }
     let mut seen = Vec::new();
     for (keys, word) in app.keys().iter().chain(GLOBAL_KEYS.iter().skip(1)) {
         let mut chars = keys.chars();
@@ -145,6 +153,8 @@ impl App {
                 self.view = crate::app::View::Graph;
                 self.legend = true;
             }
+            Pick::Calm => self.calm(),
+            Pick::Next => self.run_suggestion(),
             Pick::Key(c) => {
                 self.mode = crate::app::Mode::Main;
                 self.feed(c);

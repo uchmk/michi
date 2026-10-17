@@ -15,6 +15,7 @@ mod bisect;
 mod blame;
 mod blame_ui;
 mod bugreport;
+mod calm;
 mod changes;
 mod changes_ui;
 mod cmdpalette;
@@ -708,6 +709,12 @@ impl eframe::App for Michi {
         self.app.changes_sync();
         if out.settings {
             self.app.mode = if self.app.mode == Mode::Settings { Mode::Main } else { Mode::Settings };
+        }
+        if out.calm {
+            self.app.calm();
+        }
+        if out.next {
+            self.app.run_suggestion();
         }
         if out.palette {
             self.app.toggle_palette();
