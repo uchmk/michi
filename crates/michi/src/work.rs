@@ -930,6 +930,28 @@ mod tests {
     }
 
     #[test]
+    fn restoring_a_version_asks_first_and_not_for_a_deleted_file() {
+        let mut a = app();
+        let id = Oid::parse(&"a".repeat(40)).unwrap();
+        a.ask_restore(id, "a.txt".into(), false);
+        assert!(a.band.is_none(), "no repository: nothing to ask");
+        a.repo = Repo::Ready(michi_core::summary::Summary {
+            name: "r".into(),
+            head: michi_core::summary::Head::Detached("1111111".into()),
+            worktrees: 1,
+            top: PathBuf::from("/r/main"),
+        });
+        a.ask_restore(id, "gone.txt".into(), true);
+        assert!(a.band.is_none(), "a file the commit deletes has no version");
+        assert!(a.toast.as_ref().is_some_and(|t| t.0.contains("gone.txt")));
+        a.ask_restore(id, "a.txt".into(), false);
+        let band = a.band.take().unwrap();
+        assert!(band.text.contains("a.txt") && band.text.contains("refs/michi/backup"), "{}", band.text);
+        assert_eq!(band.then, Then::Act(Task::Restore { wt: PathBuf::from("/r/main"), id, path: "a.txt".into() }));
+        assert!(!band.danger(), "the file is kept first, so a plain yes");
+    }
+
+    #[test]
     fn a_pull_where_a_claude_works_asks_first() {
         use michi_core::claude::Session;
         let mut a = app();

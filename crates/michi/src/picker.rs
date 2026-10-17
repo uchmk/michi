@@ -677,6 +677,33 @@ impl App {
         self.band = Some(Band { parents: 3, ..Band::new(text, Then::Act(task)) });
     }
 
+    /// The detail's "Restore this version" on the file `path` of the commit
+    /// `id` (`deleted`: the commit removes it): asks before it brings the
+    /// file back in the window's worktree as that commit has it. What the
+    /// file is now is kept first; the index and the commits are not touched.
+    pub(crate) fn ask_restore(&mut self, id: Oid, path: String, deleted: bool) {
+        let Repo::Ready(s) = &self.repo else {
+            self.say(self.tr("act.no_tree"));
+            return;
+        };
+        let wt = s.top.clone();
+        if deleted {
+            let text = self.tr("act.restore_deleted").replace("{file}", &path).replace("{id}", &id.short());
+            self.say_for(text, 6);
+            return;
+        }
+        if let Some(d) = self.doing_in(&wt) {
+            let text = self.tr("act.revert_doing").replace("{wt}", &act::name(&wt)).replace("{doing}", &self.doing_word(d));
+            self.say_for(text, 8);
+            return;
+        }
+        let mut text = self.tr("act.restore").replace("{file}", &path).replace("{id}", &id.short()).replace("{wt}", &act::name(&wt));
+        if self.claude_working(&wt) {
+            text.push_str(self.tr("act.revert_claude"));
+        }
+        self.band = Some(Band::new(text, Then::Act(Task::Restore { wt, id, path })));
+    }
+
     /// `C`: asks before it picks the selected commit onto the window's
     /// worktree; a merge asks which parent its changes are taken against.
     pub(crate) fn ask_cherry(&mut self) {

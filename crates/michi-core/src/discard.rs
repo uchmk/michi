@@ -69,7 +69,13 @@ fn keep_tracked(wt: &Path, why: &str) -> Result<String, git::Error> {
 /// The untracked files at `paths` of the worktree at `wt`, kept in a commit
 /// on the head (on nothing before the first commit) under a backup.
 fn keep_untracked(wt: &Path, paths: &[&str]) -> Result<String, git::Error> {
-    let why = format!("deleted untracked {}", paths.join(", "));
+    keep_files(wt, paths, &format!("deleted untracked {}", paths.join(", ")))
+}
+
+/// The files at `paths` of the worktree at `wt` as they are now, kept in a
+/// commit on the head (on nothing before the first commit) under a backup
+/// with `why`.
+pub(crate) fn keep_files(wt: &Path, paths: &[&str], why: &str) -> Result<String, git::Error> {
     let index = TempIndex::new();
     let head = git::read_maybe(wt, &["rev-parse", "-q", "--verify", "HEAD^{commit}"])?
         .and_then(|out| Oid::parse(String::from_utf8_lossy(&out).trim()));
@@ -92,7 +98,7 @@ fn keep_untracked(wt: &Path, paths: &[&str]) -> Result<String, git::Error> {
     }
     let out = run(c)?;
     let id = Oid::parse(String::from_utf8_lossy(&out).trim()).ok_or_else(|| git::Error::Io("git commit-tree: no commit".into()))?;
-    backup::save(wt, &id, &why)
+    backup::save(wt, &id, why)
 }
 
 /// An index file of our own, gone when dropped.
