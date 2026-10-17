@@ -67,6 +67,7 @@ pub(crate) enum Icon {
     Fetch,
     Pull,
     Push,
+    Sync,
     Plus,
 }
 
@@ -77,10 +78,11 @@ struct Tool {
     prime: bool,
 }
 
-const TOOLS: [Tool; 6] = [
+const TOOLS: [Tool; 7] = [
     Tool { icon: Some(Icon::Fetch), word: "key.fetch", key: 'f', prime: false },
     Tool { icon: Some(Icon::Pull), word: "key.pull", key: 'p', prime: false },
     Tool { icon: Some(Icon::Push), word: "key.push", key: 'P', prime: false },
+    Tool { icon: Some(Icon::Sync), word: "key.sync", key: 'S', prime: false },
     Tool { icon: None, word: "tool.branch", key: 'b', prime: false },
     Tool { icon: None, word: "key.stash", key: 's', prime: false },
     Tool { icon: Some(Icon::Plus), word: "tool.new_work", key: 'N', prime: true },
@@ -111,7 +113,7 @@ fn tool_band(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let mut x = r.left() + PAD;
     let mut fed = None;
     for (k, t) in TOOLS.iter().enumerate() {
-        if k == 3 {
+        if k == 4 {
             // The line between the remote's buttons and the rest.
             if x + 9.0 > right {
                 break;
@@ -130,7 +132,7 @@ fn tool_band(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         let resp = ui.interact(b, ui.id().with(("tool", k)), Sense::CLICK);
         let hot = live && resp.hovered();
         // What moves a worktree's HEAD or index waits for the merge; the press says so.
-        let locked = app.merging() && matches!(t.key, 'p' | 's');
+        let locked = app.merging() && matches!(t.key, 'p' | 's' | 'S');
         let ink = if t.prime {
             c.run
         } else if locked {
@@ -196,6 +198,16 @@ pub(crate) fn paint_icon(p: &egui::Painter, at: Pos2, icon: Icon, ink: Color32) 
             p.line_segment([at - vec2(0.0, 5.0 * dir), tip], s);
             p.line_segment([tip, tip + vec2(-3.5, -3.5 * dir)], s);
             p.line_segment([tip, tip + vec2(3.5, -3.5 * dir)], s);
+        }
+        Icon::Sync => {
+            // Two arrows side by side: down (in) and up (out).
+            for (dx, dir) in [(-3.0_f32, 1.0_f32), (3.0, -1.0)] {
+                let x = at + vec2(dx, 0.0);
+                let tip = x + vec2(0.0, 5.0 * dir);
+                p.line_segment([x - vec2(0.0, 5.0 * dir), tip], s);
+                p.line_segment([tip, tip + vec2(-2.5, -2.5 * dir)], s);
+                p.line_segment([tip, tip + vec2(2.5, -2.5 * dir)], s);
+            }
         }
         Icon::Plus => {
             p.line_segment([at - vec2(4.5, 0.0), at + vec2(4.5, 0.0)], s);

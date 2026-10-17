@@ -624,6 +624,7 @@ fn net_status(ui: &Ui, app: &App, p: &egui::Painter, right: f32, mid: f32) -> f3
             Kind::Fetch => Icon::Fetch,
             Kind::Pull => Icon::Pull,
             Kind::Push => Icon::Push,
+            Kind::Sync => Icon::Sync,
         };
         paint_icon(p, pos2(t.left() - 9.0, mid), icon, c.wait);
         return t.left() - 18.0 - 14.0;

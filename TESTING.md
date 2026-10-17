@@ -653,3 +653,18 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 47.7 | Start `git rebase -i` and stop it at an edit | The strip says it is a rebase, with no buttons; it goes when the rebase ends | | [ ] |
 | 47.8 | With a Claude working in the worktree press `R` | A yes is asked first, as for a switch | | [ ] |
 | 47.9 | Open the settings (`,`) or the key list (`?`) while the strip is up; switch EN and JA | The strip stays tidy at a narrow width (the text is cut with an ellipsis, the buttons stay); both languages read well | | [ ] |
+
+## 78. Sync: fetch, pull and push in one (`S`)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 78.1 | In the graph view look at the tool band | A `Sync S` button sits after `Push P`, before the line; its icon is a down and an up arrow; hover says `Sync (S)` | | [ ] |
+| 78.2 | Behind origin by 2 commits, ahead by none: press `S` | One job named `sync` runs (the title bar shows its progress, Esc stops it); the toast says `Synced with origin/<b>: pulled 2 commits` | | [ ] |
+| 78.3 | Ahead by 1, not behind: press `S` | The commit is pushed at once (no band); the toast says `Synced with origin/<b>: pushed`; `git log origin/<b>` has it | | [ ] |
+| 78.4 | Behind by 1 and ahead by 1 (diverged): press `S` | Nothing is merged or pushed; the toast says `Sync stopped at the pull, nothing was pushed: origin/<b> went its own way (↑1 ↓1) …` | | [ ] |
+| 78.5 | Behind by 1, ahead by 1 on a pull that works (the other side already pulled), but the remote hook refuses the push | The toast says `Sync stopped at the push (pulled N commits first): … refused the push: …` and the pulled commits stay | | [ ] |
+| 78.6 | A new branch with no upstream: press `S` | It is pushed and gets the upstream; the toast says `Synced: pushed to origin/<b>, now its upstream` | | [ ] |
+| 78.7 | With two remotes and no `origin`: press `S` | The remote chooser opens; choosing one runs the sync to it | | [ ] |
+| 78.8 | In sync already: press `S` | The toast says `Already in sync with origin/<b>` | | [ ] |
+| 78.9 | Press `S` while a Claude works in the worktree, or in the middle of a merge | The Claude case asks `Sync there anyway?` (y/n); the merge case says sync waits (and the button is greyed) | | [ ] |
+| 78.10 | Press `S` in the 2, 3 and 4 views; open `?`; switch EN and JA | `S` works in each; the key list has a `S` line; both languages read well | | [ ] |
