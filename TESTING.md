@@ -1510,3 +1510,17 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 262.7 | Open the `3` view | A four-line card says what a worktree is and how it relates to Claude working in parallel; the table sits below it with nothing hidden |
 | 262.8 | Dismiss it, then run "Show the explanations again" from the command palette | A toast says they are back; all three explanations show again |
 | 262.9 | Narrow the window; switch EN and JA | The cards wrap without overlapping the cross or pager; both languages read well |
+
+## 89. HiDPI and the Windows 11 window frame (#89)
+
+Run each row at 100, 150 and 200 % display scale (Settings > System > Display), and once on a 4K monitor.
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 89.1 | Start michi at 100, 150 and 200 % scale; look at the title bar, tabs, keybar and the graph | Text and the logo are sharp at every scale; nothing is cut off, blurred or overlapping; the row height and the graph lanes grow with the scale | | [ ] |
+| 89.2 | Move the window between a 100 % monitor and a 150 / 200 % one | The window re-lays out at once without a restart; no blur and no wrong-sized strip | | [ ] |
+| 89.3 | Snap the window to the left, right and a corner (Win+arrows, the snap layouts on the maximise button); maximise and restore | The window fills the snapped area exactly; the title bar buttons stay clickable; no gap at the edges; the size is restored | | [ ] |
+| 89.4 | Switch Windows between dark and light mode while michi runs | The window edge and the title bar keep michi's theme; no white flash or light border in dark mode | | [ ] |
+| 89.5 | Look at the window corners on Windows 11 (maximised and not) | The corners are rounded when not maximised and square when maximised; no dark triangle or stripe at a corner | | [ ] |
+| 89.6 | Drag the window by the title bar and resize from each edge and corner | The resize cursors show on the edges; the frame follows the mouse without a lag or a flicker | | [ ] |
+| 89.7 | Open the palette, the branch box, a confirm window and a toast at 200 % | They are placed inside the window, sharp, and not larger than the window | | [ ] |
