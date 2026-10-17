@@ -96,6 +96,45 @@
   - [x] Draggable column widths (v0.46.0, panes on `ito-layout` since v0.47.0, TESTING 26): the graph view's three columns, the graph header's columns, the worktree table's columns; kept in `layout.toml`
   - [x] Show `keymap_warn` / `notify_warn` (the warnings read from keymap.toml and config.toml) to the user as a toast (v0.45.0, TESTING 25.1)
 
+## Gaps against other Git clients (2026-10-17)
+
+All wait for the owner; none is started.
+
+- [ ] submodule: status and update (not entering)（要確認: #29）
+- [ ] Git LFS: "not fetched" marker（要確認: #30）
+- [ ] sparse checkout: notice only（要確認: #31）
+- [ ] bisect（要確認: #32）
+- [ ] Non-GitHub hosts: links from the remote URL（要確認: #33）
+- [ ] Creating PRs in michi（要確認: #34）
+- [ ] Signature status (Verified) marker（要確認: #35）
+- [ ] Dedicated screens for conflicts a 3-way view cannot show（要確認: #36）
+- [ ] blame and per-file history（要確認: #37）
+- [ ] Content search (git grep, pickaxe) in the `/` filter（要確認: #38）
+- [ ] clone / init (with #26)（要確認: #39）
+- [ ] Remote management（要確認: #40）
+- [ ] Authentication guidance（要確認: #41）
+- [ ] Gitflow（要確認: #42）
+- [ ] Built-in editor（要確認: #43）
+- [ ] Issue tracker integration（要確認: #44）
+- [ ] Multi-repository tabs / workspaces（要確認: #45）
+- [ ] Patch export / apply（要確認: #46）
+- [ ] Statistics and contributor graphs（要確認: #47）
+- [ ] Diff extras (images, word diff, ignore whitespace, external tool)（要確認: #48）
+- [ ] .gitignore editing（要確認: #49）
+- [ ] reflog screen（要確認: #50）
+- [ ] Commit search scope in the `/` filter（要確認: #51）
+- [ ] Per-file operations (open / restore a version)（要確認: #52）
+- [ ] Per-worktree author / email display（要確認: #53）
+- [ ] Co-Authored-By on michi commits（要確認: #54）
+- [ ] Moving uncommitted changes between worktrees（要確認: #55）
+- [ ] Conflict-prediction marks on the graph（要確認: #56）
+- [ ] Pre-merge checklist (test / verify results)（要確認: #57）
+- [ ] Hook output and rerun on failure（要確認: #58）
+- [ ] Speed target for very large repositories（要確認: #59）
+- [ ] Accessibility（要確認: #60）
+- [ ] Key list (`?`) and macOS Cmd check（要確認: #61）
+- [ ] Real-machine checks off Windows（要確認: #62）
+
 ## Owner
 
 - 【人】 After the skeleton: run the rows of TESTING-CHECKS.md on the real machine (window, title bar, icon, fonts).
