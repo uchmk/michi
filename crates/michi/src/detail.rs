@@ -3,6 +3,7 @@
 //! or side by side), and how the detail is shown.
 
 use michi_core::git;
+use michi_core::minimap::Mark;
 use michi_core::oid::Oid;
 use michi_core::show::{self, File, Kind};
 
@@ -116,6 +117,35 @@ impl Rows {
             Box::new(self.paired_cols.iter().map(move |&[a, b]| lines(a).max(lines(b)).max(1)))
         } else {
             Box::new(self.unified_cols.iter().map(move |&c| lines(c).max(1)))
+        }
+    }
+
+    /// What each row holds, for the minimap: a changed line is `Add` or
+    /// `Del`; side by side, a deletion paired with an addition is `Both`.
+    pub fn marks(&self, wide: bool, file: &File) -> Vec<Mark> {
+        let kind = |(h, l): At| match file.hunks[h as usize].lines[l as usize].kind {
+            Kind::Add => Mark::Add,
+            Kind::Del => Mark::Del,
+            Kind::Context => Mark::Same,
+        };
+        if wide {
+            self.paired
+                .iter()
+                .map(|r| match *r {
+                    Paired::Hunk(_) => Mark::Same,
+                    Paired::Pair(Some(a), Some(b)) if a == b => Mark::Same,
+                    Paired::Pair(Some(_), Some(_)) => Mark::Both,
+                    Paired::Pair(a, b) => a.or(b).map_or(Mark::Same, kind),
+                })
+                .collect()
+        } else {
+            self.unified
+                .iter()
+                .map(|r| match *r {
+                    Unified::Hunk(_) => Mark::Same,
+                    Unified::Line(at) => kind(at),
+                })
+                .collect()
         }
     }
 }
@@ -310,6 +340,15 @@ mod tests {
         );
         assert_eq!(r.wraps(true, |_| 1).count(), 7);
         assert_eq!(r.wraps(false, |_| 1).count(), 8);
+    }
+
+    #[test]
+    fn rows_are_marked_for_the_minimap_both_ways() {
+        use Kind::*;
+        let f = file(&[(Context, "a"), (Del, "b"), (Add, "B"), (Context, "d"), (Add, "e")]);
+        let r = Rows::of(&f);
+        assert_eq!(r.marks(false, &f), [Mark::Same, Mark::Same, Mark::Del, Mark::Add, Mark::Same, Mark::Add]);
+        assert_eq!(r.marks(true, &f), [Mark::Same, Mark::Same, Mark::Both, Mark::Same, Mark::Add]);
     }
 
     #[test]

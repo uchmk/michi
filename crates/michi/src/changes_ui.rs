@@ -45,6 +45,16 @@ fn list_seen_id() -> Id {
     Id::new("changes-list-seen")
 }
 
+/// The width of the minimap beside the diff.
+const MINIMAP_W: f32 = 12.0;
+/// How far above a change `n` / `N` puts it.
+const JUMP_MARGIN: f32 = 2.0 * DIFF_H;
+
+/// The change the last `n` / `N` went to.
+fn run_id() -> Id {
+    Id::new("changes-run")
+}
+
 fn scroll_id() -> Id {
     Id::new("changes-scroll")
 }
@@ -91,12 +101,13 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let p = ui.painter_at(r);
     p.rect_filled(r, 0.0, c.bg);
     let ch = &mut app.changes;
-    let (to_top, pages) = (std::mem::take(&mut ch.to_top), std::mem::take(&mut ch.pages));
+    let (to_top, pages, jump) = (std::mem::take(&mut ch.to_top), std::mem::take(&mut ch.pages), std::mem::take(&mut ch.jump));
     if to_top {
         // Also while the new file's diff is read.
         ctx.data_mut(|d| {
             d.insert_temp(scroll_id(), 0.0_f32);
             d.insert_temp(told_id(), 0.0_f32);
+            d.insert_temp(run_id(), None::<usize>);
         });
     }
     let pointer = if live { ui.input(|i| i.pointer.hover_pos()).filter(|at| r.contains(*at)) } else { None };
@@ -148,7 +159,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             act = Some(a);
         }
         let body = Rect::from_min_max(pos2(dr.left(), dr.top() + TITLE_H), dr.max);
-        body_of(ui, app, body, live, pages);
+        body_of(ui, app, body, live, pages, jump);
     } else if ch.lists().is_some() {
         note(ui, &ui.painter_at(dr), dr, app.tr("changes.pick"));
     }
@@ -698,8 +709,11 @@ enum Piece {
 }
 
 /// The selected file's diff in `body`, scrolled by the wheel and by the
-/// `pages` the keys asked for; the cursor is brought into sight.
-fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32) {
+/// `pages` the keys asked for, or to the `jump`th next (previous) change;
+/// the cursor is brought into sight. A strip on the right (the minimap)
+/// shows where the changes lie and what is in sight; a click or a drag on it
+/// scrolls there.
+fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32, jump: i32) {
     let c = ito_theme::colors();
     let ctx = ui.ctx();
     let p = ui.painter_at(body);
@@ -730,6 +744,13 @@ fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32) {
     if f.cut {
         pieces.push(Piece::Cut);
     }
+    // The minimap takes the right edge of the body while there is a diff.
+    let (body, strip) = if pieces.iter().any(|piece| matches!(piece, Piece::Diff)) {
+        let x = body.right() - MINIMAP_W;
+        (Rect::from_min_max(body.min, pos2(x, body.bottom())), Some(Rect::from_min_max(pos2(x, body.top()), body.max)))
+    } else {
+        (body, None)
+    };
     let wrap = Wrap::new(ui, body.width(), ch.wide);
     let tops = wrap.tops(rows);
     let heights: Vec<f32> = pieces
@@ -747,6 +768,39 @@ fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32) {
     scroll += pages as f32 * (body.height() - 40.0).max(40.0);
     if live && ui.rect_contains_pointer(body) {
         scroll -= ui.input(|i| i.smooth_scroll_delta.y);
+    }
+    let runs = michi_core::minimap::runs(&rows.marks(ch.wide, f));
+    // `n` / `N`: on to the next (previous) change, counted from the one the
+    // last jump went to while it is in sight, else from what is in sight.
+    if jump != 0 && ch.focus != Focus::Lines && !runs.is_empty() {
+        let starts: Vec<f32> = runs.iter().map(|r| diff_top + tops[r.start]).collect();
+        let mut at = ctx
+            .data(|dt| dt.get_temp::<Option<usize>>(run_id()))
+            .flatten()
+            .filter(|&i| starts.get(i).is_some_and(|&y| y >= scroll && y <= scroll + body.height()));
+        for _ in 0..jump.abs() {
+            at = match at {
+                Some(i) if jump > 0 => Some((i + 1).min(starts.len() - 1)),
+                Some(i) => Some(i.saturating_sub(1)),
+                None => michi_core::minimap::jump(&starts, scroll + JUMP_MARGIN, jump, 1.0),
+            };
+        }
+        if let Some(i) = at {
+            scroll = starts[i] - JUMP_MARGIN;
+        }
+        ctx.data_mut(|dt| dt.insert_temp(run_id(), at));
+    }
+    // A click or a drag on the minimap.
+    let strip_resp = strip.map(|r| ui.interact(r, Id::new("changes-minimap"), Sense::click_and_drag()));
+    if let (Some(r), Some(resp)) = (strip, &strip_resp) {
+        if live && resp.hovered() {
+            ctx.set_cursor_icon(CursorIcon::PointingHand);
+        }
+        if live && resp.is_pointer_button_down_on() {
+            if let Some(at) = resp.interact_pointer_pos() {
+                scroll = michi_core::minimap::click_to_scroll((at.y - r.top()) / r.height(), total, body.height());
+            }
+        }
     }
     // The cursor moved by the keys comes into sight.
     let cursor = ch.cursor_line();
@@ -812,6 +866,33 @@ fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32) {
         }
     }
     crate::select::paint();
+    if let Some(r) = strip {
+        minimap(&p, r, &michi_core::minimap::ticks(&runs, &tops, diff_top, total, r.height(), 2.0), scroll, total, body.height());
+    }
+}
+
+/// The minimap in `r`: a tick for each run of changes (green added, red
+/// deleted, amber both), and what is in sight over them.
+fn minimap(p: &Painter, r: Rect, ticks: &[michi_core::minimap::Tick], scroll: f32, total: f32, view: f32) {
+    use michi_core::minimap::Mark;
+    let c = ito_theme::colors();
+    p.rect_filled(r, 0.0, c.side);
+    p.line_segment([r.left_top() + vec2(0.5, 0.0), r.left_bottom() + vec2(0.5, 0.0)], Stroke::new(1.0, c.border));
+    for t in ticks {
+        let ink = match t.mark {
+            Mark::Add => c.done,
+            Mark::Del => c.err,
+            Mark::Both | Mark::Same => c.wait,
+        };
+        p.rect_filled(Rect::from_min_max(pos2(r.left() + 3.0, r.top() + t.y0), pos2(r.right() - 2.0, r.top() + t.y1)), 0.0, ink);
+    }
+    if total > view {
+        let y0 = scroll / total * r.height();
+        let y1 = (y0 + view / total * r.height()).max(y0 + 6.0).min(r.height());
+        let thumb = Rect::from_min_max(pos2(r.left() + 1.0, r.top() + y0), pos2(r.right(), r.top() + y1));
+        p.rect_filled(thumb, 0.0, c.fg.gamma_multiply(0.10));
+        p.rect_stroke(thumb, 0.0, Stroke::new(1.0, c.fg.gamma_multiply(0.35)), StrokeKind::Inside);
+    }
 }
 
 /// The row that shows the line `at`, in the way the diff is shown.

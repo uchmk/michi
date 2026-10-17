@@ -702,3 +702,16 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 66.5 | Pick Remove for a worktree row | The same question as pressing `x` asks first; nothing is lost without a yes |
 | 66.6 | In the changes view (`2`) right-click an unstaged file (flat list and tree) | The file is selected and a menu lists Stage (Space), Split, Ignore, Discard, Amend; Stage moves the clicked file, Discard asks first |
 | 66.7 | Press `?` and open the palette; switch EN and JA and look at the menus | No operation exists only in a menu (each is a key in the help and the palette); the menu words read well in both languages |
+
+## 87. Diff minimap and next / previous change (`n` / `N`, #87)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 87.1 | In `2`, select a file with changes far apart (a long file) | A thin strip at the right edge of the diff shows a tick per run of changes (green added, red deleted, amber changed in side by side) and a lit box over the part in sight; the diff text does not run under it |
+| 87.2 | Scroll with the wheel and PageDown | The lit box follows; it fills the strip (or goes) when the whole diff fits |
+| 87.3 | Click a tick, then drag along the strip | The diff scrolls to that part, centred on the point; it stays inside the file at both ends |
+| 87.4 | With the focus on the files press `n` repeatedly, then `N` | Each `n` brings the next change to just under the top of the diff, the last one stops there (and does not stick on the one before it); `N` goes back the same way |
+| 87.5 | Press `Enter` (side by side) then `n` / `N` | The ticks and the jumps follow the other layout; no change is skipped or repeated |
+| 87.6 | Press `l` (pick lines) then `n` / `N` | The cursor moves to the first line of the next / previous run of changed lines and the diff follows it; `N` in the middle of a run goes to that run's start |
+| 87.7 | Select a file with no diff text (binary, deleted-empty) and press `n` | No strip, nothing happens; no error |
+| 87.8 | Press `?`; switch EN and JA | The key list names `n N` as jumping to the next or previous change in both languages; the strip looks right in Dark and Light themes |

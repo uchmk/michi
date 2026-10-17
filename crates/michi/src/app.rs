@@ -104,6 +104,7 @@ impl View {
                 ("j k", "key.select"),
                 ("v", "key.range"),
                 ("s", "key.split"),
+                ("n N", "key.next_change"),
                 ("d", "key.discard"),
                 ("i", "key.ignore"),
                 ("A", "key.amend"),
@@ -826,6 +827,15 @@ impl App {
                 none()
             }
             's' => ch.split(),
+            'n' | 'N' => {
+                let dir = if c == 'n' { 1 } else { -1 };
+                if lines {
+                    ch.step_run(dir);
+                } else {
+                    ch.jump += dir;
+                }
+                none()
+            }
             'd' => ch.discard(claude),
             'i' => ch.ignore(claude),
             '[' | ']' => {
