@@ -1055,6 +1055,18 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 239.6 | Start a clone of a large repository and press Enter on another clone row | A toast `A clone is still running`; nothing starts twice | [ ] |
 | 239.7 | Type a path or a word (not an address) | No clone row appears; the list and the typed-path row work as before | [ ] |
 
+## 259. Speed on a very large repository (#59)
+
+The made-up 300,000-commit history is timed by CI (`bench-large`); these rows are the real repository and the real window.
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 259.1 | Open a repository with 100,000+ commits that has a commit-graph (e.g. a Linux kernel clone after `git gc`) with `michi <folder>` | The first graph screen is drawn within 1 second of the window appearing; the window never stops answering while the rest of the history is read |
+| 259.2 | Hold the Down key or drag the scrollbar from the top to the bottom and back | The scrolling follows the pointer with no stutter; the graph lanes and the dots stay in place as more rows are read |
+| 259.3 | Open the same repository after deleting `.git/objects/info/commit-graph*` | A bar offers to write the commit-graph (it is the slow case); after it is written the first screen is within 1 second again |
+| 259.4 | Press `/` and type a word while the history is still being read, then clear it | The filter answers as you type; the window does not freeze |
+| 259.5 | Run `cargo run --release -p michi --example bench-large` | Three lines `ok` (first screen, all rows, all layout) and exit code 0; over the budget in `scale.rs` prints `OVER` and exits 1 |
+
 ## 255. Moving uncommitted changes between worktrees (`v`)
 
 | # | Do | Expect |
