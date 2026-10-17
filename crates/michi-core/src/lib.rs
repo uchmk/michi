@@ -19,6 +19,7 @@ pub mod net;
 pub mod newwork;
 pub mod notes;
 pub mod oid;
+pub mod overlap;
 pub mod paths;
 pub mod pr;
 pub mod predict;

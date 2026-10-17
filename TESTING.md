@@ -111,7 +111,7 @@ The same repository as section 6.
 | 8.1 | Select a commit | Below the graph within a moment: the subject in bold, the full hash, the author, the local time and the parents (blue links), the body, the hint `Enter spreads the diff side by side`; `Reading the commit…` shows while it is read |
 | 8.2 | Look at the file list | Each file with its status letter in colour (A green, M, D red, R), its path cut from the left with `…` when long, `+a −d` and a bar; a renamed file says where it came from; more than 12 files list 10 and `N more files — click for all` |
 | 8.3 | Click a file row | The detail scrolls to that file's diff |
-| 8.4 | Look at the diff | One column: the `@@` rows in blue, added rows green and deleted rows red, the changed words marked a shade deeper, the line numbers at the left; only the detail's wheel scrolls it, with no scrollbar |
+| 8.4 | Look at the diff | One column: the `` rows in blue, added rows green and deleted rows red, the changed words marked a shade deeper, the line numbers at the left; only the detail's wheel scrolls it, with no scrollbar |
 | 8.5 | Press Enter, then Esc | Enter narrows the graph and spreads the diff side by side (old left, new right, the empty side hatched); the title's toggle follows; Esc brings the graph back, and a second Esc clears the filter |
 | 8.6 | Click a parent link | The graph selects the parent and the detail shows it |
 | 8.7 | Select a merge into main | `N commits came into main by this merge` with their hashes, subjects and times, and whether they are folded or open in the graph; the note that a merge's diff comes in the next stage; no diff |
@@ -237,7 +237,7 @@ michi writes only through `git add`, `git reset`, `git apply --cached` and `git 
 | 14.14 | Add a pre-commit hook that prints a line and exits 1, then commit | The toast `Could not write: …` with the hook's words for 8 seconds; the staged list and the message stay |
 | 14.15 | Narrow the window to its smallest; switch to the light theme | The list keeps at least 240 px, the chips end in `…`, the key bar folds what does not fit; the tints, the band and the letters stay readable in both themes |
 | 14.16 | Add a pre-commit hook that prints five lines (some in colour, `printf '\033[31m…\033[0m'`) to stdout and stderr and exits 1; commit; Esc, Esc; commit again, then `j`; commit again, unstage and stage a file | The toast `Could not write: <the first line>`; in place of the diff the red title `Could not commit: all git and the hooks said` with `Close Esc` at the right and all five lines below in a fixed-width font, without colour codes; the wheel and PageDown scroll a long one (no scrollbar); the first Esc only leaves the message box, the second closes it and the diff is back; `j` (another file) and a write that goes through close it too; a write that fails with one line only shows the toast |
-| 14.17 | On a hunk with two changes a few lines apart press `s`; `j`, `a`; Space; save the file from an editor; `s` again; on a file whose hunks each have one change press `s` | `s` goes into the lines and each hunk is cut into one piece per run of changes, a `@@` line before each; `a` picks the piece under the cursor and Space stages only it (`git diff --cached` shows that change alone); after the save the file stays cut; `s` again joins the hunks back; on the other file the toast `Nothing to split: each hunk has one run of changes` |
+| 14.17 | On a hunk with two changes a few lines apart press `s`; `j`, `a`; Space; save the file from an editor; `s` again; on a file whose hunks each have one change press `s` | `s` goes into the lines and each hunk is cut into one piece per run of changes, a `` line before each; `a` picks the piece under the cursor and Space stages only it (`git diff --cached` shows that change alone); after the save the file stays cut; `s` again joins the hunks back; on the other file the toast `Nothing to split: each hunk has one run of changes` |
 
 ## 15. Fetch, pull and push
 
@@ -505,16 +505,26 @@ files under `refs/michi/backup/<time>` first.
 | 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] |
 | 34.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] |
 
-## 98. Answering a waiting Claude from the notification (W)
+## 35. Answering a waiting Claude from the notification (W)
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 98.1 | With tsumugi running, let a Claude in a worktree reach a question (a permission prompt) while michi is open | A toast `The Claude in <wt> is waiting: <question> (W: answer)` shows for about 15 s; with the window behind another, the system notification `michi: a Claude is waiting` shows too (it follows the `done` settings of Notifications) | | [ ] |
-| 98.2 | Press `W` from any view | The window goes to the worktree view with that worktree selected, its branch review (the diff) open, and the question with an answer line over the bottom of the window | | [ ] |
-| 98.3 | Type `y` (or any text) and press Enter | The text is typed into that Claude's tsumugi tab and submitted; the line closes and the toast says `Sent the answer to tab N`; the Claude goes back to running | | [ ] |
-| 98.4 | Type the answer with a Japanese IME and confirm the conversion with Enter | The conversion is confirmed without sending; the next Enter sends | | [ ] |
-| 98.5 | With two Claudes waiting, press `W` twice | The first press goes to the one that has waited longest, the second to the next one, then round | | [ ] |
-| 98.6 | Press Esc in the answer line | The line closes; the review stays open | | [ ] |
-| 98.7 | Answer the Claude in its own tab while the line is open | The line closes by itself once michi sees the Claude is no longer waiting | | [ ] |
-| 98.8 | Press `W` with no Claude waiting | The toast says `No Claude is waiting` | | [ ] |
-| 98.9 | Start michi while a Claude is already waiting | No toast for it (only waits that begin while michi runs are told); `W` still goes to it | | [ ] |
+| 35.1 | With tsumugi running, let a Claude in a worktree reach a question (a permission prompt) while michi is open | A toast `The Claude in <wt> is waiting: <question> (W: answer)` shows for about 15 s; with the window behind another, the system notification `michi: a Claude is waiting` shows too (it follows the `done` settings of Notifications) | | [ ] |
+| 35.2 | Press `W` from any view | The window goes to the worktree view with that worktree selected, its branch review (the diff) open, and the question with an answer line over the bottom of the window | | [ ] |
+| 35.3 | Type `y` (or any text) and press Enter | The text is typed into that Claude's tsumugi tab and submitted; the line closes and the toast says `Sent the answer to tab N`; the Claude goes back to running | | [ ] |
+| 35.4 | Type the answer with a Japanese IME and confirm the conversion with Enter | The conversion is confirmed without sending; the next Enter sends | | [ ] |
+| 35.5 | With two Claudes waiting, press `W` twice | The first press goes to the one that has waited longest, the second to the next one, then round | | [ ] |
+| 35.6 | Press Esc in the answer line | The line closes; the review stays open | | [ ] |
+| 35.7 | Answer the Claude in its own tab while the line is open | The line closes by itself once michi sees the Claude is no longer waiting | | [ ] |
+| 35.8 | Press `W` with no Claude waiting | The toast says `No Claude is waiting` | | [ ] |
+| 35.9 | Start michi while a Claude is already waiting | No toast for it (only waits that begin while michi runs are told); `W` still goes to it | | [ ] |
+
+## 36. Warning about overlapping work in New work (`N`)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 36.1 | Change a file (say `crates/michi/src/app.rs`) in one worktree and leave it uncommitted; press `N` and type `fix app.rs` in the instruction | A line `⚠ Heads up: <branch> is changing crates/michi/src/app.rs …` shows under the instruction as you type; nothing else in the form is blocked | | [ ] |
+| 36.2 | Type a folder instead (`tidy crates/michi/src/`) | The same worktree is named with the files under that folder (the first three, then `+N`) | | [ ] |
+| 36.3 | Type an instruction with no file or folder name, or names no worktree is changing | No warning shows | | [ ] |
+| 36.4 | With the warning showing, press Ctrl+Enter | The work starts as usual (the warning does not stop it) | | [ ] |
+| 36.5 | Two worktrees change the same file | Both are named in the warning | | [ ] |

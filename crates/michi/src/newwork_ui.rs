@@ -45,6 +45,11 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 ui.add_space(4.0);
                 ui.label(RichText::new(app.tr("new.text")).color(c.dim));
                 ui.add(egui::TextEdit::multiline(&mut n.text).desired_rows(3).desired_width(f32::INFINITY));
+                let hits = app.new_work_overlaps(&n.text);
+                if let Some(w) = app.new_work_warning(&hits) {
+                    ui.add_space(2.0);
+                    ui.label(RichText::new(format!("⚠ {w}")).size(12.0).color(c.wait));
+                }
                 ui.add_space(4.0);
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(app.tr("new.count")).color(c.dim));
