@@ -1033,3 +1033,17 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 37.10 | Select a worktree's uncommitted row in the graph and press `B` | The file is blamed as that worktree has it | [ ] |
 | 37.11 | Check the keybar and `?` over the screen; switch EN and JA | The keybar names j k, B H Tab, Enter, PageDown PageUp, Esc; global keys are not listed; text reads well in both languages and long lines end in `…` | [ ] |
 | 37.12 | With Claude writing in the worktree, press `B` | Nothing changes in the worktree and no `index.lock` appears (a read only) | [ ] |
+
+## 255. Moving uncommitted changes between worktrees (`v`)
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 255.1 | In the `3` view with two worktrees, edit a tracked file and add an untracked file in one, select its row, press `v` | A palette opens: `Move the uncommitted changes to`, `from <worktree>`, one row per other worktree with its branch | [ ] |
+| 255.2 | Pick a worktree with Enter | A question names both worktrees and says the changes are kept under refs/michi/backup/; `n` or Esc leaves everything as it was | [ ] |
+| 255.3 | Answer `y` | The source is clean, the target has the edit and the untracked file, a toast names the backup; refs/michi/backup/ has the changes; the stash list is empty | [ ] |
+| 255.4 | Edit the same file differently in both worktrees and move | The move is refused with the reason, and the changes are back in the source as they were | [ ] |
+| 255.5 | Make the target change that file in a commit so the changes clash, move | The target has conflict marks, a toast says where, and the stash stays in the list | [ ] |
+| 255.6 | Press `v` on a worktree with no changes, then in a repository with one worktree | A toast says there is nothing to move / no other worktree; no palette opens | [ ] |
+| 255.7 | Start a merge in either worktree and move | A toast says it is in the middle of a merge; the palette stays | [ ] |
+| 255.8 | With a Claude working in either worktree, move | The question also says a Claude is working there | [ ] |
+| 255.9 | Switch EN and JA; check the keybar and `?` in the `3` view | `v` Move changes appears; text reads well in both languages | [ ] |

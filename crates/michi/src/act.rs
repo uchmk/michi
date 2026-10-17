@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use michi_core::autostash::{Back as AutoBack, Stashed as Autostashed};
 use michi_core::backup;
 use michi_core::branch::Doing;
+use michi_core::carry::Carried;
 use michi_core::conflict::{self, Block, Conflict, Pick};
 use michi_core::external::{self, Opened};
 use michi_core::git;
@@ -130,6 +131,11 @@ pub enum Task {
         wt: PathBuf,
         id: Oid,
         pop: bool,
+    },
+    /// Moves the uncommitted changes of the worktree at `from` to the one at `to`.
+    MoveChanges {
+        from: PathBuf,
+        to: PathBuf,
     },
     /// Drops the stash `id`.
     DropStash {
@@ -398,6 +404,7 @@ impl Task {
             Task::Stash { .. } => "stash",
             Task::Unstash { pop: false, .. } => "stash apply",
             Task::Unstash { pop: true, .. } => "stash pop",
+            Task::MoveChanges { .. } => "stash push",
             Task::DropStash { .. } => "stash drop",
             Task::FindSubmodules { .. } => "submodule status",
             Task::UpdateSubmodules { .. } => "submodule update",
@@ -465,6 +472,7 @@ pub enum Acted {
     /// Switched; with the changes that were stashed around it, if any.
     Switched(Option<Autostashed>),
     Unstashed(Applied),
+    Moved(Carried),
     Found(Found),
     Submodules(Vec<michi_core::submodule::Sub>),
     Reflog(Vec<michi_core::reflog::Entry>),
@@ -531,6 +539,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::Restore { wt, id, path } => michi_core::restore::file(wt, id, path).map(Acted::Restored),
         Task::Stash { wt, message } => stash::save(wt, message).map(Acted::Stashed),
         Task::Unstash { wt, id, pop } => stash::apply(wt, id, *pop).map(Acted::Unstashed),
+        Task::MoveChanges { from, to } => michi_core::carry::changes(from, to).map(Acted::Moved),
         Task::DropStash { id } => stash::drop(dir, id).map(|saved| Acted::Kept(Some(saved))),
         Task::FindSubmodules { wt } => michi_core::submodule::list(wt).map(Acted::Submodules),
         Task::UpdateSubmodules { wt } => michi_core::submodule::update(wt).map(Acted::Submodules),
@@ -880,6 +889,23 @@ impl App {
             (Task::Unstash { wt, .. }, Ok(Acted::Unstashed(Applied::Conflict(files)))) => {
                 (self.tr("act.unstash_clash").replace("{wt}", &self::name(wt)).replace("{files}", &self.few(&files)), 14)
             }
+            (Task::MoveChanges { from, .. }, Ok(Acted::Moved(Carried::Nothing))) => {
+                (self.tr("act.stash_nothing").replace("{}", &self::name(from)), 4)
+            }
+            (Task::MoveChanges { from, to }, Ok(Acted::Moved(Carried::Done { saved }))) => (
+                self.tr("move.done")
+                    .replace("{from}", &self::name(from))
+                    .replace("{to}", &self::name(to))
+                    .replace("{saved}", backup::short(&saved)),
+                8,
+            ),
+            (Task::MoveChanges { to, .. }, Ok(Acted::Moved(Carried::Clash { saved, files }))) => (
+                self.tr("move.clash")
+                    .replace("{to}", &self::name(to))
+                    .replace("{files}", &self.few(&files))
+                    .replace("{saved}", backup::short(&saved)),
+                14,
+            ),
             (Task::DropStash { id }, Ok(Acted::Kept(saved))) => {
                 let saved = saved.as_deref().map_or("", backup::short);
                 (self.tr("act.dropped").replace("{id}", &id.short()).replace("{saved}", saved), 10)
@@ -1101,6 +1127,14 @@ mod tests {
             said(Task::Unstash { wt: wt.clone(), id: oid('e'), pop: true }, Ok(Acted::Unstashed(Applied::Conflict(vec!["a".into()])))),
             "The stash clashed on feat in a: resolve the marks there and git add them; the stash is kept"
         );
+        let to = PathBuf::from("C:/r/other");
+        let mut moved = |r| said(Task::MoveChanges { from: wt.clone(), to: to.clone() }, Ok(Acted::Moved(r)));
+        assert_eq!(moved(Carried::Nothing), "feat has no changes to put away");
+        assert_eq!(
+            moved(Carried::Done { saved: "refs/michi/backup/x".into() }),
+            "Moved the changes of feat to other; kept in michi/backup/x"
+        );
+        assert!(moved(Carried::Clash { saved: "refs/michi/backup/x".into(), files: vec!["a".into()] }).contains("clashed in other in a"));
         assert_eq!(
             said(Task::DropStash { id: oid('e') }, Ok(Acted::Kept(Some("refs/michi/backup/20261016-120000".into())))),
             "Dropped stash eeeeeee; kept in michi/backup/20261016-120000"

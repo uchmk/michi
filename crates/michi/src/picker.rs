@@ -26,6 +26,9 @@ pub enum Kind {
     Stash,
     /// The remotes a push could go to, for the push waiting in `job`.
     Remote,
+    /// The other worktrees, to move the uncommitted changes of `wt` to (`v`
+    /// over the worktree table).
+    Move,
     /// The remotes, to add one or remove one (`M`).
     Remotes,
 }
@@ -67,6 +70,12 @@ pub enum Item {
         name: String,
         url: String,
     },
+    /// A worktree the changes could be moved to.
+    Place {
+        path: PathBuf,
+        name: String,
+        branch: Option<String>,
+    },
     /// A stash, `stash@{place}`.
     Stash {
         id: Oid,
@@ -84,6 +93,7 @@ impl Item {
             | Item::Tag { name, .. }
             | Item::Create { name }
             | Item::Target { name }
+            | Item::Place { name, .. }
             | Item::Address { name, .. } => name.clone(),
             Item::Remote { remote, name, .. } => format!("{remote}/{name}"),
             Item::Stash { subject, .. } => subject.clone(),
@@ -139,6 +149,15 @@ pub struct Picker {
     pub job: Option<Job>,
 }
 
+/// The worktrees other than `wt`, as rows to move changes to.
+fn places(worktrees: &[Worktree], wt: &Path) -> Vec<Item> {
+    worktrees
+        .iter()
+        .filter(|w| !same(&w.path, wt))
+        .map(|w| Item::Place { path: w.path.clone(), name: act::name(&w.path), branch: w.branch.clone() })
+        .collect()
+}
+
 impl Picker {
     /// The branches (or the tags, or the stashes) of `setup`, with
     /// `worktrees` to tell where each branch is checked out.
@@ -162,6 +181,7 @@ impl Picker {
             }
             Kind::Tag => refs.tags.iter().map(|r| Item::Tag { name: r.name.clone(), id: r.id }).collect(),
             Kind::Remote | Kind::Remotes => Vec::new(),
+            Kind::Move => places(worktrees, &wt),
             Kind::Stash => {
                 refs.stashes.iter().enumerate().map(|(place, s)| Item::Stash { id: s.id, subject: s.subject.clone(), place }).collect()
             }
@@ -232,7 +252,7 @@ impl Picker {
     /// stashes), the first word for a tag.
     pub fn name(&self) -> &str {
         match self.kind {
-            Kind::Branch | Kind::Stash | Kind::Remote => self.query.trim(),
+            Kind::Branch | Kind::Stash | Kind::Remote | Kind::Move => self.query.trim(),
             Kind::Tag | Kind::Remotes => self.query.split_whitespace().next().unwrap_or(""),
         }
     }
@@ -272,7 +292,7 @@ impl Picker {
         let taken = |i: &Item| i.title() == name || matches!(i, Item::Remote { name: n, .. } if *n == name);
         if self.kind == Kind::Stash {
             self.rows.insert(0, Row { item: Item::Save, hits: Vec::new() });
-        } else if self.kind != Kind::Remote && !name.is_empty() && !self.items.iter().any(taken) {
+        } else if !matches!(self.kind, Kind::Remote | Kind::Move) && !name.is_empty() && !self.items.iter().any(taken) {
             self.rows.push(Row { item: Item::Create { name }, hits: Vec::new() });
         }
         self.sel = 0;
@@ -309,6 +329,46 @@ impl App {
             return;
         };
         self.picker = Some(Picker::new(kind, self.graph.setup(), &worktrees, wt, at));
+    }
+
+    /// `v` over the worktree table: the palette of the other worktrees to
+    /// move the selected one's uncommitted changes to.
+    pub(crate) fn open_move(&mut self) {
+        let Some(t) = self.wt_selected() else {
+            self.say(self.tr("act.no_tree"));
+            return;
+        };
+        let (wt, head) = (t.wt.path.clone(), Oid::parse(&t.wt.head));
+        let worktrees = self.worktrees();
+        if places(&worktrees, &wt).is_empty() {
+            return self.say(self.tr("move.alone"));
+        }
+        if self.wips.iter().find(|w| same(&w.path, &wt)).is_some_and(|w| w.files.is_empty()) {
+            let text = self.tr("act.stash_nothing").replace("{}", &act::name(&wt));
+            return self.say(text);
+        }
+        let Some(at) = head.or(self.graph.selected()) else { return self.say(self.tr("act.pick_commit")) };
+        self.picker = Some(Picker::new(Kind::Move, self.graph.setup(), &worktrees, wt, at));
+    }
+
+    /// Enter on a worktree in the move palette: asks before the changes of
+    /// `from` go to `to`.
+    fn ask_move_changes(&mut self, from: PathBuf, to: PathBuf) {
+        for wt in [&from, &to] {
+            if let Some(d) = self.doing_in(wt) {
+                let text = self.tr("move.doing").replace("{wt}", &act::name(wt)).replace("{doing}", &self.doing_word(d));
+                return self.say_for(text, 8);
+            }
+        }
+        self.picker = None;
+        let mut text = self.tr("move.ask").replace("{from}", &act::name(&from)).replace("{to}", &act::name(&to));
+        for wt in [&from, &to] {
+            if self.claude_working(wt) {
+                text.push(' ');
+                text.push_str(&self.tr("move.claude").replace("{wt}", &act::name(wt)));
+            }
+        }
+        self.band = Some(Band::new(text, Then::Act(Task::MoveChanges { from, to })));
     }
 
     /// The worktrees as last read: the table's, else the graph's.
@@ -396,6 +456,7 @@ impl App {
                 let text = self.tr("remote.at").replace("{name}", &name).replace("{url}", &url);
                 self.say_for(text, 6);
             }
+            (Kind::Move, Item::Place { path, .. }) => self.ask_move_changes(wt, path),
             (Kind::Stash, Item::Save) => self.guarded(Task::Stash { wt: wt.clone(), message }, &wt, "act.stash_doing", "act.claude_stash"),
             (Kind::Stash, Item::Stash { id, .. }) => {
                 self.guarded(Task::Unstash { wt: wt.clone(), id, pop: shift }, &wt, "act.stash_doing", "act.claude_unstash");
@@ -580,7 +641,7 @@ impl App {
                 let text = self.tr("remote.ask_remove").replace("{name}", &name).replace("{url}", &url);
                 self.band = Some(Band::new(text, Then::Act(Task::RemoveRemote { name })));
             }
-            Item::Create { .. } | Item::Save | Item::Target { .. } => {}
+            Item::Create { .. } | Item::Save | Item::Target { .. } | Item::Place { .. } => {}
         }
     }
 
@@ -1231,6 +1292,37 @@ mod tests {
         a.picker_enter(false);
         assert!(a.picker.is_none(), "no reading thread here: it closes all the same");
         assert!(a.band.is_none());
+    }
+
+    #[test]
+    fn v_over_the_worktree_table_lists_the_other_worktrees_and_asks_before_moving_the_changes() {
+        let mut a = stashed();
+        assert!(a.feed('3'));
+        assert!(a.feed('v'));
+        let p = a.picker.as_ref().unwrap();
+        let from = p.wt.clone();
+        assert_eq!(p.kind, Kind::Move);
+        assert_eq!(p.rows.len(), fixture::trees().trees.len() - 1, "every worktree but the source");
+        assert!(p.rows.iter().all(|r| matches!(&r.item, Item::Place { path, .. } if !same(path, &from))));
+        let Some(Item::Place { path: to, .. }) = p.selected().cloned() else { panic!("no worktree row") };
+        a.picker_enter(false);
+        assert!(a.picker.is_none());
+        let band = a.band.as_ref().unwrap();
+        assert_eq!(band.then, Then::Act(Task::MoveChanges { from: from.clone(), to }));
+        assert!(band.text.starts_with("Move the uncommitted changes of "), "{}", band.text);
+    }
+
+    #[test]
+    fn changes_are_not_moved_from_or_to_a_worktree_in_a_merge() {
+        let mut a = stashed();
+        let mut trees = fixture::trees();
+        trees.trees[1].doing = Some(Doing::Merge);
+        a.take(crate::repo::Answer::Trees(trees));
+        assert!(a.feed('3'));
+        assert!(a.feed('v'));
+        a.picker_enter(false);
+        assert!(a.picker.is_some() && a.band.is_none(), "the palette stays");
+        assert!(toast(&a).contains("in the middle of a merge"), "{}", toast(&a));
     }
 
     #[test]
