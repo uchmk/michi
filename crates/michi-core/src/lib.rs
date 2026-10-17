@@ -19,6 +19,7 @@ pub mod handoff;
 pub mod history;
 pub mod ignore;
 pub mod log;
+pub mod minimap;
 pub mod net;
 pub mod newwork;
 pub mod notes;

@@ -183,6 +183,9 @@ pub struct Changes {
     pub folded: HashSet<(Side, String)>,
     /// Pages to scroll the diff by, for the frame to take: down is more.
     pub pages: i32,
+    /// Changes to jump over in the diff (`n` is 1, `N` is -1), for the frame
+    /// to take: it knows where the changes lie on the screen.
+    pub jump: i32,
     /// The diff goes back to its top: another file is selected.
     pub to_top: bool,
     /// The message box has the keys (the frame says so each frame), and the
@@ -230,6 +233,7 @@ impl Changes {
         self.told = None;
         self.to_top = true;
         self.pages = 0;
+        self.jump = 0;
         self.refresh()
     }
 
@@ -375,6 +379,7 @@ impl Changes {
             self.told = Some(Told { commit, all });
             self.to_top = true;
             self.pages = 0;
+            self.jump = 0;
         }
     }
 
@@ -446,6 +451,7 @@ impl Changes {
             self.sel = k;
             self.to_top = true;
             self.pages = 0;
+            self.jump = 0;
             self.told = None;
             self.leave_lines();
         }
@@ -584,6 +590,13 @@ impl Changes {
     pub fn move_cursor(&mut self, by: i64) {
         let Some(n) = self.shown().map(|s| s.changed.len()) else { return };
         self.cursor = (self.cursor as i64 + by).clamp(0, n as i64 - 1) as usize;
+    }
+
+    /// `n` / `N` on the lines: the cursor goes to the first line of the next
+    /// (previous) run of changed lines.
+    pub fn step_run(&mut self, dir: i32) {
+        let Some(s) = self.shown() else { return };
+        self.cursor = michi_core::minimap::step_line(&s.changed, self.cursor, dir);
     }
 
     /// `v`: a range starts at the cursor, or the one started goes.
@@ -935,6 +948,23 @@ pub(crate) mod tests {
         assert!(matches!(c.toggle_all(false), Ok(Some(Wish::Do { op: Op::Unstage(p), .. })) if p.is_empty()));
         reread(&mut c, lists(&[], &[]));
         assert_eq!(c.toggle_all(false), Err("changes.clean"));
+    }
+
+    #[test]
+    fn n_and_n_move_the_cursor_over_runs_of_changed_lines() {
+        let mut c = opened();
+        assert_eq!(c.enter_lines(), Ok(()));
+        // two_hunks: (0,1)(0,2) then (1,0)(1,1).
+        assert_eq!(c.cursor_line(), Some((0, 1)));
+        c.step_run(1);
+        assert_eq!(c.cursor_line(), Some((1, 0)));
+        c.step_run(1);
+        assert_eq!(c.cursor_line(), Some((1, 0)), "no run after the last");
+        c.move_cursor(1);
+        c.step_run(-1);
+        assert_eq!(c.cursor_line(), Some((1, 0)), "back to the start of its own run");
+        c.step_run(-1);
+        assert_eq!(c.cursor_line(), Some((0, 1)));
     }
 
     #[test]
