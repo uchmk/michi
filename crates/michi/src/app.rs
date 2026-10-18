@@ -223,7 +223,7 @@ pub const REVIEW_KEYS: [(&str, &str); 13] = [
 ];
 
 /// The keys of the question band (`y` / `n` / `Esc`), over any view.
-pub const BAND_KEYS: [(&str, &str); 3] = [("y", "key.yes"), ("n", "key.no"), ("Esc", "key.back")];
+pub const BAND_KEYS: [(&str, &str); 4] = [("y", "key.yes"), ("n", "key.no"), ("Tab", "key.move"), ("Esc", "key.back")];
 /// The keys of the clean-up list (`c` over the worktree table).
 pub const TIDY_KEYS: [(&str, &str); 5] =
     [("j k", "key.move"), ("Space", "key.pick"), ("a", "key.pick_all"), ("Enter", "key.run"), ("Esc", "key.back")];

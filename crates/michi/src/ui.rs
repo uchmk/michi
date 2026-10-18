@@ -812,7 +812,7 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
         button_text: c.fg,
     };
     let mut buttons = Vec::new();
-    let mut keys = Vec::new();
+    let keys = b.keys();
     let mut hint = Vec::new();
     // The strongest step has no button to click: the name is typed.
     let mut notes = b.notes.clone();
@@ -821,7 +821,6 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
         hint.push(format!("Enter {}", app.tr("changes.yes")));
     } else if b.parents == 0 {
         buttons.push(app.tr("changes.yes").to_owned());
-        keys.push('y');
         hint.push(format!("Ctrl+Enter {}", app.tr("changes.yes")));
     }
     for n in 1..=u32::from(b.parents) {
@@ -829,11 +828,10 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
         let word = app.tr(b.parent_key(n)).replace("{}", &n.to_string());
         hint.push(format!("{d} {word}"));
         buttons.push(word);
-        keys.push(d);
     }
     buttons.push(app.tr("changes.no").to_owned());
-    keys.push('n');
     hint.push(format!("Esc {}", app.tr("changes.no")));
+    hint.push(format!("Tab / Shift+Tab · Enter {}", app.tr("key.move")));
     let body: Vec<String> = std::iter::once(b.text.clone()).chain(b.plan.iter().cloned()).collect();
     let q = ito_confirm::Question {
         title: app.tr(match b.strength {
@@ -846,6 +844,7 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
         notes: &notes,
         buttons: &buttons,
         hint: &hint.join(" · "),
+        focus: b.focus,
     };
     let clicked = ito_confirm::show(ui.ctx(), &q, &style);
     if let (true, Some(i)) = (live, clicked) {

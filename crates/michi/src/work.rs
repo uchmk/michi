@@ -122,6 +122,9 @@ pub struct Band {
     pub parents: u8,
     /// Plain sentences on what will happen (#106), above the rows.
     pub plan: Vec<String>,
+    /// The button Tab / Shift+Tab has reached (an index into `keys`); Enter
+    /// answers it. `None` until a Tab, so a plain Enter stays the view's.
+    pub focus: Option<usize>,
 }
 
 impl Band {
@@ -137,7 +140,27 @@ impl Band {
             typed: String::new(),
             parents: 0,
             plan: Vec::new(),
+            focus: None,
         }
+    }
+
+    /// The keys of the buttons, in the order they are drawn: `y` (a band
+    /// with no parents to pick, not typed), a digit for each parent, `n`.
+    pub fn keys(&self) -> Vec<char> {
+        let mut keys = Vec::new();
+        if !self.typing() && self.parents == 0 {
+            keys.push('y');
+        }
+        keys.extend((1..=u32::from(self.parents)).filter_map(|n| char::from_digit(n, 10)));
+        keys.push('n');
+        keys
+    }
+
+    /// Tab (`1`) or Shift+Tab (`-1`): to the next or previous button, around.
+    pub fn move_focus(&mut self, step: i32) {
+        let n = self.keys().len() as i32;
+        let from = self.focus.map_or(if step > 0 { -1 } else { n }, |f| f as i32);
+        self.focus = Some((from + step).rem_euclid(n) as usize);
     }
 
     /// Drawn red.
@@ -348,6 +371,19 @@ impl App {
     /// on when it is typed out, Backspace takes a character back. Any other
     /// band leaves the key alone.
     pub(crate) fn band_named(&mut self, name: &str) -> bool {
+        // Tab and Shift+Tab walk the buttons, Enter answers the one reached.
+        if let Some(b) = self.band.as_mut().filter(|b| !b.typing()) {
+            match name {
+                "Tab" => b.move_focus(1),
+                "Shift+Tab" => b.move_focus(-1),
+                "Enter" => {
+                    let key = b.focus.and_then(|f| b.keys().get(f).copied());
+                    return key.is_some_and(|c| self.band_key(c));
+                }
+                _ => return false,
+            }
+            return true;
+        }
         let Some((word, ok)) = self.band.as_ref().filter(|b| b.typing()).map(|b| (b.word.clone(), strength::typed_ok(&b.word, &b.typed)))
         else {
             return false;
@@ -915,6 +951,26 @@ mod tests {
         let mut a = app();
         a.band = Some(Band::new(String::new(), Then::Net(Job::Fetch)));
         assert!(!a.band_named("Enter"));
+    }
+
+    #[test]
+    fn tab_walks_the_buttons_and_enter_answers_the_one_reached() {
+        let mut a = app();
+        let mut b = Band::new(String::new(), Then::Net(Job::Fetch));
+        b.parents = 3;
+        a.band = Some(b);
+        // 1 2 3 n: Tab goes down from the first, Shift+Tab from the last, both around.
+        assert_eq!(a.band.as_ref().unwrap().keys(), vec!['1', '2', '3', 'n']);
+        assert!(a.band_named("Tab"));
+        assert_eq!(a.band.as_ref().unwrap().focus, Some(0));
+        assert!(a.band_named("Shift+Tab"));
+        assert_eq!(a.band.as_ref().unwrap().focus, Some(3));
+        assert!(a.band_named("Tab"));
+        assert_eq!(a.band.as_ref().unwrap().focus, Some(0));
+        // Enter on `n` drops the band.
+        a.band.as_mut().unwrap().focus = Some(3);
+        assert!(a.band_named("Enter"));
+        assert!(a.band.is_none());
     }
 
     #[test]
