@@ -827,7 +827,7 @@ impl App {
                 self.turns_changed();
             }
             Answer::Clashes(c) => {
-                // A merge under way hides the prediction; what it showed is kept.
+                // A pair that conflicted and now merges clean is said once; marks of pairs gone from the prediction are dropped.
                 for p in c.resolved_since(&self.clashes) {
                     if !self.resolved.contains(&p) {
                         let said = self.tr("clash.resolved_toast").replace("{a}", &p.0).replace("{b}", &p.1);

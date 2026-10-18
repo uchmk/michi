@@ -831,7 +831,8 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
     }
     buttons.push(app.tr("changes.no").to_owned());
     hint.push(format!("Esc {}", app.tr("changes.no")));
-    hint.push(format!("Tab / Shift+Tab · Enter {}", app.tr("key.move")));
+    hint.push(app.tr("band.walk").to_owned());
+    debug_assert_eq!(buttons.len(), keys.len(), "the buttons and their keys are drawn in one order");
     let body: Vec<String> = std::iter::once(b.text.clone()).chain(b.plan.iter().cloned()).collect();
     let q = ito_confirm::Question {
         title: app.tr(match b.strength {

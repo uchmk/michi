@@ -2,6 +2,11 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.89.9] - 2026-10-18
+
+### 変更
+- 確認の帯のヒントを「Tab / Shift+Tab: 選ぶ ・ Enter: 選んだほうで答える」にした（「Enter 移動」と読めていた）。ボタンとキーの数が合うことを確かめる `debug_assert` と、名前を打つ帯の Tab・Tab を押す前の Enter のテストを足した。
+
 ## [0.89.8] - 2026-10-18
 
 ### 追加

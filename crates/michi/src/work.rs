@@ -954,6 +954,18 @@ mod tests {
     }
 
     #[test]
+    fn tab_is_the_bands_alone_when_a_name_is_typed() {
+        let mut a = app();
+        a.band = Some(Band::new(String::new(), Then::Act(Task::Delete { name: "x".into() })));
+        a.band.as_mut().unwrap().strength = Strength::Typed;
+        a.band.as_mut().unwrap().word = "x".into();
+        // Typing swallows Tab without moving a focus: the only button is `n`.
+        assert!(a.band_named("Tab"));
+        assert_eq!(a.band.as_ref().unwrap().focus, None);
+        assert_eq!(a.band.as_ref().unwrap().keys(), vec!['n']);
+    }
+
+    #[test]
     fn tab_walks_the_buttons_and_enter_answers_the_one_reached() {
         let mut a = app();
         let mut b = Band::new(String::new(), Then::Net(Job::Fetch));
@@ -967,6 +979,10 @@ mod tests {
         assert_eq!(a.band.as_ref().unwrap().focus, Some(3));
         assert!(a.band_named("Tab"));
         assert_eq!(a.band.as_ref().unwrap().focus, Some(0));
+        // Enter before any Tab is the view's: the band does not take it.
+        a.band.as_mut().unwrap().focus = None;
+        assert!(!a.band_named("Enter"));
+        assert!(a.band.is_some());
         // Enter on `n` drops the band.
         a.band.as_mut().unwrap().focus = Some(3);
         assert!(a.band_named("Enter"));
