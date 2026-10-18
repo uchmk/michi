@@ -234,6 +234,8 @@ A row is added with the change that makes the key, and unticked again when the k
 | K18.8 | Graph or Changes, `y d` | The repository folder path is on the clipboard | [ ] |
 | K18.9 | Worktrees: click the 着地の順 button, the table's name heading, or press `s` | The table sorts by landing order; the button stays lit and the heading says `↓ 着地の順`; again restores the listed order | [ ] |
 | K18.10 | `g l` in the worktree view, then Tab / Shift+Tab / Enter on the band | The focus (thick edge) walks the buttons around; Enter answers the focused one; digits, `y`, `n`, Esc and clicks still work | [ ] |
+| K18.11 | Graph view, Tab / Shift+Tab through tree, detail and side column | The blue frame moves each time; the filter box never takes the focus | [ ] |
+| K18.12 | Graph view, click in the side column, the tree and the detail | The blue frame moves to the clicked column and j/k act there | [ ] |
 | K18.2 | Graph detail, `[` `]` | The diff jumps to the previous and next file; the list does not move | [ ] |
 | K18.3 | Changes and review screens | The diff is side by side from the start | [ ] |
 

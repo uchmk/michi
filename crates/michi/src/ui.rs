@@ -382,6 +382,19 @@ fn graph_view(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         crate::graph_ui::show(ui, app, graph, live);
     }
     crate::detail_ui::show(ui, app, cols.detail, live);
+    // A press in a column puts the keys there, as Tab would.
+    if live {
+        if let Some(p) = ui.ctx().input(|i| i.pointer.primary_pressed().then(|| i.pointer.interact_pos()).flatten()) {
+            use crate::panes::GraphPane;
+            if cols.side.is_some_and(|r| r.contains(p)) {
+                app.pane = GraphPane::Side;
+            } else if cols.graph.is_some_and(|r| r.contains(p)) {
+                app.pane = GraphPane::Tree;
+            } else if cols.detail.contains(p) {
+                app.pane = GraphPane::Detail;
+            }
+        }
+    }
     // The blue frame is where the keys are.
     let here = match app.pane {
         crate::panes::GraphPane::Tree => cols.graph,

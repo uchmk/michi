@@ -134,6 +134,9 @@ struct Michi {
     place: Option<ito_common::window::Tracker>,
     /// What the script asked for in `raw_input_hook`, done in the frame.
     todo: Vec<Do>,
+    /// Tab presses (`true`: with Shift) taken out of the input before egui could move
+    /// its focus to the next widget (the graph's filter box); `keys` hands them to the app.
+    tab_stash: Vec<bool>,
     /// The keymap.toml / config.toml warnings already said in a toast.
     warned: Vec<String>,
     /// Requests from `michi mcp`; none under `--keys`.
@@ -568,6 +571,9 @@ impl Michi {
         }
         // Alt+1.. is a repository tab (the keymap); the digit it types goes nowhere (AltGr is Ctrl+Alt: that types).
         let alt_held = ctx.input(|i| i.modifiers.alt && !i.modifiers.ctrl);
+        for shift in std::mem::take(&mut self.tab_stash) {
+            self.app.named(if shift { "Shift+Tab" } else { "Tab" });
+        }
         let mut events = events.into_iter();
         while let Some(e) = events.next() {
             match e {
@@ -585,7 +591,8 @@ impl Michi {
                 egui::Event::Key { key: egui::Key::Escape, pressed: true, .. } if !let_go => {
                     self.app.escape();
                 }
-                // Tab and Shift+Tab change the sheet of the Git flow sheet, or the pane of the graph view.
+                // Tab and Shift+Tab change the sheet of the Git flow sheet, or the pane of the graph view
+                // (the presses `raw_input_hook` took out of the input are done before this loop).
                 egui::Event::Key { key: egui::Key::Tab, pressed: true, modifiers, .. }
                     if (self.app.cheat.is_some() || self.app.band.is_some() || self.app.tab_ready())
                         && !modifiers.command
@@ -672,6 +679,20 @@ impl eframe::App for Michi {
                 self.todo.push(d);
             }
         }
+        // egui turns Tab into "focus the next widget" before the frame runs, which sent the
+        // keys to the filter box. Where Tab moves the panes, the app takes it and egui never sees it.
+        if (self.app.cheat.is_some() || self.app.band.is_some() || self.app.tab_ready()) && ctx.memory(|m| m.focused().is_none()) {
+            let stash = &mut self.tab_stash;
+            raw.events.retain(|e| match e {
+                egui::Event::Key { key: egui::Key::Tab, pressed, modifiers, .. } if !modifiers.command && !modifiers.alt => {
+                    if *pressed {
+                        stash.push(modifiers.shift);
+                    }
+                    false
+                }
+                _ => true,
+            });
+        }
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
@@ -686,6 +707,8 @@ impl eframe::App for Michi {
         if self.app.mode != Mode::Settings {
             self.keys(&ctx);
         }
+        // Whatever `keys` returned before reaching is dropped, not kept for a later frame.
+        self.tab_stash.clear();
         self.script(&ctx);
         self.app.prefs.pump();
         self.app.detail.unified = !self.app.prefs.diff_side;
@@ -993,6 +1016,7 @@ fn main() -> eframe::Result {
                 script,
                 place: saved.tracker(),
                 todo: Vec::new(),
+                tab_stash: Vec::new(),
                 warned: Vec::new(),
                 mcp,
                 tabs,
