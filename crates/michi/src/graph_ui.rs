@@ -671,7 +671,7 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
     if let Some((k, key)) = menu_pick {
         app.graph.select(k);
         app.graph.reveal = false;
-        app.feed(key);
+        app.feed_pick(key);
     }
     if repaint {
         ctx.request_repaint();

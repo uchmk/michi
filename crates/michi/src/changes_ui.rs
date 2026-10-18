@@ -89,7 +89,7 @@ enum Act {
     /// A file double-clicked: staged or unstaged.
     Toggle(usize),
     /// A pick in a file's right-click menu: the key, typed on that file.
-    Menu(usize, char),
+    Menu(usize, michi_core::menu::Item),
     Wide(bool),
     /// A folder of the tree folded, or opened.
     Fold(Side, String),
@@ -223,11 +223,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
                 app.changes.leave_lines();
             }
             app.changes_select(k);
-            // The ones that lose work sit behind g.
-            if matches!(key, 'd' | 'i' | 'a') {
-                app.feed('g');
-            }
-            app.feed(key);
+            app.feed_pick(key);
         }
         Act::Wide(w) => app.changes.wide = w,
         Act::Fold(side, dir) => app.changes.fold(side, &dir),

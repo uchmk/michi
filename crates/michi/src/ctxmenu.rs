@@ -10,13 +10,17 @@ use crate::app::App;
 
 /// The menu's entries. The key of the one picked, if one was; the menu is
 /// closed then.
-pub fn show(ui: &mut Ui, app: &App, kind: Kind) -> Option<char> {
+pub fn show(ui: &mut Ui, app: &App, kind: Kind) -> Option<menu::Item> {
     ui.set_min_width(230.0);
     let mut picked = None;
     for it in menu::items(kind) {
-        let button = Button::new(app.tr(it.word)).shortcut_text(menu::key_label(it.key));
+        let button = Button::new(app.tr(it.word)).shortcut_text(if it.go {
+            format!("g {}", menu::key_label(it.key))
+        } else {
+            menu::key_label(it.key)
+        });
         if ui.add(button).clicked() {
-            picked = Some(it.key);
+            picked = Some(*it);
             ui.close();
         }
     }
@@ -51,7 +55,7 @@ mod tests {
     fn a_menu_shows_in_a_frame() {
         let app = App::new(crate::prefs::Prefs::empty(), std::env::temp_dir());
         let ctx = egui::Context::default();
-        let mut picked = Some('x');
+        let mut picked = Some(menu::items(Kind::File)[0]);
         let mut out = ctx.run_ui(egui::RawInput::default(), |ui| picked = show(ui, &app, Kind::File));
         out.textures_delta.clear();
         assert_eq!(picked, None, "nothing is picked without a click");

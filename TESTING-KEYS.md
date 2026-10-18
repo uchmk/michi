@@ -219,6 +219,10 @@ A row is added with the change that makes the key, and unticked again when the k
 | K15.5 | Right-click a file in Changes → discard | Same as `g d` | [ ] |
 | K15.6 | Graph, `Tab` three times | The keys go tree → detail → side column → tree; the blue frame follows them | [ ] |
 | K15.7 | Graph, side column, `→` or `l` | Nothing moves; `Enter` opens the row and returns to the tree | [ ] |
+| K16.1 | Graph, `R` alone | Nothing happens; `g r` asks about reset | [ ] |
+| K16.2 | Worktree table, `x` `l` `c` `M` alone | Nothing happens; `g x` `g l` `g c` `g m` do what they did | [ ] |
+| K16.3 | `F` alone in any view | Nothing happens; `g f` force-pushes (after its question) | [ ] |
+| K16.4 | Right-click a worktree row → remove | Same as `g x` | [ ] |
 
 ## To be filled as the redesign lands (issue #133)
 

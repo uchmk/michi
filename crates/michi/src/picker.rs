@@ -1315,11 +1315,11 @@ mod tests {
     fn x_in_the_worktree_table_asks_before_it_removes_a_worktree() {
         let mut a = on("m1");
         assert!(a.feed('3'));
-        assert!(a.feed('x'));
+        assert!(a.feed('g') && a.feed('x'));
         assert_eq!(toast(&a), "repo is the main worktree: it stays");
         assert!(a.band.is_none());
         assert!(a.feed('j'));
-        assert!(a.feed('x'));
+        assert!(a.feed('g') && a.feed('x'));
         let band = a.band.take().unwrap();
         assert_eq!(band.then, Then::Act(Task::RemoveWorktree { wt: PathBuf::from("C:/r/wt"), sessions: Vec::new() }));
         assert!(band.text.starts_with("Remove the worktree wt? The folder goes; the branch wip stays."), "{}", band.text);

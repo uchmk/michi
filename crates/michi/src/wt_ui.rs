@@ -79,6 +79,8 @@ enum Act {
     Enter,
     /// The row's key (`o`, `d`, `m`, `x`, `p`).
     Key(char),
+    /// The second key of `g`.
+    Go(char),
     Pr,
 }
 
@@ -462,7 +464,7 @@ fn buttons_of(app: &App, t: &Tree, k: usize, trunk: &str, b: &MakeButton) -> Vec
     // Merged elsewhere and clean: removing it comes first.
     let first = k > 0 && removable(app, t);
     if first {
-        out.push(b(app.tr("key.remove").to_owned(), Some("x"), Act::Key('x'), true));
+        out.push(b(app.tr("key.remove").to_owned(), Some("g x"), Act::Go('x'), true));
     }
     out.extend([
         b(app.tr("wt.diff").to_owned(), Some("d"), Act::Key('d'), false),
@@ -476,7 +478,7 @@ fn buttons_of(app: &App, t: &Tree, k: usize, trunk: &str, b: &MakeButton) -> Vec
     }
     // The main worktree is not one git can remove.
     if k > 0 && !first {
-        out.push(b(app.tr("key.remove").to_owned(), Some("x"), Act::Key('x'), true));
+        out.push(b(app.tr("key.remove").to_owned(), Some("g x"), Act::Go('x'), true));
     }
     out
 }
@@ -1143,7 +1145,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         if live {
             resp.context_menu(|ui| {
                 if let Some(key) = crate::ctxmenu::show(ui, app, michi_core::menu::Kind::Branch) {
-                    act = Some((k, Some(Act::Key(key))));
+                    act = Some((k, Some(if key.go { Act::Go(key.key) } else { Act::Key(key.key) })));
                 }
             });
         }
@@ -1205,6 +1207,10 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     match what {
         Some(Act::Enter) => app.wt_enter(),
         Some(Act::Key(key)) => {
+            app.feed(key);
+        }
+        Some(Act::Go(key)) => {
+            app.feed('g');
             app.feed(key);
         }
         Some(Act::Pr) => app.later_word("wt.pr"),

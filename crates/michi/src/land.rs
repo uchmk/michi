@@ -158,11 +158,11 @@ mod tests {
     #[test]
     fn l_asks_how_far_and_the_digit_chooses() {
         let mut a = on_table();
-        assert!(a.feed('l'));
+        assert!(a.feed('g') && a.feed('l'));
         assert_eq!(toast(&a), "repo is on main itself: there is nothing to land");
         assert!(a.band.is_none());
         assert!(a.feed('j'));
-        assert!(a.feed('l'));
+        assert!(a.feed('g') && a.feed('l'));
         let band = a.band.as_ref().expect("the band");
         assert_eq!(band.parents, 4);
         assert_eq!(band.rows[0], ("1".to_owned(), "Take main into wip".to_owned()));
@@ -181,6 +181,7 @@ mod tests {
         for (digit, stage) in [('1', Stage::MergeIn), ('2', Stage::Verify), ('3', Stage::FastForward), ('4', Stage::CleanUp)] {
             let mut a = on_table();
             a.feed('j');
+            a.feed('g');
             a.feed('l');
             let Some(Band { then: Then::Act(task), .. }) = a.band.as_mut() else { panic!() };
             let Task::Land { until, .. } = task else { panic!() };
@@ -199,17 +200,20 @@ mod tests {
         let mut a = on_table();
         a.feed('j');
         a.feed('j');
+        a.feed('g');
         a.feed('l');
         assert_eq!(toast(&a), "old is on no branch: switch it to one before landing it on main");
         let mut trees = fixture::trees();
         trees.trees[1].ahead_behind = Some((0, 2));
         a.take(crate::repo::Answer::Trees(trees));
         a.feed('k');
+        a.feed('g');
         a.feed('l');
         assert_eq!(toast(&a), "wt has no commit main lacks: there is nothing to land");
         let mut trees = fixture::trees();
         trees.trees[1].doing = Some(michi_core::branch::Doing::Rebase);
         a.take(crate::repo::Answer::Trees(trees));
+        a.feed('g');
         a.feed('l');
         assert_eq!(toast(&a), "wt is in the middle of a rebase: finish it first");
         assert!(a.band.is_none());
@@ -267,11 +271,13 @@ mod tests {
         let mut a = on_table();
         a.feed('j');
         reviewed(&mut a, Stage::InReview);
+        a.feed('g');
         a.feed('l');
         let warn = a.tr("land.unapproved").trim().to_owned();
         assert!(a.band.as_ref().unwrap().notes.contains(&warn));
         a.band = None;
         reviewed(&mut a, Stage::Approved);
+        a.feed('g');
         a.feed('l');
         assert!(!a.band.as_ref().unwrap().notes.contains(&warn));
     }

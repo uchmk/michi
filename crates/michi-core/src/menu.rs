@@ -18,11 +18,17 @@ pub enum Kind {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Item {
     pub key: char,
+    /// The key is the second of `g` (the ones that can lose work).
+    pub go: bool,
     pub word: &'static str,
 }
 
 const fn item(key: char, word: &'static str) -> Item {
-    Item { key, word }
+    Item { key, go: false, word }
+}
+
+const fn go(key: char, word: &'static str) -> Item {
+    Item { key, go: true, word }
 }
 
 const COMMIT: [Item; 7] = [
@@ -32,7 +38,7 @@ const COMMIT: [Item; 7] = [
     item('C', "key.cherry_pick"),
     item('t', "key.revert"),
     item('D', "key.compare"),
-    item('R', "key.reset"),
+    go('r', "key.reset"),
 ];
 
 const BRANCH: [Item; 10] = [
@@ -41,15 +47,15 @@ const BRANCH: [Item; 10] = [
     item('e', "key.open_editor"),
     item('E', "key.open_explorer"),
     item('d', "key.branch_diff"),
-    item('M', "key.rebase_trunk"),
+    go('m', "key.rebase_trunk"),
     item('m', "key.take_main"),
     item('r', "key.reorder"),
     item('L', "key.reflog"),
-    item('x', "key.remove"),
+    go('x', "key.remove"),
 ];
 
 const FILE: [Item; 5] =
-    [item(' ', "key.stage"), item('s', "key.split"), item('i', "key.ignore"), item('d', "key.discard"), item('a', "key.amend")];
+    [item(' ', "key.stage"), item('s', "key.split"), go('i', "key.ignore"), go('d', "key.discard"), go('a', "key.amend")];
 
 /// The entries of a menu, in the order shown (the ones that lose something
 /// last).
@@ -78,7 +84,7 @@ mod tests {
     #[test]
     fn a_key_is_listed_once_in_a_menu() {
         for kind in ALL {
-            let mut keys: Vec<char> = items(kind).iter().map(|i| i.key).collect();
+            let mut keys: Vec<(bool, char)> = items(kind).iter().map(|i| (i.go, i.key)).collect();
             keys.sort_unstable();
             keys.dedup();
             assert_eq!(keys.len(), items(kind).len(), "{kind:?}");

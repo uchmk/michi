@@ -89,7 +89,7 @@ impl View {
                 ("l h", "key.open_fold"),
                 ("b", "key.branch"),
                 ("t", "key.revert"),
-                ("R", "key.reset"),
+                ("g+r", "key.reset"),
                 ("C", "key.cherry_pick"),
                 ("m", "key.merge_commit"),
                 ("Space D", "key.compare"),
@@ -149,14 +149,14 @@ impl View {
                 ("Q", "key.pr_create"),
                 ("t e E", "key.open_in"),
                 ("r", "key.reorder"),
-                ("M", "key.rebase_trunk"),
+                ("g+m", "key.rebase_trunk"),
                 ("Enter", "key.in_graph"),
                 ("m", "key.take_main"),
-                ("l", "key.land"),
+                ("g+l", "key.land"),
                 ("s", "key.sort_land"),
-                ("x", "key.remove"),
+                ("g+x", "key.remove"),
                 ("d", "key.branch_diff"),
-                ("c", "key.tidy"),
+                ("g+c", "key.tidy"),
                 ("T", "key.trial"),
                 ("L", "key.reflog"),
                 ("Z", "key.stats"),
@@ -1131,6 +1131,14 @@ impl App {
         true
     }
 
+    /// A pick of a right-click menu: the key typed on the clicked row.
+    pub(crate) fn feed_pick(&mut self, it: michi_core::menu::Item) {
+        if it.go {
+            self.feed('g');
+        }
+        self.feed(it.key);
+    }
+
     /// The second key of `g` in the `2` view: the operations that can lose
     /// work.
     pub(crate) fn changes_go(&mut self, c: char) {
@@ -1820,7 +1828,7 @@ impl App {
                 None if self.view == View::Conflict && self.conflict_key(c) => {}
                 None if c == 'W' => self.jump_waiting(),
                 None if c == 'K' => self.open_auth(),
-                None if self.net_key(c) => {}
+                None if c != 'F' && self.net_key(c) => {}
                 None if self.strip_key(c) => {}
                 None => return self.later(|token| token.chars().eq([c])),
             },
@@ -1872,7 +1880,6 @@ impl App {
             'I' => self.open_issue(),
             'O' => self.images.cycle(),
             't' => self.ask_revert(),
-            'R' => self.ask_reset(),
             'C' => self.ask_cherry(),
             'D' => self.open_compare(),
             'm' => self.ask_merge_commit(),
@@ -1898,7 +1905,6 @@ impl App {
             'k' => self.wt_move(-1),
             'd' => self.open_review(),
             'o' => self.focus_claude(true),
-            'c' => self.open_tidy(),
             'T' => self.open_trial(),
             'L' => self.open_reflog(),
             'Z' => self.open_stats(),
@@ -1909,9 +1915,7 @@ impl App {
             'R' => self.open_ready(),
             'G' => self.wt_move(i32::MAX / 2),
             'm' => self.ask_merge(),
-            'l' => self.ask_land(),
             's' => self.toggle_land_sort(),
-            'x' => self.ask_remove(),
             'O' => self.open_pr(),
             'I' => self.open_issue(),
             'Q' => self.open_pr_form(),
@@ -1919,7 +1923,6 @@ impl App {
             'e' => self.open_in(Tool::Editor, true),
             'E' => self.open_in(Tool::Explorer, true),
             'r' => self.open_reorder(),
-            'M' => self.ask_rebase_trunk(),
             'N' => self.open_new_work(),
             _ => return false,
         }
