@@ -2,6 +2,12 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.87.1] - 2026-10-18
+
+### 追加
+
+- `Ctrl+F` / `Ctrl+B` も `PageDown` / `PageUp` として効く（`Ctrl+D` / `Ctrl+U` と同じ）。
+
 ## [0.87.0] - 2026-10-18
 
 ### 追加
