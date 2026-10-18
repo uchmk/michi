@@ -6,7 +6,9 @@
 //! only a repository replaces the one in the window.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver};
+use std::sync::Mutex;
 
 use eframe::egui::{self, Key, Modifiers};
 use ito_palette::{Answer, Entry, Style, Tone, View, Words};
@@ -217,12 +219,29 @@ impl App {
     fn save_recent(&self) {
         let Some(file) = file(self.prefs.base.as_deref()) else { return };
         let text = self.recent.text();
-        std::thread::spawn(move || {
-            if let Some(dir) = file.parent() {
-                let _ = std::fs::create_dir_all(dir);
-            }
-            let _ = ito_common::write_atomic(&file, text);
-        });
+        let seq = SAVES.fetch_add(1, Ordering::SeqCst) + 1;
+        std::thread::spawn(move || write_latest(&file, &text, seq));
+    }
+}
+
+/// How many saves have been asked for, and the newest one written.
+static SAVES: AtomicU64 = AtomicU64::new(0);
+static WRITTEN: Mutex<u64> = Mutex::new(0);
+
+/// Writes `text` to `file` as save number `seq`. The writes go one at a time
+/// (they share one temporary file next to `file`), and a save that a newer
+/// one has already overtaken is dropped, so a slow thread never puts an
+/// older list over a newer one.
+fn write_latest(file: &Path, text: &str, seq: u64) {
+    let mut written = WRITTEN.lock().unwrap_or_else(|e| e.into_inner());
+    if seq <= *written {
+        return;
+    }
+    if let Some(dir) = file.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    if ito_common::write_atomic(file, text).is_ok() {
+        *written = seq;
     }
 }
 
@@ -269,6 +288,27 @@ mod tests {
         assert_eq!(clone_row("https://h/a/b.git", parent), Some(Row::Clone("https://h/a/b.git".into(), PathBuf::from("/dev/b"))));
         assert_eq!(clone_row("https://h/.git", parent), None);
         assert_eq!(clone_row("https://h/.git /x/y", parent), Some(Row::Clone("https://h/.git".into(), PathBuf::from("/x/y"))));
+    }
+
+    #[test]
+    fn a_stale_save_never_overwrites_a_newer_one() {
+        let dir = std::env::temp_dir().join(format!("michi-recent-{}", std::process::id()));
+        let file = dir.join("recent.txt");
+        let base = SAVES.fetch_add(10, Ordering::SeqCst) + 1;
+        write_latest(&file, "new\n", base + 5);
+        write_latest(&file, "old\n", base + 2);
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "new\n");
+        let handles: Vec<_> = (0..8)
+            .map(|i| {
+                std::thread::spawn({
+                    let f = file.clone();
+                    move || write_latest(&f, "x\n", base + 6 + i)
+                })
+            })
+            .collect();
+        handles.into_iter().for_each(|h| h.join().unwrap());
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "x\n");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
