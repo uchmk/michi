@@ -38,8 +38,6 @@ const STRIP_H: f32 = 28.0;
 const WHERE_H: f32 = 22.0;
 /// How many of a view's keys the keybar shows before "? all keys".
 const KEYBAR_KEYS: usize = 5;
-/// Below this width the palette field is shorter.
-const NARROW: f32 = 1100.0;
 /// How far in from the window's sides and foot the pointer resizes it.
 const EDGE: f32 = 6.0;
 
@@ -524,18 +522,28 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
     }
     right -= 8.0;
     // The palette field and the bell beside it, in the middle of the window.
-    let w = if r.width() < NARROW { 150.0 } else { 230.0 };
+    // As tsumugi sizes it: up to 420 wide, as wide as fits either side of the
+    // middle, then only the magnifier-sized stub.
     const BELL: f32 = 28.0;
-    let group = w + 6.0 + BELL;
-    let group_left = (r.center().x - group / 2.0).max(left_end + 12.0);
+    const GAP: f32 = 6.0;
+    let middle = r.center().x;
+    let half = (middle - left_end - 12.0).min(right - 90.0 - middle);
+    let box_w = 420.0f32.min(2.0 * half - BELL - GAP);
+    let w = if box_w < 160.0 { 30.0 } else { box_w };
+    let group = w + GAP + BELL;
+    let group_left = (middle - group / 2.0).max(left_end + 12.0);
     let group_right = group_left + group;
     let mut centre_end = left_end;
     if group_right <= right {
-        let field = Rect::from_min_max(pos2(group_left, mid - 12.0), pos2(group_left + w, mid + 12.0));
+        let field = Rect::from_min_max(pos2(group_left, mid - 13.0), pos2(group_left + w, mid + 13.0));
         let resp = ui.interact(field, ui.id().with("palette"), Sense::CLICK);
         p.rect_filled(field, CornerRadius::same(5), if resp.hovered() { c.panel } else { c.bg });
         p.rect_stroke(field, CornerRadius::same(5), Stroke::new(1.0, c.border), StrokeKind::Inside);
-        let k = kbd(ui, &p, field.right_center() - vec2(6.0, 0.0), "Ctrl+Shift+P");
+        let k = if w >= 160.0 {
+            kbd(ui, &p, field.right_center() - vec2(6.0, 0.0), "Ctrl+Shift+P")
+        } else {
+            Rect::from_min_max(field.right_center(), field.right_center())
+        };
         let hint = ui.fonts_mut(|f| f.layout_no_wrap(app.tr("palette.hint").to_owned(), FontId::proportional(12.0), c.dim));
         if field.left() + 10.0 + hint.size().x < k.left() - 6.0 {
             p.galley(pos2(field.left() + 10.0, mid - hint.size().y / 2.0), hint, c.dim);
