@@ -809,6 +809,7 @@ impl Graph {
         let next = MODES[now.map_or(0, |i| (i + 1) % MODES.len())];
         let text = format!("{}{}{}", &self.filter[..at], next, &self.filter[at + 2..]);
         self.set_filter(&text);
+        self.focus_filter = true;
     }
 
     /// The content search the filter asks for and git has not answered yet

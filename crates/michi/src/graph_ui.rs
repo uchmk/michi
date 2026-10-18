@@ -256,7 +256,7 @@ fn filter(ui: &mut Ui, app: &mut App, field: Rect, live: bool) {
         .desired_width(edit_rect.width())
         .interactive(live)
         .return_key(None::<egui::KeyboardShortcut>)
-        .event_filter(EventFilter { tab: false, horizontal_arrows: true, vertical_arrows: true, escape: false });
+        .event_filter(EventFilter { tab: true, horizontal_arrows: true, vertical_arrows: true, escape: false });
     let resp = ui.put(edit_rect, edit);
     if resp.changed() {
         app.graph.set_filter(&text);
