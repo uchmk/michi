@@ -482,11 +482,18 @@ pub struct App {
 
 impl App {
     pub fn new(prefs: Prefs, dir: PathBuf) -> Self {
-        let base = prefs.base.clone();
+        let sizes = crate::sizes::Sizes::load(crate::prefs::window_dir(prefs.base.as_deref()).as_deref());
+        let recent = crate::repos::load(prefs.base.as_deref());
+        Self::with_window(prefs, dir, sizes, recent)
+    }
+
+    /// A tab's state with the window's sizes and recent list already in hand
+    /// (a tab opened later reads no file on the UI thread).
+    pub fn with_window(prefs: Prefs, dir: PathBuf, sizes: crate::sizes::Sizes, recent: michi_core::recent::Recent) -> Self {
         let mut app = Self {
             view: View::Graph,
             mode: Mode::Main,
-            sizes: crate::sizes::Sizes::load(crate::prefs::window_dir(prefs.base.as_deref()).as_deref()),
+            sizes,
             avatars: Default::default(),
             images: Default::default(),
             prefs,
@@ -574,7 +581,7 @@ impl App {
             quit: false,
             cmd: None,
             repos: None,
-            recent: crate::repos::load(base.as_deref()),
+            recent,
             open_req: None,
             opening: None,
             cloning: None,
@@ -1828,20 +1835,7 @@ impl App {
             (Mode::Main, _) if self.picker.is_some() || self.new_work.is_some() || self.pr_form.is_some() || self.reply.is_some() => {
                 return false
             }
-            (Mode::Main, c) if self.cheat.is_some() => return self.cheat_key(c),
-            (Mode::Main, _) if self.legend => {
-                self.legend = false;
-                return true;
-            }
-            (Mode::Main, c) if self.band.is_some() => return self.band_key(c),
-            (Mode::Main, c) if self.tidy.is_some() => return self.tidy_key(c),
-            (Mode::Main, c) if self.ready.is_some() => return self.ready_key(c),
-            (Mode::Main, c) if self.auth.is_some() => return self.auth_key(c),
-            (Mode::Main, c) if self.reflog.is_some() => return self.reflog_key(c),
-            (Mode::Main, c) if self.stats.is_some() => return self.stats_key(c),
-            (Mode::Main, c) if self.blame.is_some() => return self.blame_key(c),
-            (Mode::Main, c) if self.trial.is_some() => return self.trial_key(c),
-            (Mode::Main, c) if self.reorder.is_some() => return self.reorder_key(c),
+            (Mode::Main, c) if self.top_overlay().is_some() => return self.overlay_key(c),
             (Mode::Main, c) if self.bare_act(c) => {}
             (Mode::Main, 'g') if self.g_prefix_view() => self.prefix = Some(crate::prefix::Prefix::Go),
             (Mode::Main, 'y') if self.y_prefix_view() => self.prefix = Some(crate::prefix::Prefix::Copy),
@@ -2062,36 +2056,8 @@ impl App {
         if self.mode != Mode::Main {
             return false;
         }
-        if self.band_named(name) {
-            return true;
-        }
-        if self.tidy.is_some() {
-            return self.tidy_named(name);
-        }
-        if self.trial.is_some() {
-            return self.trial_named(name);
-        }
-        if self.ready.is_some() || self.auth.is_some() {
-            return true;
-        }
-        if self.reflog.is_some() {
-            return self.reflog_named(name);
-        }
-        if self.cheat.is_some() {
-            return self.cheat_named(name);
-        }
-        if self.legend {
-            self.legend = false;
-            return true;
-        }
-        if self.stats.is_some() {
-            return self.stats_named(name);
-        }
-        if self.blame.is_some() {
-            return self.blame_named(name);
-        }
-        if self.reorder.is_some() {
-            return self.reorder_named(name);
+        if let Some(o) = self.top_overlay() {
+            return self.overlay_named(o, name);
         }
         if self.pane_named(name) || self.body_scroll(name) {
             return true;
@@ -2300,6 +2266,107 @@ pub fn failed_word(e: &git::Error) -> &'static str {
     }
 }
 
+/// What is drawn over the main view and takes the keys first. One order for
+/// characters and named keys alike, so a key cannot reach a layer that is
+/// covered by another (Enter answering a band under the cheat sheet).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Overlay {
+    Cheat,
+    Legend,
+    Band,
+    Tidy,
+    Ready,
+    Auth,
+    Reflog,
+    Stats,
+    Blame,
+    Trial,
+    Reorder,
+}
+
+impl App {
+    /// A band or a prompt that wants an answer is up.
+    pub(crate) fn question_up(&self) -> bool {
+        self.band.is_some() || self.picker.is_some() || self.new_work.is_some() || self.pr_form.is_some() || self.reply.is_some()
+    }
+
+    /// The topmost overlay, if any.
+    pub(crate) fn top_overlay(&self) -> Option<Overlay> {
+        self.overlay_from(true)
+    }
+
+    /// The topmost overlay; with and false the band is passed over.
+    fn overlay_from(&self, band: bool) -> Option<Overlay> {
+        Some(if self.cheat.is_some() {
+            Overlay::Cheat
+        } else if self.legend {
+            Overlay::Legend
+        } else if band && self.band.is_some() {
+            Overlay::Band
+        } else if self.tidy.is_some() {
+            Overlay::Tidy
+        } else if self.ready.is_some() {
+            Overlay::Ready
+        } else if self.auth.is_some() {
+            Overlay::Auth
+        } else if self.reflog.is_some() {
+            Overlay::Reflog
+        } else if self.stats.is_some() {
+            Overlay::Stats
+        } else if self.blame.is_some() {
+            Overlay::Blame
+        } else if self.trial.is_some() {
+            Overlay::Trial
+        } else if self.reorder.is_some() {
+            Overlay::Reorder
+        } else {
+            return None;
+        })
+    }
+
+    fn overlay_key(&mut self, c: char) -> bool {
+        match self.top_overlay() {
+            Some(Overlay::Cheat) => self.cheat_key(c),
+            Some(Overlay::Legend) => {
+                self.legend = false;
+                true
+            }
+            Some(Overlay::Band) => self.band_key(c),
+            Some(Overlay::Tidy) => self.tidy_key(c),
+            Some(Overlay::Ready) => self.ready_key(c),
+            Some(Overlay::Auth) => self.auth_key(c),
+            Some(Overlay::Reflog) => self.reflog_key(c),
+            Some(Overlay::Stats) => self.stats_key(c),
+            Some(Overlay::Blame) => self.blame_key(c),
+            Some(Overlay::Trial) => self.trial_key(c),
+            Some(Overlay::Reorder) => self.reorder_key(c),
+            None => false,
+        }
+    }
+
+    fn overlay_named(&mut self, o: Overlay, name: &str) -> bool {
+        match o {
+            Overlay::Cheat => self.cheat_named(name),
+            Overlay::Legend => {
+                self.legend = false;
+                true
+            }
+            // A key the band does not take reaches the layer under it (the list's arrows).
+            Overlay::Band => match self.band_named(name) {
+                true => true,
+                false => self.overlay_from(false).is_some_and(|u| self.overlay_named(u, name)),
+            },
+            Overlay::Tidy => self.tidy_named(name),
+            Overlay::Ready | Overlay::Auth => true,
+            Overlay::Reflog => self.reflog_named(name),
+            Overlay::Stats => self.stats_named(name),
+            Overlay::Blame => self.blame_named(name),
+            Overlay::Trial => self.trial_named(name),
+            Overlay::Reorder => self.reorder_named(name),
+        }
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
@@ -2349,6 +2416,22 @@ pub(crate) mod tests {
         assert!(a.toast_left().is_some());
         a.toast = Some(("hello".into(), Instant::now()));
         assert!(a.toast_left().is_none(), "an expired toast is not drawn again");
+    }
+
+    #[test]
+    fn enter_cannot_answer_a_band_under_the_cheat_sheet() {
+        let mut a = app();
+        a.band = Some(Band::new("ask".into(), crate::work::Then::Act(crate::act::Task::Rerere { wt: PathBuf::from("C:/r"), on: false })));
+        a.band.as_mut().unwrap().focus = Some(0);
+        a.toggle_cheat();
+        assert!(a.cheat.is_none(), "the sheet does not open over a band");
+        // Even if both are up, the sheet is on top for every kind of key.
+        a.cheat = Some(crate::cheat_ui::Cheat { tab: 0, sel: None });
+        assert_eq!(a.top_overlay(), Some(Overlay::Cheat));
+        a.named("Enter");
+        assert!(a.band.is_some(), "Enter did not answer the band");
+        a.feed('n');
+        assert!(a.band.is_some(), "n did not answer the band");
     }
 
     #[test]
