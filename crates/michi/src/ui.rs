@@ -382,6 +382,9 @@ fn graph_view(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         crate::graph_ui::show(ui, app, graph, live);
     }
     crate::detail_ui::show(ui, app, cols.detail, live);
+    if app.pane == crate::panes::GraphPane::Detail {
+        ui.painter().rect_stroke(cols.detail.shrink(1.0), 0.0, egui::Stroke::new(1.5, c.blue), egui::StrokeKind::Inside);
+    }
     crate::dnd_ui::finish(ui, app, live);
     for line in &cols.lines {
         ui.painter().rect_filled(*line, 0.0, c.border);

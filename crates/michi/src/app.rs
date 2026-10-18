@@ -80,6 +80,7 @@ impl View {
         match self {
             View::Graph => &[
                 ("j k", "key.move"),
+                ("Tab", "key.panes"),
                 ("Enter", "key.side"),
                 ("/", "key.filter"),
                 ("z", "key.fold"),
@@ -405,6 +406,12 @@ pub struct App {
     pub cheat: Option<crate::cheat_ui::Cheat>,
     /// A `g` or `y` was typed: its window waits for the second key (#133).
     pub prefix: Option<crate::prefix::Prefix>,
+    /// Which pane of the graph view has the keys (Tab moves it).
+    pub pane: crate::panes::GraphPane,
+    /// The side column's cursor: an index into `side_ui::rows`.
+    pub side_cur: usize,
+    /// The cursor moved: the side column scrolls it into view.
+    pub side_follow: bool,
     /// The practice repository being made (#117): its folder, or why not.
     pub practicing: Option<std::sync::mpsc::Receiver<Result<std::path::PathBuf, String>>>,
     pub ready: Option<crate::ready::Ready>,
@@ -520,6 +527,9 @@ impl App {
             legend: false,
             cheat: None,
             prefix: None,
+            pane: crate::panes::GraphPane::Tree,
+            side_cur: 0,
+            side_follow: false,
             practicing: None,
             ready: None,
             auth: None,
@@ -1727,6 +1737,7 @@ impl App {
                     self.view = v;
                     self.review_sync();
                 }
+                None if self.view == View::Graph && self.pane_key(c) => {}
                 None if self.view == View::Graph && self.graph_key(c) => {}
                 None if self.view == View::Worktree && self.review.is_some() && self.review_key(c) => {}
                 None if self.view == View::Worktree && self.review.is_none() && self.wt_key(c) => {}
@@ -1968,9 +1979,12 @@ impl App {
         if self.reorder.is_some() {
             return self.reorder_named(name);
         }
+        if self.view == View::Graph && self.pane_named(name) {
+            return true;
+        }
         if self.view == View::Graph {
             let g = &mut self.graph;
-            if self.detail.wide {
+            if self.detail.wide || self.pane == crate::panes::GraphPane::Detail {
                 // The wide detail has the keys: they scroll it, not the graph.
                 let d = &mut self.detail;
                 match name {
@@ -1980,7 +1994,7 @@ impl App {
                     "PageUp" => d.pages -= 1,
                     "Home" => d.to_top = true,
                     "End" => d.to_end = true,
-                    "Enter" => d.wide = false,
+                    "Enter" => d.wide = !d.wide,
                     _ => return self.later(|token| token == name),
                 }
                 return true;
@@ -2106,6 +2120,10 @@ impl App {
         }
         if self.view == View::Graph && self.detail.wide {
             self.detail.wide = false;
+            return true;
+        }
+        if self.view == View::Graph && self.pane != crate::panes::GraphPane::Tree {
+            self.pane = crate::panes::GraphPane::Tree;
             return true;
         }
         if self.view == View::Graph && !self.graph.filter().is_empty() {

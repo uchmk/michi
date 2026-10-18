@@ -163,10 +163,22 @@ A row is added with the change that makes the key, and unticked again when the k
 | K8.12 | `x`, move, `y` (graph) | `y` marks the commit good while only a bad one is marked | [ ] |
 | K8.13 | `g`, then a key not in the window | The window closes and a toast says so | [ ] |
 
+## Panes of the graph view (0.78.0)
+
+| # | Key | Expect | Checked |
+| --- | --- | --- | --- |
+| K9.1 | `Tab` / `Shift+Tab` (graph) | The keys go graph → side column → detail (backwards with Shift); a toast names the pane | [ ] |
+| K9.2 | `j k` in the side column | A blue bar walks the rows, skipping headings, and scrolls into view | [ ] |
+| K9.3 | `Enter` or `l` on a branch, tag, worktree | The graph selects its commit and the keys return to the graph | [ ] |
+| K9.4 | `Enter` on a group or a stash | The group opens or closes; a stash shows in the detail | [ ] |
+| K9.5 | `j k`, `G` in the detail | The detail scrolls; a blue frame shows it has the keys | [ ] |
+| K9.6 | `Enter` in the detail | It widens (side by side); `Tab` then only goes graph ↔ detail | [ ] |
+| K9.7 | `Esc` in a pane | The keys go back to the graph | [ ] |
+
 ## To be filled as the redesign lands (issue #133)
 
 - `g` popup, still to come: `g d` discard, `g a` amend, `g h` hand to Claude, `g u` unstage (Changes and Conflict screens), and moving the one-key versions into it.
 - `y` copy, still to come: `y s` file names, `y f` path, `y u` URL, and `y` in the Changes screen.
 - `Space` marks up to two commits, `D` compares, `Esc` clears.
 - `?` deep search (Tab changes the mode); `/` stays the light filter.
-- Panes: `Tab` / `Shift+Tab` move between the side column, the tree and the detail pane; `Enter` in the detail pane widens it.
+- Panes, still to come: Tab on the other screens.

@@ -213,6 +213,15 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     if live && ui.rect_contains_pointer(r) {
         scroll -= ui.input(|i| i.smooth_scroll_delta.y);
     }
+    if std::mem::take(&mut app.side_follow) {
+        let top = TOP_PAD + rows.iter().take(app.side_cur).map(|r| r.height(app.prefs.density)).sum::<f32>();
+        let h = rows.get(app.side_cur).map_or(ROW_H, |r| r.height(app.prefs.density));
+        if top < scroll {
+            scroll = top - HEAD_H;
+        } else if top + h > scroll + r.height() {
+            scroll = top + h - r.height() + 6.0;
+        }
+    }
     scroll = scroll.clamp(0.0, (total - r.height()).max(0.0));
     ctx.data_mut(|d| d.insert_temp(scroll_id(), scroll));
 
@@ -271,6 +280,10 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             p.rect_filled(rr, 0.0, c.blue.gamma_multiply(0.22));
         } else if hot {
             p.rect_filled(rr, 0.0, c.panel);
+        }
+        if live && app.pane == crate::panes::GraphPane::Side && k == app.side_cur {
+            p.rect_filled(rr, 0.0, c.blue.gamma_multiply(0.28));
+            p.rect_filled(Rect::from_min_size(rr.min, vec2(3.0, rr.height())), 0.0, c.blue);
         }
         let mid = rr.center().y;
         let mut x = rr.left() + if row.sub { SUB } else { LEFT };

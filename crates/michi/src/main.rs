@@ -44,6 +44,7 @@ mod motion;
 mod newwork;
 mod newwork_ui;
 mod notify;
+mod panes;
 mod patch;
 mod picker;
 mod picker_ui;
@@ -581,9 +582,9 @@ impl Michi {
                 egui::Event::Key { key: egui::Key::Escape, pressed: true, .. } if !let_go => {
                     self.app.escape();
                 }
-                // Tab and Shift+Tab change the sheet of the Git flow sheet.
+                // Tab and Shift+Tab change the sheet of the Git flow sheet, or the pane of the graph view.
                 egui::Event::Key { key: egui::Key::Tab, pressed: true, modifiers, .. }
-                    if self.app.cheat.is_some() && !modifiers.command && !modifiers.alt =>
+                    if (self.app.cheat.is_some() || self.app.panes_ready()) && !modifiers.command && !modifiers.alt =>
                 {
                     self.app.named(if modifiers.shift { "Shift+Tab" } else { "Tab" });
                 }
