@@ -84,13 +84,13 @@ impl Topic {
     /// The short name on the tab.
     pub fn name(self) -> T {
         match self {
-            Topic::Basics => t("Basics: make, commit, push, merge", "基本：作って・コミット・push・マージ"),
-            Topic::Conflict => t("Conflict: a merge clashes", "コンフリクト：ぶつかったとき"),
-            Topic::Undo => t("Undo: take back a mistake", "戻し：間違いを取り消したい"),
-            Topic::Reset => t("reset: wind the history back", "reset：履歴を巻き戻したい"),
-            Topic::RestoreSwitch => t("restore/switch: fix a file, move to a branch", "restore・switch：ファイルを戻す・ブランチを移る"),
-            Topic::Place => t("branch/stash/worktree: work on two things", "branch・stash・worktree：別件を並行したい"),
-            Topic::Rescue => t("rerere/reflog: reuse fixes, find lost commits", "rerere・reflog：解決の再利用・消えたコミット探し"),
+            Topic::Basics => t("Basics", "基本操作"),
+            Topic::Conflict => t("Conflict", "コンフリクト"),
+            Topic::Undo => t("Undo", "戻し"),
+            Topic::Reset => t("Discard (reset)", "破棄（reset）"),
+            Topic::RestoreSwitch => t("Files & branches (restore/switch)", "ファイルとブランチ（restore・switch）"),
+            Topic::Place => t("Parallel work (branch/stash/worktree)", "並行作業（branch・stash・worktree）"),
+            Topic::Rescue => t("Memory (rerere/reflog)", "記憶（rerere・reflog）"),
         }
     }
 
@@ -423,7 +423,10 @@ static RESET: Flow = Flow {
 
 static RESTORE: Flow = Flow {
     topic: Topic::RestoreSwitch,
-    title: t("restore / switch / checkout", "restore・switch・checkout の違い"),
+    title: t(
+        "Command guide: checkout was split into switch (branches) and restore (files)",
+        "コマンドの対応表: checkout は switch（ブランチ）と restore（ファイル）に分かれた",
+    ),
     nodes: &[
         node(0, Start, 1, 0, t("What do you want to move?", "何を動かしたい？")),
         node(1, Decision, 1, 1, t("Files or the branch?", "ファイル？ブランチ？")),
