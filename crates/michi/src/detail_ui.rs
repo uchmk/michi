@@ -156,7 +156,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     crate::select::begin(&d.id.to_string());
     let merged = app.detail.merged(d.id, app.graph.read()).unwrap_or(&[]);
     let blocks = blocks(d, merged.len());
-    let wide = app.detail.wide;
+    let wide = app.detail.paired();
     let mut none = None;
     let header_h = header(ui, app, d, pos2(r.left(), 0.0), r.width(), None, &mut none);
     let wrap = Wrap::new(ui, r.width(), wide);

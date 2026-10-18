@@ -201,6 +201,8 @@ A row is added with the change that makes the key, and unticked again when the k
 | --- | --- | --- | --- |
 | K12.1 | Select a commit that changes 13+ files | The detail lists every file; no "N more files" row | [ ] |
 | K12.2 | `Tab` to the detail, `j k` | The long list scrolls with the diff | [ ] |
+| K12.3 | Select a commit | The detail shows the diff side by side (old left, new right) before `Enter` is pressed | [ ] |
+| K12.4 | `Enter` in the detail | The detail widens (the graph narrows); `Esc` narrows it back, still side by side | [ ] |
 
 ## To be filled as the redesign lands (issue #133)
 

@@ -160,6 +160,8 @@ pub struct Pane {
     merged: Option<(Oid, usize, Vec<Oid>)>,
     /// The diff side by side, the graph narrowed (`Enter`).
     pub wide: bool,
+    /// The diff in one column even when not widened (side by side is the default).
+    pub unified: bool,
     /// The file whose diff to scroll to.
     pub scroll_to: Option<usize>,
     /// The detail is of another commit now: back to its top.
@@ -171,6 +173,11 @@ pub struct Pane {
 }
 
 impl Pane {
+    /// Whether the diff is drawn side by side: widened, or by default.
+    pub fn paired(&self) -> bool {
+        self.wide || !self.unified
+    }
+
     /// The selection is now `id`: whether that is a change (and so the
     /// commit is to be read).
     pub fn select(&mut self, id: Option<Oid>) -> bool {
@@ -412,4 +419,14 @@ mod tests {
     fn long_lists_are_cut_short() {
         assert_eq!(listed(9, MERGED_SHOWN, MERGED_CUT, false), 7);
     }
+}
+
+#[test]
+fn the_diff_is_side_by_side_by_default() {
+    let mut p = Pane::default();
+    assert!(p.paired(), "side by side before Enter");
+    p.unified = true;
+    assert!(!p.paired());
+    p.wide = true;
+    assert!(p.paired(), "widened is always side by side");
 }
