@@ -325,6 +325,9 @@ pub struct App {
     pub identities: Vec<(PathBuf, String)>,
     /// Which worktrees would conflict with which.
     pub clashes: Clashes,
+    /// Pairs (by branch name) that conflicted and merge clean now, until they
+    /// conflict again.
+    pub resolved: Vec<(String, String)>,
     /// The commits not seen yet, per worktree.
     pub unseen: Unseen,
     /// Where each worktree's branch stands in review.
@@ -501,6 +504,7 @@ impl App {
             wips: Vec::new(),
             identities: Vec::new(),
             clashes: Clashes::default(),
+            resolved: Vec::new(),
             unseen: Unseen::default(),
             reviews: Reviews::default(),
             handed: Vec::new(),
@@ -823,6 +827,18 @@ impl App {
                 self.turns_changed();
             }
             Answer::Clashes(c) => {
+                // A merge under way hides the prediction; what it showed is kept.
+                for p in c.resolved_since(&self.clashes) {
+                    if !self.resolved.contains(&p) {
+                        let said = self.tr("clash.resolved_toast").replace("{a}", &p.0).replace("{b}", &p.1);
+                        self.say(said);
+                        self.resolved.push(p);
+                    }
+                }
+                self.resolved.retain(|(a, b)| {
+                    let at = |n: &str| c.sides.iter().position(|s| s.name == n);
+                    matches!((at(a), at(b)), (Some(x), Some(y)) if !matches!(c.between(x, y), Some(o) if o.conflict().is_some()))
+                });
                 self.clashes = c;
                 self.resort();
             }

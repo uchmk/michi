@@ -230,6 +230,8 @@ A row is added with the change that makes the key, and unticked again when the k
 | K18.4 | Graph detail header | Shows `N files · +A ~C −D lines` for the whole commit | [ ] |
 | K18.5 | Changes, several files marked, `y f` / `y n` | Every marked path/name is on the clipboard, one per line | [ ] |
 | K18.6 | Graph detail header, and the strip under the Changes list | `N files · M lines in all · +A ~C −D lines`; the lines are those of the changed files after the change | [ ] |
+| K18.7 | Worktrees: merge a branch so two worktrees stop conflicting | A toast `X と Y の衝突は解消済みです`; the table shows `✓ Y との衝突は解消済み` and the pair table a green ✓ | [ ] |
+| K18.8 | Graph or Changes, `y d` | The repository folder path is on the clipboard | [ ] |
 | K18.2 | Graph detail, `[` `]` | The diff jumps to the previous and next file; the list does not move | [ ] |
 | K18.3 | Changes and review screens | The diff is side by side from the start | [ ] |
 

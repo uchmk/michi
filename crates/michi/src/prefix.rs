@@ -98,9 +98,9 @@ impl App {
             ],
             (Prefix::Bisect, _) => vec![ok('y', "pf.good"), ok('x', "pf.bad"), ok('u', "pf.skip"), ok('r', "pf.run"), risky('X', "pf.end")],
             (Prefix::Copy, View::Graph) => {
-                vec![ok('h', "pf.hash"), ok('p', "pf.patch"), ok('m', "pf.subject"), ok('a', "pf.author")]
+                vec![ok('h', "pf.hash"), ok('p', "pf.patch"), ok('m', "pf.subject"), ok('a', "pf.author"), ok('d', "pf.folder")]
             }
-            (Prefix::Copy, View::Changes | View::Conflict) => vec![ok('f', "pf.path"), ok('n', "pf.filename")],
+            (Prefix::Copy, View::Changes | View::Conflict) => vec![ok('f', "pf.path"), ok('n', "pf.filename"), ok('d', "pf.folder")],
             (Prefix::Copy, _) => vec![ok('b', "pf.branch"), ok('d', "pf.folder")],
         }
     }
@@ -136,6 +136,7 @@ impl App {
             (Prefix::Copy, 'm') => self.copy_commit_field(false),
             (Prefix::Copy, 'a') => self.copy_commit_field(true),
             (Prefix::Copy, 'b') => self.copy_tree_field(true),
+            (Prefix::Copy, 'd') if self.view != View::Worktree => self.copied(self.dir.display().to_string()),
             (Prefix::Copy, 'd') => self.copy_tree_field(false),
             _ => {}
         }

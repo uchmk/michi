@@ -67,6 +67,15 @@ pub struct Clashes {
     pub branches: Vec<Branch>,
 }
 
+/// Two side names in order, the key of a pair.
+pub fn pair(a: &str, b: &str) -> (String, String) {
+    if a <= b {
+        (a.to_owned(), b.to_owned())
+    } else {
+        (b.to_owned(), a.to_owned())
+    }
+}
+
 impl Clashes {
     /// How the sides `a` and `b` would merge; `None` for a side with itself.
     pub fn between(&self, a: usize, b: usize) -> Option<&Outcome> {
@@ -81,6 +90,25 @@ impl Clashes {
     /// The sides that `i` conflicts with, and how, in the sides' order.
     pub fn of(&self, i: usize) -> Vec<(usize, &Outcome)> {
         (0..self.sides.len()).filter_map(|j| self.between(i, j).filter(|o| o.conflict().is_some()).map(|o| (j, o))).collect()
+    }
+
+    /// The pairs of side names that conflicted in `old` and merge clean now,
+    /// each as `(a, b)` with `a <= b`.
+    pub fn resolved_since(&self, old: &Clashes) -> Vec<(String, String)> {
+        let mut out = Vec::new();
+        for (i, a) in old.sides.iter().enumerate() {
+            for (j, b) in old.sides.iter().enumerate().skip(i + 1) {
+                if old.between(i, j).and_then(Outcome::conflict).is_none() {
+                    continue;
+                }
+                let at = |n: &str| self.sides.iter().position(|s| s.name == n);
+                let (Some(x), Some(y)) = (at(&a.name), at(&b.name)) else { continue };
+                if matches!(self.between(x, y), Some(Outcome::Clean)) {
+                    out.push(pair(&a.name, &b.name));
+                }
+            }
+        }
+        out
     }
 
     /// The side of the worktree at `path`.
@@ -245,6 +273,22 @@ mod tests {
 
     fn conflict(path: &str) -> Conflict {
         Conflict { files: vec![ConflictFile { path: path.into(), hunks: Some(1) }] }
+    }
+
+    #[test]
+    fn a_pair_that_conflicted_and_merges_clean_now_is_resolved() {
+        let old = Clashes {
+            sides: ["a", "b", "c"].map(side).to_vec(),
+            pairs: vec![Outcome::Committed(conflict("x")), Outcome::Committed(conflict("y")), Outcome::Clean],
+            branches: vec![],
+        };
+        // a-b is clean now, a-c still conflicts, b-c was clean before.
+        let new = Clashes { pairs: vec![Outcome::Clean, Outcome::Committed(conflict("y")), Outcome::Clean], ..old.clone() };
+        assert_eq!(new.resolved_since(&old), [pair("a", "b")]);
+        // A side gone (merged and removed) is not a resolution.
+        let gone = Clashes { sides: ["a", "c"].map(side).to_vec(), pairs: vec![Outcome::Clean], branches: vec![] };
+        assert!(gone.resolved_since(&old).len() == 1 && gone.resolved_since(&old)[0] == pair("a", "c"));
+        assert!(old.resolved_since(&old).is_empty());
     }
 
     #[test]

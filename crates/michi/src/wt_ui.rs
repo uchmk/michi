@@ -426,6 +426,19 @@ fn clash_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
         }
         out.push(text(layout(ui, files, FontId::proportional(11.5), c.dim, w), 2.0));
     }
+    for (a, b) in &app.resolved {
+        let name = &t.wt.branch;
+        let other = if name.as_deref() == Some(a) {
+            b
+        } else if name.as_deref() == Some(b) {
+            a
+        } else {
+            continue;
+        };
+        let words = app.tr("wt.resolved").replace("{b}", other);
+        let gap = if out.is_empty() { 0.0 } else { 5.0 };
+        out.push(Piece::Text { g: layout(ui, words, FontId::proportional(12.5), c.done, w), gap, indent: 0.0, bold: true });
+    }
     if out.is_empty() {
         out.push(text(layout(ui, app.tr("wt.none"), FontId::proportional(12.5), c.dim, w), 0.0));
     }
@@ -778,6 +791,9 @@ fn draw_pairs(ui: &Ui, p: &Painter, app: &App, b: &Pairs, at: Pos2, live: bool) 
                     None => {
                         p.rect_filled(r, 0.0, c.fg.gamma_multiply(0.03));
                         dim("—");
+                    }
+                    Some(Outcome::Clean) if app.resolved.contains(&michi_core::clash::pair(&cl.sides[i].name, &cl.sides[j].name)) => {
+                        p.text(mid, Align2::CENTER_CENTER, "✓", FontId::proportional(12.0), fade(c.done));
                     }
                     Some(Outcome::Clean) => dim("·"),
                     Some(Outcome::Unknown) => dim("?"),
