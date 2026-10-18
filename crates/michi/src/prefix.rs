@@ -98,9 +98,9 @@ impl App {
             ],
             (Prefix::Bisect, _) => vec![ok('y', "pf.good"), ok('x', "pf.bad"), ok('u', "pf.skip"), ok('r', "pf.run"), risky('X', "pf.end")],
             (Prefix::Copy, View::Graph) => {
-                vec![ok('h', "pf.hash"), ok('p', "pf.patch"), ok('m', "pf.subject"), ok('a', "pf.author"), ok('d', "pf.folder")]
+                vec![ok('h', "pf.hash"), ok('p', "pf.patch"), ok('m', "pf.subject"), ok('a', "pf.author"), ok('d', "pf.repo_folder")]
             }
-            (Prefix::Copy, View::Changes | View::Conflict) => vec![ok('f', "pf.path"), ok('n', "pf.filename"), ok('d', "pf.folder")],
+            (Prefix::Copy, View::Changes | View::Conflict) => vec![ok('f', "pf.path"), ok('n', "pf.filename"), ok('d', "pf.repo_folder")],
             (Prefix::Copy, _) => vec![ok('b', "pf.branch"), ok('d', "pf.folder")],
         }
     }
