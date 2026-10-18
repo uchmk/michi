@@ -148,10 +148,14 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
     let Some(mut st) = app.cheat.take() else { return };
     let c = ito_theme::colors();
     let screen = ctx.content_rect();
-    let width = WIDTH.min(screen.width() - 32.0);
     let max_h = (screen.height() - 100.0).max(200.0);
     let lang = app.lang.clone();
     let flow: &'static Flow = st.topic().flow();
+    let cols = steps_cols(ctx, flow, &lang);
+    let (dcols, _) = flow.size();
+    let left_w = (dcols as f32 * NODE_W + (dcols as f32 - 1.0) * GAP_X + GUTTER).min(WIDTH * 0.4);
+    // The sheet is as wide as its diagram and its table need, not the screen.
+    let width = (left_w + cols.total() + 80.0).clamp(640.0, WIDTH).min(screen.width() - 32.0);
     let mut copy: Option<String> = None;
     let mut picked_tab: Option<usize> = None;
     let mut picked_node: Option<u8> = None;
@@ -174,9 +178,6 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 ui.separator();
                 ui.label(RichText::new(flow.title.get(&lang)).strong().color(c.fg));
                 ui.add_space(4.0);
-                let (cols, _) = flow.size();
-                let diagram_w = cols as f32 * NODE_W + (cols as f32 - 1.0) * GAP_X + GUTTER;
-                let left_w = diagram_w.min(width * 0.5);
                 let right_w = (width - left_w - ui.spacing().item_spacing.x * 2.0 - 12.0).max(300.0);
                 ui.horizontal_top(|ui| {
                     cell_of(ui, left_w, |ui| {
@@ -197,7 +198,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                                     table(ui, flow, &lang);
                                     ui.add_space(8.0);
                                 }
-                                steps(ui, app, flow, &st, &lang, &mut copy, &mut picked_node);
+                                steps(ui, app, flow, &st, &lang, &cols, &mut copy, &mut picked_node);
                             },
                         );
                     });
@@ -308,15 +309,45 @@ fn cell_of(ui: &mut egui::Ui, w: f32, add: impl FnOnce(&mut egui::Ui)) {
     });
 }
 
-fn steps(ui: &mut egui::Ui, app: &App, flow: &Flow, st: &Cheat, lang: &str, copy: &mut Option<String>, picked: &mut Option<u8>) {
+/// The widths of the steps table's columns, measured from its text.
+struct Cols {
+    num: f32,
+    cmd: f32,
+    why: f32,
+    screen: f32,
+    key: f32,
+}
+
+impl Cols {
+    fn total(&self) -> f32 {
+        self.num + self.cmd + self.why + self.screen + self.key + 8.0 * 4.0
+    }
+}
+
+fn steps_cols(ctx: &egui::Context, flow: &Flow, lang: &str) -> Cols {
+    let style = ctx.global_style();
+    let (mono, body) = (egui::TextStyle::Monospace.resolve(&style), egui::TextStyle::Body.resolve(&style));
+    let wide = |font: &FontId, text: &str| ctx.fonts_mut(|f| f.layout_no_wrap(text.to_owned(), font.clone(), Color32::WHITE).size().x);
+    let cmd = flow.steps.iter().map(|s| wide(&mono, s.command)).fold(0.0, f32::max) + 6.0;
+    let why = flow.steps.iter().map(|s| wide(&body, s.why.get(lang))).fold(0.0, f32::max) + 6.0;
+    Cols { num: 24.0, cmd, why, screen: 110.0, key: 90.0 }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn steps(
+    ui: &mut egui::Ui,
+    app: &App,
+    flow: &Flow,
+    st: &Cheat,
+    lang: &str,
+    cols: &Cols,
+    copy: &mut Option<String>,
+    picked: &mut Option<u8>,
+) {
     let c = ito_theme::colors();
     let small = FontId::proportional(12.0);
-    // The command column is as wide as the longest command; the rest goes to the explanation.
-    let longest = flow.steps.iter().map(|s| s.command.chars().count()).max().unwrap_or(10);
     let spacing = ui.spacing().item_spacing.x;
-    let (w_num, w_screen, w_key) = (24.0, 110.0, 90.0);
-    let w_cmd = (longest as f32 * 7.4 + 8.0).min(ui.available_width() * 0.45);
-    let w_why = (ui.available_width() - w_num - w_cmd - w_screen - w_key - spacing * 4.0 - 24.0).max(160.0);
+    let (w_num, w_cmd, w_why, w_screen, w_key) = (cols.num, cols.cmd, cols.why, cols.screen, cols.key);
     let head = |ui: &mut egui::Ui, w: f32, key: &'static str| {
         cell_of(ui, w, |ui| {
             ui.label(RichText::new(app.tr(key)).font(small.clone()).color(c.dim));
@@ -343,7 +374,12 @@ fn steps(ui: &mut egui::Ui, app: &App, flow: &Flow, st: &Cheat, lang: &str, copy
             });
             cell_of(ui, w_cmd, |ui| {
                 let color = if s.danger {
-                    c.err
+                    // Selected: a paler red, so the change shows on a red command too.
+                    if on {
+                        c.err.lerp_to_gamma(c.fg, 0.55)
+                    } else {
+                        c.err
+                    }
                 } else if on {
                     c.fg
                 } else {
