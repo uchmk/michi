@@ -940,8 +940,14 @@ fn draw_news(ui: &Ui, p: &Painter, b: &News, at: Pos2, live: bool) -> Option<Oid
 /// whether it was clicked.
 #[expect(clippy::too_many_arguments, reason = "the painter, the place and the look are the frame's")]
 fn top_button(ui: &Ui, p: &Painter, right: f32, mid: f32, icon: Icon, label: &str, key: Option<&str>, live: bool) -> (f32, bool) {
+    top_toggle(ui, p, right, mid, icon, label, key, live, false)
+}
+
+/// A top button that stays lit while `on`.
+#[expect(clippy::too_many_arguments, reason = "the painter, the place, the label, the key and the two states of one button")]
+fn top_toggle(ui: &Ui, p: &Painter, right: f32, mid: f32, icon: Icon, label: &str, key: Option<&str>, live: bool, on: bool) -> (f32, bool) {
     let c = ito_theme::colors();
-    let prime = key.is_some();
+    let prime = key.is_some_and(|k| k == "N");
     let ink = if prime { c.run } else { c.fg };
     let g = layout(ui, label, FontId::proportional(12.5), ink, f32::INFINITY);
     let k = key.map(|k| layout(ui, k, FontId::monospace(10.5), c.dim, f32::INFINITY));
@@ -949,11 +955,13 @@ fn top_button(ui: &Ui, p: &Painter, right: f32, mid: f32, icon: Icon, label: &st
     let b = Rect::from_min_max(pos2(right - w, mid - 13.0), pos2(right, mid + 13.0));
     let resp = ui.interact(b.intersect(p.clip_rect()), Id::new(("wt-top", label)), Sense::CLICK);
     let hot = live && resp.hovered();
-    if hot {
+    if hot || on {
         p.rect_filled(b, CornerRadius::same(5), c.panel);
+    }
+    if hot {
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
     }
-    let edge = if prime { c.run.gamma_multiply(0.45) } else { c.border };
+    let edge = if prime || on { c.run.gamma_multiply(0.45) } else { c.border };
     p.rect_stroke(b, CornerRadius::same(5), Stroke::new(1.0, edge), StrokeKind::Inside);
     paint_icon(p, pos2(b.left() + 13.0, mid), icon, ink);
     let mut x = b.left() + 23.0;
@@ -1063,8 +1071,9 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     }
     let (new_left, new) = top_button(ui, &p, left + width, mid, Icon::Plus, app.tr("tool.new_work"), Some("N"), live);
     let (again_left, again) = top_button(ui, &p, new_left - 6.0, mid, Icon::Fetch, app.tr("wt.reread"), None, live);
+    let (sort_left, sort) = top_toggle(ui, &p, again_left - 6.0, mid, Icon::Sort, app.tr("wt.sort"), Some("s"), live, app.wt_by_land);
     let pointer_at = if live { ui.input(|i| i.pointer.hover_pos()).filter(|q| r.contains(*q)) } else { None };
-    let mut room_right = again_left - 10.0;
+    let mut room_right = sort_left - 10.0;
     let mut guide_act = None;
     if !guide {
         let (l, hit) = intro_ui::link(ui, &p, room_right, mid, app.tr("guide.link.worktree"), "worktree", live, pointer_at);
@@ -1081,9 +1090,14 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     p.text(pos2(count_x, mid), Align2::LEFT_CENTER, count, FontId::proportional(12.0), c.dim);
 
     // The table's header.
+    let mut name_sort = false;
     if !cards {
         let top = at(table_top);
-        let mut words = vec![app.tr("wt.col.name").to_owned()];
+        let mut name = app.tr("wt.col.name").to_owned();
+        if app.wt_by_land {
+            name.push_str(app.tr("wt.col.by_land"));
+        }
+        let mut words = vec![name];
         if claude {
             words.push(app.tr("wt.col.claude").to_owned());
         }
@@ -1097,6 +1111,13 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             p.text(pos2(left + x + CELL_X, top + HEAD_H / 2.0), Align2::LEFT_CENTER, word, FontId::proportional(11.0), c.dim);
         }
         p.line_segment([pos2(left, top + HEAD_H - 0.5), pos2(left + width, top + HEAD_H - 0.5)], Stroke::new(1.0, c.border));
+        // The name column's title sorts the table by the landing order.
+        let title = Rect::from_min_size(pos2(left + cols[0].0, top), vec2((cols[0].1 - 8.0).max(0.0), HEAD_H));
+        let resp = ui.interact(title.intersect(p.clip_rect()), Id::new("wt-sort-head"), Sense::CLICK);
+        if live && resp.hovered() {
+            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+        }
+        name_sort = live && resp.clicked();
         // The edge between two columns drags (ito-layout's grips): the left
         // edge of a fixed column widens it as it goes left, the edge after the
         // name trades with the Claude column.
@@ -1212,6 +1233,9 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     }
     if again {
         app.reread();
+    }
+    if sort || name_sort {
+        app.toggle_land_sort();
     }
     if new {
         app.feed('N');

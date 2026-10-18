@@ -73,6 +73,7 @@ pub(crate) enum Icon {
     Push,
     Sync,
     Plus,
+    Sort,
 }
 
 struct Tool {
@@ -211,6 +212,13 @@ pub(crate) fn paint_icon(p: &egui::Painter, at: Pos2, icon: Icon, ink: Color32) 
                 p.line_segment([x - vec2(0.0, 5.0 * dir), tip], s);
                 p.line_segment([tip, tip + vec2(-2.5, -2.5 * dir)], s);
                 p.line_segment([tip, tip + vec2(2.5, -2.5 * dir)], s);
+            }
+        }
+        Icon::Sort => {
+            // Three bars, the longest first: a table by an order.
+            for (k, half) in [4.5_f32, 3.0, 1.5].into_iter().enumerate() {
+                let y = at.y - 4.0 + 4.0 * k as f32;
+                p.line_segment([pos2(at.x - 4.5, y), pos2(at.x - 4.5 + 2.0 * half, y)], s);
             }
         }
         Icon::Plus => {
