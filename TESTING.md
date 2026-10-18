@@ -1673,3 +1673,13 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 277.3 | Press the reread button after another merge | The note appears without restarting |
 | 277.4 | Look at the clash table with lab-a and lab-c merged into topic-a | Their rows, columns and numbers are faint; the hint under the table says so |
 | 277.5 | Merge a branch into another worktree from another editor or a terminal while michi is in front | The note and the order update by themselves within the poll time (up to 30 s where the folder cannot be watched); the reread button updates at once |
+
+## 278. Overlay order, repository folder hint, parked tabs, one bad setting
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 278.1 | Open a band (e.g. `x` on a worktree), then press `?` | The cheat sheet does not open over the band; the band stays |
+| 278.2 | Open the cheat sheet first, then trigger a band by mouse and press Enter / Ctrl+Enter | The cheat sheet takes the key; the band is not answered |
+| 278.3 | In a Graph view press `y` then `d` | The prefix hint says "Repository folder" (ja: リポジトリのフォルダ); in the Worktree view it still says "Worktree folder" |
+| 278.4 | Open two tabs, start a fetch in the first, switch to the second | The first tab's result and toast arrive while it is parked |
+| 278.5 | Put `density = 3` (a number) in `[view]` of config.toml and start michi | Theme, language and the other `[view]` keys keep their values; only density falls back to the default |
