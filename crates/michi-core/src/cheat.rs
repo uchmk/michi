@@ -594,6 +594,13 @@ mod tests {
     use super::*;
 
     #[test]
+    fn no_diagram_is_wider_than_three_columns() {
+        for t in Topic::ALL {
+            assert!(t.flow().size().0 <= 3, "{:?}", t);
+        }
+    }
+
+    #[test]
     fn every_step_belongs_to_a_node() {
         for topic in Topic::ALL {
             let f = topic.flow();

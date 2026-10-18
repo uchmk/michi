@@ -152,10 +152,18 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
     let lang = app.lang.clone();
     let flow: &'static Flow = st.topic().flow();
     let cols = steps_cols(ctx, flow, &lang);
-    let (dcols, _) = flow.size();
-    let left_w = (dcols as f32 * NODE_W + (dcols as f32 - 1.0) * GAP_X + GUTTER).min(WIDTH * 0.4);
-    // The sheet is as wide as its diagram and its table need, not the screen.
-    let width = (left_w + cols.total() + 80.0).clamp(640.0, WIDTH).min(screen.width() - 32.0);
+    // Sized for the largest sheet, so switching tabs does not resize the window.
+    let left_w = (3.0 * NODE_W + 2.0 * GAP_X + GUTTER).min(WIDTH * 0.4);
+    let right_need = Topic::ALL.iter().map(|t| steps_cols(ctx, t.flow(), &lang).total()).fold(0.0, f32::max);
+    let width = (left_w + right_need + 80.0).clamp(640.0, WIDTH).min(screen.width() - 32.0);
+    let body_h = Topic::ALL
+        .iter()
+        .map(|t| {
+            let (_, rows) = t.flow().size();
+            rows as f32 * NODE_H + (rows as f32 - 1.0) * GAP_Y + 8.0
+        })
+        .fold(0.0, f32::max)
+        .min(max_h);
     let mut copy: Option<String> = None;
     let mut picked_tab: Option<usize> = None;
     let mut picked_node: Option<u8> = None;
@@ -179,17 +187,27 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 ui.label(RichText::new(flow.title.get(&lang)).strong().color(c.fg));
                 ui.add_space(4.0);
                 let right_w = (width - left_w - ui.spacing().item_spacing.x * 2.0 - 12.0).max(300.0);
-                ui.horizontal_top(|ui| {
-                    cell_of(ui, left_w, |ui| {
-                        egui::ScrollArea::both().id_salt("cheat-flow").max_height(max_h).auto_shrink([false, true]).show(ui, |ui| {
-                            diagram(ui, flow, &st, &lang, &mut picked_node);
-                        });
+                let rows = ui.horizontal_top(|ui| {
+                    let left = cell_of(ui, left_w, |ui| {
+                        egui::ScrollArea::both()
+                            .id_salt("cheat-flow")
+                            .max_height(body_h)
+                            .min_scrolled_height(body_h)
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| {
+                                diagram(ui, flow, &st, &lang, &mut picked_node);
+                            });
                     });
-                    ui.separator();
-                    cell_of(ui, right_w, |ui| {
-                        egui::ScrollArea::vertical().id_salt("cheat-commands").max_height(max_h).auto_shrink([false, true]).show(
-                            ui,
-                            |ui| {
+                    ui.add_space(6.0);
+                    let sep_x = ui.cursor().left();
+                    ui.add_space(6.0);
+                    let right = cell_of(ui, right_w, |ui| {
+                        egui::ScrollArea::vertical()
+                            .id_salt("cheat-commands")
+                            .max_height(body_h)
+                            .min_scrolled_height(body_h)
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| {
                                 if let Some(note) = flow.note {
                                     ui.label(RichText::new(note.get(&lang)).font(small.clone()).color(c.dim));
                                     ui.add_space(6.0);
@@ -199,10 +217,14 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                                     ui.add_space(8.0);
                                 }
                                 steps(ui, app, flow, &st, &lang, &cols, &mut copy, &mut picked_node);
-                            },
-                        );
+                            });
                     });
+                    (left, right, sep_x)
                 });
+                // The divider is as tall as the cells, not as the room left.
+                let (left, right, sep_x) = rows.inner;
+                let (top, bottom) = (left.top().min(right.top()), left.bottom().max(right.bottom()));
+                ui.painter().vline(sep_x, top..=bottom, ui.visuals().widgets.noninteractive.bg_stroke);
                 ui.add_space(4.0);
                 ui.label(RichText::new(app.tr("cheat.keys")).font(small).color(c.dim));
             });
@@ -302,11 +324,13 @@ fn table(ui: &mut egui::Ui, flow: &Flow, lang: &str) {
 /// A table cell of a fixed width, so a long text wraps in its own column.
 /// The height offered is large: a `horizontal_top` row only offers one line,
 /// which clipped the text and the scroll areas to the first row.
-fn cell_of(ui: &mut egui::Ui, w: f32, add: impl FnOnce(&mut egui::Ui)) {
+fn cell_of(ui: &mut egui::Ui, w: f32, add: impl FnOnce(&mut egui::Ui)) -> Rect {
     ui.allocate_ui_with_layout(vec2(w, 100_000.0), egui::Layout::top_down(egui::Align::Min), |ui| {
         ui.set_width(w);
         add(ui);
-    });
+    })
+    .response
+    .rect
 }
 
 /// The widths of the steps table's columns, measured from its text.
