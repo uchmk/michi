@@ -147,12 +147,12 @@ pub fn read(dir: &Path, range: Range, now: i64) -> Result<Stats, git::Error> {
     let mut args = vec!["log", "--no-merges", "--format=%aN%x00%aE%x00%at", &limit];
     args.push(if range == Range::Branch { "HEAD" } else { "--all" });
     let since = (range == Range::Recent).then(|| now - RECENT_DAYS * DAY);
-    match git::read_text(dir, &args) {
-        Ok(text) => Ok(parse(&text, since)),
-        // A repository with no commit yet has no HEAD to read.
-        Err(git::Error::Git(_)) if range == Range::Branch => Ok(Stats::default()),
-        Err(e) => Err(e),
+    // A repository with no commit yet has no HEAD to read: that is no
+    // error, any other refusal is.
+    if range == Range::Branch && git::read_maybe(dir, &["rev-parse", "--verify", "-q", "HEAD"])?.is_none() {
+        return Ok(Stats::default());
     }
+    Ok(parse(&git::read_text(dir, &args)?, since))
 }
 
 /// Counts the lines of `git log --format=%aN%x00%aE%x00%at` (newest first);
@@ -249,6 +249,19 @@ mod tests {
         let m = parse(&text, None).buckets(Grain::Month);
         assert_eq!(m.iter().map(|b| b.commits).sum::<usize>(), 3);
         assert!(parse("", None).buckets(Grain::Week).is_empty());
+    }
+
+    #[test]
+    fn an_unborn_branch_is_empty_but_a_real_failure_is_an_error() {
+        let t = TempRepo::new("stats-unborn");
+        let fresh = t.root.join("fresh");
+        std::fs::create_dir_all(&fresh).unwrap();
+        t.git(&fresh, &["init", "-q", "-b", "main"]);
+        assert_eq!(read(&fresh, Range::Branch, 0).unwrap(), Stats::default());
+        let nowhere = t.root.join("not-a-repo");
+        std::fs::create_dir_all(&nowhere).unwrap();
+        assert!(read(&nowhere, Range::Branch, 0).is_err());
+        assert!(read(&t.root.join("missing"), Range::All, 0).is_err());
     }
 
     #[test]

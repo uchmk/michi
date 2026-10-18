@@ -26,8 +26,9 @@ const NOTE_FLOOR: u64 = 1024 * 1024;
 /// The most a blob may be to be read for tokens in it.
 const SCAN_MAX: u64 = 256 * 1024;
 
-/// The most blobs read for tokens in one look.
-const SCAN_FILES: usize = 100;
+/// The most blobs read for tokens in one look. Past it the rest is counted,
+/// not read: see [`scan_counted`].
+const SCAN_FILES: usize = 1000;
 
 /// `[commit] protect` and `large_mb` of config.toml.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -172,10 +173,18 @@ fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
 /// by name, and by the content of those small enough to read. Reads blobs
 /// with two `cat-file` calls at most.
 pub fn scan(wt: &Path, files: &[File]) -> Result<Vec<Note>, git::Error> {
+    scan_counted(wt, files, SCAN_FILES).map(|(notes, _)| notes)
+}
+
+/// [`scan`] reading the content of `max_read` files at most, and how many
+/// small text files it left unread past that (their names and sizes were
+/// still looked at), so the caller can say the look was partial.
+pub fn scan_counted(wt: &Path, files: &[File], max_read: usize) -> Result<(Vec<Note>, usize), git::Error> {
+    let mut unread = 0;
     let blobs: Vec<(&File, Oid)> =
         files.iter().filter(|f| !matches!(f.status, Status::Deleted | Status::Unmerged)).filter_map(|f| f.blob.map(|b| (f, b))).collect();
     if blobs.is_empty() {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), 0));
     }
     let sizes = sizes(wt, &blobs.iter().map(|(_, b)| *b).collect::<Vec<_>>())?;
     let mut notes: Vec<Note> = Vec::new();
@@ -186,7 +195,11 @@ pub fn scan(wt: &Path, files: &[File]) -> Result<Vec<Note>, git::Error> {
         let secret = secret_name(&f.path);
         if secret.is_some() || size >= NOTE_FLOOR {
             notes.push(Note { path: f.path.clone(), size, secret });
-        } else if size <= SCAN_MAX && !f.is_binary() && read.len() < SCAN_FILES {
+        } else if size <= SCAN_MAX && !f.is_binary() {
+            if read.len() >= max_read {
+                unread += 1;
+                continue;
+            }
             read.push((notes.len(), *blob));
             // A place kept for it, dropped again if nothing is found.
             notes.push(Note { path: f.path.clone(), size, secret: None });
@@ -202,7 +215,7 @@ pub fn scan(wt: &Path, files: &[File]) -> Result<Vec<Note>, git::Error> {
         }
     }
     notes.retain(|n| n.secret.is_some() || n.size >= NOTE_FLOOR);
-    Ok(notes)
+    Ok((notes, unread))
 }
 
 /// The sizes of the blobs `ids` (`cat-file --batch-check`); `None` for one
@@ -301,6 +314,18 @@ mod tests {
         assert_eq!((by("big.bin").secret, by("big.bin").size), (None, 2 * 1024 * 1024));
         assert!(!by("big.bin").counts(LARGE) && by("big.bin").counts(1024 * 1024));
         assert_eq!(notes.len(), 4, "{notes:?}");
+    }
+
+    #[test]
+    fn files_past_the_read_cap_are_counted_not_dropped_silently() {
+        let t = TempRepo::configured("guard-cap");
+        let files =
+            staged(&t, &[("a.txt", b"a\n".to_vec()), ("b.txt", b"key AKIAIOSFODNN7EXAMPLE\n".to_vec()), ("c.txt", b"c\n".to_vec())]);
+        let (notes, unread) = scan_counted(&t.repo, &files, 1).unwrap();
+        assert_eq!(unread, 2);
+        assert!(notes.is_empty(), "{notes:?}");
+        let (notes, unread) = scan_counted(&t.repo, &files, 10).unwrap();
+        assert_eq!((unread, notes.len()), (0, 1));
     }
 
     #[test]

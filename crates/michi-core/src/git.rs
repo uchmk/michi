@@ -85,7 +85,10 @@ impl Error {
 /// A git command with michi's environment, not yet run.
 pub fn command() -> Command {
     let mut c = Command::new("git");
-    c.env("GIT_OPTIONAL_LOCKS", "0").env("GIT_TERMINAL_PROMPT", "0").stdin(Stdio::null());
+    // `LC_ALL=C`: what michi reads out of git's messages ("not a git
+    // repository", "CONFLICT", …) is the English wording whatever the
+    // user's language is.
+    c.env("GIT_OPTIONAL_LOCKS", "0").env("GIT_TERMINAL_PROMPT", "0").env("LC_ALL", "C").env("LANGUAGE", "C").stdin(Stdio::null());
     hide_window(&mut c);
     c
 }
