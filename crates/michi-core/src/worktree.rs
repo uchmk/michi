@@ -40,6 +40,14 @@ pub fn remove(dir: &Path, wt: &Path) -> Result<Option<String>, git::Error> {
             saved = Some(crate::backup::save(dir, &commit, &format!("worktree {} removed with changes", wt.display()))?);
         }
     }
+    // A detached head has no branch to keep its commits: they may be reachable
+    // from nothing else once the worktree is gone.
+    if let Some(w) = list(dir)?.into_iter().find(|w| w.detached && crate::paths::same_path(&w.path, wt)) {
+        if let Some(head) = crate::oid::Oid::parse(&w.head) {
+            let tip = crate::backup::save(dir, &head, &format!("worktree {} removed at a detached head", wt.display()))?;
+            saved.get_or_insert(tip);
+        }
+    }
     crate::branch::write(dir, &["worktree", "remove", "--force", &wt.to_string_lossy()])?;
     Ok(saved)
 }
@@ -97,6 +105,20 @@ mod tests {
         assert!(!wt.exists());
         assert_eq!(t.out(&t.repo, &["show", &format!("{saved}:new.txt")]), "new");
         assert!(!t.out(&t.repo, &["branch", "--list", "x"]).is_empty());
+    }
+
+    #[test]
+    fn a_detached_head_is_kept_when_its_worktree_goes() {
+        let t = TempRepo::configured("wt-remove-detached");
+        let wt = t.root.join("wt-d");
+        t.git(&t.repo, &["worktree", "add", "-q", "--detach", wt.to_str().unwrap(), "main"]);
+        t.write(&wt, "d.txt", "d\n");
+        t.git(&wt, &["add", "d.txt"]);
+        t.git(&wt, &["commit", "-q", "-m", "only here"]);
+        let head = t.out(&wt, &["rev-parse", "HEAD"]);
+        let saved = remove(&t.repo, &wt).unwrap().expect("a backup");
+        assert!(!wt.exists());
+        assert_eq!(t.out(&t.repo, &["rev-parse", &saved]), head);
     }
 
     #[test]
