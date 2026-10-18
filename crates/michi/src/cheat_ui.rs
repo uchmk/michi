@@ -127,7 +127,8 @@ fn route(a: Rect, b: Rect, gutter_x: f32) -> Vec<Pos2> {
 fn label_at(pts: &[Pos2]) -> (Pos2, Align2) {
     match pts {
         [a, b] if (a.x - b.x).abs() < 0.5 => (pos2(a.x + 4.0, (a.y + b.y) / 2.0 - 7.0), Align2::LEFT_CENTER),
-        [a, b] => (pos2((a.x + b.x) / 2.0, a.y - 8.0), Align2::CENTER_CENTER),
+        // Between two boxes of a row the gap is too narrow for words: put them above the row.
+        [a, b] => (pos2((a.x + b.x) / 2.0, a.y - NODE_H / 2.0 - 9.0), Align2::CENTER_CENTER),
         [_, m, n, e] if (m.y - n.y).abs() < 0.5 => (pos2(e.x, m.y - 8.0), Align2::CENTER_CENTER),
         [a, m, _, _] => (pos2((a.x + m.x) / 2.0, a.y - 8.0), Align2::CENTER_CENTER),
         _ => (pts[0], Align2::CENTER_CENTER),
@@ -167,10 +168,9 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
     let mut copy: Option<String> = None;
     let mut picked_tab: Option<usize> = None;
     let mut picked_node: Option<u8> = None;
-    let area = egui::Area::new(Id::new("michi-cheat"))
-        .order(egui::Order::Foreground)
-        .fixed_pos(pos2(screen.center().x - width / 2.0 - 8.0, screen.top() + 40.0))
-        .show(ctx, |ui| {
+    let area = egui::Area::new(Id::new("michi-cheat")).order(egui::Order::Foreground).anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0)).show(
+        ctx,
+        |ui| {
             egui::Frame::new().fill(c.panel).stroke(Stroke::new(1.0, c.border)).corner_radius(6.0).inner_margin(8.0).show(ui, |ui| {
                 ui.set_width(width);
                 let small = FontId::proportional(12.0);
@@ -228,7 +228,8 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 ui.add_space(4.0);
                 ui.label(RichText::new(app.tr("cheat.keys")).font(small).color(c.dim));
             });
-        });
+        },
+    );
     let outside = copy.is_none()
         && picked_tab.is_none()
         && picked_node.is_none()
@@ -300,12 +301,31 @@ fn diagram(ui: &mut egui::Ui, flow: &Flow, st: &Cheat, lang: &str, picked: &mut 
 fn table(ui: &mut egui::Ui, flow: &Flow, lang: &str) {
     let c = ito_theme::colors();
     let cols = flow.table.first().map_or(1, |r| r.len()).max(1);
-    let gap = ui.spacing().item_spacing.x;
-    let w = ((ui.available_width() - 24.0 - gap * cols as f32) / cols as f32).max(80.0);
+    let gap = 6.0;
+    let style = ui.style().clone();
+    let (mono, body) = (egui::TextStyle::Monospace.resolve(&style), egui::TextStyle::Body.resolve(&style));
+    // Each column is as wide as its widest cell, so a row stays on one line;
+    // only when that is more than the room are they all narrowed alike.
+    let mut w = vec![0.0f32; cols];
+    for row in flow.table {
+        for (j, cell) in row.iter().enumerate().take(cols) {
+            let font = if j == 0 { &mono } else { &body };
+            let x = ui.fonts_mut(|f| f.layout_no_wrap(cell.get(lang).to_owned(), font.clone(), Color32::WHITE).size().x);
+            w[j] = w[j].max(x + 4.0);
+        }
+    }
+    let room = ui.available_width() - 24.0 - gap * cols as f32;
+    let sum: f32 = w.iter().sum();
+    if sum > room {
+        for x in &mut w {
+            *x *= room / sum;
+        }
+    }
+    ui.spacing_mut().item_spacing.x = gap;
     for (i, row) in flow.table.iter().enumerate() {
         ui.horizontal_top(|ui| {
             for (j, cell) in row.iter().enumerate() {
-                cell_of(ui, w, |ui| {
+                cell_of(ui, w[j], |ui| {
                     let text = RichText::new(cell.get(lang));
                     ui.label(if i == 0 {
                         text.strong()
