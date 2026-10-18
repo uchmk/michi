@@ -102,6 +102,34 @@ pub struct File {
     pub not_utf8: bool,
 }
 
+/// The lines a commit touched, over all its files.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Totals {
+    pub files: usize,
+    /// Lines only added.
+    pub added: u32,
+    /// Lines rewritten: as many as were both deleted and added in a file.
+    pub changed: u32,
+    /// Lines only deleted.
+    pub deleted: u32,
+}
+
+impl Detail {
+    /// The lines the commit added, rewrote and deleted. A file's rewritten
+    /// lines are the smaller of its added and deleted counts; a binary file
+    /// has no lines.
+    pub fn totals(&self) -> Totals {
+        let mut t = Totals { files: self.files.len(), ..Totals::default() };
+        for (a, d) in self.files.iter().filter_map(|f| f.counts) {
+            let both = a.min(d);
+            t.changed += both;
+            t.added += a - both;
+            t.deleted += d - both;
+        }
+        t
+    }
+}
+
 impl File {
     pub fn is_binary(&self) -> bool {
         self.counts.is_none()
@@ -768,6 +796,8 @@ mod tests {
         assert_eq!(d.subject, "change files");
         assert_eq!(d.body, "Why:\n\nbecause.");
         assert!(!d.cut);
+        // a.txt +2 -1, moved.txt 0, 名前.txt +1 -1; the binary has no lines.
+        assert_eq!(d.totals(), Totals { files: 4, added: 1, changed: 2, deleted: 0 });
         let files: Vec<_> = d.files.iter().map(|f| (f.status.letter(), f.path.as_str(), f.from.as_deref(), f.counts)).collect();
         assert_eq!(
             files,

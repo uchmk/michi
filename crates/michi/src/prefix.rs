@@ -155,17 +155,27 @@ impl App {
     /// `y f` (the path) or `y n` (the name) of the selected file, in the
     /// changes and the conflict.
     fn copy_file_field(&mut self, name: bool) {
-        let path = match self.view {
-            View::Changes => self.changes.selected().map(|(_, f)| f.path.clone()),
+        let paths: Vec<String> = match self.view {
+            // The marked files, one to a line.
+            View::Changes => self.changes.marked().into_iter().filter_map(|k| self.changes.at(k).map(|(_, f)| f.path.clone())).collect(),
             View::Conflict => {
                 let at = self.conflicts.at;
-                self.conflicts.shown().and_then(|c| crate::conflicts::places(c).get(at).map(|p| c.files[p.0].path.clone()))
+                self.conflicts
+                    .shown()
+                    .and_then(|c| crate::conflicts::places(c).get(at).map(|p| c.files[p.0].path.clone()))
+                    .into_iter()
+                    .collect()
             }
-            _ => None,
+            _ => Vec::new(),
         };
-        let Some(path) = path else { return self.say(self.tr("act.no_file")) };
-        let text = if name { path.rsplit('/').next().unwrap_or(&path).to_owned() } else { path };
-        self.copied(text);
+        if paths.is_empty() {
+            return self.say(self.tr("act.no_file"));
+        }
+        let text: Vec<&str> = paths.iter().map(|p| if name { p.rsplit('/').next().unwrap_or(p) } else { p.as_str() }).collect();
+        self.copied(text.join(
+            "
+",
+        ));
     }
 
     /// `y b` (the branch) or `y d` (the folder) of the selected worktree.

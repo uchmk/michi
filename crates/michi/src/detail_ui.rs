@@ -414,6 +414,16 @@ fn header(ui: &Ui, app: &App, d: &Detail, at: Pos2, width: f32, paint: Option<(&
         }
         runs.push(Run { text: parent.short(), font: mono.clone(), color: c.blue, link: Some(*parent) });
     }
+    let t = d.totals();
+    if t.files > 0 {
+        let text = app
+            .tr("detail.totals")
+            .replace("{files}", &t.files.to_string())
+            .replace("{added}", &t.added.to_string())
+            .replace("{changed}", &t.changed.to_string())
+            .replace("{deleted}", &t.deleted.to_string());
+        runs.push(Run { text, font: prop.clone(), color: c.dim, link: None });
+    }
     let line_h = 18.0;
     let mut x = x0;
     for (k, run) in runs.iter().enumerate() {
