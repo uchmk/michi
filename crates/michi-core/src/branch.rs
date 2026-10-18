@@ -74,7 +74,12 @@ pub(crate) fn git_dir(wt: &Path) -> Option<PathBuf> {
 /// Whether `name` would do as a new branch's name; why not when not, in
 /// git's words.
 pub fn check_name(dir: &Path, name: &str) -> Result<(), git::Error> {
-    if name.is_empty() || name.starts_with('-') {
+    if name.is_empty() || name.starts_with('-') || name == "@" {
+        return Err(git::Error::Git(format!("'{name}' is not a valid branch name")));
+    }
+    // `--branch` expands `@{-1}` into the previous branch's name and accepts
+    // it, which would not be a name to make: the plain ref check refuses it.
+    if !git::check(dir, &["check-ref-format", &format!("refs/heads/{name}")])? {
         return Err(git::Error::Git(format!("'{name}' is not a valid branch name")));
     }
     git::read(dir, &["check-ref-format", "--branch", name]).map(|_| ())
@@ -214,6 +219,17 @@ mod tests {
         create(&t.repo, "next", &first, Some(&t.repo)).unwrap();
         assert_eq!(t.out(&t.repo, &["symbolic-ref", "--short", "HEAD"]), "next");
         assert_eq!(head(&t, &t.repo), first);
+    }
+
+    #[test]
+    fn a_previous_branch_shorthand_is_not_a_name() {
+        let t = TempRepo::configured("branch-shorthand");
+        t.git(&t.repo, &["switch", "-q", "-c", "other"]);
+        t.git(&t.repo, &["switch", "-q", "main"]);
+        for bad in ["@{-1}", "@{-1}x", "@"] {
+            assert!(check_name(&t.repo, bad).is_err(), "{bad}");
+        }
+        assert!(check_name(&t.repo, "feat/x").is_ok());
     }
 
     #[test]

@@ -52,23 +52,25 @@ pub fn add(wt: &Path, path: &str) -> Result<Added, git::Error> {
     }
     let line = pattern(path);
     let file = wt.join(".gitignore");
+    // Bytes, not text: a `.gitignore` that is not UTF-8 keeps every byte.
     let old = match fs::read(&file) {
-        Ok(b) => String::from_utf8_lossy(&b).into_owned(),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Ok(b) => b,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
         Err(e) => return Err(git::Error::Io(format!(".gitignore: {e}"))),
     };
-    if old.lines().any(|l| l == line) {
+    let same = |l: &[u8]| l.strip_suffix(b"\r").unwrap_or(l) == line.as_bytes();
+    if old.split(|b| *b == b'\n').any(same) {
         return Ok(Added::Already(line));
     }
     // The file's own line breaks, and a break before the new line if the
     // last one has none.
-    let eol = if old.contains("\r\n") { "\r\n" } else { "\n" };
+    let eol: &[u8] = if old.windows(2).any(|w| w == b"\r\n") { b"\r\n" } else { b"\n" };
     let mut new = old;
-    if !new.is_empty() && !new.ends_with('\n') {
-        new.push_str(eol);
+    if !new.is_empty() && !new.ends_with(b"\n") {
+        new.extend_from_slice(eol);
     }
-    new.push_str(&line);
-    new.push_str(eol);
+    new.extend_from_slice(line.as_bytes());
+    new.extend_from_slice(eol);
     fs::write(&file, new).map_err(|e| git::Error::Io(format!(".gitignore: {e}")))?;
     Ok(Added::Added(line))
 }
@@ -114,6 +116,15 @@ mod tests {
         assert_eq!(fs::read_to_string(t.repo.join(".gitignore")).unwrap(), "target\r\nold.log\r\n/a.txt\r\n");
         assert_eq!(add(&t.repo, "a.txt"), Ok(Added::Already("/a.txt".into())));
         assert_eq!(fs::read_to_string(t.repo.join(".gitignore")).unwrap(), "target\r\nold.log\r\n/a.txt\r\n");
+    }
+
+    #[test]
+    fn a_gitignore_that_is_not_utf8_keeps_its_bytes() {
+        let t = TempRepo::new("ignore-bytes");
+        fs::write(t.repo.join(".gitignore"), b"caf\xe9.log\n").unwrap();
+        t.write(&t.repo, "a.txt", "x");
+        assert_eq!(add(&t.repo, "a.txt"), Ok(Added::Added("/a.txt".into())));
+        assert_eq!(fs::read(t.repo.join(".gitignore")).unwrap(), b"caf\xe9.log\n/a.txt\n");
     }
 
     #[test]
