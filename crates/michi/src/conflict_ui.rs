@@ -932,8 +932,15 @@ impl Draw<'_> {
         if button(ui, p, b, label, "", Look::Tool, ("cf-restart", i), self.live, pointer) {
             out = Some(Act::Restart(i));
         }
+        // The diff / merge tool for the whole file (the same as `w`), left of the restart button.
+        let tool = self.tr("cf.open_external");
+        let tw = button_w(ui, tool, "", Look::Tool);
+        let tb = Rect::from_min_max(pos2(b.left() - 8.0 - tw, mid - 12.0), pos2(b.left() - 8.0, mid + 12.0));
+        if button(ui, p, tb, tool, "", Look::Tool, ("cf-tool", i), self.live, pointer) {
+            out = Some(Act::External(i));
+        }
         let n = galley(ui, self.tr("cf.places").replace("{}", &f.total().to_string()), FontId::proportional(12.0), c.dim);
-        let room = b.left() - 10.0 - n.size().x - 10.0 - r.left();
+        let room = tb.left() - 10.0 - n.size().x - 10.0 - r.left();
         let path = left_cut(ui, &f.path, FontId::monospace(12.5), room);
         let pw = p.text(pos2(r.left(), mid), Align2::LEFT_CENTER, path, FontId::monospace(12.5), c.fg);
         p.galley(pos2(pw.right() + 10.0, mid - n.size().y / 2.0), n, c.dim);
