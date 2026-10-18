@@ -100,8 +100,12 @@ fn search_args(content: &Content) -> Vec<String> {
             args.push(format!("--grep={}", content.text));
         }
         // `search` splits it into the three; asked directly it is the message.
-        Kind::Full => args.push(format!("--grep={}", content.text)),
-        Kind::Path => pathspec = Some(format!(":(icase)*{}*", content.text)),
+        Kind::Full => {
+            args.push("--regexp-ignore-case".into());
+            args.push("--fixed-strings".into());
+            args.push(format!("--grep={}", content.text));
+        }
+        Kind::Path => pathspec = Some(format!(":(icase)*{}*", glob_escape(&content.text))),
         Kind::Date => {
             let (from, to) = content.text.split_once("..").unwrap_or((&content.text, ""));
             for (flag, v) in [("--since", from.trim()), ("--until", to.trim())] {
@@ -114,6 +118,26 @@ fn search_args(content: &Content) -> Vec<String> {
     args.push("--".into());
     args.extend(pathspec);
     args
+}
+
+/// `text` as a pathspec pattern that matches it literally: `\` is taken for
+/// a folder separator (git's paths use `/`), and the glob characters
+/// `*`, `?` and `[` are escaped.
+fn glob_escape(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        match c {
+            '\\' => out.push('/'),
+            '*' | '?' | '[' => {
+                // A one-character class is a literal on every git and platform.
+                out.push('[');
+                out.push(c);
+                out.push(']');
+            }
+            c => out.push(c),
+        }
+    }
+    out
 }
 
 /// What the filter looks in for one commit.
@@ -295,6 +319,25 @@ mod tests {
         assert!(a.contains(&"--until=yesterday".to_owned()) && !a.iter().any(|x| x.starts_with("--since")));
         let a = search_args(&Content { kind: Kind::Date, text: "2.weeks.ago".into() });
         assert!(a.contains(&"--since=2.weeks.ago".to_owned()) && !a.iter().any(|x| x.starts_with("--until")));
+    }
+
+    #[test]
+    fn a_path_search_matches_glob_characters_literally() {
+        use crate::testrepo::TempRepo;
+        assert_eq!(glob_escape("a*b?[c]\\d"), "a[*]b[?][[]c]/d");
+        let r = TempRepo::new("find-literal");
+        r.write(&r.repo, "plain.txt", "p\n");
+        // `*` and `?` cannot be in a file name on Windows; `[` can.
+        r.write(&r.repo, "br[a]cket.txt", "s\n");
+        r.git(&r.repo, &["add", "."]);
+        r.git(&r.repo, &["commit", "-q", "-m", "files"]);
+        let head = Oid::parse(&r.out(&r.repo, &["rev-parse", "HEAD"])).unwrap();
+        let hit = |t: &str| search(&r.repo, &Content { kind: Kind::Path, text: t.into() }).unwrap();
+        assert!(hit("br[a]cket").contains(&head));
+        assert!(hit("bra").is_empty());
+        assert!(hit("pl*n").is_empty(), "a star is a star, not a wildcard");
+        assert!(hit("plai?").is_empty());
+        assert!(hit("[p]lain").is_empty(), "a bracket is a bracket, not a character class");
     }
 
     #[test]

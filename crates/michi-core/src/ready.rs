@@ -120,7 +120,7 @@ pub struct Input {
 /// when it has no word on that pair yet.
 pub fn clash_of(clashes: &Clashes, wt: &Path, trunk: &str) -> Option<Vec<String>> {
     let a = clashes.side_of(wt)?;
-    let b = clashes.sides.iter().position(|s| s.name == trunk && s.path.as_deref() != Some(wt))?;
+    let b = clashes.sides.iter().position(|s| s.name == trunk && !s.path.as_deref().is_some_and(|p| crate::paths::same_path(p, wt)))?;
     match clashes.between(a, b)? {
         crate::clash::Outcome::Unknown => None,
         o => Some(o.conflict().map_or_else(Vec::new, |c| c.files.iter().map(|f| f.path.clone()).collect())),
