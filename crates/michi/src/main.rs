@@ -48,6 +48,7 @@ mod patch;
 mod picker;
 mod picker_ui;
 mod plain;
+mod prefix;
 mod prefs;
 mod prform;
 mod prform_ui;
@@ -756,6 +757,7 @@ impl eframe::App for Michi {
         reflog_ui::show(&ctx, &mut self.app);
         stats_ui::show(&ctx, &mut self.app);
         legend_ui::show(&ctx, &mut self.app);
+        prefix::show(&ctx, &mut self.app);
         cheat_ui::show(&ctx, &mut self.app);
         ready_ui::show(&ctx, &mut self.app);
         auth_ui::show(&ctx, &mut self.app);

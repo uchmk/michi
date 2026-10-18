@@ -145,10 +145,28 @@ A row is added with the change that makes the key, and unticked again when the k
 | K7.12 | `Ctrl+Enter` | Commit once all is solved | [ ] |
 | K7.13 | `PageDown PageUp Ctrl+D Ctrl+U Alt+J Alt+K` | Scroll the diff | [ ] |
 
+## The `g` and `y` windows (0.77.0)
+
+| # | Key | Expect | Checked |
+| --- | --- | --- | --- |
+| K8.1 | `g` (graph) | A window lists g first row, r reset (red), b bisect, ? sheet; Esc closes it | [ ] |
+| K8.2 | `g g` | The first row is selected | [ ] |
+| K8.3 | `g r` | The reset question opens | [ ] |
+| K8.4 | `g b`, then `y` / `x` | Bisect window; marks the commit good / bad | [ ] |
+| K8.5 | `g ?` | The Git flow sheet opens | [ ] |
+| K8.6 | `g` (worktree table) | Lists x remove, l land, c tidy, m rebase, v move, f force push (red) | [ ] |
+| K8.7 | `g x`, `g l`, `g c`, `g m`, `g v`, `g f` | The same question or window as the one-key version | [ ] |
+| K8.8 | `y` (graph) | A window lists h hash, p patch, m message, a author | [ ] |
+| K8.9 | `y h`, `y p`, `y m`, `y a` | The clipboard holds the hash, the patch, the first line, `name <email>` | [ ] |
+| K8.10 | `y b`, `y d` (worktree table) | The clipboard holds the branch name, the folder | [ ] |
+| K8.11 | `Y` (worktree table) | The Claude turns open (they were on `y`) | [ ] |
+| K8.12 | `x`, move, `y` (graph) | `y` marks the commit good while only a bad one is marked | [ ] |
+| K8.13 | `g`, then a key not in the window | The window closes and a toast says so | [ ] |
+
 ## To be filled as the redesign lands (issue #133)
 
-- `g` popup: `g r` reset, `g d` discard, `g f` force push, `g x` remove worktree, `g a` amend, `g c` tidy, `g l` land, `g m` rebase on main, `g v` move changes, `g b` bisect, `g h` hand to Claude, `g ?` sheet, `g u` unstage, `g g` top.
-- `y` copy: `y h` hash, `y p` patch, `y s` file names, `y m` message, `y b` branch, `y f` path, `y d` folder, `y u` URL, `y a` author.
+- `g` popup, still to come: `g d` discard, `g a` amend, `g h` hand to Claude, `g u` unstage (Changes and Conflict screens), and moving the one-key versions into it.
+- `y` copy, still to come: `y s` file names, `y f` path, `y u` URL, and `y` in the Changes screen.
 - `Space` marks up to two commits, `D` compares, `Esc` clears.
 - `?` deep search (Tab changes the mode); `/` stays the light filter.
 - Panes: `Tab` / `Shift+Tab` move between the side column, the tree and the detail pane; `Enter` in the detail pane widens it.

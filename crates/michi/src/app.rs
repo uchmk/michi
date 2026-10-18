@@ -105,11 +105,13 @@ impl View {
                 ("I", "key.issue"),
                 ("Ctrl+V", "key.apply_patch"),
                 ("w", "key.ignore_space"),
-                ("x y", "key.bisect_mark"),
+                ("x", "key.bisect_mark"),
                 ("u", "key.bisect_skip"),
                 ("r", "key.bisect_run"),
                 ("X", "key.bisect_reset"),
                 ("O", "key.image_mode"),
+                ("g", "key.go"),
+                ("y", "key.copy"),
                 ("Esc", "key.back"),
             ],
             View::Changes => &[
@@ -152,11 +154,13 @@ impl View {
                 ("T", "key.trial"),
                 ("L", "key.reflog"),
                 ("Z", "key.stats"),
-                ("y", "key.turns"),
+                ("Y", "key.turns"),
                 ("u", "key.submodules"),
                 ("v", "key.move_changes"),
                 ("U", "key.flow"),
                 ("R", "key.ready"),
+                ("g", "key.go"),
+                ("y", "key.copy"),
             ],
             View::Conflict => &[
                 ("] [", "key.place"),
@@ -399,8 +403,8 @@ pub struct App {
     pub legend: bool,
     /// The Git flow sheet, while open.
     pub cheat: Option<crate::cheat_ui::Cheat>,
-    /// A `g` was typed in the graph or the worktree table: a second one goes to the first row.
-    pub pending_g: bool,
+    /// A `g` or `y` was typed: its window waits for the second key (#133).
+    pub prefix: Option<crate::prefix::Prefix>,
     /// The practice repository being made (#117): its folder, or why not.
     pub practicing: Option<std::sync::mpsc::Receiver<Result<std::path::PathBuf, String>>>,
     pub ready: Option<crate::ready::Ready>,
@@ -515,7 +519,7 @@ impl App {
             stats: None,
             legend: false,
             cheat: None,
-            pending_g: false,
+            prefix: None,
             practicing: None,
             ready: None,
             auth: None,
@@ -1689,7 +1693,11 @@ impl App {
     /// A character typed (not a key with Ctrl or Alt: those are the
     /// shortcuts). Returns whether it was used.
     pub fn feed(&mut self, c: char) -> bool {
-        let was_g = std::mem::take(&mut self.pending_g);
+        if let Some(p) = self.prefix.take() {
+            if self.mode == Mode::Main {
+                return self.prefix_key(p, c);
+            }
+        }
         match (self.mode, c) {
             (Mode::Help, c) if self.bare_act(c) => {}
             (Mode::Settings, _) | (Mode::Help, _) => return false,
@@ -1711,13 +1719,8 @@ impl App {
             (Mode::Main, c) if self.trial.is_some() => return self.trial_key(c),
             (Mode::Main, c) if self.reorder.is_some() => return self.reorder_key(c),
             (Mode::Main, c) if self.bare_act(c) => {}
-            (Mode::Main, 'g') if self.g_prefix_view() => {
-                if was_g {
-                    self.go_first();
-                } else {
-                    self.pending_g = true;
-                }
-            }
+            (Mode::Main, 'g') if self.g_prefix_view() => self.prefix = Some(crate::prefix::Prefix::Go),
+            (Mode::Main, 'y') if self.y_prefix_view() => self.prefix = Some(crate::prefix::Prefix::Copy),
             (Mode::Main, c) => match View::from_digit(c) {
                 Some(View::Conflict) => self.open_conflicts(),
                 Some(v) => {
@@ -1750,17 +1753,8 @@ impl App {
         }
     }
 
-    /// Whether `g` is the first key of `gg` here: the graph and the worktree table.
-    fn g_prefix_view(&self) -> bool {
-        match self.view {
-            View::Graph => true,
-            View::Worktree => self.review.is_none(),
-            _ => false,
-        }
-    }
-
-    /// `gg`: the first row of the graph or the table.
-    fn go_first(&mut self) {
+    /// `g g`: the first row of the graph or the table.
+    pub(crate) fn go_first(&mut self) {
         match self.view {
             View::Graph => self.graph.home(),
             View::Worktree => self.wt_sel = 0,
@@ -1819,7 +1813,7 @@ impl App {
             'T' => self.open_trial(),
             'L' => self.open_reflog(),
             'Z' => self.open_stats(),
-            'y' => self.open_turns(),
+            'Y' => self.open_turns(),
             'u' => self.open_submodules(),
             'v' => self.open_move(),
             'U' => self.open_flow(),
@@ -1936,7 +1930,7 @@ impl App {
     /// A key with a name (`Enter`, `ArrowDown`), outside the help and the
     /// settings.
     pub fn named(&mut self, name: &str) -> bool {
-        self.pending_g = false;
+        self.prefix = None;
         if self.mode == Mode::Help {
             return self.help_named(name);
         }
@@ -2060,6 +2054,9 @@ impl App {
     /// diff back to one column, else close the review. With nothing else to
     /// close, stop the fetch, pull or push that runs.
     pub fn escape(&mut self) -> bool {
+        if self.prefix.take().is_some() {
+            return true;
+        }
         if self.mode != Mode::Main {
             self.mode = Mode::Main;
             return true;
