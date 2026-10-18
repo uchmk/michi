@@ -53,10 +53,14 @@ pub fn around<T>(wt: &Path, why: &str, mut job: impl FnMut() -> Result<T, git::E
         }
     };
     match job() {
-        Err(e) => {
-            let _ = stash::apply(wt, &id, true);
-            Err(e)
-        }
+        Err(e) => match stash::apply(wt, &id, true) {
+            Ok(Applied::Done) => Err(e),
+            // The changes did not come back whole: say so, they are in `saved`.
+            Ok(Applied::Conflict(files)) => {
+                Err(git::Error::Git(format!("{e}; your changes clashed on the way back in {} (kept in {saved})", files.join(", "))))
+            }
+            Err(a) => Err(git::Error::Git(format!("{e}; your changes did not come back: {a} (kept in {saved})"))),
+        },
         Ok(v) => {
             let back = match stash::apply(wt, &id, true) {
                 Ok(Applied::Done) => Back::Done,

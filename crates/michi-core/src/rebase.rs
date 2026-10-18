@@ -133,7 +133,7 @@ pub fn todo(list: &[Entry], message_file: impl Fn(usize) -> String) -> String {
     let mut pending: Option<usize> = None;
     let flush = |out: &mut String, pending: &mut Option<usize>| {
         if let Some(n) = pending.take() {
-            out.push_str(&format!("exec git commit --amend -q -F '{}'\n", message_file(n)));
+            out.push_str(&format!("exec git commit --amend -q -F {}\n", sh_quote(&message_file(n))));
         }
     };
     for (n, e) in list.iter().enumerate() {
@@ -188,7 +188,7 @@ pub fn run(wt: &Path, base: &Oid, list: &[Entry]) -> Result<Outcome, git::Error>
             .arg("-C")
             .arg(wt)
             .args(["-c", "rebase.autoSquash=false", "rebase", "-i", "--no-autostash", &base.to_string()])
-            .env("GIT_SEQUENCE_EDITOR", format!("cp -f '{}'", slashes(&todo_file)))
+            .env("GIT_SEQUENCE_EDITOR", format!("cp -f {}", sh_quote(&slashes(&todo_file))))
             .env("GIT_EDITOR", "true")
             .output()
             .map_err(git::started)?;
@@ -223,6 +223,12 @@ fn scratch() -> PathBuf {
     std::env::temp_dir().join(format!("michi-rebase-{}-{n}", std::process::id()))
 }
 
+/// `s` as one word for a POSIX shell: in single quotes, a `'` in it closed,
+/// escaped and opened again.
+fn sh_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', "'\\''"))
+}
+
 /// The way git's shell wants a path, on Windows too.
 fn slashes(p: &Path) -> String {
     p.display().to_string().replace('\\', "/")
@@ -232,6 +238,20 @@ fn slashes(p: &Path) -> String {
 mod tests {
     use super::*;
     use crate::testrepo::TempRepo;
+
+    #[test]
+    fn paths_with_a_quote_are_quoted_for_the_shell() {
+        assert_eq!(sh_quote("/tmp/a b"), "'/tmp/a b'");
+        assert_eq!(sh_quote("/tmp/o'neil"), "'/tmp/o'\\''neil'");
+        let list = [Entry {
+            id: Oid::parse(&"a".repeat(40)).unwrap(),
+            subject: "s".into(),
+            full: "s".into(),
+            action: Action::Reword,
+            message: None,
+        }];
+        assert!(todo(&list, |_| "/tmp/o'neil/message-0".into()).contains("-F '/tmp/o'\\''neil/message-0'\n"));
+    }
 
     fn setup(name: &str) -> (TempRepo, Oid) {
         let t = TempRepo::configured(name);

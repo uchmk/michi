@@ -607,6 +607,7 @@ const EN: &[(&str, &str)] = &[
     ("net.no_remote", "This repository has no remote"),
     ("net.detached", "HEAD is on no branch: check one out to pull or push it"),
     ("net.no_upstream", "{} has no upstream to pull from: P pushes it"),
+    ("net.upstream_named", "{b} tracks {up}, a branch of another name: not pushed (git config push.default would refuse too)"),
     ("net.diverged", "{up} went its own way (↑{a} ↓{b}): a pull only goes forward, so nothing was merged"),
     ("net.behind_only", "Nothing to push: {to} is {n} ahead (p pulls)"),
     (
@@ -2008,6 +2009,7 @@ const JA: &[(&str, &str)] = &[
     ("net.no_remote", "このリポジトリには remote がありません"),
     ("net.detached", "HEAD がブランチにありません。ブランチを checkout すると pull・push できます"),
     ("net.no_upstream", "{} には pull する upstream がありません。P で push します"),
+    ("net.upstream_named", "{b} の upstream は別名の {up} です。push しません（git の push.default = simple と同じ）"),
     ("net.diverged", "{up} と分かれています（↑{a} ↓{b}）。fast-forward できないので取り込みません"),
     ("net.behind_only", "push するものはありません。{to} が {n} コミット先にあります（p で pull）"),
     ("net.lease", "{to} に、このブランチに無いコミットが {n} 個あります。上書きして push しますか？ 今の {to} は先に refs/michi/backup/ に退避します。"),

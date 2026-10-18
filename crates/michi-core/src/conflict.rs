@@ -596,6 +596,19 @@ fn is_marker(line: &[u8], ch: u8) -> bool {
     k.len() >= 7 && k[..7].iter().all(|&b| b == ch) && (k.len() == 7 || k[7] == b' ')
 }
 
+/// Whether a `|||||||` comes before the next `>>>>>>>` (or `<<<<<<<`) from line `from`.
+fn base_ahead(lines: &[&[u8]], from: usize) -> bool {
+    for l in lines.iter().skip(from) {
+        if is_marker(l, b'|') {
+            return true;
+        }
+        if is_marker(l, b'>') || is_marker(l, b'<') {
+            return false;
+        }
+    }
+    false
+}
+
 /// The places marked in `lines`. A place not closed is no place; a
 /// `<<<<<<<` inside one starts over from it.
 fn places(lines: &[&[u8]]) -> Vec<Raw> {
@@ -617,7 +630,9 @@ fn places(lines: &[&[u8]]) -> Vec<Raw> {
             }
             match mid {
                 None if base.is_none() && is_marker(l, b'|') => base = Some(j),
-                None if key(l) == b"=======" => mid = Some(j),
+                // A `=======` ahead of the `|||||||` of a diff3 place is a line
+                // of our side, not the middle.
+                None if key(l) == b"=======" && (base.is_some() || !base_ahead(lines, j + 1)) => mid = Some(j),
                 Some(m) if is_marker(l, b'>') => {
                     let ours = start + 1..base.unwrap_or(m);
                     out.push(Raw { start, end: j + 1, ours, base: base.map(|b| b + 1..m), theirs: m + 1..j });
@@ -818,6 +833,7 @@ fn solve(wt: &Path, path: &str, block: &Block, pick: Option<Pick>, written: &[St
         }
     }
     let new = [lines[..raw.start].concat(), picked, lines[raw.end..].concat()].concat();
+    keep(wt, &[path], &format!("solved a place in {path}"))?;
     fs::write(&file, &new).map_err(|e| git::Error::Io(format!("{path}: {e}")))?;
     if places(&split(&new)).is_empty() {
         add(wt, &[path])?;
@@ -831,6 +847,8 @@ fn solve(wt: &Path, path: &str, block: &Block, pick: Option<Pick>, written: &[St
 pub fn take(wt: &Path, path: &str, ours: bool) -> Result<(), git::Error> {
     let stages = stages(&git::read(wt, &["ls-files", "-u", "-z", "--", path])?);
     let has = stages.iter().any(|(p, s)| p == path && s[if ours { 1 } else { 2 }].is_some());
+    // What the file has now (the markers, the hand edits) is kept before it is replaced or deleted.
+    keep(wt, &[path], &format!("took {} for {path}", if ours { "ours" } else { "theirs" }))?;
     if has {
         write(wt, &["checkout", if ours { "--ours" } else { "--theirs" }], &[path])?;
         add(wt, &[path])
@@ -1293,6 +1311,7 @@ mod tests {
         );
         assert_eq!((c.total(), c.left()), (2, 2));
         take(r, "d.txt", true).unwrap();
+        assert_eq!(t.out(r, &["for-each-ref", "refs/michi/backup"]).lines().count(), 1, "the file is kept before it is taken");
         assert!(!r.join("d.txt").exists());
         take(r, "e.txt", false).unwrap();
         assert_eq!(text(&t, "e.txt"), "e feat\n");
@@ -1510,6 +1529,48 @@ mod tests {
         assert_eq!(labels(bytes), ["ours".to_owned(), "base".to_owned(), "theirs".to_owned()]);
         assert!(!is_marker(b"<<<<<<<< no\n", b'<'));
         assert!(is_marker(b">>>>>>>\r\n", b'>'));
+    }
+
+    #[test]
+    fn a_line_of_equals_is_the_middle_only_where_it_belongs() {
+        // `=======` in our side of a diff3 place is content, not the middle.
+        let bytes = b"<<<<<<< ours
+Title
+=======
+more
+||||||| base
+b
+=======
+t
+>>>>>>> theirs
+";
+        assert_eq!(places(&split(bytes)), vec![Raw { start: 0, end: 9, ours: 1..4, base: Some(5..6), theirs: 7..8 }]);
+        // Without a base the first one is the middle; one outside a place is nothing.
+        let bytes = b"=======
+<<<<<<< a
+o
+=======
+t
+>>>>>>> b
+=======
+";
+        assert_eq!(places(&split(bytes)), vec![Raw { start: 1, end: 6, ours: 2..3, base: None, theirs: 4..5 }]);
+        // Indented, or with a label, it is not a middle.
+        assert!(places(&split(
+            b"<<<<<<< a
+ o
+ =======
+>>>>>>> b
+"
+        ))
+        .is_empty());
+        assert!(places(&split(
+            b"<<<<<<< a
+======= x
+>>>>>>> b
+"
+        ))
+        .is_empty());
     }
 
     #[test]

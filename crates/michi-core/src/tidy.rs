@@ -112,7 +112,15 @@ pub fn find(dir: &Path, here: &Path) -> Result<Found, git::Error> {
         if Some(r.name.as_str()) == trunk_name {
             continue;
         }
+        let live = at_live(&worktrees, &r.name);
         let why = if merged.contains(&r.name) {
+            // A branch that is "merged" only because it has no commits of its
+            // own yet (another session's brand-new worktree, still at the
+            // commit it was cut from) has not been merged: never offer a live
+            // worktree whose branch has no history beyond its creation.
+            if live && !has_own_history(dir, &r.name)? {
+                continue;
+            }
             Why::Merged
         } else if refs.gone.contains(&r.name) {
             Why::Gone
@@ -137,6 +145,20 @@ pub fn find(dir: &Path, here: &Path) -> Result<Found, git::Error> {
     }
     sort(&mut items);
     Ok(Found { trunk: trunk.map(|t| t.name), items })
+}
+
+/// Whether the branch is checked out in a linked worktree whose folder is there.
+fn at_live(worktrees: &[Worktree], name: &str) -> bool {
+    worktrees.iter().skip(1).any(|w| w.branch.as_deref() == Some(name) && w.prunable.is_none())
+}
+
+/// Whether the branch's reflog shows it ever moved after it was created
+/// (`commit`, `merge`, `rebase`, `reset`...). A branch whose reflog says only
+/// `branch: Created from ...` (or says nothing: expired, or no reflog) has no
+/// evidence of work, so being "merged" into the trunk means nothing.
+fn has_own_history(dir: &Path, name: &str) -> Result<bool, git::Error> {
+    let log = git::read_text(dir, &["reflog", "show", "--format=%gs", &format!("refs/heads/{name}"), "--"])?;
+    Ok(log.lines().any(|l| !l.trim().is_empty() && !l.starts_with("branch: Created")))
 }
 
 /// Puts those that can go first, by why and name; then those that stay.
@@ -245,6 +267,11 @@ mod tests {
         t.git(&t.repo, &["remote", "add", "origin", &t.root.join("remote.git").to_string_lossy()]);
         for b in ["wt-clean", "wt-dirty", "wt-gone"] {
             t.git(&t.repo, &["worktree", "add", "-q", "-b", b, t.root.join(b).to_str().unwrap(), "main"]);
+            if b != "wt-gone" {
+                // Work done in the worktree and landed on the trunk, as a fast-forward.
+                t.git(&t.root.join(b), &["commit", "-q", "--allow-empty", "-m", b]);
+                t.git(&t.repo, &["merge", "-q", "--ff-only", b]);
+            }
         }
         t.write(&t.root.join("wt-dirty"), "new.txt", "new\n");
         let gone = t.root.join("wt-gone");
@@ -277,6 +304,20 @@ mod tests {
         // From the clean worktree, that one stays.
         let f = find(&t.repo, &t.root.join("wt-clean")).unwrap();
         assert_eq!(f.items.iter().find(|i| i.name() == "wt-clean").unwrap().stay, Some(Stay::Here));
+    }
+
+    #[test]
+    fn a_brand_new_worktree_is_not_merged_just_for_having_no_commits() {
+        let t = TempRepo::configured("tidy-fresh");
+        t.git(&t.repo, &["worktree", "add", "-q", "-b", "fresh", t.root.join("fresh").to_str().unwrap(), "main"]);
+        t.git(&t.repo, &["branch", "plain", "main"]);
+        let f = find(&t.repo, &t.repo).unwrap();
+        assert_eq!(rows(&f), [("plain".to_owned(), Why::Merged, None)], "a branch with no worktree is still listed");
+        // Once it has had a commit of its own and the trunk has it, it is.
+        t.git(&t.root.join("fresh"), &["commit", "-q", "--allow-empty", "-m", "work"]);
+        t.git(&t.repo, &["merge", "-q", "--ff-only", "fresh"]);
+        let f = find(&t.repo, &t.repo).unwrap();
+        assert_eq!(rows(&f), [("fresh".to_owned(), Why::Merged, None), ("plain".to_owned(), Why::Merged, None)]);
     }
 
     #[test]

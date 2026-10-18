@@ -130,6 +130,13 @@ pub enum Why {
     NoUpstream {
         branch: String,
     },
+    /// The upstream is a branch of another name (`feature` tracking
+    /// `origin/main`, as `checkout -b feature origin/main` leaves it). Like
+    /// git's `push.default = simple`, michi does not push one to the other.
+    UpstreamNamed {
+        branch: String,
+        upstream: String,
+    },
     /// Commits on both sides: a fast-forward cannot take `upstream`.
     Diverged {
         upstream: String,
@@ -298,6 +305,13 @@ pub fn push(
             }
         }
     }
+    // A lease with nothing ahead would only rewind the remote's branch: not a push.
+    if let Some(l) = lease {
+        let (ahead, count) = counts(dir, &format!("HEAD...{}", l.tip))?;
+        if ahead == 0 {
+            return Ok(Done::Not(Why::Behind { lease: l.clone(), count, ahead }));
+        }
+    }
     let saved = match lease {
         Some(l) => Some(backup::save(dir, &l.tip, &format!("push --force-with-lease over {}", l.to))?),
         None => None,
@@ -362,6 +376,12 @@ fn target(dir: &Path, chosen: Option<&str>) -> Result<Result<Target, Done>, git:
         (Some(r), Some(m)) if *r == remote => m.clone(),
         _ => format!("refs/heads/{branch}"),
     };
+    // The upstream is another branch than this one: pushing would put this
+    // branch's commits onto it (often the trunk). Refuse, as `simple` does.
+    if dest != format!("refs/heads/{branch}") && up_merge.as_deref() == Some(dest.as_str()) {
+        let name = dest.strip_prefix("refs/heads/").unwrap_or(&dest);
+        return Ok(Err(Done::Not(Why::UpstreamNamed { upstream: format!("{remote}/{name}"), branch })));
+    }
     let new = up_remote.is_none() || up_merge.is_none();
     let name = dest.strip_prefix("refs/heads/").unwrap_or(&dest);
     let to = format!("{remote}/{name}");
@@ -972,6 +992,42 @@ mod tests {
 
         t.git(&t.repo, &["switch", "-q", "--detach"]);
         assert_eq!(push(&t.repo, None, None, &no, &mut quiet()).unwrap(), Done::Not(Why::Detached));
+    }
+
+    #[test]
+    fn a_branch_tracking_another_name_is_not_pushed_and_a_lease_with_nothing_ahead_is_not_a_push() {
+        let (t, other) = with_remote("net-push-named");
+        let no = AtomicBool::new(false);
+        // `checkout -b feature origin/main` leaves feature tracking main.
+        t.git(&t.repo, &["switch", "-q", "-c", "feature", "--track", "origin/main"]);
+        commit(&t, &t.repo, "f.txt");
+        let want = Done::Not(Why::UpstreamNamed { branch: "feature".into(), upstream: "origin/main".into() });
+        assert_eq!(push(&t.repo, None, None, &no, &mut quiet()).unwrap(), want);
+        assert_eq!(preview(&t.repo, None).unwrap(), want);
+        assert_eq!(
+            sync(&t.repo, None, &no, &mut quiet()).unwrap(),
+            Done::SyncHalted {
+                at: Step::Push,
+                why: match want {
+                    Done::Not(w) => w,
+                    _ => unreachable!(),
+                },
+                pulled: 0,
+                stashed: None
+            }
+        );
+        // Nothing reached the remote's main.
+        assert_ne!(
+            t.out(&other, &["ls-remote", "origin", "refs/heads/main"]).split('\t').next(),
+            Some(t.out(&t.repo, &["rev-parse", "HEAD"]).as_str())
+        );
+
+        // A lease while HEAD has nothing the remote lacks would rewind the remote.
+        t.git(&t.repo, &["switch", "-q", "main"]);
+        let tip = Oid::parse(&t.out(&t.repo, &["rev-parse", "main"])).unwrap();
+        let lease = Lease { remote: "origin".into(), dest: "refs/heads/main".into(), to: "origin/main".into(), tip };
+        assert!(matches!(push(&t.repo, None, Some(&lease), &no, &mut quiet()).unwrap(), Done::Not(Why::Behind { ahead: 0, .. })));
+        assert!(t.out(&t.repo, &["for-each-ref", "refs/michi/backup"]).is_empty());
     }
 
     #[test]

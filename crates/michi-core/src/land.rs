@@ -220,6 +220,15 @@ fn preflight(dir: &Path, req: &Request) -> Result<Option<PathBuf>, Why> {
         if let Some(d) = branch::doing(t) {
             return Err(say(format!("the worktree of {} is in the middle of a {}", req.trunk, d.word())));
         }
+        // The fast-forward runs in it: changes there would be in its way, or be mixed into the landing.
+        let dirty = git::read_text(t, &["status", "--porcelain", "--untracked-files=no"]).map_err(refuse)?;
+        if !dirty.trim().is_empty() {
+            return Err(say(format!(
+                "the worktree of {} ({}) has uncommitted changes: commit or stash them first",
+                req.trunk,
+                t.display()
+            )));
+        }
     }
     Ok(trunk_wt)
 }
@@ -405,6 +414,19 @@ mod tests {
         let Some((Stage::MergeIn, Why::Refused(why))) = out.stopped else { panic!() };
         assert!(why.starts_with("nothing to land"), "{why}");
         assert_ne!(rev(&t, &t.repo, "main"), main);
+    }
+
+    #[test]
+    fn a_trunk_worktree_with_changes_refuses_before_anything_moves() {
+        let (t, req) = setup("land-trunk-dirty");
+        let main = rev(&t, &t.repo, "main");
+        t.write(&t.repo, "m.txt", "edited\n");
+        let out = run(&t.repo, &req, Stage::CleanUp, || {});
+        let Some((Stage::MergeIn, Why::Refused(why))) = out.stopped else { panic!("{:?}", out.stopped) };
+        assert!(why.contains("uncommitted changes") && why.contains("main"), "{why}");
+        assert!(out.done.is_empty() && out.merged.is_none());
+        assert_eq!(rev(&t, &t.repo, "main"), main);
+        assert_eq!(t.out(&req.wt, &["rev-list", "--count", "main..HEAD"]), "1", "the branch was not merged into");
     }
 
     #[test]

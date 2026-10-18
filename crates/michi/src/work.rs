@@ -488,6 +488,7 @@ impl App {
             Why::NoRemote | Why::Choose { .. } => (self.tr("net.no_remote").to_owned(), 6),
             Why::Detached => (self.tr("net.detached").to_owned(), 6),
             Why::NoUpstream { branch } => (self.tr("net.no_upstream").replace("{}", branch), 8),
+            Why::UpstreamNamed { branch, upstream } => (self.tr("net.upstream_named").replace("{b}", branch).replace("{up}", upstream), 10),
             Why::Diverged { upstream, ahead, behind } => (
                 self.tr("net.diverged").replace("{up}", upstream).replace("{a}", &ahead.to_string()).replace("{b}", &behind.to_string()),
                 10,
@@ -601,6 +602,9 @@ impl App {
                 }
                 Why::Detached => (self.tr("net.detached").to_owned(), 6),
                 Why::NoUpstream { branch } => (self.tr("net.no_upstream").replace("{}", &branch), 8),
+                Why::UpstreamNamed { branch, upstream } => {
+                    (self.tr("net.upstream_named").replace("{b}", &branch).replace("{up}", &upstream), 10)
+                }
                 Why::Diverged { upstream, ahead, behind } => (
                     self.tr("net.diverged")
                         .replace("{up}", &upstream)

@@ -33,7 +33,8 @@ pub struct Stash {
 pub struct Refs {
     pub locals: Vec<Ref>,
     /// How far each local branch with an upstream is ahead of it and
-    /// behind it: name to `(ahead, behind)`.
+    /// behind it: name to `(ahead, behind)`. A branch with no upstream, or one
+    /// gone from its remote, is not in the map: that is not "in sync".
     pub track: HashMap<String, (u32, u32)>,
     /// The local branches whose upstream is gone from its remote (a pull
     /// request's branch deleted when it was merged).
@@ -69,7 +70,7 @@ pub struct Trunk {
     pub remote: Option<String>,
 }
 
-const FORMAT: &str = "--format=%(refname)%00%(objectname)%00%(*objectname)%00%(symref)%00%(upstream:track,nobracket)";
+const FORMAT: &str = "--format=%(refname)%00%(objectname)%00%(*objectname)%00%(symref)%00%(upstream:track,nobracket)%00%(upstream)";
 
 impl Refs {
     /// The refs of the repository `dir` is in.
@@ -97,7 +98,9 @@ impl Refs {
         for line in text.lines() {
             let mut f = line.split('\0');
             let (Some(name), Some(id), peeled, symref) = (f.next(), f.next(), f.next(), f.next().unwrap_or("")) else { continue };
+            // A branch with no upstream has an empty track too, like one even with it.
             let track = f.next().unwrap_or("");
+            let has_upstream = f.next().is_none_or(|u| !u.is_empty());
             if let Some(rest) = name.strip_prefix("refs/remotes/") {
                 let (remote, branch) = split_remote(rest, remotes);
                 if !symref.is_empty() {
@@ -115,10 +118,12 @@ impl Refs {
             } else if let Some(branch) = name.strip_prefix("refs/heads/") {
                 let Some(id) = Oid::parse(id) else { continue };
                 if symref.is_empty() {
-                    if let Some(t) = parse_track(track) {
-                        refs.track.insert(branch.to_owned(), t);
-                    } else if track == "gone" {
-                        refs.gone.push(branch.to_owned());
+                    if has_upstream {
+                        if let Some(t) = parse_track(track) {
+                            refs.track.insert(branch.to_owned(), t);
+                        } else if track == "gone" {
+                            refs.gone.push(branch.to_owned());
+                        }
                     }
                     refs.locals.push(Ref { name: branch.to_owned(), id });
                 }
@@ -253,9 +258,10 @@ mod tests {
     #[test]
     fn for_each_ref_lines_are_sorted_out() {
         let lines = [
-            format!("refs/heads/main\0{}\0\0\0ahead 2, behind 1", id('1')),
-            format!("refs/heads/feat/x\0{}\0\0\0", id('2')),
-            format!("refs/heads/done\0{}\0\0\0gone", id('2')),
+            format!("refs/heads/main\0{}\0\0\0ahead 2, behind 1\0refs/remotes/origin/main", id('1')),
+            format!("refs/heads/feat/x\0{}\0\0\0\0refs/remotes/origin/feat/x", id('2')),
+            format!("refs/heads/done\0{}\0\0\0gone\0refs/remotes/origin/done", id('2')),
+            format!("refs/heads/loose\0{}\0\0\0\0", id('5')),
             format!("refs/remotes/origin/HEAD\0{}\0\0refs/remotes/origin/main", id('1')),
             format!("refs/remotes/origin/main\0{}\0\0", id('3')),
             format!("refs/remotes/my/fork/feat/x\0{}\0\0", id('2')),
@@ -264,7 +270,8 @@ mod tests {
             format!("refs/tags/light\0{}\0\0", id('3')),
         ];
         let r = Refs::parse(lines.join("\n").as_bytes(), &["origin", "my/fork"]);
-        assert_eq!(r.locals.iter().map(|x| x.name.as_str()).collect::<Vec<_>>(), ["main", "feat/x", "done"]);
+        assert_eq!(r.locals.iter().map(|x| x.name.as_str()).collect::<Vec<_>>(), ["main", "feat/x", "done", "loose"]);
+        assert_eq!(r.track.get("loose"), None, "no upstream is not in sync");
         assert_eq!(r.gone, ["done"]);
         assert_eq!(r.track.get("done"), None);
         assert_eq!(r.track.get("main"), Some(&(2, 1)));
@@ -301,11 +308,13 @@ mod tests {
         r.git(&r.repo, &["remote", "add", "origin", "https://example.invalid/r.git"]);
         r.git(&r.repo, &["update-ref", "refs/remotes/origin/main", "HEAD"]);
         r.git(&r.repo, &["branch", "-q", "-u", "origin/main", "main"]);
+        r.git(&r.repo, &["branch", "-q", "lonely"]);
         r.git(&r.repo, &["commit", "-q", "--allow-empty", "-m", "b"]);
         std::fs::write(r.repo.join("a.txt"), "two\n").unwrap();
         r.git(&r.repo, &["stash", "push", "-q", "-m", "half done"]);
         let refs = Refs::read(&r.repo).unwrap();
         assert_eq!(refs.track.get("main"), Some(&(1, 0)));
+        assert_eq!(refs.track.get("lonely"), None, "a branch with no upstream has no track");
         let stashes: Vec<_> = refs.stashes.iter().map(|s| s.subject.as_str()).collect();
         assert_eq!(stashes, ["On main: half done"]);
     }
