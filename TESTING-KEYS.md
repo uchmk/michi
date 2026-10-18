@@ -175,10 +175,21 @@ A row is added with the change that makes the key, and unticked again when the k
 | K9.6 | `Enter` in the detail | It widens (side by side); `Tab` then only goes graph ↔ detail | [ ] |
 | K9.7 | `Esc` in a pane | The keys go back to the graph | [ ] |
 
+## Deep search (0.79.0)
+
+| # | Key | Expect | Checked |
+| --- | --- | --- | --- |
+| K10.1 | `?` (graph) | The filter field takes the keys with `m:` in it | [ ] |
+| K10.2 | `Tab` in the field | The prefix goes `m:` → `p:` → `s:` → `f:` → `m:`, the text kept | [ ] |
+| K10.3 | `Enter` after typing | The field says it is asking; then only the matching commits are bright, `Enter` goes to the next | [ ] |
+| K10.4 | `m:` / `p:` / `s:` / `f:` with a word you know | Message / path / diff text / any of them hit the right commits | [ ] |
+| K10.5 | `F1` | The key list opens; `?` no longer does | [ ] |
+| K10.6 | The window stays alive while a search runs in a big repository | You can still move and scroll | [ ] |
+
 ## To be filled as the redesign lands (issue #133)
 
 - `g` popup, still to come: `g d` discard, `g a` amend, `g h` hand to Claude, `g u` unstage (Changes and Conflict screens), and moving the one-key versions into it.
 - `y` copy, still to come: `y s` file names, `y f` path, `y u` URL, and `y` in the Changes screen.
 - `Space` marks up to two commits, `D` compares, `Esc` clears.
-- `?` deep search (Tab changes the mode); `/` stays the light filter.
+- `?` deep search: rows that do not hit are still drawn faint, not taken away (a "only hits" view is still to come).
 - Panes, still to come: Tab on the other screens.

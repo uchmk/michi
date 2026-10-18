@@ -772,6 +772,37 @@ impl Graph {
         self.mark();
     }
 
+    /// `?`: the filter in a deep search. A content search already typed stays
+    /// (its text too); otherwise the message search starts.
+    pub fn start_deep(&mut self) {
+        if self.query.content().is_none() {
+            let words = self.filter.trim_end();
+            let text = if words.is_empty() { "m:".to_owned() } else { format!("{words} m:") };
+            self.set_filter(&text);
+        }
+        self.focus_filter = true;
+    }
+
+    /// Tab in a deep search: the next mode (message, path, diff text, all),
+    /// the text typed kept.
+    pub fn cycle_deep(&mut self) {
+        const MODES: [&str; 4] = ["m:", "p:", "s:", "f:"];
+        let mut at = 0;
+        let mut found = None;
+        for w in self.filter.split_inclusive(char::is_whitespace) {
+            if matches!(w.get(..2), Some("m:" | "p:" | "s:" | "g:" | "f:" | "d:")) {
+                found = Some(at);
+                break;
+            }
+            at += w.len();
+        }
+        let Some(at) = found else { return };
+        let now = MODES.iter().position(|m| self.filter[at..].starts_with(m));
+        let next = MODES[now.map_or(0, |i| (i + 1) % MODES.len())];
+        let text = format!("{}{}{}", &self.filter[..at], next, &self.filter[at + 2..]);
+        self.set_filter(&text);
+    }
+
     /// The content search the filter asks for and git has not answered yet
     /// (the window asks on Enter).
     pub fn content_wanted(&self) -> Option<&Content> {

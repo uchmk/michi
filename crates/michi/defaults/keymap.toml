@@ -17,7 +17,6 @@
 [main]
 keymap = [
     { on = "<C-,>", run = "settings", desc = "Settings" },
-    { on = "?", run = "help", desc = "Keys" },
     { on = "<F1>", run = "help", desc = "Keys" },
     { on = "<C-S-p>", run = "palette", desc = "Search commands" },
     { on = "<C-S-g>", run = "cheat", desc = "Git flow sheet" },

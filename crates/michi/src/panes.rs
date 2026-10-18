@@ -202,6 +202,28 @@ mod tests {
     }
 
     #[test]
+    fn question_mark_starts_a_deep_search_and_tab_changes_its_mode() {
+        let mut a = app();
+        assert!(a.feed('?'));
+        assert_eq!(a.graph.filter(), "m:");
+        assert!(a.graph.focus_filter);
+        a.graph.set_filter("fix m:needle");
+        a.graph.cycle_deep();
+        assert_eq!(a.graph.filter(), "fix p:needle");
+        a.graph.cycle_deep();
+        a.graph.cycle_deep();
+        assert_eq!(a.graph.filter(), "fix f:needle");
+        a.graph.cycle_deep();
+        assert_eq!(a.graph.filter(), "fix m:needle");
+        a.graph.set_filter("g:x");
+        a.graph.cycle_deep();
+        assert_eq!(a.graph.filter(), "m:x", "another search turns into the first mode");
+        a.graph.set_filter("plain");
+        a.graph.cycle_deep();
+        assert_eq!(a.graph.filter(), "plain", "no search typed: nothing to change");
+    }
+
+    #[test]
     fn j_scrolls_the_detail_pane() {
         let mut a = app();
         a.pane = GraphPane::Detail;

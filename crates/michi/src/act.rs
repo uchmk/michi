@@ -538,6 +538,8 @@ impl Task {
                 michi_core::find::Kind::Regex => "log -G",
                 michi_core::find::Kind::Path => "log -- path",
                 michi_core::find::Kind::Date => "log --since",
+                michi_core::find::Kind::Message => "log --grep",
+                michi_core::find::Kind::Full => "log --grep -S --",
             },
             Task::FindBlame { .. } => "blame",
             Task::Trial { .. } => "merge-tree",

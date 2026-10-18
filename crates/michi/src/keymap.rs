@@ -149,7 +149,7 @@ mod tests {
         assert!(warn.is_empty(), "{warn:?}");
         assert_eq!(km.act(key(",")), None);
         assert_eq!(km.act(key("<C-,>")), Some(Act::Settings));
-        assert_eq!(km.act(key("?")), Some(Act::Help));
+        assert_eq!(km.act(key("?")), None, "? is the deep search; F1 is the key list");
         assert_eq!(km.act(key("<F1>")), Some(Act::Help));
         assert_eq!(km.act(key("<C-S-p>")), Some(Act::Palette));
         assert_eq!(km.act(key("<F12>")), Some(Act::BugReport));

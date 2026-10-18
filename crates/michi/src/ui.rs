@@ -854,7 +854,7 @@ fn key_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
     let keys: Vec<(&str, &'static str)> = match app.mode {
         Mode::Settings => vec![("Esc", "key.back"), ("Ctrl+Tab", "key.page")],
         Mode::Help => vec![("? Esc", "key.back")],
-        Mode::Main => app.listed(app.keys()).into_iter().take(KEYBAR_KEYS).chain([("?", "key.help")]).collect(),
+        Mode::Main => app.listed(app.keys()).into_iter().take(KEYBAR_KEYS).chain([("F1", "key.help")]).collect(),
     };
     let mut x = r.left() + 10.0;
     let mut clicked = None;
@@ -1046,6 +1046,7 @@ mod tests {
     fn a_keybar_entry_is_a_button_only_when_it_is_one_key() {
         assert_eq!(bar_key("c"), Some(BarKey::Char('c')));
         assert_eq!(bar_key("?"), Some(BarKey::Char('?')));
+        assert_eq!(bar_key("F1"), None);
         assert_eq!(bar_key("Space"), Some(BarKey::Char(' ')));
         assert_eq!(bar_key("Esc"), Some(BarKey::Esc));
         assert_eq!(bar_key("j k"), None);

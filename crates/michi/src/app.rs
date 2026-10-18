@@ -83,6 +83,7 @@ impl View {
                 ("Tab", "key.panes"),
                 ("Enter", "key.side"),
                 ("/", "key.filter"),
+                ("?", "key.deep"),
                 ("z", "key.fold"),
                 ("o", "key.tab"),
                 ("l h", "key.open_fold"),
@@ -1805,6 +1806,7 @@ impl App {
             'l' => _ = g.open_fold(),
             'h' => _ = g.close_fold(),
             '/' => g.focus_filter = true,
+            '?' => g.start_deep(),
             'z' => self.fold(),
             'o' => self.focus_claude(false),
             'N' => self.open_new_work(),
@@ -2258,11 +2260,11 @@ pub(crate) mod tests {
         assert!(a.escape());
         assert_eq!(a.mode, Mode::Main);
         assert!(!a.escape());
-        assert!(a.feed('?'));
+        a.run_key(crate::keymap::Act::Help);
         assert_eq!(a.mode, Mode::Help);
         assert!(!a.feed('3'), "the help swallows the views' digits");
         assert!(!a.named("Enter"));
-        assert!(a.feed('?'));
+        a.run_key(crate::keymap::Act::Help);
         assert_eq!(a.mode, Mode::Main);
     }
 
@@ -2290,7 +2292,7 @@ pub(crate) mod tests {
     fn the_tab_in_force_is_the_view_but_not_in_the_settings() {
         let mut a = app();
         assert!(a.is_on(View::Graph));
-        a.feed('?');
+        a.run_key(crate::keymap::Act::Help);
         assert!(a.is_on(View::Graph), "the key list is over the view");
         a.escape();
         a.key(ito_keys::Key::parse("<C-,>").unwrap());
