@@ -239,7 +239,7 @@ pub struct Told {
 impl Changes {
     /// Whether the diff is drawn side by side: widened, or by default.
     pub fn paired(&self) -> bool {
-        self.wide || !self.unified
+        self.wide == self.unified
     }
 
     /// Shows the worktree at `wt`, its message kept for when it comes back.

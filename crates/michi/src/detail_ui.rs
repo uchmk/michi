@@ -733,7 +733,7 @@ fn title(ui: &Ui, p: &Painter, app: &App, f: &File, rr: Rect, first: bool, live:
     let mut out = None;
     if first {
         let wide = app.detail.wide;
-        let (word, key) = if wide { ("detail.narrow", "Esc") } else { ("detail.wide", "Enter") };
+        let (word, key) = (if app.detail.paired() { "detail.narrow" } else { "detail.wide" }, if wide { "Esc" } else { "Enter" });
         let cap = kbd(ui, p, pos2(end, mid), key);
         let w = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, app.tr(word), FontId::proportional(12.0), c.dim);
         let hit = w.union(cap).expand(3.0);

@@ -177,7 +177,7 @@ pub struct Pane {
 impl Pane {
     /// Whether the diff is drawn side by side: widened, or by default.
     pub fn paired(&self) -> bool {
-        self.wide || !self.unified
+        self.wide == self.unified
     }
 
     /// The selection is now `id`: whether that is a change (and so the
@@ -443,8 +443,10 @@ mod tests {
 fn the_diff_is_side_by_side_by_default() {
     let mut p = Pane::default();
     assert!(p.paired(), "side by side before Enter");
-    p.unified = true;
-    assert!(!p.paired());
     p.wide = true;
-    assert!(p.paired(), "widened is always side by side");
+    assert!(!p.paired(), "Enter turns the default off");
+    p.unified = true;
+    assert!(p.paired(), "with the default off, Enter turns side by side on");
+    p.wide = false;
+    assert!(!p.paired());
 }

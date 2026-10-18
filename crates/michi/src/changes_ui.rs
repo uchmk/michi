@@ -780,7 +780,7 @@ fn title_row(ui: &Ui, app: &App, side: Side, f: &File, rr: Rect, live: bool, poi
     p.rect_filled(rr, 0.0, c.side);
     p.line_segment([rr.left_bottom() - vec2(0.0, 0.5), rr.right_bottom() - vec2(0.0, 0.5)], Stroke::new(1.0, c.border));
     let mid = rr.center().y;
-    let (word, key) = if ch.wide { ("detail.narrow", "Esc") } else { ("detail.wide", "Enter") };
+    let (word, key) = (if ch.paired() { "detail.narrow" } else { "detail.wide" }, if ch.wide { "Esc" } else { "Enter" });
     let cap = kbd(ui, &p, pos2(rr.right() - X, mid), key);
     let w = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, app.tr(word), FontId::proportional(12.0), c.dim);
     let hit = w.union(cap).expand(3.0);
@@ -1036,7 +1036,7 @@ fn minimap(p: &Painter, r: Rect, ticks: &[michi_core::minimap::Tick], scroll: f3
 /// The row that shows the line `at`, in the way the diff is shown.
 fn row_of(ch: &Changes, s: &Shown, (h, l): (usize, usize)) -> Option<usize> {
     let at = (h as u32, l as u32);
-    if ch.wide {
+    if ch.paired() {
         s.rows.paired.iter().position(|r| matches!(*r, Paired::Pair(old, new) if old == Some(at) || new == Some(at)))
     } else {
         s.rows.unified.iter().position(|r| *r == Unified::Line(at))
@@ -1058,7 +1058,7 @@ fn marks(p: &Painter, ch: &Changes, s: &Shown, dr: Rect, view: Rect, tops: &[f32
     for k in first..last {
         let rr = Rect::from_min_max(pos2(dr.left(), dr.top() + tops[k]), pos2(dr.right(), dr.top() + tops[k + 1]));
         // The parts of the row, each with its line.
-        let parts: Vec<(Rect, (u32, u32))> = if ch.wide {
+        let parts: Vec<(Rect, (u32, u32))> = if ch.paired() {
             match s.rows.paired[k] {
                 Paired::Hunk(_) => Vec::new(),
                 Paired::Pair(old, new) => {

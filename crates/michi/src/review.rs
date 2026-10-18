@@ -118,7 +118,7 @@ pub struct Review {
 impl Review {
     /// Whether the diff is drawn side by side: widened, or by default.
     pub fn paired(&self) -> bool {
-        self.wide || !self.unified
+        self.wide == self.unified
     }
 
     pub fn new(path: PathBuf, branch: String) -> Review {

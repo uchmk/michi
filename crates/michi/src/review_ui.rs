@@ -351,7 +351,7 @@ fn title_row(ui: &Ui, app: &App, rv: &Review, f: &File, rr: Rect, live: bool, po
     p.rect_filled(rr, 0.0, c.side);
     p.line_segment([rr.left_bottom() - vec2(0.0, 0.5), rr.right_bottom() - vec2(0.0, 0.5)], Stroke::new(1.0, c.border));
     let mid = rr.center().y;
-    let (word, key) = if rv.wide { ("detail.narrow", "Esc") } else { ("detail.wide", "Enter") };
+    let (word, key) = (if rv.paired() { "detail.narrow" } else { "detail.wide" }, if rv.wide { "Esc" } else { "Enter" });
     let cap = kbd(ui, &p, pos2(rr.right() - X, mid), key);
     let w = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, app.tr(word), FontId::proportional(12.0), c.dim);
     let hit = w.union(cap).expand(3.0);
