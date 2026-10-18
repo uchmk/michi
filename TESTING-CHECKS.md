@@ -1347,3 +1347,4 @@
 - [ ] **277.1** In the practice lab, merge lab-a and lab-c into topic-a, then look at the worktree table → The lab-a and lab-c rows say `topic-a に取り込み済み`; their land-order line is gone and the rest of the order counts without them 〔未訳〕
 - [ ] **277.2** Look at those rows' buttons while they have nothing uncommitted → `消す x` comes first, and the note adds that it can be removed; with an uncommitted change the note has no `消せます` and `消す` stays last 〔未訳〕
 - [ ] **277.3** Press the reread button after another merge → The note appears without restarting 〔未訳〕
+- [ ] **277.4** Look at the clash table with lab-a and lab-c merged into topic-a → Their rows, columns and numbers are faint; the hint under the table says so 〔未訳〕

@@ -736,6 +736,12 @@ fn draw_pairs(ui: &Ui, p: &Painter, app: &App, b: &Pairs, at: Pos2, live: bool) 
     }
     let mut clicked = None;
     if b.tops.len() >= 2 {
+        // A side already merged into another worktree's branch is drawn faint.
+        let merged: Vec<bool> = cl
+            .sides
+            .iter()
+            .map(|s| app.trees.trees.iter().any(|t| t.merged_into.is_some() && t.wt.branch.as_deref() == Some(s.name.as_str())))
+            .collect();
         let top = at.y + b.grid_top();
         let edge = Stroke::new(1.0, c.border);
         let cell = |row: usize, col: usize| {
@@ -747,18 +753,24 @@ fn draw_pairs(ui: &Ui, p: &Painter, app: &App, b: &Pairs, at: Pos2, live: bool) 
         for (j, g) in b.tops.iter().enumerate() {
             let r = cell(0, j + 1);
             p.rect_stroke(r, 0.0, edge, StrokeKind::Middle);
-            p.galley(r.center() - g.size() / 2.0, g.clone(), c.dim);
+            p.galley(r.center() - g.size() / 2.0, g.clone(), if merged[j] { c.dim.gamma_multiply(0.5) } else { c.dim });
         }
         for (i, g) in b.lefts.iter().enumerate() {
             let r = cell(i + 1, 0);
             p.rect_stroke(r, 0.0, edge, StrokeKind::Middle);
-            p.galley(pos2(r.right() - 10.0 - g.size().x, r.center().y - g.size().y / 2.0), g.clone(), c.dim);
+            p.galley(
+                pos2(r.right() - 10.0 - g.size().x, r.center().y - g.size().y / 2.0),
+                g.clone(),
+                if merged[i] { c.dim.gamma_multiply(0.5) } else { c.dim },
+            );
             for j in 0..b.tops.len() {
                 let r = cell(i + 1, j + 1);
                 let mid = r.center();
                 let picked = b.picked.is_some_and(|q| q == (i, j) || q == (j, i));
+                let faint = merged[i] || merged[j];
+                let fade = |ink: Color32| if faint { ink.gamma_multiply(0.45) } else { ink };
                 let dim = |s: &str| {
-                    p.text(mid, Align2::CENTER_CENTER, s, FontId::proportional(12.0), c.dim);
+                    p.text(mid, Align2::CENTER_CENTER, s, FontId::proportional(12.0), fade(c.dim));
                 };
                 match cl.between(i, j).map(|o| if app.merging() && o.conflict().is_some() { &Outcome::Clean } else { o }) {
                     None => {
@@ -770,7 +782,7 @@ fn draw_pairs(ui: &Ui, p: &Painter, app: &App, b: &Pairs, at: Pos2, live: bool) 
                     Some(o) => {
                         let Some(cf) = o.conflict() else { continue };
                         let wip = matches!(o, Outcome::Uncommitted(_));
-                        let ink = if wip { c.wait } else { c.err };
+                        let ink = fade(if wip { c.wait } else { c.err });
                         p.rect_filled(r, 0.0, ink.gamma_multiply(if wip { 0.08 } else { 0.1 }));
                         if picked {
                             p.rect_stroke(r.shrink(2.0), 0.0, Stroke::new(1.5, ink), StrokeKind::Inside);
