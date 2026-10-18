@@ -88,8 +88,10 @@ pub struct Review {
     shown: Option<(String, Result<Diff, git::Error>)>,
     /// The files checked as looked at.
     pub checks: BTreeSet<Key>,
-    /// The diff side by side.
+    /// The diff side by side (`Enter`).
     pub wide: bool,
+    /// One column even when not widened (side by side is the default).
+    pub unified: bool,
     /// Pages to scroll the diff by, for the frame to take: down is more.
     pub pages: i32,
     /// Tab: the keys go to the diff, which they scroll by rows (`nudge`).
@@ -114,6 +116,11 @@ pub struct Review {
 }
 
 impl Review {
+    /// Whether the diff is drawn side by side: widened, or by default.
+    pub fn paired(&self) -> bool {
+        self.wide || !self.unified
+    }
+
     pub fn new(path: PathBuf, branch: String) -> Review {
         Review {
             path,
@@ -131,6 +138,7 @@ impl Review {
             shown: None,
             checks: BTreeSet::new(),
             wide: false,
+            unified: false,
             pages: 0,
             body_focus: false,
             nudge: 0,

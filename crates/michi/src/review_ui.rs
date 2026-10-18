@@ -428,7 +428,7 @@ fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, (pages, nudg
     if f.cut {
         pieces.push(Piece::Cut);
     }
-    let wrap = Wrap::new(ui, body.width(), rv.wide);
+    let wrap = Wrap::new(ui, body.width(), rv.paired());
     let heights: Vec<f32> = pieces
         .iter()
         .map(|piece| match piece {
@@ -444,7 +444,7 @@ fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, (pages, nudg
     let tops = wrap.tops(rows);
     let diff_top: f32 = pieces.iter().zip(&heights).take_while(|(piece, _)| !matches!(piece, Piece::Diff)).map(|(_, h)| h).sum();
     let row_of = |at: At| {
-        if rv.wide {
+        if rv.paired() {
             rows.paired.iter().position(|r| matches!(r, Paired::Pair(a, b) if *a == Some(at) || *b == Some(at)))
         } else {
             rows.unified.iter().position(|r| *r == Unified::Line(at))
@@ -466,7 +466,7 @@ fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, (pages, nudg
 
     let mut act = None;
     // The diff's text is picked up with the mouse, as the commit detail's.
-    crate::select::begin(&format!("review:{}:{}:{}", rv.branch, f.path, rv.wide));
+    crate::select::begin(&format!("review:{}:{}:{}", rv.branch, f.path, rv.paired()));
     let mut y = body.top() - scroll;
     for (piece, h) in pieces.iter().zip(heights) {
         let rr = Rect::from_min_size(pos2(body.left(), y), vec2(body.width(), h));
@@ -501,7 +501,7 @@ fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, (pages, nudg
                 if let (true, true, Some(q)) = (live, resp.clicked(), resp.interact_pointer_pos()) {
                     let y = q.y - at.top();
                     let k = tops.partition_point(|&t| t <= y).saturating_sub(1).min(tops.len() - 2);
-                    let hit = if rv.wide {
+                    let hit = if rv.paired() {
                         match rows.paired[k] {
                             Paired::Pair(old, new) => new.or(old),
                             Paired::Hunk(_) => None,

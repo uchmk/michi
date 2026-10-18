@@ -196,8 +196,10 @@ pub struct Changes {
     pub confirm: Option<Confirm>,
     /// Writes sent and not done yet.
     pending: u32,
-    /// The diff side by side.
+    /// The diff side by side (`Enter`).
     pub wide: bool,
+    /// One column even when not widened (side by side is the default).
+    pub unified: bool,
     /// The files as a tree of folders (`t`), not kept between runs.
     pub tree: bool,
     /// The folders folded in the tree, per side.
@@ -235,6 +237,11 @@ pub struct Told {
 }
 
 impl Changes {
+    /// Whether the diff is drawn side by side: widened, or by default.
+    pub fn paired(&self) -> bool {
+        self.wide || !self.unified
+    }
+
     /// Shows the worktree at `wt`, its message kept for when it comes back.
     pub fn open(&mut self, wt: PathBuf) -> Option<Wish> {
         if let Some(old) = self.wt.take() {

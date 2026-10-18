@@ -82,7 +82,7 @@ impl View {
                 ("j k", "key.move"),
                 ("Tab", "key.panes"),
                 ("n N", "key.files"),
-                ("Enter", "key.side"),
+                ("Enter", "key.to_detail"),
                 ("/", "key.filter"),
                 ("?", "key.deep"),
                 ("z", "key.fold"),
@@ -2079,7 +2079,7 @@ impl App {
                     "End" => d.to_end = true,
                     // In the pane itself Enter goes to the file the keys are on.
                     "Enter" if self.pane == crate::panes::GraphPane::Detail => d.scroll_to = Some(d.cur),
-                    "Enter" => d.wide = !d.wide,
+                    "Enter" => self.pane = crate::panes::GraphPane::Detail,
                     _ => return self.later(|token| token == name),
                 }
                 return true;
@@ -2093,7 +2093,7 @@ impl App {
                 "End" => g.end(),
                 "ArrowRight" => _ = g.open_fold(),
                 "ArrowLeft" => _ = g.close_fold(),
-                "Enter" => self.detail.wide = !self.detail.wide,
+                "Enter" => self.pane = crate::panes::GraphPane::Detail,
                 _ => return self.later(|token| token == name),
             }
             return true;
@@ -2203,12 +2203,12 @@ impl App {
             self.side_stash = None;
             return true;
         }
-        if self.view == View::Graph && self.detail.wide {
-            self.detail.wide = false;
-            return true;
-        }
         if self.view == View::Graph && self.pane != crate::panes::GraphPane::Tree {
             self.pane = crate::panes::GraphPane::Tree;
+            return true;
+        }
+        if self.view == View::Graph && self.detail.wide {
+            self.detail.wide = false;
             return true;
         }
         if self.view == View::Graph && !self.graph.filter().is_empty() {
@@ -2597,8 +2597,8 @@ pub(crate) mod tests {
         assert!(a.toast.is_none() && a.net.is_none(), "no reading thread here: nothing runs");
         assert!(a.feed('s'), "the graph's own key");
         assert_eq!(toast(&a), "No worktree to work in", "the stashes, with nothing read");
-        assert!(a.named("Enter"), "the diff side by side, no longer a later stage");
-        assert!(a.detail.wide);
+        assert!(a.named("Enter"), "the keys go to the detail");
+        assert_eq!(a.pane, crate::panes::GraphPane::Detail);
         a.feed('2');
         assert!(a.feed('c'));
         assert!(a.changes.focus_message, "c goes to the message");
@@ -2803,9 +2803,9 @@ pub(crate) mod tests {
         let mut a = read();
         a.graph.set_filter("f");
         assert!(a.named("Enter"));
-        assert!(a.detail.wide);
+        assert_eq!(a.pane, crate::panes::GraphPane::Detail);
         assert!(a.escape());
-        assert!(!a.detail.wide);
+        assert_eq!(a.pane, crate::panes::GraphPane::Tree, "the keys come back to the tree first");
         assert_eq!(a.graph.filter(), "f", "the filter goes on the next Escape");
         assert!(a.escape());
         assert_eq!(a.graph.filter(), "");
@@ -2989,8 +2989,8 @@ pub(crate) mod tests {
         assert!(a.named("End"));
         assert_eq!((a.detail.lines, a.detail.pages, a.detail.to_end), (1, 1, true));
         assert_eq!(a.graph.selected(), before, "the graph does not move");
-        assert!(a.named("Enter"));
-        assert!(!a.detail.wide);
+        a.detail.wide = false;
+        a.pane = crate::panes::GraphPane::Tree;
         a.named("ArrowDown");
         assert_eq!(a.detail.lines, 1, "narrow: the graph has the keys");
     }

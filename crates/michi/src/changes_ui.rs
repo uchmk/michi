@@ -881,7 +881,7 @@ fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32, jump: i32) {
     } else {
         (body, None)
     };
-    let wrap = Wrap::new(ui, body.width(), ch.wide);
+    let wrap = Wrap::new(ui, body.width(), ch.paired());
     let tops = wrap.tops(rows);
     let image_job =
         ch.wt.as_deref().zip(ch.selected()).map(|(dir, (side, file))| crate::images::changes_job(dir, side, file, ch.shown_gen));
@@ -902,7 +902,7 @@ fn body_of(ui: &Ui, app: &App, body: Rect, live: bool, pages: i32, jump: i32) {
     if live && ui.rect_contains_pointer(body) {
         scroll -= ui.input(|i| i.smooth_scroll_delta.y);
     }
-    let runs = michi_core::minimap::runs(&rows.marks(ch.wide, f));
+    let runs = michi_core::minimap::runs(&rows.marks(ch.paired(), f));
     // `n` / `N`: on to the next (previous) change, counted from the one the
     // last jump went to while it is in sight, else from what is in sight.
     if jump != 0 && ch.focus != Focus::Lines && !runs.is_empty() {

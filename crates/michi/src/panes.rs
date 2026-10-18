@@ -214,6 +214,9 @@ impl App {
             (GraphPane::Detail, 'G') => self.detail.to_end = true,
             (GraphPane::Detail, 'n') => self.detail.move_file(1),
             (GraphPane::Detail, 'N') => self.detail.move_file(-1),
+            // `]` `[` in the detail go to the next or the previous file's diff.
+            (GraphPane::Detail, ']') => self.detail.jump_file(1),
+            (GraphPane::Detail, '[') => self.detail.jump_file(-1),
             _ => return false,
         }
         true
@@ -375,7 +378,7 @@ mod tests {
         assert!(!a.detail.wide);
         a.pane = GraphPane::Tree;
         assert!(a.named("Enter"));
-        assert!(a.detail.wide);
+        assert_eq!(a.pane, GraphPane::Detail, "Enter in the tree puts the keys on the detail");
     }
 
     #[test]

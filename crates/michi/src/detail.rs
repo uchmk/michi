@@ -204,6 +204,12 @@ impl Pane {
         self.cur = (self.cur as i64 + by as i64).clamp(0, n.saturating_sub(1) as i64) as usize;
     }
 
+    /// `]` (`by` 1) or `[` (-1): the next or the previous file, and its diff.
+    pub fn jump_file(&mut self, by: i32) {
+        self.move_file(by);
+        self.scroll_to = Some(self.cur);
+    }
+
     /// The selection is now `id`, the same thing read anew (a worktree's
     /// uncommitted change that changed): what is shown stays, in its place,
     /// until the new answer comes.
