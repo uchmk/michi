@@ -1203,7 +1203,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     // A click on a row selects it: the view need not follow.
     ctx.data_mut(|d| d.insert_temp(seen_id(), k));
     match what {
-        Some(Act::Enter) => app.wt_in_graph(),
+        Some(Act::Enter) => app.wt_enter(),
         Some(Act::Key(key)) => {
             app.feed(key);
         }

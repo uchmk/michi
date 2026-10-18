@@ -686,6 +686,7 @@ impl eframe::App for Michi {
         }
         self.script(&ctx);
         self.app.prefs.pump();
+        self.app.detail.unified = !self.app.prefs.diff_side;
         self.app.set_language();
         // common.toml's theme, or the OS's light or dark under `system`.
         self.app.prefs.apply_theme(&ctx);

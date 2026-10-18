@@ -203,6 +203,11 @@ A row is added with the change that makes the key, and unticked again when the k
 | K12.2 | `Tab` to the detail, `j k` | The long list scrolls with the diff | [ ] |
 | K12.3 | Select a commit | The detail shows the diff side by side (old left, new right) before `Enter` is pressed | [ ] |
 | K12.4 | `Enter` in the detail | The detail widens (the graph narrows); `Esc` narrows it back, still side by side | [ ] |
+| K13.1 | Worktree table, `s` | The rows reorder by the landing order (the trunk's first); a toast says so; `s` again restores the listed order and the selection stays on its worktree | [ ] |
+| K13.2 | `Enter` or double-click on a row not yet approved | The branch's whole diff opens (the review) | [ ] |
+| K13.3 | `Enter` or double-click on an approved row, or the trunk's | The graph opens on it | [ ] |
+| K13.4 | `l` on a row not yet approved | The band carries the note that it is not approved; landing still works | [ ] |
+| K13.5 | Settings → General → Diff layout | Unchecking it writes `diff_side = false` to config.toml's `[view]`; the detail shows one column until Enter | [ ] |
 
 ## To be filled as the redesign lands (issue #133)
 

@@ -150,6 +150,7 @@ impl View {
                 ("Enter", "key.in_graph"),
                 ("m", "key.take_main"),
                 ("l", "key.land"),
+                ("s", "key.sort_land"),
                 ("x", "key.remove"),
                 ("d", "key.branch_diff"),
                 ("c", "key.tidy"),
@@ -327,6 +328,10 @@ pub struct App {
     pub last_error: Option<String>,
     /// The worktree table's selected row.
     pub wt_sel: usize,
+    /// The worktree table sorted by the suggested landing order (`s`).
+    pub wt_by_land: bool,
+    /// The worktrees as git listed them, before `wt_by_land` sorts `trees`.
+    trees_raw: Trees,
     /// The branch review (`d`), over the worktree table.
     pub review: Option<Review>,
     /// The notes of closed reviews, by worktree, until they are handed over.
@@ -487,6 +492,8 @@ impl App {
             front: true,
             last_error: None,
             wt_sel: 0,
+            wt_by_land: false,
+            trees_raw: Trees::default(),
             review: None,
             kept_notes: Vec::new(),
             changes: Changes::default(),
@@ -765,6 +772,8 @@ impl App {
                 self.review_sync();
             }
             Answer::Trees(trees) => {
+                self.trees_raw = trees.clone();
+                let trees = self.sorted(trees);
                 // The selection stays on its worktree when the list changes.
                 let path = self.trees.trees.get(self.wt_sel).map(|t| t.wt.path.clone());
                 self.wt_sel = path.and_then(|p| trees.trees.iter().position(|t| t.wt.path == p)).unwrap_or(0);
@@ -790,7 +799,10 @@ impl App {
                 self.waits_changed();
                 self.turns_changed();
             }
-            Answer::Clashes(c) => self.clashes = c,
+            Answer::Clashes(c) => {
+                self.clashes = c;
+                self.resort();
+            }
             Answer::Conflicts(c) => {
                 let had = !self.conflicts.all.is_empty();
                 self.conflicts.set(c);
@@ -1480,6 +1492,48 @@ impl App {
         Some((n + 1, steps.len(), steps[n].resolve))
     }
 
+    /// `trees` in the table's order: as listed, or by the suggested landing
+    /// order (the unranked, the trunk's among them, first).
+    fn sorted(&self, mut trees: Trees) -> Trees {
+        if self.wt_by_land && !self.merging() {
+            let order = michi_core::order::suggest(&self.clashes, &trees);
+            trees.trees.sort_by_key(|t| order.iter().position(|s| s.path == t.wt.path).map_or(0, |n| n + 1));
+        }
+        trees
+    }
+
+    /// Sorts the table again (the order or the predictions changed), the
+    /// selection staying on its worktree.
+    fn resort(&mut self) {
+        let path = self.trees.trees.get(self.wt_sel).map(|t| t.wt.path.clone());
+        self.trees = self.sorted(self.trees_raw.clone());
+        self.wt_sel = path.and_then(|p| self.trees.trees.iter().position(|t| t.wt.path == p)).unwrap_or(0);
+    }
+
+    /// `s`: the table by the suggested landing order, or as listed.
+    pub(crate) fn toggle_land_sort(&mut self) {
+        self.wt_by_land = !self.wt_by_land;
+        self.resort();
+        let key = if self.wt_by_land { "wt.sort_land" } else { "wt.sort_listed" };
+        let text = self.tr(key).to_owned();
+        self.say(text);
+    }
+
+    /// `Enter` and a double click on the table's row: the branch's diff when
+    /// it is not approved yet, else the graph on it.
+    pub fn wt_enter(&mut self) {
+        let unapproved = self.wt_selected().is_some_and(|t| {
+            t.wt.branch.is_some()
+                && t.wt.branch != self.trees.trunk
+                && self.reviews.of(&t.wt.path).is_some_and(|r| r.stage != michi_core::queue::Stage::Approved)
+        });
+        if unapproved {
+            self.open_review();
+        } else {
+            self.wt_in_graph();
+        }
+    }
+
     /// The sides the worktree at `path` would conflict with, and how.
     pub fn clashes_in(&self, path: &Path) -> Vec<(&Side, &Outcome)> {
         let Some(i) = self.clashes.side_of(path) else { return Vec::new() };
@@ -1835,6 +1889,7 @@ impl App {
             'G' => self.wt_move(i32::MAX / 2),
             'm' => self.ask_merge(),
             'l' => self.ask_land(),
+            's' => self.toggle_land_sort(),
             'x' => self.ask_remove(),
             'O' => self.open_pr(),
             'I' => self.open_issue(),
@@ -2034,7 +2089,7 @@ impl App {
                 "PageUp" => self.wt_move(-10),
                 "Home" => self.wt_move(-n),
                 "End" => self.wt_move(n),
-                "Enter" => self.wt_in_graph(),
+                "Enter" => self.wt_enter(),
                 _ => return self.later(|token| token == name),
             }
             return true;

@@ -34,6 +34,7 @@ fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
         (GENERAL, "dates"),
         (GENERAL, "avatars"),
         (GENERAL, "easy"),
+        (GENERAL, "diff_side"),
         (GENERAL, "glossary"),
         (GENERAL, "level"),
         (GENERAL, "basic"),
@@ -143,6 +144,8 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     let mut avatars_new = None;
     let easy = prefs.easy;
     let mut easy_new = None;
+    let diff_side = prefs.diff_side;
+    let mut diff_side_new = None;
     let level = prefs.level;
     let mut level_new = None;
     let (common, themes, base) = (&prefs.common, &prefs.themes, prefs.base.as_deref());
@@ -210,6 +213,13 @@ pub fn show(ui: &mut Ui, app: &mut App) {
                 let mut on = easy;
                 if ui.checkbox(&mut on, tr("settings.easy_check")).changed() {
                     easy_new = Some(on);
+                }
+            });
+            section(ui, l, tr("settings.diff_side"), |ui| {
+                ui.label(egui::RichText::new(tr("settings.diff_side_lead")).color(l.c.dim));
+                let mut on = diff_side;
+                if ui.checkbox(&mut on, tr("settings.diff_side_check")).changed() {
+                    diff_side_new = Some(on);
                 }
             });
             section(ui, l, tr("settings.level"), |ui| {
@@ -315,6 +325,9 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     }
     if let Some(on) = easy_new {
         app.prefs.easy_set(on, no_folder);
+    }
+    if let Some(on) = diff_side_new {
+        app.prefs.diff_side_set(on, no_folder);
     }
     if let Some(v) = level_new {
         app.prefs.level_set(v, no_folder);

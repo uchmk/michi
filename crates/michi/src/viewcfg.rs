@@ -18,6 +18,7 @@ struct View {
     level: Option<String>,
     avatars: Option<toml::Value>,
     easy: Option<toml::Value>,
+    diff_side: Option<toml::Value>,
 }
 
 #[derive(Deserialize, Default)]
@@ -129,6 +130,18 @@ pub fn easy(text: Option<&str>) -> (bool, Vec<String>) {
             None => (false, vec!["config.toml: [view] easy is not true or false".to_owned()]),
         },
         _ => (false, Vec::new()),
+    }
+}
+
+/// `[view] diff_side` (true unless the file says `false`): the detail's diff
+/// side by side even before `Enter` widens it, with what to warn of.
+pub fn diff_side(text: Option<&str>) -> (bool, Vec<String>) {
+    match text.map(toml::from_str::<File>) {
+        Some(Ok(File { view: View { diff_side: Some(v), .. }, .. })) => match v.as_bool() {
+            Some(b) => (b, Vec::new()),
+            None => (true, vec!["config.toml: [view] diff_side is not true or false".to_owned()]),
+        },
+        _ => (true, Vec::new()),
     }
 }
 
@@ -387,6 +400,34 @@ density = \"cozy\"
             .0,
             Density::Cozy
         );
+    }
+
+    #[test]
+    fn diff_side_is_on_unless_the_file_says_false() {
+        assert_eq!(diff_side(None), (true, vec![]));
+        assert_eq!(
+            diff_side(Some(
+                "[view]
+diff_side = false
+"
+            )),
+            (false, vec![])
+        );
+        assert_eq!(
+            diff_side(Some(
+                "[view]
+diff_side = true
+"
+            )),
+            (true, vec![])
+        );
+        let (on, warn) = diff_side(Some(
+            "[view]
+diff_side = 3
+",
+        ));
+        assert!(on);
+        assert_eq!(warn.len(), 1);
     }
 
     #[test]

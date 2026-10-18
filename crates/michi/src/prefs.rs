@@ -84,6 +84,8 @@ pub struct Prefs {
     pub avatars: bool,
     /// `[view] easy` of config.toml: Git's terms in plain words (#104).
     pub easy: bool,
+    /// `[view] diff_side` of config.toml: the detail's diff side by side by default.
+    pub diff_side: bool,
     /// `[net] auto_fetch` of config.toml: how often to fetch by itself (#70).
     pub auto_fetch: michi_core::autofetch::Every,
     /// `[commit] co_author` of config.toml: the trailer added to michi's commits (#54).
@@ -138,6 +140,7 @@ impl Prefs {
             level: Default::default(),
             avatars: true,
             easy: false,
+            diff_side: true,
             auto_fetch: Default::default(),
             co_author: Default::default(),
             guard: Default::default(),
@@ -430,6 +433,9 @@ impl Prefs {
         let (on, warn) = crate::viewcfg::easy(text);
         self.easy = on;
         self.view_warn.extend(warn);
+        let (on, warn) = crate::viewcfg::diff_side(text);
+        self.diff_side = on;
+        self.view_warn.extend(warn);
         let (every, warn) = crate::viewcfg::auto_fetch(text);
         self.auto_fetch = every;
         self.view_warn.extend(warn);
@@ -452,6 +458,11 @@ impl Prefs {
     /// Write `[view] easy` into config.toml on a thread, then read it again.
     pub fn easy_set(&self, on: bool, no_folder: &str) {
         self.view_set(("easy", on.to_string()), no_folder);
+    }
+
+    /// Write `[view] diff_side` into config.toml on a thread, then read it again.
+    pub fn diff_side_set(&self, on: bool, no_folder: &str) {
+        self.view_set(("diff_side", on.to_string()), no_folder);
     }
 
     /// Write `[view] density` into config.toml on a thread, then read it again.

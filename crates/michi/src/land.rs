@@ -62,6 +62,10 @@ impl App {
         } else if !sessions.is_empty() {
             notes.push(self.tr("land.sessions").trim().to_owned());
         }
+        let unapproved = self.reviews.of(&wt).is_some_and(|r| r.stage != michi_core::queue::Stage::Approved);
+        if unapproved {
+            notes.push(self.tr("land.unapproved").trim().to_owned());
+        }
         if self.claude_working(&wt) {
             notes.push(self.tr("act.revert_claude").trim().to_owned());
         }
@@ -249,5 +253,58 @@ mod tests {
         let (text, _) = a.landed(&request(), Stage::CleanUp, &clash);
         assert!(text.contains("a.txt"), "{text}");
         assert!(a.view == crate::app::View::Conflict);
+    }
+
+    fn reviewed(a: &mut App, stage: michi_core::queue::Stage) {
+        use michi_core::queue::{Reviews, Row};
+        let rows = a.trees.trees.iter().map(|t| Row { path: t.wt.path.clone(), stage, checked: 0, total: 2 }).collect();
+        a.take(crate::repo::Answer::Reviews(Reviews { rows }));
+    }
+
+    #[test]
+    fn landing_an_unapproved_branch_warns_in_the_band() {
+        use michi_core::queue::Stage;
+        let mut a = on_table();
+        a.feed('j');
+        reviewed(&mut a, Stage::InReview);
+        a.feed('l');
+        let warn = a.tr("land.unapproved").trim().to_owned();
+        assert!(a.band.as_ref().unwrap().notes.contains(&warn));
+        a.band = None;
+        reviewed(&mut a, Stage::Approved);
+        a.feed('l');
+        assert!(!a.band.as_ref().unwrap().notes.contains(&warn));
+    }
+
+    #[test]
+    fn enter_opens_the_diff_of_an_unapproved_branch_and_the_graph_of_an_approved_one() {
+        use michi_core::queue::Stage;
+        let mut a = on_table();
+        a.feed('j');
+        reviewed(&mut a, Stage::Unreviewed);
+        a.wt_enter();
+        assert!(a.review.is_some(), "the branch diff");
+        a.close_review();
+        a.view = crate::app::View::Worktree;
+        reviewed(&mut a, Stage::Approved);
+        a.wt_enter();
+        assert!(a.review.is_none());
+        assert_eq!(a.view, crate::app::View::Graph);
+    }
+
+    #[test]
+    fn s_sorts_the_table_by_landing_order_and_back() {
+        let mut a = on_table();
+        let listed: Vec<_> = a.trees.trees.iter().map(|t| t.wt.path.clone()).collect();
+        assert!(a.feed('s'));
+        assert!(a.wt_by_land);
+        let mut sorted: Vec<_> = a.trees.trees.iter().map(|t| t.wt.path.clone()).collect();
+        sorted.sort();
+        let mut want = listed.clone();
+        want.sort();
+        assert_eq!(sorted, want, "the same worktrees");
+        assert!(a.feed('s'));
+        let back: Vec<_> = a.trees.trees.iter().map(|t| t.wt.path.clone()).collect();
+        assert_eq!(back, listed);
     }
 }
