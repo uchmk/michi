@@ -24,6 +24,127 @@ A row is added with the change that makes the key, and unticked again when the k
 | K2.1 | `Ctrl+Enter` | The question goes ahead (not for a band that asks for a typed name) | [ ] |
 | K2.2 | `y` / `n` / `Esc` | Go ahead / not now / not now | [ ] |
 
+## Every screen (as the key list shows them)
+
+| # | Key | Expect (the key bar's words) | Checked |
+| --- | --- | --- | --- |
+| K3.1 | `1 2 3 4` | Switch the view | [ ] |
+| K3.2 | `N` | New work (worktree + Claude) | [ ] |
+| K3.3 | `W` | Go to the waiting Claude: its diff and question, and answer it | [ ] |
+| K3.4 | `f` | Fetch | [ ] |
+| K3.5 | `p` | Pull | [ ] |
+| K3.6 | `P` | Push | [ ] |
+| K3.7 | `F` | Push over the remote's commits (asks first) | [ ] |
+| K3.8 | `S` | Sync: pull (fast-forward only), then push | [ ] |
+| K3.9 | `K` | Sign-in help | [ ] |
+
+## Graph screen (today's keys, before the redesign)
+
+| # | Key | Expect (the key bar's words) | Checked |
+| --- | --- | --- | --- |
+| K4.1 | `j k` | Move | [ ] |
+| K4.2 | `Enter` | Side by side | [ ] |
+| K4.3 | `/` | Filter | [ ] |
+| K4.4 | `z` | Fold the lane PRs | [ ] |
+| K4.5 | `o` | Go to the tab | [ ] |
+| K4.6 | `l h` | Open or fold a merge | [ ] |
+| K4.7 | `b` | Make or switch a branch | [ ] |
+| K4.8 | `t` | Revert the commit (asks first) | [ ] |
+| K4.9 | `R` | Reset the branch to the commit: soft, mixed or hard (asks first) | [ ] |
+| K4.10 | `C` | Cherry-pick the commit (asks first) | [ ] |
+| K4.11 | `m` | Merge the commit into this worktree (asks first) | [ ] |
+| K4.12 | `D` | Compare the commit marked with Ctrl+click and the selected one | [ ] |
+| K4.13 | `T` | Tag the commit | [ ] |
+| K4.14 | `s` | Stash | [ ] |
+| K4.15 | `M` | Remotes | [ ] |
+| K4.16 | `L` | Reflog | [ ] |
+| K4.17 | `Z` | Statistics | [ ] |
+| K4.18 | `B` | Blame the file | [ ] |
+| K4.19 | `H` | History of the file | [ ] |
+| K4.20 | `Y` | Copy as a patch | [ ] |
+| K4.21 | `#` | Copy the commit hash | [ ] |
+| K4.22 | `[ ]` | Go to the parent / the merged-in commit | [ ] |
+| K4.23 | `U` | Gitflow | [ ] |
+| K4.24 | `I` | Open the issue | [ ] |
+| K4.25 | `Ctrl+V` | Paste a patch to apply it | [ ] |
+| K4.26 | `w` | Ignore whitespace in diffs | [ ] |
+| K4.27 | `x y` | Bisect: mark the commit bad / good | [ ] |
+| K4.28 | `u` | Bisect: skip the commit to test | [ ] |
+| K4.29 | `r` | Copy a git bisect run line | [ ] |
+| K4.30 | `X` | End the bisect / drop the marks | [ ] |
+| K4.31 | `O` | Image diff: side by side, swipe, onion, difference | [ ] |
+| K4.32 | `Esc` | Back | [ ] |
+
+## Changes screen (today's keys, before the redesign)
+
+| # | Key | Expect (the key bar's words) | Checked |
+| --- | --- | --- | --- |
+| K5.1 | `Space` | Stage | [ ] |
+| K5.2 | `c` | Commit | [ ] |
+| K5.3 | `l h` | Pick lines, back to the files | [ ] |
+| K5.4 | `a` | Stage all (on the lines: the hunk) | [ ] |
+| K5.5 | `j k` | Select | [ ] |
+| K5.6 | `v` | A range of lines | [ ] |
+| K5.7 | `s` | Split the hunks into their runs of changes, or join them back | [ ] |
+| K5.8 | `n N` | Jump to the next or previous change in the diff | [ ] |
+| K5.9 | `d` | Throw the changes away (asks first) | [ ] |
+| K5.10 | `i` | Add the untracked file to .gitignore | [ ] |
+| K5.11 | `w` | Ignore whitespace in diffs | [ ] |
+| K5.12 | `O` | Image diff: side by side, swipe, onion, difference | [ ] |
+| K5.13 | `A` | Amend the last commit | [ ] |
+| K5.14 | `B` | Blame the file | [ ] |
+| K5.15 | `H` | History of the file | [ ] |
+| K5.16 | `e` | Open the file in the editor at this line | [ ] |
+| K5.17 | `x` | Open the file's diff in the external diff tool | [ ] |
+| K5.18 | `[ ]` | Another worktree | [ ] |
+| K5.19 | `Enter` | Side by side | [ ] |
+| K5.20 | `Esc` | Back | [ ] |
+
+## Worktree screen (today's keys, before the redesign)
+
+| # | Key | Expect (the key bar's words) | Checked |
+| --- | --- | --- | --- |
+| K6.1 | `j k` | Select | [ ] |
+| K6.2 | `o` | Go to the tab | [ ] |
+| K6.3 | `O` | Open the PR | [ ] |
+| K6.4 | `I` | Open the issue | [ ] |
+| K6.5 | `Q` | Create a PR (gh) | [ ] |
+| K6.6 | `t e E` | Open the folder in the terminal, editor, file manager | [ ] |
+| K6.7 | `r` | Rebase: reorder, fold, reword, drop | [ ] |
+| K6.8 | `M` | Rebase the branch onto main (asks first) | [ ] |
+| K6.9 | `Enter` | Show in the graph | [ ] |
+| K6.10 | `m` | Take in main | [ ] |
+| K6.11 | `l` | Land on main: take in, check, fast-forward, clean up | [ ] |
+| K6.12 | `x` | Remove | [ ] |
+| K6.13 | `d` | Diff of the whole branch | [ ] |
+| K6.14 | `c` | Clean up | [ ] |
+| K6.15 | `T` | Trial merge | [ ] |
+| K6.16 | `L` | Reflog | [ ] |
+| K6.17 | `Z` | Statistics | [ ] |
+| K6.18 | `y` | Diff per Claude turn | [ ] |
+| K6.19 | `u` | Submodules: state and update | [ ] |
+| K6.20 | `v` | Move changes | [ ] |
+| K6.21 | `U` | Gitflow | [ ] |
+| K6.22 | `R` | Check before merging | [ ] |
+
+## Conflict screen (today's keys, before the redesign)
+
+| # | Key | Expect (the key bar's words) | Checked |
+| --- | --- | --- | --- |
+| K7.1 | `] [` | Next / previous place | [ ] |
+| K7.2 | `o` | Take ours | [ ] |
+| K7.3 | `t` | Take theirs | [ ] |
+| K7.4 | `b B` | Take both (ours first / theirs first) | [ ] |
+| K7.5 | `Enter` | Accept the form rerere applied | [ ] |
+| K7.6 | `e` | Write the result by hand | [ ] |
+| K7.7 | `g` | Hand the clashes to a Claude | [ ] |
+| K7.8 | `d a r` | After a hand-over: look at the diff, adopt, send back | [ ] |
+| K7.9 | `w` | Open the file in an external tool | [ ] |
+| K7.10 | `E` | Open the file in the editor at the block's line | [ ] |
+| K7.11 | `x` | Forget the form rerere applied; solve it again | [ ] |
+| K7.12 | `Ctrl+Enter` | Commit once all is solved | [ ] |
+| K7.13 | `PageDown PageUp Ctrl+D Ctrl+U Alt+J Alt+K` | Scroll the diff | [ ] |
+
 ## To be filled as the redesign lands (issue #133)
 
 - `g` popup: `g r` reset, `g d` discard, `g f` force push, `g x` remove worktree, `g a` amend, `g c` tidy, `g l` land, `g m` rebase on main, `g v` move changes, `g b` bisect, `g h` hand to Claude, `g ?` sheet, `g u` unstage, `g g` top.
