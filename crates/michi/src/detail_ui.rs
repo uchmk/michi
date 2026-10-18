@@ -274,6 +274,10 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
                     p.rect_filled(rr, 0.0, c.panel);
                     ctx.set_cursor_icon(CursorIcon::PointingHand);
                 }
+                if app.pane == crate::panes::GraphPane::Detail && f == app.detail.cur {
+                    p.rect_filled(rr, 0.0, c.blue.gamma_multiply(0.28));
+                    p.rect_filled(Rect::from_min_size(rr.min, vec2(3.0, rr.height())), 0.0, c.blue);
+                }
                 file_row(ui, &p, app, &d.files[f], rr, max_count);
                 if click("file") {
                     act = Some(Act::Scroll(f));

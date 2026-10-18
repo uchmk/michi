@@ -212,6 +212,8 @@ impl App {
             (GraphPane::Detail, 'j') => self.detail.lines += 1,
             (GraphPane::Detail, 'k') => self.detail.lines -= 1,
             (GraphPane::Detail, 'G') => self.detail.to_end = true,
+            (GraphPane::Detail, 'n') => self.detail.move_file(1),
+            (GraphPane::Detail, 'N') => self.detail.move_file(-1),
             _ => return false,
         }
         true
@@ -367,7 +369,22 @@ mod tests {
         a.pane = GraphPane::Detail;
         assert!(a.feed('j'));
         assert_eq!(a.detail.lines, 1);
+        // Enter in the pane goes to the file the keys are on; in the tree it widens.
+        assert!(a.named("Enter"));
+        assert_eq!(a.detail.scroll_to, Some(0));
+        assert!(!a.detail.wide);
+        a.pane = GraphPane::Tree;
         assert!(a.named("Enter"));
         assert!(a.detail.wide);
+    }
+
+    #[test]
+    fn n_and_shift_n_move_the_file_cursor_and_stay_in_range() {
+        let mut a = app();
+        a.pane = GraphPane::Detail;
+        a.feed('n');
+        assert_eq!(a.detail.cur, 0, "no detail is loaded, so there is no second file");
+        a.feed('N');
+        assert_eq!(a.detail.cur, 0);
     }
 }

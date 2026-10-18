@@ -164,6 +164,8 @@ pub struct Pane {
     pub unified: bool,
     /// The file whose diff to scroll to.
     pub scroll_to: Option<usize>,
+    /// The file the keys are on in the file list (`n` `N`, then `Enter`).
+    pub cur: usize,
     /// The detail is of another commit now: back to its top.
     pub to_top: bool,
     /// The keys asked to scroll the wide detail: lines, pages, and to the end.
@@ -188,8 +190,18 @@ impl Pane {
         self.got = None;
         self.rows.clear();
         self.scroll_to = None;
+        self.cur = 0;
         self.to_top = true;
         true
+    }
+
+    /// `n` (`by` 1) or `N` (-1): the next or the previous file of the list.
+    pub fn move_file(&mut self, by: i32) {
+        let n = match self.got() {
+            Some(Ok(d)) => d.files.len(),
+            _ => 0,
+        };
+        self.cur = (self.cur as i64 + by as i64).clamp(0, n.saturating_sub(1) as i64) as usize;
     }
 
     /// The selection is now `id`, the same thing read anew (a worktree's

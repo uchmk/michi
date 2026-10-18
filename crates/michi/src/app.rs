@@ -81,6 +81,7 @@ impl View {
             View::Graph => &[
                 ("j k", "key.move"),
                 ("Tab", "key.panes"),
+                ("n N", "key.files"),
                 ("Enter", "key.side"),
                 ("/", "key.filter"),
                 ("?", "key.deep"),
@@ -2076,6 +2077,8 @@ impl App {
                     "PageUp" => d.pages -= 1,
                     "Home" => d.to_top = true,
                     "End" => d.to_end = true,
+                    // In the pane itself Enter goes to the file the keys are on.
+                    "Enter" if self.pane == crate::panes::GraphPane::Detail => d.scroll_to = Some(d.cur),
                     "Enter" => d.wide = !d.wide,
                     _ => return self.later(|token| token == name),
                 }
@@ -2471,7 +2474,8 @@ pub(crate) mod tests {
                 shadows.extend(michi_core::keyhelp::tokens(k).filter(|t| global.contains(t)).map(|t| (*name, t)));
             }
         }
-        assert_eq!(shadows, [("view.changes", "N")], "a view shadows a global key");
+        // Graph: `N` is the previous file while the detail has the keys.
+        assert_eq!(shadows, [("view.graph", "N"), ("view.changes", "N")], "a view shadows a global key");
         assert!(collisions(&screens).contains_key("t"));
     }
 
