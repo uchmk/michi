@@ -160,8 +160,10 @@ pub struct Pane {
     merged: Option<(Oid, usize, Vec<Oid>)>,
     /// The diff side by side, the graph narrowed (`Enter`).
     pub wide: bool,
-    /// The diff in one column even when not widened (side by side is the default).
+    /// The diff in one column by default (the setting); side by side otherwise.
     pub unified: bool,
+    /// `Enter` in the detail: the other way than the default.
+    pub flip: bool,
     /// The file whose diff to scroll to.
     pub scroll_to: Option<usize>,
     /// The file the keys are on in the file list (`n` `N`, then `Enter`).
@@ -175,9 +177,9 @@ pub struct Pane {
 }
 
 impl Pane {
-    /// Whether the diff is drawn side by side: widened, or by default.
+    /// Whether the diff is drawn side by side: the default, or flipped.
     pub fn paired(&self) -> bool {
-        self.wide == self.unified
+        self.unified == self.flip
     }
 
     /// The selection is now `id`: whether that is a change (and so the
@@ -443,10 +445,10 @@ mod tests {
 fn the_diff_is_side_by_side_by_default() {
     let mut p = Pane::default();
     assert!(p.paired(), "side by side before Enter");
-    p.wide = true;
-    assert!(!p.paired(), "Enter turns the default off");
+    p.flip = true;
+    assert!(!p.paired(), "Enter in the detail turns the default off");
     p.unified = true;
     assert!(p.paired(), "with the default off, Enter turns side by side on");
-    p.wide = false;
+    p.flip = false;
     assert!(!p.paired());
 }

@@ -395,9 +395,9 @@ mod tests {
         a.pane = GraphPane::Detail;
         assert!(a.feed('j'));
         assert_eq!(a.detail.lines, 1);
-        // Enter in the pane goes to the file the keys are on; in the tree it widens.
+        // Enter in the pane flips side by side; in the tree it widens.
         assert!(a.named("Enter"));
-        assert_eq!(a.detail.scroll_to, Some(0));
+        assert!(a.detail.flip);
         assert!(!a.detail.wide);
         a.pane = GraphPane::Tree;
         assert!(a.named("Enter"));

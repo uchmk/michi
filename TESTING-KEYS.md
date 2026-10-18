@@ -226,6 +226,7 @@ A row is added with the change that makes the key, and unticked again when the k
 | K17.1 | Graph, Tab to the detail, `n` `N` | The blue bar moves down and up the file list | [ ] |
 | K17.2 | Graph detail, `Enter` | The diff scrolls to the file the bar is on | [ ] |
 | K18.1 | Graph tree, `Enter` | The blue frame moves to the detail | [ ] |
+| K18.1b | Graph detail, `Enter` then `Esc` | `Enter` flips side by side/one column (width unchanged); `Esc` restores width and puts the keys on the list; `j`/`k` and arrows move the same pane | [ ] |
 | K18.2 | Graph detail, `[` `]` | The diff jumps to the previous and next file; the list does not move | [ ] |
 | K18.3 | Changes and review screens | The diff is side by side from the start | [ ] |
 

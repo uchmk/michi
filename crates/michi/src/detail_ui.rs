@@ -70,7 +70,7 @@ enum Block {
 enum Act {
     Go(Oid),
     Scroll(usize),
-    Wide(bool),
+    Flip,
     /// Go to the tsumugi tab of this session.
     Claude(u64),
     /// Open this issue's page in the browser.
@@ -336,7 +336,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     match a {
         Act::Go(id) => app.go_to(id),
         Act::Scroll(f) => app.detail.scroll_to = Some(f),
-        Act::Wide(w) => app.detail.wide = w,
+        Act::Flip => app.detail.flip = !app.detail.flip,
         Act::Claude(session) => app.act(crate::act::Task::Focus { session }),
         Act::Issue(url) => {
             std::thread::spawn(move || {
@@ -732,8 +732,7 @@ fn title(ui: &Ui, p: &Painter, app: &App, f: &File, rr: Rect, first: bool, live:
     let mut end = rr.right() - X;
     let mut out = None;
     if first {
-        let wide = app.detail.wide;
-        let (word, key) = (if app.detail.paired() { "detail.narrow" } else { "detail.wide" }, if wide { "Esc" } else { "Enter" });
+        let (word, key) = (if app.detail.paired() { "detail.narrow" } else { "detail.wide" }, "Enter");
         let cap = kbd(ui, p, pos2(end, mid), key);
         let w = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, app.tr(word), FontId::proportional(12.0), c.dim);
         let hit = w.union(cap).expand(3.0);
@@ -742,7 +741,7 @@ fn title(ui: &Ui, p: &Painter, app: &App, f: &File, rr: Rect, first: bool, live:
             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
         }
         if live && resp.clicked() {
-            out = Some(Act::Wide(!wide));
+            out = Some(Act::Flip);
         }
         end = hit.left() - 10.0;
     }

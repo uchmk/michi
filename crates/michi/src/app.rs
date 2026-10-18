@@ -2082,8 +2082,8 @@ impl App {
         }
         if self.view == View::Graph {
             let g = &mut self.graph;
-            if self.detail.wide || self.pane == crate::panes::GraphPane::Detail {
-                // The wide detail has the keys: they scroll it, not the graph.
+            if self.pane == crate::panes::GraphPane::Detail {
+                // The detail has the keys: they scroll it, not the graph.
                 let d = &mut self.detail;
                 match name {
                     "ArrowDown" => d.lines += 1,
@@ -2092,9 +2092,8 @@ impl App {
                     "PageUp" => d.pages -= 1,
                     "Home" => d.to_top = true,
                     "End" => d.to_end = true,
-                    // In the pane itself Enter goes to the file the keys are on.
-                    "Enter" if self.pane == crate::panes::GraphPane::Detail => d.scroll_to = Some(d.cur),
-                    "Enter" => self.toggle_wide(),
+                    // Enter in the detail: side by side or one column.
+                    "Enter" => d.flip = !d.flip,
                     _ => return self.later(|token| token == name),
                 }
                 return true;
@@ -2218,12 +2217,11 @@ impl App {
             self.side_stash = None;
             return true;
         }
-        if self.view == View::Graph && self.pane != crate::panes::GraphPane::Tree {
+        if self.view == View::Graph && (self.pane != crate::panes::GraphPane::Tree || self.detail.wide) {
+            // The keys and the width both come back to the three panes.
             self.pane = crate::panes::GraphPane::Tree;
-            return true;
-        }
-        if self.view == View::Graph && self.detail.wide {
             self.detail.wide = false;
+            self.detail.flip = false;
             return true;
         }
         if self.view == View::Graph && !self.graph.filter().is_empty() {
@@ -2820,11 +2818,11 @@ pub(crate) mod tests {
         assert!(a.named("Enter"));
         assert!(a.detail.wide);
         assert_eq!(a.pane, crate::panes::GraphPane::Detail);
+        assert!(a.named("Enter"));
+        assert!(a.detail.flip, "Enter in the detail flips side by side");
         assert!(a.escape());
-        assert_eq!(a.pane, crate::panes::GraphPane::Tree, "the keys come back to the tree first");
-        assert!(a.detail.wide);
-        assert!(a.escape());
-        assert!(!a.detail.wide);
+        assert_eq!(a.pane, crate::panes::GraphPane::Tree, "the keys come back to the tree");
+        assert!(!a.detail.wide && !a.detail.flip);
         assert_eq!(a.graph.filter(), "f", "the filter goes on the next Escape");
         assert!(a.escape());
         assert_eq!(a.graph.filter(), "");
@@ -3002,6 +3000,7 @@ pub(crate) mod tests {
         let mut a = read();
         a.view = View::Graph;
         a.detail.wide = true;
+        a.pane = crate::panes::GraphPane::Detail;
         let before = a.graph.selected();
         assert!(a.named("ArrowDown"));
         assert!(a.named("PageDown"));
