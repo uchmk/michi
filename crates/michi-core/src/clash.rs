@@ -113,7 +113,7 @@ impl Clashes {
 
     /// The side of the worktree at `path`.
     pub fn side_of(&self, path: &Path) -> Option<usize> {
-        self.sides.iter().position(|s| s.path.as_deref() == Some(path))
+        self.sides.iter().position(|s| s.path.as_deref().is_some_and(|p| crate::paths::same_path(p, path)))
     }
 }
 
@@ -289,6 +289,18 @@ mod tests {
         let gone = Clashes { sides: ["a", "c"].map(side).to_vec(), pairs: vec![Outcome::Clean], branches: vec![] };
         assert!(gone.resolved_since(&old).len() == 1 && gone.resolved_since(&old)[0] == pair("a", "c"));
         assert!(old.resolved_since(&old).is_empty());
+    }
+
+    #[test]
+    fn a_side_is_found_by_its_path_however_it_is_spelled() {
+        let mut s = side("a");
+        s.path = Some(PathBuf::from("/r/a"));
+        let c = Clashes { sides: vec![s], ..Default::default() };
+        assert_eq!(c.side_of(Path::new("/r/a/")), Some(0));
+        assert_eq!(c.side_of(Path::new("/r/ab")), None);
+        if cfg!(windows) {
+            assert_eq!(c.side_of(Path::new(r"\r\A")), Some(0));
+        }
     }
 
     #[test]

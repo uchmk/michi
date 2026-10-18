@@ -113,11 +113,17 @@ pub fn scheme_of(url: &str) -> Scheme {
         Scheme::None
     } else if url.starts_with("https://") || url.starts_with("http://") {
         Scheme::Https
-    } else if url.starts_with("ssh://") || (!url.contains("://") && url.contains('@') && url.contains(':')) {
+    } else if url.starts_with("ssh://") || (!is_drive_path(url) && !url.contains("://") && url.contains('@') && url.contains(':')) {
         Scheme::Ssh
     } else {
         Scheme::Other
     }
+}
+
+/// `C:\x` or `C:/x`: a Windows path, which may hold an `@` and is no scp address.
+fn is_drive_path(s: &str) -> bool {
+    let b = s.as_bytes();
+    b.len() >= 3 && b[0].is_ascii_alphabetic() && b[1] == b':' && (b[2] == b'\\' || b[2] == b'/')
 }
 
 /// What the ssh agent holds, as `ssh-add -l` tells.
@@ -147,8 +153,15 @@ pub struct Facts {
 
 impl Facts {
     /// The host to name in a command: the remote's, else GitHub's.
+    ///
+    /// The fixes are lines for the user to paste into a shell, so a host
+    /// with anything but a host name's characters in it (a remote address
+    /// is whatever a repository's config says) is not used.
     pub fn host_or_default(&self) -> &str {
-        self.host.as_deref().unwrap_or("github.com")
+        self.host
+            .as_deref()
+            .filter(|h| !h.starts_with('-') && h.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_')))
+            .unwrap_or("github.com")
     }
 }
 
@@ -396,6 +409,11 @@ mod tests {
         assert_eq!(scheme_of("git://host/a"), Scheme::Other);
         assert_eq!(scheme_of("C:\\dev\\x"), Scheme::Other);
         assert_eq!(scheme_of(""), Scheme::None);
+        assert_eq!(scheme_of("C:\\dev\\a@b"), Scheme::Other);
+        let facts = |host: &str| Facts { remote: None, scheme: Scheme::Ssh, host: Some(host.into()), helper: None, agent: Agent::Missing };
+        assert_eq!(facts("git.example.com").host_or_default(), "git.example.com");
+        assert_eq!(facts("h; rm -rf ~").host_or_default(), "github.com");
+        assert_eq!(facts("-oProxyCommand=x").host_or_default(), "github.com");
         assert_eq!(bare_host("ssh://git@Example.com"), Some("example.com".into()));
     }
 
