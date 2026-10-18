@@ -84,13 +84,13 @@ impl Topic {
     /// The short name on the tab.
     pub fn name(self) -> T {
         match self {
-            Topic::Basics => t("Basics", "基本操作"),
-            Topic::Conflict => t("Conflict", "コンフリクト"),
-            Topic::Undo => t("Undo", "戻し"),
-            Topic::Reset => t("Discard (reset)", "破棄（reset）"),
-            Topic::RestoreSwitch => t("Files & branches (restore/switch)", "ファイルとブランチ（restore・switch）"),
-            Topic::Place => t("Parallel work (branch/stash/worktree)", "並行作業（branch・stash・worktree）"),
-            Topic::Rescue => t("Memory (rerere/reflog)", "記憶（rerere・reflog）"),
+            Topic::Basics => t("Getting Started", "基本操作"),
+            Topic::Conflict => t("Resolving Conflicts", "コンフリクト解決"),
+            Topic::Undo => t("Undoing Changes", "変更の取り消し"),
+            Topic::Reset => t("Reset & Discard", "リセットと破棄"),
+            Topic::RestoreSwitch => t("Files & Branches", "ファイルとブランチ"),
+            Topic::Place => t("Parallel Work", "並行作業"),
+            Topic::Rescue => t("Troubleshooting", "トラブルシューティング"),
         }
     }
 

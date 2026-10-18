@@ -299,8 +299,10 @@ fn table(ui: &mut egui::Ui, flow: &Flow, lang: &str) {
 }
 
 /// A table cell of a fixed width, so a long text wraps in its own column.
+/// The height offered is large: a `horizontal_top` row only offers one line,
+/// which clipped the text and the scroll areas to the first row.
 fn cell_of(ui: &mut egui::Ui, w: f32, add: impl FnOnce(&mut egui::Ui)) {
-    ui.allocate_ui_with_layout(vec2(w, 0.0), egui::Layout::top_down(egui::Align::Min), |ui| {
+    ui.allocate_ui_with_layout(vec2(w, 100_000.0), egui::Layout::top_down(egui::Align::Min), |ui| {
         ui.set_width(w);
         add(ui);
     });
