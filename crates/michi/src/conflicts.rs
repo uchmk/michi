@@ -114,6 +114,10 @@ pub struct Conflicts {
     pub follow: bool,
     /// Pages to scroll by on the next frame (PageDown: +1).
     pub pages: i32,
+    /// Tab: the keys go to the places' column, which they scroll by rows (`nudge`).
+    pub body_focus: bool,
+    /// Rows to scroll the column by on the next frame.
+    pub nudge: i32,
     /// Whether the message had the keys on the last frame.
     pub typing: bool,
     /// Give the message the keys on the next frame.

@@ -120,6 +120,7 @@ impl View {
                 ("Space", "key.stage"),
                 ("c", "key.commit"),
                 ("l h", "key.lines"),
+                ("Tab", "key.pane_list"),
                 ("a", "key.stage_all"),
                 ("j k", "key.select"),
                 ("v", "key.range"),
@@ -167,6 +168,7 @@ impl View {
             ],
             View::Conflict => &[
                 ("] [", "key.place"),
+                ("Tab", "key.pane_list"),
                 ("o", "key.ours"),
                 ("t", "key.theirs"),
                 ("b B", "key.both"),
@@ -198,8 +200,9 @@ pub const GLOBAL_KEYS: [(&str, &str); 9] = [
 ];
 
 /// The keys of the branch review, drawn over the worktree table.
-pub const REVIEW_KEYS: [(&str, &str); 12] = [
+pub const REVIEW_KEYS: [(&str, &str); 13] = [
     ("j k", "key.file"),
+    ("Tab", "key.pane_list"),
     ("J K", "key.line"),
     ("n", "key.note"),
     ("g", "key.hand_notes"),
@@ -1794,6 +1797,7 @@ impl App {
                 }
                 None if self.view == View::Graph && self.pane_key(c) => {}
                 None if self.view == View::Graph && self.graph_key(c) => {}
+                None if self.body_scroll(&c.to_string()) => {}
                 None if self.view == View::Worktree && self.review.is_some() && self.review_key(c) => {}
                 None if self.view == View::Worktree && self.review.is_none() && self.wt_key(c) => {}
                 None if self.view == View::Changes && self.changes_key(c) => {}
@@ -2037,7 +2041,7 @@ impl App {
         if self.reorder.is_some() {
             return self.reorder_named(name);
         }
-        if self.view == View::Graph && self.pane_named(name) {
+        if self.pane_named(name) || self.body_scroll(name) {
             return true;
         }
         if self.view == View::Graph {
@@ -2210,6 +2214,9 @@ impl App {
         }
         if self.view == View::Conflict && self.conflicts.abort {
             self.conflicts.abort = false;
+            return true;
+        }
+        if self.view_pane_back() {
             return true;
         }
         if self.view == View::Worktree {

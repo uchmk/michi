@@ -25,6 +25,8 @@ use crate::intro_ui;
 use crate::ui::kbd;
 use michi_core::guide::{Topic, CONFLICT_CARDS};
 
+/// How far a row of scrolling by key goes.
+const ROW_NUDGE: f32 = 48.0;
 const BAR_H: f32 = 40.0;
 const ABORT_H: f32 = 34.0;
 const SIDE_W: f32 = 240.0;
@@ -111,6 +113,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let p = ui.painter_at(r);
     p.rect_filled(r, 0.0, c.bg);
     let pages = std::mem::take(&mut app.conflicts.pages);
+    let nudge = std::mem::take(&mut app.conflicts.nudge);
     let follow = std::mem::take(&mut app.conflicts.follow);
     let Some(cf) = app.conflicts.shown() else {
         app.conflicts.typing = false;
@@ -161,7 +164,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         top += GUIDE_LINK_H;
     }
     let body = Rect::from_min_max(pos2(mr.left(), top), mr.max);
-    let (a, field) = d.body(body, pages, follow);
+    let (a, field) = d.body(body, pages, nudge, follow);
     let written = d.field.take();
     if a.is_some() {
         act = a;
@@ -837,7 +840,7 @@ impl Draw<'_> {
 
     /// The places' column: what to click, and where the message's field
     /// is (with what of it is in sight).
-    fn body(&self, br: Rect, pages: i32, follow: bool) -> (Option<Act>, Option<(Rect, Rect)>) {
+    fn body(&self, br: Rect, pages: i32, nudge: i32, follow: bool) -> (Option<Act>, Option<(Rect, Rect)>) {
         let ui = self.ui;
         let ctx = ui.ctx();
         let width = br.width() - 2.0 * PAD_X;
@@ -857,7 +860,7 @@ impl Draw<'_> {
                 scroll = (it.y - 70.0).max(0.0);
             }
         }
-        scroll += pages as f32 * (h - 40.0).max(40.0);
+        scroll += pages as f32 * (h - 40.0).max(40.0) + nudge as f32 * ROW_NUDGE;
         if self.live && ui.rect_contains_pointer(br) {
             scroll -= ui.input(|i| i.smooth_scroll_delta.y);
         }

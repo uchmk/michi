@@ -92,6 +92,10 @@ pub struct Review {
     pub wide: bool,
     /// Pages to scroll the diff by, for the frame to take: down is more.
     pub pages: i32,
+    /// Tab: the keys go to the diff, which they scroll by rows (`nudge`).
+    pub body_focus: bool,
+    /// Rows to scroll the diff by on the next frame.
+    pub nudge: i32,
     /// The diff goes back to its top: another file is selected.
     pub to_top: bool,
     /// The line of the selected file's diff the notes are about (`J` `K`).
@@ -128,6 +132,8 @@ impl Review {
             checks: BTreeSet::new(),
             wide: false,
             pages: 0,
+            body_focus: false,
+            nudge: 0,
             to_top: false,
             line: None,
             follow: false,

@@ -18,8 +18,24 @@ pub enum GraphPane {
 impl App {
     /// Whether Tab moves the panes now: the graph view, with nothing laid over it.
     pub(crate) fn panes_ready(&self) -> bool {
-        self.view == crate::app::View::Graph
-            && self.mode == Mode::Main
+        self.view == crate::app::View::Graph && self.overlay_free()
+    }
+
+    /// Whether Tab moves the keys between the panes of the screen in front:
+    /// the graph's, the changes' files and lines, the conflict's places, the
+    /// branch review's files and diff.
+    pub(crate) fn tab_ready(&self) -> bool {
+        use crate::app::View;
+        let has_panes = match self.view {
+            View::Graph | View::Changes | View::Conflict => true,
+            View::Worktree => self.review.is_some(),
+        };
+        has_panes && self.overlay_free()
+    }
+
+    /// Nothing is laid over the screen.
+    fn overlay_free(&self) -> bool {
+        self.mode == Mode::Main
             && !matches!(self.repo, Repo::Failed(_))
             && self.picker.is_none()
             && self.new_work.is_none()
@@ -38,6 +54,77 @@ impl App {
             && self.cheat.is_none()
             && !self.legend
             && !self.guide_open
+    }
+
+    /// Tab (`back`: Shift+Tab) on the changes, the conflict or the review:
+    /// the keys go between the list and what it shows.
+    fn view_tab(&mut self) -> bool {
+        use crate::app::View;
+        let word = match self.view {
+            View::Changes => {
+                if self.changes.focus == crate::changes::Focus::Lines {
+                    self.changes.leave_lines();
+                    "pane.files"
+                } else if let Err(why) = self.changes.enter_lines() {
+                    let text = self.tr(why);
+                    self.say(text);
+                    return true;
+                } else {
+                    "pane.lines"
+                }
+            }
+            View::Conflict => {
+                let cf = &mut self.conflicts;
+                cf.body_focus = !cf.body_focus;
+                if cf.body_focus {
+                    "pane.cf_body"
+                } else {
+                    "pane.cf_places"
+                }
+            }
+            View::Worktree => {
+                let Some(r) = self.review.as_mut() else { return false };
+                r.body_focus = !r.body_focus;
+                if r.body_focus {
+                    "pane.diff"
+                } else {
+                    "pane.files"
+                }
+            }
+            View::Graph => return false,
+        };
+        let said = self.tr("pane.now").replace("{pane}", self.tr(word));
+        self.say(said);
+        true
+    }
+
+    /// Esc: the keys come back to the list. False when they were there.
+    pub(crate) fn view_pane_back(&mut self) -> bool {
+        use crate::app::View;
+        match self.view {
+            View::Conflict => std::mem::take(&mut self.conflicts.body_focus),
+            View::Worktree => self.review.as_mut().is_some_and(|r| std::mem::take(&mut r.body_focus)),
+            _ => false,
+        }
+    }
+
+    /// Arrow keys and j/k with the keys on the conflict's or the review's
+    /// body: they scroll it by rows.
+    pub(crate) fn body_scroll(&mut self, name: &str) -> bool {
+        let by = match name {
+            "ArrowDown" | "j" => 1,
+            "ArrowUp" | "k" => -1,
+            _ => return false,
+        };
+        match self.view {
+            crate::app::View::Conflict if self.conflicts.body_focus => self.conflicts.nudge += by,
+            crate::app::View::Worktree => match self.review.as_mut() {
+                Some(r) if r.body_focus => r.nudge += by,
+                _ => return false,
+            },
+            _ => return false,
+        }
+        true
     }
 
     /// The panes Tab goes through: the side column is hidden beside a wide diff.
@@ -133,6 +220,9 @@ impl App {
     /// A named key with the keys in a pane: Tab, and the side column's own.
     /// The detail pane's scrolling is the wide detail's, in `named`.
     pub(crate) fn pane_named(&mut self, name: &str) -> bool {
+        if self.tab_ready() && self.view != crate::app::View::Graph && matches!(name, "Tab" | "Shift+Tab") {
+            return self.view_tab();
+        }
         if !self.panes_ready() {
             return false;
         }
@@ -178,6 +268,49 @@ mod tests {
         assert_eq!(a.pane, GraphPane::Detail);
         assert!(a.escape());
         assert_eq!(a.pane, GraphPane::Tree);
+    }
+
+    #[test]
+    fn tab_on_the_review_moves_the_keys_to_the_diff_and_esc_brings_them_back() {
+        use crate::app::View;
+        let mut a = crate::app::tests::read();
+        a.view = View::Worktree;
+        assert!(!a.tab_ready(), "the table has one pane");
+        a.review = Some(crate::review::Review::new("C:/r/wt".into(), "lane".into()));
+        assert!(a.tab_ready());
+        assert!(a.named("Tab"));
+        assert!(a.review.as_ref().unwrap().body_focus);
+        assert!(a.named("ArrowDown"));
+        assert!(a.feed('j'));
+        assert_eq!(a.review.as_ref().unwrap().nudge, 2);
+        assert!(a.escape());
+        assert!(!a.review.as_ref().unwrap().body_focus);
+        assert!(a.review.is_some(), "the first Esc only brings the keys back");
+        assert!(a.named("Tab") && a.named("Shift+Tab"));
+        assert!(!a.review.as_ref().unwrap().body_focus);
+    }
+
+    #[test]
+    fn tab_on_the_changes_goes_between_the_files_and_the_lines() {
+        use crate::app::View;
+        let mut a = crate::app::tests::read();
+        a.view = View::Changes;
+        assert!(a.tab_ready());
+        // Nothing read: the lines cannot take the keys, and the reason is told.
+        assert!(a.named("Tab"));
+        assert_eq!(a.changes.focus, crate::changes::Focus::Files);
+        a.changes.focus = crate::changes::Focus::Lines;
+        assert!(a.named("Shift+Tab"));
+        assert_eq!(a.changes.focus, crate::changes::Focus::Files);
+    }
+
+    #[test]
+    fn tab_does_not_move_panes_under_a_screen_laid_over() {
+        let mut a = crate::app::tests::read();
+        a.view = crate::app::View::Changes;
+        a.cheat = None;
+        a.legend = true;
+        assert!(!a.tab_ready());
     }
 
     #[test]

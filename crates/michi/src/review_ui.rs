@@ -58,6 +58,9 @@ fn note_id() -> Id {
     Id::new("michi-review-note")
 }
 
+/// How far a row of scrolling by key goes.
+const ROW_NUDGE: f32 = 48.0;
+
 /// The review in `r`.
 pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let c = ito_theme::colors();
@@ -66,6 +69,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     p.rect_filled(r, 0.0, c.bg);
     let Some(rv) = app.review.as_mut() else { return };
     let (to_top, pages, follow) = (std::mem::take(&mut rv.to_top), std::mem::take(&mut rv.pages), std::mem::take(&mut rv.follow));
+    let nudge = std::mem::take(&mut rv.nudge);
     if to_top {
         // Also while the new file's diff is read.
         ctx.data_mut(|d| d.insert_temp(scroll_id(), 0.0_f32));
@@ -144,7 +148,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             0.0
         };
         let body = Rect::from_min_max(full.min, pos2(full.right(), (full.bottom() - strip_h).max(full.top())));
-        if let Some(a) = body_of(ui, app, rv, body, live, pages, follow) {
+        if let Some(a) = body_of(ui, app, rv, body, live, (pages, nudge), follow) {
             act = Some(a);
         }
         if strip_h > 0.0 {
@@ -379,8 +383,8 @@ enum Piece {
 }
 
 /// The selected file's diff in `body`, scrolled by the wheel and by the
-/// `pages` the keys asked for.
-fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, pages: i32, follow: bool) -> Option<Act> {
+/// `pages` and rows (`nudge`) the keys asked for.
+fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, (pages, nudge): (i32, i32), follow: bool) -> Option<Act> {
     let c = ito_theme::colors();
     let ctx = ui.ctx();
     let p = ui.painter_at(body);
@@ -436,7 +440,7 @@ fn body_of(ui: &Ui, app: &App, rv: &Review, body: Rect, live: bool, pages: i32, 
     let total: f32 = heights.iter().sum::<f32>() + 24.0;
 
     let mut scroll = ctx.data(|dt| dt.get_temp::<f32>(scroll_id())).unwrap_or(0.0);
-    scroll += pages as f32 * (body.height() - 40.0).max(40.0);
+    scroll += pages as f32 * (body.height() - 40.0).max(40.0) + nudge as f32 * ROW_NUDGE;
     let tops = wrap.tops(rows);
     let diff_top: f32 = pieces.iter().zip(&heights).take_while(|(piece, _)| !matches!(piece, Piece::Diff)).map(|(_, h)| h).sum();
     let row_of = |at: At| {

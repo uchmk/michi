@@ -208,10 +208,14 @@ A row is added with the change that makes the key, and unticked again when the k
 | K13.3 | `Enter` or double-click on an approved row, or the trunk's | The graph opens on it | [ ] |
 | K13.4 | `l` on a row not yet approved | The band carries the note that it is not approved; landing still works | [ ] |
 | K13.5 | Settings → General → Diff layout | Unchecking it writes `diff_side = false` to config.toml's `[view]`; the detail shows one column until Enter | [ ] |
+| K14.1 | Changes, `Tab` on a file with changed lines | The keys go to the lines (as `l`); a toast says so; `Tab` or `Shift+Tab` again returns to the files | [ ] |
+| K14.2 | Conflict, `Tab` | The keys go to the places' column; `j` `k` and the arrows scroll it by rows; `Esc` returns to the file list without leaving the screen | [ ] |
+| K14.3 | Worktree table → `d` (review), `Tab` | The keys go to the diff; `j` `k` scroll it, not the file selection; `Esc` returns, a second `Esc` closes the review | [ ] |
+| K14.4 | F1 on those three screens | `Tab` is listed in each | [ ] |
 
 ## To be filled as the redesign lands (issue #133)
 
 - `g` popup, still to come: `g d` discard, `g a` amend, `g h` hand to Claude, `g u` unstage (Changes and Conflict screens), and moving the one-key versions into it.
 - `y` copy, still to come: `y s` file names, `y f` path, `y u` URL, and `y` in the Changes screen.
 - `?` deep search: rows that do not hit are still drawn faint, not taken away (a "only hits" view is still to come).
-- Panes, still to come: Tab on the other screens.
+- Panes: Tab on the worktree table itself (one pane) does nothing, on purpose.

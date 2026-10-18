@@ -587,7 +587,7 @@ impl Michi {
                 }
                 // Tab and Shift+Tab change the sheet of the Git flow sheet, or the pane of the graph view.
                 egui::Event::Key { key: egui::Key::Tab, pressed: true, modifiers, .. }
-                    if (self.app.cheat.is_some() || self.app.panes_ready()) && !modifiers.command && !modifiers.alt =>
+                    if (self.app.cheat.is_some() || self.app.tab_ready()) && !modifiers.command && !modifiers.alt =>
                 {
                     self.app.named(if modifiers.shift { "Shift+Tab" } else { "Tab" });
                 }
