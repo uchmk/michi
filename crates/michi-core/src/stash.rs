@@ -74,7 +74,10 @@ pub fn apply(wt: &Path, id: &Oid, pop: bool) -> Result<Applied, git::Error> {
     // By its id, not its place: another stash made meanwhile moves places.
     let out = git::command().arg("-C").arg(wt).args(["stash", "apply", &id.to_string()]).output().map_err(git::started)?;
     if !out.status.success() {
-        let clashed: Vec<String> = git::read_text(wt, &["diff", "--name-only", "--diff-filter=U"])?.lines().map(str::to_owned).collect();
+        // NUL-separated: without `-z` git quotes a name like `é.txt`.
+        let raw = git::read(wt, &["diff", "--name-only", "-z", "--diff-filter=U"])?;
+        let clashed: Vec<String> =
+            raw.split(|b| *b == 0).filter(|n| !n.is_empty()).map(|n| String::from_utf8_lossy(n).into_owned()).collect();
         if clashed.is_empty() {
             return Err(git::refused_all(&String::from_utf8_lossy(&out.stderr)));
         }
@@ -209,6 +212,16 @@ mod tests {
         assert_eq!(apply(&t.repo, &id, true).unwrap(), Applied::Conflict(vec!["a.txt".into()]));
         assert_eq!(list(&t.repo).unwrap(), [id], "a clashing pop keeps it");
         assert!(read_file(&t, "a.txt").unwrap().contains("<<<<<<<"));
+    }
+
+    #[test]
+    fn a_clash_in_a_file_with_an_unusual_name_is_named_as_it_is() {
+        let t = TempRepo::configured("stash-clash-name");
+        commit(&t, "é a.txt", "1\n");
+        t.write(&t.repo, "é a.txt", "2\n");
+        let Saved::Made(id) = save(&t.repo, "").unwrap() else { panic!() };
+        commit(&t, "é a.txt", "3\n");
+        assert_eq!(apply(&t.repo, &id, true).unwrap(), Applied::Conflict(vec!["é a.txt".into()]));
     }
 
     #[test]
