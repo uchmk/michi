@@ -240,12 +240,12 @@ static CONFLICT: Flow = Flow {
         node(1, Action, 1, 1, t("Find the files in conflict", "衝突したファイルを探す")),
         node(2, Decision, 1, 2, t("Resolve it or give up?", "解消する？やめる？")),
         node(3, Action, 0, 3, t("Abort: back to before", "中止して元に戻す")),
-        node(4, Action, 2, 3, t("Edit the file, keep what you want", "ファイルを直して残す方を決める")),
-        node(5, Action, 2, 4, t("Mark it resolved", "解消済みの印をつける")),
-        node(6, Decision, 2, 5, t("What was running?", "何の途中だった？")),
-        node(7, Action, 1, 6, t("merge", "merge")),
-        node(8, Action, 2, 6, t("rebase", "rebase")),
-        node(9, Action, 3, 6, t("cherry-pick / revert / stash pop", "cherry-pick・revert・stash pop")),
+        node(4, Action, 1, 3, t("Edit the file, keep what you want", "ファイルを直して残す方を決める")),
+        node(5, Action, 1, 4, t("Mark it resolved", "解消済みの印をつける")),
+        node(6, Decision, 1, 5, t("What was running?", "何の途中だった？")),
+        node(7, Action, 0, 6, t("merge", "merge")),
+        node(8, Action, 1, 6, t("rebase", "rebase")),
+        node(9, Action, 2, 6, t("cherry-pick / revert / stash pop", "cherry-pick・revert・stash pop")),
     ],
     edges: &[
         edge(0, 1),
@@ -305,13 +305,13 @@ static UNDO: Flow = Flow {
     topic: Topic::Undo,
     title: t("Undo: pick by where the change is now", "戻す: 変更が今どこにあるかで選ぶ"),
     nodes: &[
-        node(0, Start, 2, 0, t("I want to undo something", "何かを取り消したい")),
-        node(1, Decision, 2, 1, t("Where is the change now?", "その変更は今どこ？")),
-        node(2, Action, 0, 2, t("Edited, not added", "直しただけ（add 前）")),
+        node(0, Start, 1, 0, t("I want to undo something", "何かを取り消したい")),
+        node(1, Decision, 1, 1, t("Where is the change now?", "その変更は今どこ？")),
+        node(2, Action, 0, 1, t("Edited, not added", "直しただけ（add 前）")),
         node(3, Action, 1, 2, t("Added (staged)", "add 済み")),
-        node(4, Action, 2, 2, t("Committed, not pushed", "commit 済み・未 push")),
-        node(5, Action, 3, 2, t("Already pushed", "push 済み")),
-        node(6, Action, 4, 2, t("Lost commits or a branch", "コミットやブランチが消えた")),
+        node(4, Action, 2, 1, t("Committed, not pushed", "commit 済み・未 push")),
+        node(5, Action, 0, 2, t("Already pushed", "push 済み")),
+        node(6, Action, 2, 2, t("Lost commits or a branch", "コミットやブランチが消えた")),
     ],
     edges: &[
         edge(0, 1),
@@ -430,10 +430,10 @@ static RESTORE: Flow = Flow {
     nodes: &[
         node(0, Start, 1, 0, t("What do you want to move?", "何を動かしたい？")),
         node(1, Decision, 1, 1, t("Files or the branch?", "ファイル？ブランチ？")),
-        node(2, Action, 0, 2, t("Discard edits of a file", "ファイルの変更を捨てる")),
+        node(2, Action, 0, 1, t("Discard edits of a file", "ファイルの変更を捨てる")),
         node(3, Action, 1, 2, t("Unstage a file", "ファイルを add 前に戻す")),
-        node(4, Action, 2, 2, t("A file from another commit", "別のコミットのファイルを取る")),
-        node(5, Action, 3, 2, t("Switch the branch", "ブランチを移る")),
+        node(4, Action, 2, 1, t("A file from another commit", "別のコミットのファイルを取る")),
+        node(5, Action, 2, 2, t("Switch the branch", "ブランチを移る")),
     ],
     edges: &[
         edge(0, 1),
@@ -596,7 +596,7 @@ mod tests {
     #[test]
     fn no_diagram_is_wider_than_three_columns() {
         for t in Topic::ALL {
-            assert!(t.flow().size().0 <= 3, "{:?}", t);
+            assert!(t.flow().size().0 <= 3, "{:?} {:?}", t, t.flow().size());
         }
     }
 
