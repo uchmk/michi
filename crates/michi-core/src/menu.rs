@@ -49,7 +49,7 @@ const BRANCH: [Item; 10] = [
 ];
 
 const FILE: [Item; 5] =
-    [item(' ', "key.stage"), item('s', "key.split"), item('i', "key.ignore"), item('d', "key.discard"), item('A', "key.amend")];
+    [item(' ', "key.stage"), item('s', "key.split"), item('i', "key.ignore"), item('d', "key.discard"), item('a', "key.amend")];
 
 /// The entries of a menu, in the order shown (the ones that lose something
 /// last).

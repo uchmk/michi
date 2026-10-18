@@ -406,9 +406,7 @@ impl App {
             't' => self.conflict_pick(Pick::Theirs),
             'b' => self.conflict_pick(Pick::Both),
             'B' => self.conflict_pick(Pick::BothTheirsFirst),
-            'x' => self.conflict_forget(),
             'e' => self.conflict_edit(),
-            'g' => self.conflict_handoff(),
             'd' if self.conflicts.stage().is_some() => self.conflict_offer(Offer::Review),
             'a' if self.conflicts.stage().is_some() => self.conflict_offer(Offer::Adopt),
             'r' if self.conflicts.stage().is_some() => self.conflict_offer(Offer::SendBack),
@@ -839,7 +837,7 @@ pub(crate) mod tests {
         c.files[0].body = Body::Text(vec![block(false)]);
         c.files[0].unmerged = false;
         a.conflicts.set(vec![c]);
-        a.conflict_key('g');
+        a.conflict_handoff();
         assert_eq!(toast(&a), a.tr("cf.hand_none"));
     }
 
@@ -895,7 +893,7 @@ pub(crate) mod tests {
         // x on a place that is not rerere's says so; Enter does nothing.
         a.conflicts.at = 2;
         assert!(!a.conflict_confirm());
-        a.conflict_key('x');
+        a.conflict_forget();
         assert_eq!(toast(&a), a.tr("cf.not_reused"));
         // Enter on rerere's file looks at it.
         a.conflicts.at = 0;

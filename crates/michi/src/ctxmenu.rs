@@ -39,7 +39,7 @@ mod tests {
             for it in menu::items(kind) {
                 assert_ne!(crate::i18n::tr("en", it.word), it.word, "{} has no words", it.word);
                 let label = menu::key_label(it.key);
-                let listed = table(kind).iter().any(|(keys, _)| keys.split(' ').any(|k| k == label || k == it.key.to_string()));
+                let listed = table(kind).iter().any(|(keys, _)| keys.split([' ', '+']).any(|k| k == label || k == it.key.to_string()));
                 // The three open-in keys share one line of the worktree table.
                 let open = it.word.starts_with("key.open_");
                 assert!(listed || open, "{:?} is not a key of its view", it.key);

@@ -54,7 +54,8 @@ impl App {
         match self.view {
             View::Graph => true,
             View::Worktree => self.review.is_none(),
-            _ => false,
+            View::Changes => self.changes.confirm.is_none(),
+            View::Conflict => !self.conflicts.abort,
         }
     }
 
@@ -64,7 +65,9 @@ impl App {
         match self.view {
             View::Graph => !self.bisect_actions().iter().any(|(k, _)| *k == 'y') && !self.good_is_next(),
             View::Worktree => self.review.is_none(),
-            _ => false,
+            // `y` is the yes of a waiting write and of the abort row.
+            View::Changes => self.changes.confirm.is_none(),
+            View::Conflict => !self.conflicts.abort,
         }
     }
 
@@ -79,6 +82,10 @@ impl App {
             (Prefix::Go, View::Graph) => {
                 vec![ok('g', "pf.first"), risky('r', "pf.reset"), ok('b', "pf.bisect"), ok('?', "pf.cheat")]
             }
+            (Prefix::Go, View::Changes) => {
+                vec![ok('g', "pf.first"), risky('d', "key.discard"), risky('a', "key.amend"), ok('i', "key.ignore")]
+            }
+            (Prefix::Go, View::Conflict) => vec![ok('g', "pf.first"), ok('h', "key.cf_handoff"), risky('x', "key.cf_forget")],
             (Prefix::Go, _) => vec![
                 ok('g', "pf.first"),
                 risky('x', "pf.remove"),
@@ -93,6 +100,7 @@ impl App {
             (Prefix::Copy, View::Graph) => {
                 vec![ok('h', "pf.hash"), ok('p', "pf.patch"), ok('m', "pf.subject"), ok('a', "pf.author")]
             }
+            (Prefix::Copy, View::Changes | View::Conflict) => vec![ok('f', "pf.path"), ok('n', "pf.filename")],
             (Prefix::Copy, _) => vec![ok('b', "pf.branch"), ok('d', "pf.folder")],
         }
     }
@@ -106,6 +114,11 @@ impl App {
             return true;
         }
         match (p, c) {
+            (Prefix::Go, 'g') if self.view == View::Changes => self.changes_go('g'),
+            (Prefix::Go, 'd' | 'a' | 'i') if self.view == View::Changes => self.changes_go(c),
+            (Prefix::Go, 'h') if self.view == View::Conflict => self.conflict_handoff(),
+            (Prefix::Go, 'x') if self.view == View::Conflict => self.conflict_forget(),
+            (Prefix::Copy, 'f' | 'n') => self.copy_file_field(c == 'n'),
             (Prefix::Go, 'g') => self.go_first(),
             (Prefix::Go, 'r') => self.ask_reset(),
             (Prefix::Go, 'b') => self.prefix = Some(Prefix::Bisect),
@@ -135,6 +148,22 @@ impl App {
             return self.say(self.tr("act.pick_commit"));
         };
         let text = if author { format!("{} <{}>", c.author, c.email) } else { c.subject.clone() };
+        self.copied(text);
+    }
+
+    /// `y f` (the path) or `y n` (the name) of the selected file, in the
+    /// changes and the conflict.
+    fn copy_file_field(&mut self, name: bool) {
+        let path = match self.view {
+            View::Changes => self.changes.selected().map(|(_, f)| f.path.clone()),
+            View::Conflict => {
+                let at = self.conflicts.at;
+                self.conflicts.shown().and_then(|c| crate::conflicts::places(c).get(at).map(|p| c.files[p.0].path.clone()))
+            }
+            _ => None,
+        };
+        let Some(path) = path else { return self.say(self.tr("act.no_file")) };
+        let text = if name { path.rsplit('/').next().unwrap_or(&path).to_owned() } else { path };
         self.copied(text);
     }
 
@@ -199,7 +228,7 @@ mod tests {
     #[test]
     fn a_choice_key_is_used_once_per_window() {
         for p in [Prefix::Go, Prefix::Copy, Prefix::Bisect] {
-            for view in [View::Graph, View::Worktree] {
+            for view in [View::Graph, View::Worktree, View::Changes, View::Conflict] {
                 let mut a = crate::app::tests::read();
                 a.view = view;
                 let keys: Vec<char> = a.prefix_choices(p).iter().map(|c| c.key).collect();

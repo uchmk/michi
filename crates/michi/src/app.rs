@@ -126,16 +126,18 @@ impl View {
                 ("v", "key.range"),
                 ("s", "key.split"),
                 ("n N", "key.next_change"),
-                ("d", "key.discard"),
-                ("i", "key.ignore"),
                 ("w", "key.ignore_space"),
                 ("O", "key.image_mode"),
-                ("A", "key.amend"),
                 ("B", "key.blame"),
                 ("H", "key.file_history"),
                 ("e", "key.editor_line"),
                 ("x", "key.ext_diff"),
                 ("[ ]", "key.worktree"),
+                ("g", "key.go"),
+                ("g+d", "key.discard"),
+                ("g+a", "key.amend"),
+                ("g+i", "key.ignore"),
+                ("y", "key.copy"),
                 ("Enter", "key.side"),
                 ("Esc", "key.back"),
             ],
@@ -174,11 +176,13 @@ impl View {
                 ("b B", "key.both"),
                 ("Enter", "key.cf_reused"),
                 ("e", "key.cf_edit"),
-                ("g", "key.cf_handoff"),
                 ("d a r", "key.cf_strip"),
                 ("w", "key.cf_external"),
                 ("E", "key.cf_editor"),
-                ("x", "key.cf_forget"),
+                ("g", "key.go"),
+                ("g+h", "key.cf_handoff"),
+                ("g+x", "key.cf_forget"),
+                ("y", "key.copy"),
                 ("Ctrl+Enter", "key.cf_commit"),
                 ("PageDown PageUp Ctrl+D Ctrl+U Alt+J Alt+K", "key.scroll"),
             ],
@@ -1087,7 +1091,6 @@ impl App {
             // `v` and `l` in the lines, `h` in the files: nothing to do.
             'v' | 'l' | 'h' => none(),
             'c' => Ok(ch.focus_message()),
-            'A' => Ok(ch.toggle_amend()),
             't' if !lines => {
                 ch.toggle_tree();
                 none()
@@ -1102,8 +1105,6 @@ impl App {
                 }
                 none()
             }
-            'd' => ch.discard(claude),
-            'i' => ch.ignore(claude),
             'w' => {
                 self.toggle_ignore_space();
                 return true;
@@ -1128,6 +1129,21 @@ impl App {
         };
         self.changes_did(done);
         true
+    }
+
+    /// The second key of `g` in the `2` view: the operations that can lose
+    /// work.
+    pub(crate) fn changes_go(&mut self, c: char) {
+        let claude = self.claude_writing();
+        let ch = &mut self.changes;
+        let done = match c {
+            'd' => ch.discard(claude),
+            'i' => ch.ignore(claude),
+            'a' => Ok(ch.toggle_amend()),
+            'g' => Ok(ch.select(0)),
+            _ => return,
+        };
+        self.changes_did(done);
     }
 
     /// The `2` view's keys with a name.
@@ -1828,6 +1844,7 @@ impl App {
         match self.view {
             View::Graph => self.graph.home(),
             View::Worktree => self.wt_sel = 0,
+            View::Conflict => self.conflicts.move_to(false),
             _ => {}
         }
     }

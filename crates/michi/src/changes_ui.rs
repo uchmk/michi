@@ -223,6 +223,10 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
                 app.changes.leave_lines();
             }
             app.changes_select(k);
+            // The ones that lose work sit behind g.
+            if matches!(key, 'd' | 'i' | 'a') {
+                app.feed('g');
+            }
             app.feed(key);
         }
         Act::Wide(w) => app.changes.wide = w,
@@ -1263,17 +1267,34 @@ mod tests {
     }
 
     #[test]
+    fn g_holds_the_losing_keys_and_y_f_copies_the_path() {
+        let mut app = opened();
+        take_list(&mut app, lists(&[], &["dir/a.txt"]));
+        app.feed('d');
+        assert!(app.changes.confirm.is_none(), "d alone asks nothing now");
+        assert!(app.feed('g'));
+        assert_eq!(app.prefix, Some(crate::prefix::Prefix::Go));
+        assert!(app.escape());
+        assert!(app.feed('y') && app.feed('n'));
+        assert_eq!(app.prefix, None);
+        assert!(app.feed('g') && app.feed('d'));
+        assert!(app.changes.confirm.is_some());
+        assert!(app.feed('y'), "y answers the question, no window");
+        assert_eq!(app.prefix, None);
+    }
+
+    #[test]
     fn d_asks_what_goes_and_says_where_it_is_kept() {
         let ctx = egui::Context::default();
         let mut app = opened();
         take_list(&mut app, lists(&[], &["a.txt"]));
-        assert!(app.feed('d'));
+        assert!(app.feed('g') && app.feed('d'));
         let drawn = frame(&ctx, &mut app, 1400.0, Vec::new());
         let ask = "Throw away the changes to a.txt? They are kept under refs/michi/backup/ first.";
         assert!(drawn.iter().any(|t| t == ask), "{drawn:?}");
         assert!(app.escape());
         assert!(app.changes.confirm.is_none(), "Esc says no");
-        assert!(app.feed('d') && app.feed('y'));
+        assert!(app.feed('g') && app.feed('d') && app.feed('y'));
         let saved = "refs/michi/backup/2026-10-16T10-00-00".to_owned();
         let did = Did::Discarded { path: "a.txt".into(), untracked: false, lines: 3, saved };
         app.take(Answer::ChangesDone { wt: "C:/r/wt".into(), commit: false, result: Ok(did) });
