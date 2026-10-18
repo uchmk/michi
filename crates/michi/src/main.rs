@@ -573,6 +573,12 @@ impl Michi {
                 egui::Event::Key { key: egui::Key::Escape, pressed: true, .. } if !let_go => {
                     self.app.escape();
                 }
+                // Tab and Shift+Tab change the sheet of the Git flow sheet.
+                egui::Event::Key { key: egui::Key::Tab, pressed: true, modifiers, .. }
+                    if self.app.cheat.is_some() && !modifiers.command && !modifiers.alt =>
+                {
+                    self.app.named(if modifiers.shift { "Shift+Tab" } else { "Tab" });
+                }
                 egui::Event::Key { key: egui::Key::Enter, pressed: true, modifiers, .. } if modifiers.is_none() => {
                     self.app.named("Enter");
                 }

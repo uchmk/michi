@@ -9,12 +9,12 @@ use michi_core::cheat::{Flow, Kind, Topic};
 
 use crate::app::App;
 
-const NODE_W: f32 = 140.0;
+const NODE_W: f32 = 120.0;
 const NODE_H: f32 = 54.0;
-const GAP_X: f32 = 22.0;
+const GAP_X: f32 = 18.0;
 const GAP_Y: f32 = 34.0;
 const GUTTER: f32 = 30.0;
-const WIDTH: f32 = 1000.0;
+const WIDTH: f32 = 1500.0;
 
 /// Which sheet is open and which box is picked.
 #[derive(Clone, Copy, Debug, Default)]
@@ -81,8 +81,8 @@ impl App {
     pub(crate) fn cheat_named(&mut self, name: &str) -> bool {
         let Some(st) = &mut self.cheat else { return false };
         match name {
-            "ArrowLeft" => st.step_tab(-1),
-            "ArrowRight" => st.step_tab(1),
+            "ArrowLeft" | "Shift+Tab" => st.step_tab(-1),
+            "ArrowRight" | "Tab" => st.step_tab(1),
             "ArrowDown" => st.walk(1),
             "ArrowUp" => st.walk(-1),
             _ => {}
@@ -172,20 +172,35 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                     }
                 });
                 ui.separator();
-                egui::ScrollArea::both().max_height(max_h).auto_shrink([false, true]).show(ui, |ui| {
-                    ui.label(RichText::new(flow.title.get(&lang)).strong().color(c.fg));
-                    ui.add_space(6.0);
-                    diagram(ui, flow, &st, &lang, &mut picked_node);
-                    ui.add_space(6.0);
-                    if let Some(note) = flow.note {
-                        ui.label(RichText::new(note.get(&lang)).font(small.clone()).color(c.dim));
-                        ui.add_space(6.0);
-                    }
-                    if !flow.table.is_empty() {
-                        table(ui, flow, &lang);
-                        ui.add_space(8.0);
-                    }
-                    steps(ui, app, flow, &st, &lang, &mut copy, &mut picked_node);
+                ui.label(RichText::new(flow.title.get(&lang)).strong().color(c.fg));
+                ui.add_space(4.0);
+                let (cols, _) = flow.size();
+                let diagram_w = cols as f32 * NODE_W + (cols as f32 - 1.0) * GAP_X + GUTTER;
+                let left_w = diagram_w.min(width * 0.5);
+                let right_w = (width - left_w - ui.spacing().item_spacing.x * 2.0 - 12.0).max(300.0);
+                ui.horizontal_top(|ui| {
+                    cell_of(ui, left_w, |ui| {
+                        egui::ScrollArea::both().id_salt("cheat-flow").max_height(max_h).auto_shrink([false, true]).show(ui, |ui| {
+                            diagram(ui, flow, &st, &lang, &mut picked_node);
+                        });
+                    });
+                    ui.separator();
+                    cell_of(ui, right_w, |ui| {
+                        egui::ScrollArea::vertical().id_salt("cheat-commands").max_height(max_h).auto_shrink([false, true]).show(
+                            ui,
+                            |ui| {
+                                if let Some(note) = flow.note {
+                                    ui.label(RichText::new(note.get(&lang)).font(small.clone()).color(c.dim));
+                                    ui.add_space(6.0);
+                                }
+                                if !flow.table.is_empty() {
+                                    table(ui, flow, &lang);
+                                    ui.add_space(8.0);
+                                }
+                                steps(ui, app, flow, &st, &lang, &mut copy, &mut picked_node);
+                            },
+                        );
+                    });
                 });
                 ui.add_space(4.0);
                 ui.label(RichText::new(app.tr("cheat.keys")).font(small).color(c.dim));
@@ -261,64 +276,101 @@ fn diagram(ui: &mut egui::Ui, flow: &Flow, st: &Cheat, lang: &str, picked: &mut 
 
 fn table(ui: &mut egui::Ui, flow: &Flow, lang: &str) {
     let c = ito_theme::colors();
-    egui::Grid::new(("cheat-table", flow.topic)).striped(true).spacing(vec2(14.0, 4.0)).show(ui, |ui| {
-        for (i, row) in flow.table.iter().enumerate() {
+    let cols = flow.table.first().map_or(1, |r| r.len()).max(1);
+    let gap = ui.spacing().item_spacing.x;
+    let w = ((ui.available_width() - 24.0 - gap * cols as f32) / cols as f32).max(80.0);
+    for (i, row) in flow.table.iter().enumerate() {
+        ui.horizontal_top(|ui| {
             for (j, cell) in row.iter().enumerate() {
-                let text = RichText::new(cell.get(lang));
-                ui.label(if i == 0 {
-                    text.strong()
-                } else if j == 0 {
-                    text.monospace().color(c.blue)
-                } else {
-                    text
+                cell_of(ui, w, |ui| {
+                    let text = RichText::new(cell.get(lang));
+                    ui.label(if i == 0 {
+                        text.strong()
+                    } else if j == 0 {
+                        text.monospace().color(c.blue)
+                    } else {
+                        text
+                    });
                 });
             }
-            ui.end_row();
-        }
+        });
+        ui.add_space(2.0);
+    }
+}
+
+/// A table cell of a fixed width, so a long text wraps in its own column.
+fn cell_of(ui: &mut egui::Ui, w: f32, add: impl FnOnce(&mut egui::Ui)) {
+    ui.allocate_ui_with_layout(vec2(w, 0.0), egui::Layout::top_down(egui::Align::Min), |ui| {
+        ui.set_width(w);
+        add(ui);
     });
 }
 
 fn steps(ui: &mut egui::Ui, app: &App, flow: &Flow, st: &Cheat, lang: &str, copy: &mut Option<String>, picked: &mut Option<u8>) {
     let c = ito_theme::colors();
     let small = FontId::proportional(12.0);
-    egui::Grid::new(("cheat-steps", flow.topic)).spacing(vec2(12.0, 5.0)).show(ui, |ui| {
-        ui.label("");
-        ui.label(RichText::new(app.tr("cheat.command")).font(small.clone()).color(c.dim));
-        ui.label(RichText::new(app.tr("cheat.what")).font(small.clone()).color(c.dim));
-        ui.label(RichText::new(app.tr("cheat.key")).font(small.clone()).color(c.dim));
-        ui.end_row();
-        for s in flow.steps {
-            let on = st.sel == Some(s.node);
-            let num = ui.add(
-                egui::Label::new(RichText::new((s.node + 1).to_string()).color(if on { c.fg } else { c.dim }).strong())
-                    .sense(Sense::click()),
-            );
-            if num.clicked() {
-                *picked = Some(s.node);
-            }
-            let color = if s.danger {
-                c.err
-            } else if on {
-                c.fg
-            } else {
-                c.blue
-            };
-            let mut cmd = RichText::new(s.command).monospace().color(color);
-            if on {
-                cmd = cmd.strong();
-            }
-            let mut resp = ui.add(egui::Label::new(cmd).sense(Sense::click()));
-            if s.danger {
-                resp = resp.on_hover_text(app.tr("cheat.danger"));
-            }
-            if resp.clicked() {
-                *copy = Some(s.command.to_owned());
-            }
-            ui.add(egui::Label::new(RichText::new(s.why.get(lang)).color(if on { c.fg } else { c.dim })).wrap());
-            ui.label(RichText::new(s.key.unwrap_or("—")).monospace().color(c.dim));
-            ui.end_row();
-        }
+    // The command column is as wide as the longest command; the rest goes to the explanation.
+    let longest = flow.steps.iter().map(|s| s.command.chars().count()).max().unwrap_or(10);
+    let spacing = ui.spacing().item_spacing.x;
+    let (w_num, w_screen, w_key) = (24.0, 110.0, 90.0);
+    let w_cmd = (longest as f32 * 7.4 + 8.0).min(ui.available_width() * 0.45);
+    let w_why = (ui.available_width() - w_num - w_cmd - w_screen - w_key - spacing * 4.0 - 24.0).max(160.0);
+    let head = |ui: &mut egui::Ui, w: f32, key: &'static str| {
+        cell_of(ui, w, |ui| {
+            ui.label(RichText::new(app.tr(key)).font(small.clone()).color(c.dim));
+        })
+    };
+    ui.horizontal_top(|ui| {
+        ui.add_space(w_num + spacing);
+        head(ui, w_cmd, "cheat.command");
+        head(ui, w_why, "cheat.what");
+        head(ui, w_screen, "cheat.screen");
+        head(ui, w_key, "cheat.key");
     });
+    for s in flow.steps {
+        let on = st.sel == Some(s.node);
+        ui.horizontal_top(|ui| {
+            cell_of(ui, w_num, |ui| {
+                let num = ui.add(
+                    egui::Label::new(RichText::new((s.node + 1).to_string()).color(if on { c.fg } else { c.dim }).strong())
+                        .sense(Sense::click()),
+                );
+                if num.clicked() {
+                    *picked = Some(s.node);
+                }
+            });
+            cell_of(ui, w_cmd, |ui| {
+                let color = if s.danger {
+                    c.err
+                } else if on {
+                    c.fg
+                } else {
+                    c.blue
+                };
+                let mut cmd = RichText::new(s.command).monospace().color(color);
+                if on {
+                    cmd = cmd.strong();
+                }
+                let mut resp = ui.add(egui::Label::new(cmd).sense(Sense::click()));
+                if s.danger {
+                    resp = resp.on_hover_text(app.tr("cheat.danger"));
+                }
+                if resp.clicked() {
+                    *copy = Some(s.command.to_owned());
+                }
+            });
+            cell_of(ui, w_why, |ui| {
+                ui.add(egui::Label::new(RichText::new(s.why.get(lang)).color(if on { c.fg } else { c.dim })).wrap());
+            });
+            cell_of(ui, w_screen, |ui| {
+                ui.label(RichText::new(s.screen.unwrap_or("—")).color(c.dim));
+            });
+            cell_of(ui, w_key, |ui| {
+                ui.label(RichText::new(s.key.unwrap_or("—")).monospace().color(c.dim));
+            });
+        });
+        ui.add_space(2.0);
+    }
 }
 
 #[cfg(test)]
