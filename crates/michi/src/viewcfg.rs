@@ -9,13 +9,29 @@ use michi_core::level::Level;
 use michi_core::motion::Motion;
 use serde::Deserialize;
 
+/// A section that is not a table (or has a key of a wrong shape) is the
+/// default, not an error for the whole file: every key is read on its own.
+fn lenient<'de, D, T>(d: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::de::DeserializeOwned + Default,
+{
+    let v = toml::Value::deserialize(d)?;
+    Ok(v.try_into().unwrap_or_default())
+}
+
+/// The text of a string key; a value of another type is `Err(shown)` for the warning.
+fn shown(v: &toml::Value) -> String {
+    v.as_str().map_or_else(|| v.to_string(), str::to_owned)
+}
+
 #[derive(Deserialize, Default)]
 #[serde(default)]
 struct View {
-    density: Option<String>,
-    motion: Option<String>,
-    dates: Option<String>,
-    level: Option<String>,
+    density: Option<toml::Value>,
+    motion: Option<toml::Value>,
+    dates: Option<toml::Value>,
+    level: Option<toml::Value>,
     avatars: Option<toml::Value>,
     easy: Option<toml::Value>,
     diff_side: Option<toml::Value>,
@@ -46,9 +62,13 @@ struct Issues {
 #[derive(Deserialize, Default)]
 #[serde(default)]
 struct File {
+    #[serde(deserialize_with = "lenient")]
     issues: Issues,
+    #[serde(deserialize_with = "lenient")]
     view: View,
+    #[serde(deserialize_with = "lenient")]
     net: Net,
+    #[serde(deserialize_with = "lenient")]
     commit: Commit,
 }
 
@@ -57,9 +77,11 @@ pub fn read(text: Option<&str>) -> (Density, Vec<String>) {
     match text.map(toml::from_str::<File>) {
         Some(Ok(f)) => match f.view.density {
             None => (Density::default(), Vec::new()),
-            Some(s) => match s.parse() {
+            Some(v) => match shown(&v).parse() {
                 Ok(d) => (d, Vec::new()),
-                Err(()) => (Density::default(), vec![format!("config.toml: [view] density `{s}` is not compact, standard or cozy")]),
+                Err(()) => {
+                    (Density::default(), vec![format!("config.toml: [view] density `{}` is not compact, standard or cozy", shown(&v))])
+                }
             },
         },
         // The same file is read for [open] and [notify], which say what is wrong with it.
@@ -72,9 +94,9 @@ pub fn read_motion(text: Option<&str>) -> (Motion, Vec<String>) {
     match text.map(toml::from_str::<File>) {
         Some(Ok(f)) => match f.view.motion {
             None => (Motion::default(), Vec::new()),
-            Some(s) => match s.parse() {
+            Some(v) => match shown(&v).parse() {
                 Ok(m) => (m, Vec::new()),
-                Err(()) => (Motion::default(), vec![format!("config.toml: [view] motion `{s}` is not on or off")]),
+                Err(()) => (Motion::default(), vec![format!("config.toml: [view] motion `{}` is not on or off", shown(&v))]),
             },
         },
         _ => (Motion::default(), Vec::new()),
@@ -87,9 +109,9 @@ pub fn read_dates(text: Option<&str>) -> (michi_core::dates::Dates, Vec<String>)
     match text.map(toml::from_str::<File>) {
         Some(Ok(f)) => match f.view.dates {
             None => (Dates::default(), Vec::new()),
-            Some(s) => match s.parse() {
+            Some(v) => match shown(&v).parse() {
                 Ok(d) => (d, Vec::new()),
-                Err(()) => (Dates::default(), vec![format!("config.toml: [view] dates `{s}` is not relative or full")]),
+                Err(()) => (Dates::default(), vec![format!("config.toml: [view] dates `{}` is not relative or full", shown(&v))]),
             },
         },
         _ => (Dates::default(), Vec::new()),
@@ -101,9 +123,9 @@ pub fn read_level(text: Option<&str>) -> (Level, Vec<String>) {
     match text.map(toml::from_str::<File>) {
         Some(Ok(f)) => match f.view.level {
             None => (Level::default(), Vec::new()),
-            Some(s) => match s.parse() {
+            Some(v) => match shown(&v).parse() {
                 Ok(l) => (l, Vec::new()),
-                Err(()) => (Level::default(), vec![format!("config.toml: [view] level `{s}` is not basic or full")]),
+                Err(()) => (Level::default(), vec![format!("config.toml: [view] level `{}` is not basic or full", shown(&v))]),
             },
         },
         _ => (Level::default(), Vec::new()),
@@ -490,5 +512,31 @@ motion = \"slow\"
 ",
         ));
         assert_eq!((m, w.len()), (Motion::On, 1));
+    }
+
+    #[test]
+    fn one_bad_value_keeps_the_other_settings() {
+        let t = "[view]
+density = 3
+motion = \"off\"
+[net]
+auto_fetch = 10
+[commit]
+large_mb = 7
+[issues]
+github = false
+";
+        let (d, w) = read(Some(t));
+        assert_eq!((d, w.len()), (Density::Standard, 1), "{w:?}");
+        assert_eq!(read_motion(Some(t)).0, Motion::Off);
+        assert_eq!(auto_fetch(Some(t)).0, Every::minutes(10));
+        assert_eq!(guard(Some(t)).0.large, 7 << 20);
+        assert!(!issues(Some(t)).0.github);
+        // A section of the wrong shape only loses itself.
+        let t = "view = 3
+[net]
+auto_fetch = 10
+";
+        assert_eq!(auto_fetch(Some(t)).0, Every::minutes(10));
     }
 }

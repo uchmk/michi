@@ -249,6 +249,7 @@ impl Michi {
         let mut cur = std::mem::replace(&mut self.app, App::new(prefs::Prefs::empty(), PathBuf::new()));
         let prefs = std::mem::replace(&mut cur.prefs, prefs::Prefs::empty());
         let recent = std::mem::take(&mut cur.recent);
+        let sizes = cur.sizes.clone();
         let front = cur.front;
         // Behind the front, a tab's worktrees are read now and then.
         if let Some(r) = &cur.reading {
@@ -266,12 +267,14 @@ impl Michi {
             }
             None => {
                 let dir = self.tabs.paths()[new].clone();
-                let mut a = App::new(prefs, dir.clone());
+                let mut a = App::with_window(prefs, dir.clone(), sizes.clone(), recent.clone());
                 a.reading = Some(repo::start(dir, ctx.clone()));
                 a
             }
         };
         next.recent = recent;
+        // The dragged sizes are the window's too; no file is read for a tab.
+        next.sizes = sizes;
         next.front = front;
         if let Some(r) = &next.reading {
             r.front(front);
@@ -449,7 +452,8 @@ impl Michi {
             return;
         }
         // Ctrl+Enter goes ahead with the question in the band, as it does for a commit or a post.
-        if self.app.band.as_ref().is_some_and(|b| !b.typing() && b.parents == 0)
+        if self.app.cheat.is_none()
+            && self.app.band.as_ref().is_some_and(|b| !b.typing() && b.parents == 0)
             && ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter))
         {
             self.app.band_key('y');
@@ -765,6 +769,11 @@ impl eframe::App for Michi {
             }
         }
         self.app.pump();
+        // A parked tab's reading goes on behind the front: what it sent is folded in now
+        // (cheap when there is nothing), not all at once when the tab comes back.
+        for parked in self.parked.iter_mut().flatten() {
+            parked.pump();
+        }
         if let Some(text) = self.app.clipboard.take() {
             ctx.copy_text(text);
         }

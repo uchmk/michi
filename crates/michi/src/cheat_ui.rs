@@ -64,6 +64,10 @@ impl Cheat {
 impl App {
     /// Open the sheet, or close it.
     pub fn toggle_cheat(&mut self) {
+        // A question or a prompt that is up keeps the keys: the sheet would sit over it.
+        if self.cheat.is_none() && self.question_up() {
+            return;
+        }
         // It opens at the tab it was left on.
         let last = Cheat { tab: self.cheat_tab, sel: None };
         self.cheat = if self.cheat.is_some() { None } else { Some(last) };

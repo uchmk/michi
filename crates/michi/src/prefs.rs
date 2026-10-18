@@ -235,7 +235,7 @@ impl Prefs {
                 sent &= tx.send(Reload::Keymap(read_keymap(&base), None)).is_ok();
             }
             if changed.contains(&config) {
-                sent &= tx.send(Reload::Config(read_config(&base))).is_ok();
+                sent &= tx.send(config_reload(&base)).is_ok();
             }
             if changed.iter().any(|p| p.starts_with(&themes)) {
                 let (user, warn) = ito_theme::load_dir(&themes);
@@ -375,7 +375,7 @@ impl Prefs {
         };
         std::thread::spawn(move || {
             let r = match write_config(&config_path(&base), &edits, &[], webhooks.as_deref()) {
-                Ok(()) => Reload::Config(read_config(&base)),
+                Ok(()) => config_reload(&base),
                 Err(e) => Reload::Failed(e),
             };
             Self::send_back(&tx, &wake, r);
@@ -408,7 +408,7 @@ impl Prefs {
         };
         std::thread::spawn(move || {
             let r = match write_open(&config_path(&base), &edits) {
-                Ok(()) => Reload::Config(read_config(&base)),
+                Ok(()) => config_reload(&base),
                 Err(e) => Reload::Failed(e),
             };
             Self::send_back(&tx, &wake, r);
@@ -494,7 +494,7 @@ impl Prefs {
         };
         std::thread::spawn(move || {
             let r = match write_config(&config_path(&base), &[], &[edit], None) {
-                Ok(()) => Reload::Config(read_config(&base)),
+                Ok(()) => config_reload(&base),
                 Err(e) => Reload::Failed(e),
             };
             Self::send_back(&tx, &wake, r);
@@ -562,17 +562,40 @@ fn backup_keeps(name: &str) -> bool {
     matches!(name, "config.toml" | "keymap.toml")
 }
 
-/// config.toml's text; none when there is no file.
-fn read_config(base: &Path) -> Option<String> {
-    std::fs::read_to_string(config_path(base)).ok()
+/// config.toml's text: none when there is no file, an error when it cannot be
+/// read for another reason (a lock, a permission), which is not "no file".
+fn read_config_checked(base: &Path) -> Result<Option<String>, String> {
+    let path = config_path(base);
+    match std::fs::read_to_string(&path) {
+        Ok(t) => Ok(Some(t)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(format!("{}: {e}", path.display())),
+    }
 }
+
+/// config.toml's text; none when there is no file (or it cannot be read; the
+/// reloads use `config_reload`, which keeps the settings in that case).
+fn read_config(base: &Path) -> Option<String> {
+    read_config_checked(base).ok().flatten()
+}
+
+/// What a changed or written config.toml tells the window: its new text, or
+/// that it could not be read (the settings stay as they are).
+fn config_reload(base: &Path) -> Reload {
+    match read_config_checked(base) {
+        Ok(text) => Reload::Config(text),
+        Err(e) => Reload::Failed(e),
+    }
+}
+
+/// One lock for every writer of config.toml.
+static CONFIG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// Set `edits` (`[notify]` keys, already TOML) and `webhooks` in the
 /// config.toml at `path`, written only when that changes it. Call it off the
 /// UI thread.
 pub fn write_config(path: &Path, edits: &[(&str, String)], view: &[(&str, String)], webhooks: Option<&[Place]>) -> Result<(), String> {
-    static ONE_AT_A_TIME: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    let _one = ONE_AT_A_TIME.lock().unwrap_or_else(|e| e.into_inner());
+    let _one = CONFIG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let at = |e: String| format!("{}: {e}", path.display());
     let text = match std::fs::read_to_string(path) {
         Ok(t) => t,
@@ -601,8 +624,7 @@ pub fn write_config(path: &Path, edits: &[(&str, String)], view: &[(&str, String
 /// Make the external tools page's `edits` in the config.toml at `path`,
 /// written only when that changes it. Call it off the UI thread.
 pub fn write_open(path: &Path, edits: &[ito_openin::Edit]) -> Result<(), String> {
-    static ONE_AT_A_TIME: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    let _one = ONE_AT_A_TIME.lock().unwrap_or_else(|e| e.into_inner());
+    let _one = CONFIG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let at = |e: String| format!("{}: {e}", path.display());
     let text = match std::fs::read_to_string(path) {
         Ok(t) => t,
