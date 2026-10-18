@@ -217,6 +217,8 @@ A row is added with the change that makes the key, and unticked again when the k
 | K15.3 | Conflict, `g` | The window lists first row, `h` hand to Claude, `x` forget; `g g` goes to the first place | [ ] |
 | K15.4 | Changes or Conflict, `y f` / `y n` | The path / the file name is on the clipboard; a toast says so | [ ] |
 | K15.5 | Right-click a file in Changes → discard | Same as `g d` | [ ] |
+| K15.6 | Graph, `Tab` three times | The keys go tree → detail → side column → tree; the blue frame follows them | [ ] |
+| K15.7 | Graph, side column, `→` or `l` | Nothing moves; `Enter` opens the row and returns to the tree | [ ] |
 
 ## To be filled as the redesign lands (issue #133)
 

@@ -132,7 +132,7 @@ impl App {
         if self.detail.wide {
             vec![GraphPane::Tree, GraphPane::Detail]
         } else {
-            vec![GraphPane::Tree, GraphPane::Side, GraphPane::Detail]
+            vec![GraphPane::Tree, GraphPane::Detail, GraphPane::Side]
         }
     }
 
@@ -208,7 +208,7 @@ impl App {
         match (self.pane, c) {
             (GraphPane::Side, 'j') => self.side_move(1),
             (GraphPane::Side, 'k') => self.side_move(-1),
-            (GraphPane::Side, 'l') => self.side_activate(),
+            (GraphPane::Side, 'l' | 'h') => {}
             (GraphPane::Detail, 'j') => self.detail.lines += 1,
             (GraphPane::Detail, 'k') => self.detail.lines -= 1,
             (GraphPane::Detail, 'G') => self.detail.to_end = true,
@@ -231,7 +231,9 @@ impl App {
             (_, "Shift+Tab") => self.cycle_pane(true),
             (GraphPane::Side, "ArrowDown") => self.side_move(1),
             (GraphPane::Side, "ArrowUp") => self.side_move(-1),
-            (GraphPane::Side, "Enter" | "ArrowRight") => self.side_activate(),
+            (GraphPane::Side, "Enter") => self.side_activate(),
+            // Sideways does not leave the column (Tab and Esc do).
+            (GraphPane::Side, "ArrowRight" | "ArrowLeft") => {}
             _ => return false,
         }
         true
@@ -259,13 +261,13 @@ mod tests {
         a.view = crate::app::View::Graph;
         assert!(a.panes_ready());
         assert!(a.named("Tab"));
-        assert_eq!(a.pane, GraphPane::Side);
-        assert!(a.named("Tab"));
         assert_eq!(a.pane, GraphPane::Detail);
+        assert!(a.named("Tab"));
+        assert_eq!(a.pane, GraphPane::Side);
         assert!(a.named("Tab"));
         assert_eq!(a.pane, GraphPane::Tree);
         assert!(a.named("Shift+Tab"));
-        assert_eq!(a.pane, GraphPane::Detail);
+        assert_eq!(a.pane, GraphPane::Side);
         assert!(a.escape());
         assert_eq!(a.pane, GraphPane::Tree);
     }
@@ -330,7 +332,10 @@ mod tests {
         assert_eq!(a.side_cur, first, "nothing above");
         let at = rows(&a).iter().position(|r| matches!(r.kind, Kind::Group { .. })).unwrap();
         a.side_cur = at;
-        a.pane_key('l');
+        a.pane = GraphPane::Side;
+        assert!(a.pane_key('l'), "right is taken and goes nowhere");
+        assert!(a.pane == GraphPane::Side);
+        assert!(a.pane_named("Enter"));
         assert!(a.side_open.contains("r:origin"));
     }
 
