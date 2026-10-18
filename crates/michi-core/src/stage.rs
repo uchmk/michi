@@ -35,6 +35,9 @@ pub struct Lists {
     pub branch: Option<String>,
     /// The staged files that are big or look like secrets (#110, #111).
     pub notes: Vec<crate::guard::Note>,
+    /// The lines the changed files have now (binary, deleted and very big
+    /// files are left out).
+    pub lines: u32,
 }
 
 impl Lists {
@@ -72,7 +75,40 @@ pub fn lists(dir: &Path) -> Result<Lists, git::Error> {
     let branch = branch?.map(|b| String::from_utf8_lossy(&b).trim().to_owned()).filter(|b| !b.is_empty());
     // A failed look is no note: the commit is not held up by it.
     let notes = crate::guard::scan(dir, &staged).unwrap_or_default();
-    Ok(Lists { staged, unstaged, cut, head, branch, notes })
+    let lines = total_lines(dir, &staged, &unstaged);
+    Ok(Lists { staged, unstaged, cut, head, branch, notes, lines })
+}
+
+/// The lines the changed files have now: the worktree's file where it is
+/// changed there, the index's where only staged.
+fn total_lines(dir: &Path, staged: &[File], unstaged: &[File]) -> u32 {
+    let mut lines: u32 = unstaged
+        .iter()
+        .filter(|f| f.status != Status::Deleted)
+        .take(500)
+        .filter_map(|f| {
+            let path = dir.join(&f.path);
+            match fs::metadata(&path) {
+                Ok(m) if m.len() <= (2 << 20) => fs::read(&path).ok().map(|b| show::text_lines(&b)),
+                _ => None,
+            }
+        })
+        .sum();
+    let only: Vec<Oid> = staged.iter().filter(|f| !unstaged.iter().any(|u| u.path == f.path)).filter_map(|f| f.blob).collect();
+    lines = lines.saturating_add(show::blob_lines(dir, &only));
+    lines
+}
+
+impl Lists {
+    /// The files, lines and changes over both sides (a file on both counts once).
+    pub fn totals(&self) -> show::Totals {
+        let mut paths: Vec<&str> = self.staged.iter().chain(&self.unstaged).map(|f| f.path.as_str()).collect();
+        paths.sort_unstable();
+        paths.dedup();
+        let mut t = show::Totals { files: paths.len(), lines: self.lines, ..Default::default() };
+        t.sum(self.staged.iter().chain(&self.unstaged));
+        t
+    }
 }
 
 /// `git diff` of one side, with its options; `paths` limit it.
@@ -540,6 +576,49 @@ mod tests {
 
     fn repo(name: &str) -> TempRepo {
         TempRepo::configured(name)
+    }
+
+    #[test]
+    fn the_totals_count_the_lines_of_the_changed_files() {
+        let t = repo("stage-totals");
+        t.write(
+            &t.repo, "a.txt", "1
+2
+3
+",
+        );
+        t.write(
+            &t.repo, "b.txt", "x
+y
+",
+        );
+        t.git(&t.repo, &["add", "."]);
+        t.git(&t.repo, &["commit", "-q", "-m", "one"]);
+        // a.txt: one line rewritten and one added in the worktree; b.txt staged
+        // only (a line added); n.txt new.
+        t.write(
+            &t.repo,
+            "a.txt",
+            "1
+two
+3
+4
+",
+        );
+        t.write(
+            &t.repo, "b.txt", "x
+y
+z
+",
+        );
+        t.git(&t.repo, &["add", "b.txt"]);
+        t.write(
+            &t.repo, "n.txt", "n
+",
+        );
+        let l = lists(&t.repo).unwrap();
+        // 4 + 3 + 1 lines in 3 files; a.txt +2 -1, b.txt +1, n.txt +1.
+        assert_eq!(l.totals(), show::Totals { files: 3, lines: 8, added: 3, changed: 1, deleted: 0 });
     }
 
     fn paths(files: &[File]) -> Vec<(char, &str)> {

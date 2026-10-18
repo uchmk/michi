@@ -536,6 +536,22 @@ fn list(ui: &Ui, app: &App, lr: Rect, live: bool, pointer: Option<Pos2>, act: &m
         Some(Err(e)) => return note(ui, &p, lr, &app.tr("changes.failed_list").replace("{}", &e.to_string())),
         Some(Ok(l)) => l,
     };
+    // The size of the changes, as the review text names it.
+    let (lr, foot) = {
+        let t = l.totals();
+        if t.files == 0 {
+            (lr, None)
+        } else {
+            let g = p.layout(crate::detail_ui::totals_text(app, &t), FontId::proportional(11.5), c.dim, lr.width() - 2.0 * X);
+            let h = g.size().y + 8.0;
+            (Rect::from_min_max(lr.min, pos2(lr.right(), lr.bottom() - h)), Some((g, h)))
+        }
+    };
+    if let Some((g, h)) = foot {
+        p.line_segment([pos2(lr.left(), lr.bottom()), pos2(lr.right(), lr.bottom())], Stroke::new(1.0, c.border));
+        p.galley(pos2(lr.left() + X, lr.bottom() + (h - g.size().y) / 2.0), g, c.dim);
+    }
+    let p = ui.painter_at(lr);
     let items = items(ch, l);
     let pad = 4.0;
     let tops: Vec<f32> = items

@@ -33,6 +33,9 @@ pub struct Detail {
     /// Whether its signature holds (read apart from `git show`, which would
     /// run gpg while the diff waits).
     pub signature: crate::signature::Signature,
+    /// The lines the changed files have after the change (binary, deleted and
+    /// very big files are left out).
+    pub lines: u32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -106,6 +109,8 @@ pub struct File {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Totals {
     pub files: usize,
+    /// Lines the changed files have in all.
+    pub lines: u32,
     /// Lines only added.
     pub added: u32,
     /// Lines rewritten: as many as were both deleted and added in a file.
@@ -119,14 +124,51 @@ impl Detail {
     /// lines are the smaller of its added and deleted counts; a binary file
     /// has no lines.
     pub fn totals(&self) -> Totals {
-        let mut t = Totals { files: self.files.len(), ..Totals::default() };
-        for (a, d) in self.files.iter().filter_map(|f| f.counts) {
-            let both = a.min(d);
-            t.changed += both;
-            t.added += a - both;
-            t.deleted += d - both;
-        }
+        let mut t = Totals { files: self.files.len(), lines: self.lines, ..Totals::default() };
+        t.sum(self.files.iter());
         t
+    }
+}
+
+impl Totals {
+    /// Adds the added, rewritten and deleted lines of `files`.
+    pub fn sum<'a>(&mut self, files: impl Iterator<Item = &'a File>) {
+        for (a, d) in files.filter_map(|f| f.counts) {
+            let both = a.min(d);
+            self.changed += both;
+            self.added += a - both;
+            self.deleted += d - both;
+        }
+    }
+}
+
+/// Bigger blobs are not read to count their lines.
+const LINES_MAX_BYTES: u64 = 2 << 20;
+/// Files whose lines are counted at most.
+const LINES_MAX_FILES: usize = 500;
+
+/// The lines of the blobs `ids`, summed; a binary, missing or big blob adds none.
+pub(crate) fn blob_lines(dir: &Path, ids: &[Oid]) -> u32 {
+    let mut ids: Vec<Oid> = ids.to_vec();
+    ids.sort();
+    ids.dedup();
+    ids.truncate(LINES_MAX_FILES);
+    let Ok(sizes) = crate::guard::sizes(dir, &ids) else { return 0 };
+    let small: Vec<Oid> = ids.iter().zip(sizes).filter(|(_, s)| s.is_some_and(|s| s <= LINES_MAX_BYTES)).map(|(i, _)| *i).collect();
+    let Ok(blobs) = crate::conflict::blobs(dir, &small) else { return 0 };
+    blobs.values().map(|b| text_lines(b)).sum()
+}
+
+/// The lines of `bytes`; none for binary content (a NUL early on, as git sees it).
+pub(crate) fn text_lines(bytes: &[u8]) -> u32 {
+    if bytes.is_empty() || bytes[..bytes.len().min(8000)].contains(&0) {
+        return 0;
+    }
+    let n = bytes.iter().filter(|&&b| b == 10).count() as u32;
+    if bytes.last() == Some(&10) {
+        n
+    } else {
+        n + 1
     }
 }
 
@@ -282,7 +324,10 @@ fn read_with(dir: &Path, id: &Oid, patch: bool, limits: &Limits, stop: &dyn Fn()
             if p.ended {
                 run.finish()?;
             }
-            Ok(p.detail)
+            let mut detail = p.detail;
+            let ids: Vec<Oid> = detail.files.iter().filter_map(|f| f.blob).collect();
+            detail.lines = blob_lines(dir, &ids);
+            Ok(detail)
         }
         None => {
             run.finish()?;
@@ -464,7 +509,7 @@ fn header(text: &str) -> Option<Detail> {
     let time = l.next()?.trim().parse().unwrap_or(0);
     let subject = l.next().unwrap_or("").to_owned();
     let body = l.next().unwrap_or("").trim_start_matches('\n').trim_end().to_owned();
-    Some(Detail { id, parents, author, email, time, subject, body, files: Vec::new(), cut: false, signature: Default::default() })
+    Some(Detail { id, parents, author, email, time, subject, body, files: Vec::new(), cut: false, signature: Default::default(), lines: 0 })
 }
 
 /// The next NUL-ended field as text.
@@ -741,6 +786,40 @@ fn join(marks: &mut Vec<Range<usize>>, r: Range<usize>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lines_are_counted_as_git_does() {
+        assert_eq!(text_lines(b""), 0);
+        assert_eq!(
+            text_lines(
+                b"a
+b
+"
+            ),
+            2
+        );
+        assert_eq!(
+            text_lines(
+                b"a
+b"
+            ),
+            2
+        );
+        assert_eq!(
+            text_lines(
+                b"
+"
+            ),
+            1
+        );
+        assert_eq!(
+            text_lines(
+                b"a b
+"
+            ),
+            0
+        );
+    }
     use crate::testrepo::TempRepo;
     use std::fs;
 
@@ -797,7 +876,9 @@ mod tests {
         assert_eq!(d.body, "Why:\n\nbecause.");
         assert!(!d.cut);
         // a.txt +2 -1, moved.txt 0, 名前.txt +1 -1; the binary has no lines.
-        assert_eq!(d.totals(), Totals { files: 4, added: 1, changed: 2, deleted: 0 });
+        // The changed files have lines of their own, the binary none.
+        assert!(d.lines > 0);
+        assert_eq!(d.totals(), Totals { files: 4, lines: d.lines, added: 1, changed: 2, deleted: 0 });
         let files: Vec<_> = d.files.iter().map(|f| (f.status.letter(), f.path.as_str(), f.from.as_deref(), f.counts)).collect();
         assert_eq!(
             files,

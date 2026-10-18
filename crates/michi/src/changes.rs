@@ -1051,6 +1051,7 @@ pub(crate) mod tests {
             head: Some(oid(1)),
             branch: None,
             notes: Vec::new(),
+            lines: 0,
         }
     }
 

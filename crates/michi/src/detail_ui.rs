@@ -416,12 +416,7 @@ fn header(ui: &Ui, app: &App, d: &Detail, at: Pos2, width: f32, paint: Option<(&
     }
     let t = d.totals();
     if t.files > 0 {
-        let text = app
-            .tr("detail.totals")
-            .replace("{files}", &t.files.to_string())
-            .replace("{added}", &t.added.to_string())
-            .replace("{changed}", &t.changed.to_string())
-            .replace("{deleted}", &t.deleted.to_string());
+        let text = totals_text(app, &t);
         runs.push(Run { text, font: prop.clone(), color: c.dim, link: None });
     }
     let line_h = 18.0;
@@ -1008,6 +1003,17 @@ fn half_row(ui: &Ui, p: &Painter, rr: Rect, l: Option<&Line>, old: bool) {
     p.text(pos2(ln.right() + SG_W / 2.0, mid), Align2::CENTER_CENTER, sign, FontId::monospace(12.0), ink);
     let tx = ln.right() + SG_W;
     line_text(ui, p, pos2(tx, mid), l, bg, rr.right() - 4.0 - tx, rr);
+}
+
+/// "N files · M lines in all · +A ~C −D lines": the size of a set of changes,
+/// as the review text names it.
+pub(crate) fn totals_text(app: &App, t: &michi_core::show::Totals) -> String {
+    app.tr("detail.totals")
+        .replace("{files}", &t.files.to_string())
+        .replace("{lines}", &t.lines.to_string())
+        .replace("{added}", &t.added.to_string())
+        .replace("{changed}", &t.changed.to_string())
+        .replace("{deleted}", &t.deleted.to_string())
 }
 
 #[cfg(test)]

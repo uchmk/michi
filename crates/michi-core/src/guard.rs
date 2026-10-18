@@ -207,7 +207,7 @@ pub fn scan(wt: &Path, files: &[File]) -> Result<Vec<Note>, git::Error> {
 
 /// The sizes of the blobs `ids` (`cat-file --batch-check`); `None` for one
 /// that is not a blob.
-fn sizes(wt: &Path, ids: &[Oid]) -> Result<Vec<Option<u64>>, git::Error> {
+pub(crate) fn sizes(wt: &Path, ids: &[Oid]) -> Result<Vec<Option<u64>>, git::Error> {
     let mut c = git::command();
     c.arg("-C").arg(wt).args(["cat-file", "--batch-check"]);
     let input: String = ids.iter().map(|i| format!("{i}\n")).collect();

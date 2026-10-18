@@ -229,6 +229,7 @@ A row is added with the change that makes the key, and unticked again when the k
 | K18.1b | Graph detail, `Enter` then `Esc` | `Enter` flips side by side/one column (width unchanged); `Esc` restores width and puts the keys on the list; `j`/`k` and arrows move the same pane | [ ] |
 | K18.4 | Graph detail header | Shows `N files · +A ~C −D lines` for the whole commit | [ ] |
 | K18.5 | Changes, several files marked, `y f` / `y n` | Every marked path/name is on the clipboard, one per line | [ ] |
+| K18.6 | Graph detail header, and the strip under the Changes list | `N files · M lines in all · +A ~C −D lines`; the lines are those of the changed files after the change | [ ] |
 | K18.2 | Graph detail, `[` `]` | The diff jumps to the previous and next file; the list does not move | [ ] |
 | K18.3 | Changes and review screens | The diff is side by side from the start | [ ] |
 

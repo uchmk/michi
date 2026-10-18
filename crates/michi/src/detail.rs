@@ -326,6 +326,7 @@ pub mod fixture {
             files: (0..files).map(file).collect(),
             cut: false,
             signature: michi_core::signature::Signature::Valid,
+            lines: 1234,
         }
     }
 }
