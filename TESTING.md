@@ -1672,3 +1672,4 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 277.2 | Look at those rows' buttons while they have nothing uncommitted | `消す x` comes first, and the note adds that it can be removed; with an uncommitted change the note has no `消せます` and `消す` stays last |
 | 277.3 | Press the reread button after another merge | The note appears without restarting |
 | 277.4 | Look at the clash table with lab-a and lab-c merged into topic-a | Their rows, columns and numbers are faint; the hint under the table says so |
+| 277.5 | Merge a branch into another worktree from another editor or a terminal while michi is in front | The note and the order update by themselves within the poll time (up to 30 s where the folder cannot be watched); the reread button updates at once |
