@@ -2,6 +2,13 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.76.7] - 2026-10-18
+
+### 追加
+
+- 確認の帯（「よろしいですか」）: Ctrl+Enter で進める（Esc でやめる）。ヒントも Ctrl+Enter に替えた。名前を打つ帯は今までどおり Enter。
+- 練習用の道具: `cargo run -p michi --example make-practice -- <親フォルダ>` と `scripts/lab.sh`（衝突の予測が見える worktree を足す）。
+
 ## [0.76.6] - 2026-10-18
 
 ### 変更

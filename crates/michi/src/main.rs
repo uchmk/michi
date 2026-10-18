@@ -443,6 +443,13 @@ impl Michi {
             }
             return;
         }
+        // Ctrl+Enter goes ahead with the question in the band, as it does for a commit or a post.
+        if self.app.band.as_ref().is_some_and(|b| !b.typing() && b.parents == 0)
+            && ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter))
+        {
+            self.app.band_key('y');
+            return;
+        }
         if self.app.pr_form.is_some() {
             let (go, esc) = ctx.input_mut(|i| {
                 (i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter), i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))

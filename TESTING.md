@@ -1655,3 +1655,11 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 270.6 | Esc, `q`, or click outside | It closes; the palette does not open over it |
 | 270.7 | Switch EN and JA, light and dark | Words fit in their boxes (Japanese may wrap to three lines); colours stay readable |
 | 270.8 | Look at the layout | The flow is on the left and the commands on the right, side by side; the columns (command, what, screen, key) do not squash the text |
+
+## 276. Keys of the confirm band
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 276.1 | In a worktree, merge another branch in (`m`) so the band asks | The band's last line reads `Ctrl+Enter Go ahead · Esc Not now`; the buttons are unchanged |
+| 276.2 | Press Ctrl+Enter | The merge goes ahead, as with a click on the button; Esc instead drops the band and nothing changes |
+| 276.3 | Open a band that asks for a typed name (the strongest step) and press Ctrl+Enter | Nothing goes ahead; Enter still needs the name typed first |

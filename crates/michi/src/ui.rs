@@ -731,7 +731,7 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
     } else if b.parents == 0 {
         buttons.push(app.tr("changes.yes").to_owned());
         keys.push('y');
-        hint.push(format!("y {}", app.tr("changes.yes")));
+        hint.push(format!("Ctrl+Enter {}", app.tr("changes.yes")));
     }
     for n in 1..=u32::from(b.parents) {
         let d = char::from_digit(n, 10).unwrap_or('1');
