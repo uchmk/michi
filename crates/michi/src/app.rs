@@ -397,6 +397,8 @@ pub struct App {
     pub stats: Option<crate::stats::Statistics>,
     /// The graph's legend (#118), while open; any key closes it.
     pub legend: bool,
+    /// The Git flow sheet, while open.
+    pub cheat: Option<crate::cheat_ui::Cheat>,
     /// A `g` was typed in the graph or the worktree table: a second one goes to the first row.
     pub pending_g: bool,
     /// The practice repository being made (#117): its folder, or why not.
@@ -512,6 +514,7 @@ impl App {
             reflog: None,
             stats: None,
             legend: false,
+            cheat: None,
             pending_g: false,
             practicing: None,
             ready: None,
@@ -1569,6 +1572,7 @@ impl App {
                 self.mode = if self.mode == Mode::Help { Mode::Main } else { Mode::Help };
             }
             Act::Palette => self.toggle_palette(),
+            Act::Cheat => self.toggle_cheat(),
             Act::Repos => self.toggle_repos(),
             Act::BugReport => self.bug_report(),
             Act::NextTab => self.tab_req = Some(michi_core::tabs::Op::Next),
@@ -1692,6 +1696,7 @@ impl App {
             (Mode::Main, _) if self.picker.is_some() || self.new_work.is_some() || self.pr_form.is_some() || self.reply.is_some() => {
                 return false
             }
+            (Mode::Main, c) if self.cheat.is_some() => return self.cheat_key(c),
             (Mode::Main, _) if self.legend => {
                 self.legend = false;
                 return true;
@@ -1953,6 +1958,9 @@ impl App {
         if self.reflog.is_some() {
             return self.reflog_named(name);
         }
+        if self.cheat.is_some() {
+            return self.cheat_named(name);
+        }
         if self.legend {
             self.legend = false;
             return true;
@@ -2067,6 +2075,9 @@ impl App {
         }
         if self.pr_form.as_ref().is_some_and(|f| !f.busy) {
             self.pr_form = None;
+            return true;
+        }
+        if self.cheat.take().is_some() {
             return true;
         }
         if std::mem::take(&mut self.legend) {

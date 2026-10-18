@@ -2,6 +2,14 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.75.0] - 2026-10-18
+
+### 追加
+
+- Git フローの早見表（Ctrl+Shift+G、またはパレットの「Git flow sheet」）。やりたいこと別の 7 つのタブ（基本・コンフリクト・戻し・reset・restore/switch・branch/stash/worktree・rerere/reflog）に、フローチャートとコマンドの表を出す。
+  箱を選ぶ（j/k、クリック）とその箱のコマンドが強調され、コマンドをクリックするとコピーする。1〜7・h/l でタブを替え、Esc か外のクリックで閉じる。
+  `reset --hard` など取り返しの付かないコマンドは赤で示す。コマンド表には michi の対応するキーの欄を用意した（まだ空。キーの整理のあとで埋める）。
+
 ## [0.74.1] - 2026-10-18
 
 ### 変更

@@ -219,6 +219,9 @@ All wait for the owner; none is started. Related: #64 (Undo), #74, #77, #80-#83.
 - [x] Commit message writing guide（要確認: #124）
 - [x] Unify Japanese and English terms（要確認: #125）
 
+- [x] Git flow sheet (Ctrl+Shift+G): 7 tabs of flowcharts with commands（要確認: question issue）
+- [ ] Sort out all shortcut keys by how often they are used, then fill the key column of the Git flow sheet (`Step.key` in `cheat.rs`) and enable its "key exists" test
+
 ## Owner
 
 - 【人】 After the skeleton: run the rows of TESTING-CHECKS.md on the real machine (window, title bar, icon, fonts).

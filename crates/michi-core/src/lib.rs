@@ -14,6 +14,7 @@ pub mod branch;
 pub mod calm;
 pub mod carry;
 pub mod change;
+pub mod cheat;
 pub mod clash;
 pub mod claude;
 pub mod clone;

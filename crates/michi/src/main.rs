@@ -18,6 +18,7 @@ mod bugreport;
 mod calm;
 mod changes;
 mod changes_ui;
+mod cheat_ui;
 mod cmdpalette;
 mod conflict_ui;
 mod conflicts;
@@ -742,6 +743,7 @@ impl eframe::App for Michi {
         reflog_ui::show(&ctx, &mut self.app);
         stats_ui::show(&ctx, &mut self.app);
         legend_ui::show(&ctx, &mut self.app);
+        cheat_ui::show(&ctx, &mut self.app);
         ready_ui::show(&ctx, &mut self.app);
         auth_ui::show(&ctx, &mut self.app);
         guide_ui::show(&ctx, &mut self.app);

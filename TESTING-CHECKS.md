@@ -1324,3 +1324,13 @@
 - [ ] **275.4** With `[view] dates` unwritten, look at the graph's date column → `YYYY/MM/DD hh:mm`, as the settings' clock format at the bottom right; `dates = "relative"` brings the short form back 〔未訳〕
 - [ ] **275.5** Open `2` → The commit message box is under the diff on the right, not under the file list; the file list runs to the bottom on the left 〔未訳〕
 - [ ] **275.6** With two repository tabs open, press Ctrl+, then Ctrl+Tab → The tab bar is gone while the settings are open; Ctrl+Tab steps the settings' pages, not the repositories; Ctrl+, closes the settings and the bar returns 〔未訳〕
+
+## 270. Git flow sheet
+
+- [ ] **270.1** Press Ctrl+Shift+G (or palette: "Git flow sheet") → A sheet opens with seven tabs; the first (Basics) shows a flowchart, its commands and the key column (`—`) 〔未訳〕
+- [ ] **270.2** Press `2`…`7`, `h`, `l`, or click a tab → The sheet changes; every arrow joins its boxes without crossing a box; nothing is clipped on a narrow window (scroll works) 〔未訳〕
+- [ ] **270.3** Press `j` / `k`, or click a box → The box is outlined and its commands in the table are bright; the numbers on the boxes match the table 〔未訳〕
+- [ ] **270.4** Click a command → A toast "Copied: …" shows and the command is on the clipboard 〔未訳〕
+- [ ] **270.5** Look at `reset --hard`, `push --force`, `clean -fd` → They are red, with a hover warning 〔未訳〕
+- [ ] **270.6** Esc, `q`, or click outside → It closes; the palette does not open over it 〔未訳〕
+- [ ] **270.7** Switch EN and JA, light and dark → Words fit in their boxes (Japanese may wrap to three lines); colours stay readable 〔未訳〕

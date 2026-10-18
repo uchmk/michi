@@ -118,6 +118,7 @@ impl App {
             || self.reflog.is_some()
             || self.stats.is_some()
             || self.legend
+            || self.cheat.is_some()
             || self.ready.is_some()
             || self.auth.is_some()
             || self.blame.is_some()

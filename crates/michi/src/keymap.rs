@@ -23,6 +23,8 @@ pub enum Act {
     /// Open the key list, or close it.
     Help,
     Palette,
+    /// Open the Git flow sheet, or close it.
+    Cheat,
     /// Open the repository screen, or close it.
     Repos,
     /// Open the bug report form in the browser.
@@ -50,6 +52,7 @@ pub fn parse(s: &str) -> Result<Act, String> {
         (Some("settings"), None) => Act::Settings,
         (Some("help"), None) => Act::Help,
         (Some("palette"), None) => Act::Palette,
+        (Some("cheat"), None) => Act::Cheat,
         (Some("repos"), None) => Act::Repos,
         (Some("bugreport"), None) => Act::BugReport,
         (Some("nexttab"), None) => Act::NextTab,
