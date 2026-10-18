@@ -274,6 +274,10 @@ pub enum Repo {
     Failed(git::Error),
 }
 
+/// How many reads in a row may find no agent in a handed worktree before the
+/// watch is dropped (a new tab takes a while to start its Claude).
+const HANDED_EMPTY_POLLS: u32 = 6;
+
 /// A worktree whose Claude was handed a conflict: see [`App::handed`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Handed {
@@ -282,6 +286,8 @@ pub struct Handed {
     pub ran: bool,
     /// Reads that found it stopped without ever seeing it run.
     pub polls: u32,
+    /// Reads in a row that found no agent in the worktree.
+    pub gone: u32,
     /// It was handed a conflict (not notes): look at the markers when it stops.
     pub conflict: bool,
 }
@@ -1456,8 +1462,12 @@ impl App {
         watched.retain_mut(|h| {
             let agents: Vec<_> = self.claude_in(&h.wt).iter().filter(|s| s.is_agent()).collect();
             if agents.is_empty() {
-                return h.polls < 3 && h.ran;
+                // A tab just started has no agent yet, and a lost read has none
+                // either: wait some reads before giving the watch up.
+                h.gone += 1;
+                return h.gone < HANDED_EMPTY_POLLS;
             }
+            h.gone = 0;
             if agents.iter().any(|s| s.state == State::Running) {
                 h.ran = true;
                 return true;
@@ -1493,7 +1503,7 @@ impl App {
     /// Watches the Claude in the worktree at `wt`, which was handed a conflict.
     pub fn watch_handed(&mut self, wt: PathBuf) {
         self.handed.retain(|h| h.wt != wt);
-        self.handed.push(Handed { wt, ran: false, polls: 0, conflict: false });
+        self.handed.push(Handed { wt, ran: false, polls: 0, gone: 0, conflict: false });
     }
 
     /// The one next step the empty states point at (issue #81), if any.
@@ -2988,6 +2998,40 @@ pub(crate) mod tests {
         assert!(a.toast.is_none() && a.handed.len() == 1);
         give(&mut a, State::Waiting);
         assert!(toast(&a).contains("wt"), "{}", toast(&a));
+        assert!(a.handed.is_empty());
+    }
+
+    #[test]
+    fn a_handed_watch_waits_for_a_claude_that_has_not_registered_yet() {
+        let mut a = app();
+        let wt = PathBuf::from("C:/r/wt");
+        let s = |state| Session {
+            id: 3,
+            state,
+            command: "claude".into(),
+            agent: "claude".into(),
+            cwd: "C:/r/wt".into(),
+            branch: "wip".into(),
+            title: "fix".into(),
+            note: String::new(),
+            since_ms: 0,
+            read_only: false,
+        };
+        a.watch_handed(wt);
+        // A new tab: the reads find no agent for a while, and the watch stays.
+        for _ in 0..(HANDED_EMPTY_POLLS - 1) {
+            a.take(Answer::Claude(Some(vec![])));
+            assert_eq!(a.handed.len(), 1);
+        }
+        a.take(Answer::Claude(Some(vec![(PathBuf::from("C:/r/wt"), vec![s(State::Running)])])));
+        a.take(Answer::Claude(Some(vec![(PathBuf::from("C:/r/wt"), vec![s(State::Waiting)])])));
+        assert!(toast(&a).contains("wt"), "{}", toast(&a));
+        assert!(a.handed.is_empty());
+        // One that never shows up is given up after the reads.
+        a.watch_handed(PathBuf::from("C:/r/other"));
+        for _ in 0..HANDED_EMPTY_POLLS {
+            a.take(Answer::Claude(Some(vec![])));
+        }
         assert!(a.handed.is_empty());
     }
 
