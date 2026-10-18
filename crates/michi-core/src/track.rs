@@ -34,6 +34,10 @@ pub struct Tree {
     pub upstream: Option<Upstream>,
     /// What it is in the middle of (a merge, a rebase).
     pub doing: Option<Doing>,
+    /// The branch of another worktree that already holds all of this one's
+    /// commits (it was merged in there, not yet on the trunk); `None` when
+    /// no worktree does or this one has nothing the trunk has not.
+    pub merged_into: Option<String>,
 }
 
 /// The worktrees and the trunk they are measured against.
@@ -50,7 +54,7 @@ pub struct Trees {
 /// The counts already made, by `(trunk, head)`: most heads stay where they
 /// were from one reading to the next.
 #[derive(Default)]
-pub struct Cache(HashMap<(Oid, Oid), (u32, u32)>);
+pub struct Cache(HashMap<(Oid, Oid), (u32, u32)>, HashMap<(Oid, Oid), bool>);
 
 /// How each of `worktrees` (of the repository `dir` is in; bare ones left
 /// out) stands. A count that fails is left out, not the whole reading.
@@ -79,10 +83,53 @@ pub fn read(dir: &Path, worktrees: &[Worktree], cache: &mut Cache) -> Result<Tre
         };
         let upstream = wt.branch.as_ref().and_then(|b| ups.get(b)).cloned();
         let doing = branch::doing(&wt.path);
-        trees.push(Tree { wt: wt.clone(), ahead_behind, upstream, doing });
+        trees.push(Tree { wt: wt.clone(), ahead_behind, upstream, doing, merged_into: None });
     }
     cache.0 = counted;
+    let trunk_name = trunk.as_ref().map(|t| t.name.as_str());
+    mark_merged(dir, &mut trees, trunk_name, &mut cache.1);
     Ok(Trees { trunk_head: trunk.as_ref().map(|t| t.head), trunk: trunk.map(|t| t.name), trees })
+}
+
+/// Sets `merged_into` of the worktrees whose commits another one's branch
+/// holds already. Of several, the one with the fewest commits ahead (the
+/// nearest). `known` keeps the answers by `(head, other head)`.
+fn mark_merged(dir: &Path, trees: &mut [Tree], trunk: Option<&str>, known: &mut HashMap<(Oid, Oid), bool>) {
+    // (index, head, branch, ahead) of the worktrees with something the trunk has not.
+    let live: Vec<(usize, Oid, String, u32)> = trees
+        .iter()
+        .enumerate()
+        .filter(|(_, t)| t.doing.is_none() && t.wt.prunable.is_none())
+        .filter_map(|(i, t)| {
+            let branch = t.wt.branch.clone().filter(|b| Some(b.as_str()) != trunk)?;
+            let ahead = t.ahead_behind.map(|(a, _)| a).filter(|&a| a > 0)?;
+            Some((i, Oid::parse(&t.wt.head)?, branch, ahead))
+        })
+        .collect();
+    let mut kept = HashMap::new();
+    for (i, head, _, ahead) in &live {
+        let mut best: Option<(u32, &str)> = None;
+        for (j, other, name, other_ahead) in &live {
+            if i == j || head == other || other_ahead < ahead {
+                continue;
+            }
+            let key = (*head, *other);
+            let held = known.get(&key).copied().or_else(|| is_ancestor(dir, head, other).ok());
+            if let Some(h) = held {
+                kept.insert(key, h);
+                if h && best.is_none_or(|(n, _)| *other_ahead < n) {
+                    best = Some((*other_ahead, name));
+                }
+            }
+        }
+        trees[*i].merged_into = best.map(|(_, n)| n.to_owned());
+    }
+    *known = kept;
+}
+
+/// Whether `old` is `new` or one of its ancestors.
+pub fn is_ancestor(dir: &Path, old: &Oid, new: &Oid) -> Result<bool, git::Error> {
+    git::check(dir, &["merge-base", "--is-ancestor", &old.to_string(), &new.to_string()])
 }
 
 /// Commits `head` has that `base` has not, and the other way.
@@ -147,6 +194,29 @@ refs/heads/old\0origin/old\0gone\nrefs/heads/local\0\0\nrefs/heads/up\0origin/up
         assert!(u["old"].gone);
         assert_eq!((u["up"].ahead, u["up"].behind), (0, 1));
         assert!(!u.contains_key("local"));
+    }
+
+    #[test]
+    fn a_branch_held_by_another_worktree_is_merged_into_it() {
+        let r = TempRepo::new("merged");
+        r.git(&r.repo, &["worktree", "add", "-q", "-b", "a", "../wa"]);
+        r.git(&r.repo, &["worktree", "add", "-q", "-b", "b", "../wb"]);
+        r.git(&r.repo, &["worktree", "add", "-q", "-b", "c", "../wc"]);
+        let (wa, wb, wc) = (r.root.join("wa"), r.root.join("wb"), r.root.join("wc"));
+        r.git(&wa, &["commit", "-q", "--allow-empty", "-m", "a1"]);
+        r.git(&wc, &["commit", "-q", "--allow-empty", "-m", "c1"]);
+        r.git(&wb, &["commit", "-q", "--allow-empty", "-m", "b1"]);
+        r.git(&wb, &["merge", "-q", "--no-edit", "a"]);
+        let all = worktree::list(&r.repo).unwrap();
+        let mut cache = Cache::default();
+        let t = read(&r.repo, &all, &mut cache).unwrap();
+        let by = |n: &str| t.trees.iter().find(|x| x.wt.branch.as_deref() == Some(n)).unwrap();
+        assert_eq!(by("a").merged_into.as_deref(), Some("b"));
+        assert_eq!(by("b").merged_into, None);
+        assert_eq!(by("c").merged_into, None);
+        assert_eq!(by("main").merged_into, None);
+        // Read again, from the answers kept.
+        assert_eq!(read(&r.repo, &all, &mut cache).unwrap(), t);
     }
 
     #[test]

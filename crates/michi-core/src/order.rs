@@ -43,6 +43,8 @@ pub fn suggest(clashes: &Clashes, trees: &Trees) -> Vec<Step> {
         .trees
         .iter()
         .filter(|t| t.wt.branch.is_some() && t.wt.branch.as_deref() != trunk)
+        // Merged into another worktree's branch: it lands with that one.
+        .filter(|t| t.merged_into.is_none())
         .filter_map(|t| {
             let ahead = t.ahead_behind.map(|(a, _)| a).filter(|&a| a > 0)?;
             Some((clashes.side_of(&t.wt.path)?, t.wt.path.clone(), ahead))
@@ -100,7 +102,7 @@ mod tests {
             locked: None,
             prunable: None,
         };
-        Tree { wt, ahead_behind: Some((ahead, 0)), upstream: None, doing: None }
+        Tree { wt, ahead_behind: Some((ahead, 0)), upstream: None, doing: None, merged_into: None }
     }
 
     /// `names` are the worktrees (the first is main), `conflicts` the pairs of
@@ -158,6 +160,13 @@ mod tests {
         let (c, mut t) = setup(&["main", "a", "b", "c"], &[]);
         t.trees[3].ahead_behind = Some((0, 2));
         assert_eq!(names(&suggest(&c, &t)).len(), 2);
+    }
+
+    #[test]
+    fn one_merged_into_another_lands_with_it() {
+        let (c, mut t) = setup(&["main", "a", "b", "c"], &[]);
+        t.trees[1].merged_into = Some("b".into());
+        assert_eq!(names(&suggest(&c, &t)), vec!["b", "c"]);
     }
 
     #[test]

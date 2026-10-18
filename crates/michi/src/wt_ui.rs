@@ -184,6 +184,12 @@ pub fn name_of(t: &Tree) -> String {
     t.wt.branch.clone().unwrap_or(folder)
 }
 
+/// Whether the worktree's branch is merged into another's and it holds no
+/// uncommitted change: nothing is lost by removing it.
+fn removable(app: &App, t: &Tree) -> bool {
+    t.merged_into.is_some() && t.doing.is_none() && app.wip_in(&t.wt.path).is_none_or(|w| w.files.is_empty() && w.left_out.is_empty())
+}
+
 /// The branch and the folder, and whether git keeps the worktree locked or
 /// would prune it.
 fn name_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
@@ -202,7 +208,10 @@ fn name_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
         let at = t.wt.head.chars().take(7).collect::<String>();
         note(app.tr("wt.detached").replace("{}", &at), c.dim);
     }
-    if let Some((n, m, k)) = app.land_order_of(&t.wt.path) {
+    if let Some(into) = &t.merged_into {
+        let words = app.tr(if removable(app, t) { "wt.merged_clean" } else { "wt.merged" }).replacen("{}", into, 1).replacen("{}", into, 1);
+        note(words, c.done);
+    } else if let Some((n, m, k)) = app.land_order_of(&t.wt.path) {
         let key = if k > 0 { "wt.order_resolve" } else { "wt.order" };
         let words = app.tr(key).replace("{n}", &n.to_string()).replace("{m}", &m.to_string()).replace("{k}", &k.to_string());
         note(words, if k > 0 { c.wait } else { c.done });
@@ -449,10 +458,16 @@ fn buttons_of(app: &App, t: &Tree, k: usize, trunk: &str, b: &MakeButton) -> Vec
             b(app.tr("key.in_graph").to_owned(), Some("Enter"), Act::Enter, false),
         ];
     }
-    let mut out = vec![
+    let mut out = Vec::new();
+    // Merged elsewhere and clean: removing it comes first.
+    let first = k > 0 && removable(app, t);
+    if first {
+        out.push(b(app.tr("key.remove").to_owned(), Some("x"), Act::Key('x'), true));
+    }
+    out.extend([
         b(app.tr("wt.diff").to_owned(), Some("d"), Act::Key('d'), false),
         b(app.tr("wt.take").replace("{}", trunk), Some("m"), Act::Key('m'), false),
-    ];
+    ]);
     if t.wt.branch.as_deref().is_some_and(|br| !app.branch_issues(br).is_empty()) {
         out.push(b(app.tr("key.issue").to_owned(), Some("I"), Act::Key('I'), false));
     }
@@ -460,7 +475,7 @@ fn buttons_of(app: &App, t: &Tree, k: usize, trunk: &str, b: &MakeButton) -> Vec
         out.push(b("PR".to_owned(), None, Act::Pr, false));
     }
     // The main worktree is not one git can remove.
-    if k > 0 {
+    if k > 0 && !first {
         out.push(b(app.tr("key.remove").to_owned(), Some("x"), Act::Key('x'), true));
     }
     out

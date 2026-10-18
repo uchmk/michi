@@ -184,6 +184,7 @@ mod tests {
             ahead_behind: None,
             upstream: None,
             doing: None,
+            merged_into: None,
         }
     }
 

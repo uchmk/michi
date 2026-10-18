@@ -1663,3 +1663,11 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 276.1 | In a worktree, merge another branch in (`m`) so the band asks | The band's last line reads `Ctrl+Enter Go ahead · Esc Not now`; the buttons are unchanged |
 | 276.2 | Press Ctrl+Enter | The merge goes ahead, as with a click on the button; Esc instead drops the band and nothing changes |
 | 276.3 | Open a band that asks for a typed name (the strongest step) and press Ctrl+Enter | Nothing goes ahead; Enter still needs the name typed first |
+
+## 277. Branches already merged into another worktree
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 277.1 | In the practice lab, merge lab-a and lab-c into topic-a, then look at the worktree table | The lab-a and lab-c rows say `topic-a に取り込み済み`; their land-order line is gone and the rest of the order counts without them |
+| 277.2 | Look at those rows' buttons while they have nothing uncommitted | `消す x` comes first, and the note adds that it can be removed; with an uncommitted change the note has no `消せます` and `消す` stays last |
+| 277.3 | Press the reread button after another merge | The note appears without restarting |
