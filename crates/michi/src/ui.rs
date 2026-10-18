@@ -71,6 +71,8 @@ pub struct Out {
     pub view: Option<View>,
     pub settings: bool,
     pub palette: bool,
+    /// The bell was clicked.
+    pub bell: bool,
     /// A key of the keybar that was clicked (#123).
     pub key: Option<BarKey>,
     /// The calm save button was pressed (#113).
@@ -100,7 +102,7 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     let here_r = here.as_ref().map(|_| Rect::from_min_size(under, vec2(rect.width(), WHERE_H)));
     let top = under + vec2(0.0, strip.map_or(0.0, |s| s.height()) + here_r.map_or(0.0, |r| r.height()));
     let body = Rect::from_min_max(top, keybar.right_top());
-    let mut out = Out { view: None, settings: false, palette: false, key: None, calm: false, next: false, body };
+    let mut out = Out { view: None, settings: false, palette: false, bell: false, key: None, calm: false, next: false, body };
     if app.mode != Mode::Settings {
         // The key list goes over the view; the mouse is the list's then.
         // The columns stay clear of the window's resize edge.
@@ -520,23 +522,16 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
         }
         right = b.left();
     }
-    right -= 6.0;
-    // The comma opens the settings.
-    let gear = Rect::from_center_size(pos2(right - 12.0, mid), vec2(24.0, 24.0));
-    let resp = ui.interact(gear, ui.id().with("gear"), Sense::CLICK);
-    if resp.hovered() || app.mode == Mode::Settings {
-        p.rect_filled(gear, CornerRadius::same(5), c.panel);
-    }
-    p.text(gear.center(), Align2::CENTER_CENTER, ",", FontId::monospace(15.0), if app.mode == Mode::Settings { accent() } else { c.fg });
-    if resp.clicked() {
-        out.settings = true;
-    }
-    resp.on_hover_text(crate::keymap::tip(app.tr("view.settings"), app.prefs.keymap.hint(crate::keymap::Act::Settings).as_deref()));
-    right = gear.left() - 8.0;
-    // The palette field.
+    right -= 8.0;
+    // The palette field and the bell beside it, in the middle of the window.
     let w = if r.width() < NARROW { 150.0 } else { 230.0 };
-    if right - w > left_end + 12.0 {
-        let field = Rect::from_min_max(pos2(right - w, mid - 12.0), pos2(right, mid + 12.0));
+    const BELL: f32 = 28.0;
+    let group = w + 6.0 + BELL;
+    let group_left = (r.center().x - group / 2.0).max(left_end + 12.0);
+    let group_right = group_left + group;
+    let mut centre_end = left_end;
+    if group_right <= right {
+        let field = Rect::from_min_max(pos2(group_left, mid - 12.0), pos2(group_left + w, mid + 12.0));
         let resp = ui.interact(field, ui.id().with("palette"), Sense::CLICK);
         p.rect_filled(field, CornerRadius::same(5), if resp.hovered() { c.panel } else { c.bg });
         p.rect_stroke(field, CornerRadius::same(5), Stroke::new(1.0, c.border), StrokeKind::Inside);
@@ -553,15 +548,93 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
         if resp.hovered() {
             ctx.set_cursor_icon(CursorIcon::Text);
         }
-        right = field.left() - 10.0;
+        let bell = Rect::from_min_size(pos2(field.right() + 6.0, mid - 12.0), vec2(BELL, 24.0));
+        if bell_button(ui, app, bell) {
+            out.bell = true;
+        }
+        centre_end = bell.right();
     }
-    chip(ui, app, &p, left_end + 10.0, right, mid);
+    // The settings, as a word, and the repository chip at the far right.
+    let word = ui.fonts_mut(|f| f.layout_no_wrap(app.tr("view.settings").to_owned(), FontId::proportional(12.5), c.fg));
+    let chip_w = chip(ui, app, &p, centre_end + 12.0 + word.size().x + 24.0, right, mid);
+    let chip_x = if chip_w > 0.0 { right - chip_w - 8.0 } else { right };
+    let gear = Rect::from_min_max(pos2(chip_x - word.size().x - 16.0, mid - 12.0), pos2(chip_x, mid + 12.0));
+    let resp = ui.interact(gear, ui.id().with("gear"), Sense::CLICK);
+    let on = app.mode == Mode::Settings;
+    if resp.hovered() || on {
+        p.rect_filled(gear, CornerRadius::same(5), c.panel);
+    }
+    p.galley(gear.center() - word.size() / 2.0, word, if on { accent() } else { c.fg });
+    if resp.clicked() {
+        out.settings = true;
+    }
+    resp.on_hover_text(crate::keymap::tip(app.tr("view.settings"), app.prefs.keymap.hint(crate::keymap::Act::Settings).as_deref()));
+}
+
+/// The bell: the count of notices not read, gold. True when it was clicked.
+fn bell_button(ui: &mut Ui, app: &App, rect: Rect) -> bool {
+    let c = ito_theme::colors();
+    let unread = app.notices.iter().filter(|n| !n.1).count();
+    let resp = ui.interact(rect, ui.id().with("bell"), Sense::CLICK);
+    let p = ui.painter().clone();
+    if resp.hovered() || app.bell_open {
+        p.rect_filled(rect, CornerRadius::same(6), c.panel);
+    }
+    let at = rect.center() + vec2(0.0, -1.0);
+    let ink = if unread == 0 { c.dim } else { c.fg };
+    let stroke = Stroke::new(1.4, ink);
+    let cup = [(-5.5, 4.0), (-4.5, -1.0), (-3.0, -4.5), (0.0, -5.5), (3.0, -4.5), (4.5, -1.0), (5.5, 4.0)];
+    p.add(egui::Shape::line(cup.iter().map(|(x, y)| at + vec2(*x, *y)).collect(), stroke));
+    p.line_segment([at + vec2(-6.5, 4.0), at + vec2(6.5, 4.0)], stroke);
+    p.circle_filled(at + vec2(0.0, 6.2), 1.4, ink);
+    if unread > 0 {
+        let badge = rect.right_top() + vec2(-5.0, 5.0);
+        p.circle_filled(badge, 7.0, Color32::from_rgb(0xE0, 0xA8, 0x30));
+        let text = if unread > 9 { "9+".to_owned() } else { unread.to_string() };
+        p.text(badge, Align2::CENTER_CENTER, text, FontId::proportional(10.0), Color32::BLACK);
+    }
+    resp.clone().on_hover_text(app.tr("bell.hover").replace("{}", &unread.to_string()));
+    resp.clicked()
+}
+
+/// The list the bell opens, under it: newest first. True when it should
+/// close (Esc, or a click outside it).
+pub fn bell_list(ctx: &egui::Context, app: &App) -> bool {
+    let c = ito_theme::colors();
+    let r = ctx.content_rect();
+    let title = Rect::from_min_size(r.min, vec2(r.width(), TITLE_H));
+    let at = pos2((title.center().x + 100.0).min(r.right() - 372.0).max(r.left() + 8.0), title.bottom() + 4.0);
+    let mut inside = false;
+    let resp = egui::Area::new(egui::Id::new("bell-list")).order(egui::Order::Foreground).fixed_pos(at).show(ctx, |ui| {
+        egui::Frame::NONE
+            .fill(c.raised())
+            .stroke(Stroke::new(1.0, c.border_strong()))
+            .corner_radius(CornerRadius::same(8))
+            .inner_margin(10.0)
+            .show(ui, |ui| {
+                ui.set_width(340.0);
+                if app.notices.is_empty() {
+                    ui.label(egui::RichText::new(app.tr("bell.empty")).color(c.dim));
+                    return;
+                }
+                egui::ScrollArea::vertical().max_height(360.0).auto_shrink([false, true]).show(ui, |ui| {
+                    for (text, read) in app.notices.iter().rev() {
+                        ui.label(egui::RichText::new(text).color(if *read { c.dim } else { c.fg }).size(12.5));
+                        ui.separator();
+                    }
+                });
+            });
+    });
+    inside |= resp.response.contains_pointer();
+    let click_out =
+        ctx.input(|i| i.pointer.any_pressed()) && !inside && !ctx.input(|i| i.pointer.hover_pos().is_some_and(|p| p.y < title.bottom()));
+    click_out || ctx.input(|i| i.key_pressed(egui::Key::Escape))
 }
 
 /// The repository chip, right-aligned to `right`: the name, then the branch
 /// and the count of worktrees, and what the worktree is in the middle of in
 /// red. What does not fit before `left` goes, the branch first.
-fn chip(ui: &Ui, app: &App, p: &egui::Painter, left: f32, right: f32, mid: f32) {
+fn chip(ui: &Ui, app: &App, p: &egui::Painter, left: f32, right: f32, mid: f32) -> f32 {
     let c = ito_theme::colors();
     let font = FontId::proportional(12.0);
     let doing = match &app.repo {
@@ -599,7 +672,7 @@ fn chip(ui: &Ui, app: &App, p: &egui::Painter, left: f32, right: f32, mid: f32) 
     } else if !name.is_empty() && right - 18.0 - name_g.size().x >= left {
         (name_g.size().x, false)
     } else {
-        return;
+        return 0.0;
     };
     let rect = Rect::from_min_max(pos2(right - inner - 18.0, mid - 11.0), pos2(right, mid + 11.0));
     p.rect_stroke(rect, CornerRadius::same(11), Stroke::new(1.0, c.border), StrokeKind::Inside);
@@ -626,6 +699,7 @@ fn chip(ui: &Ui, app: &App, p: &egui::Painter, left: f32, right: f32, mid: f32) 
         _ => app.dir.display().to_string(),
     };
     resp.on_hover_text(top);
+    rect.width()
 }
 
 /// The branch mark's width.

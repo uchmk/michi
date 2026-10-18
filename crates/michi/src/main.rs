@@ -793,6 +793,15 @@ impl eframe::App for Michi {
         if out.palette {
             self.app.toggle_palette();
         }
+        if out.bell {
+            self.app.bell_open = !self.app.bell_open;
+            if !self.app.bell_open {
+                self.app.notices.iter_mut().for_each(|n| n.1 = true);
+            }
+        } else if self.app.bell_open && ui::bell_list(&ctx, &self.app) {
+            self.app.bell_open = false;
+            self.app.notices.iter_mut().for_each(|n| n.1 = true);
+        }
         match out.key {
             Some(ui::BarKey::Char(c)) => self.app.run_pick(cmdpalette::Pick::Key(c)),
             Some(ui::BarKey::Esc) => _ = self.app.escape(),

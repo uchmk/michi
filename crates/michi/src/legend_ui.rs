@@ -67,12 +67,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 ui.set_width(width);
                 ui.label(egui::RichText::new(app.tr("legend.title")).strong());
                 ui.add_space(4.0);
-                for (icon, key) in ROWS {
-                    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), app.prefs.density.px(ROW_H)), Sense::hover());
-                    let p = ui.painter_at(rect);
-                    draw(ui, &p, *icon, pos2(rect.left() + 6.0, rect.center().y), rect);
-                    p.text(pos2(rect.left() + ICON_W, rect.center().y), Align2::LEFT_CENTER, app.tr(key), FontId::proportional(13.0), c.fg);
-                }
+                rows(ui, app);
                 ui.add_space(4.0);
                 ui.label(egui::RichText::new(app.tr("legend.keys")).font(FontId::proportional(12.0)).color(c.dim));
             });
@@ -81,6 +76,17 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
         ctx.input(|i| i.pointer.any_pressed()) && ctx.input(|i| i.pointer.interact_pos()).is_some_and(|q| !area.response.rect.contains(q));
     if outside {
         app.legend = false;
+    }
+}
+
+/// The rows of the legend, to be drawn in `ui` (also the sheet's last tab).
+pub fn rows(ui: &mut egui::Ui, app: &App) {
+    let c = ito_theme::colors();
+    for (icon, key) in ROWS {
+        let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), app.prefs.density.px(ROW_H)), Sense::hover());
+        let p = ui.painter_at(rect);
+        draw(ui, &p, *icon, pos2(rect.left() + 6.0, rect.center().y), rect);
+        p.text(pos2(rect.left() + ICON_W, rect.center().y), Align2::LEFT_CENTER, app.tr(key), FontId::proportional(13.0), c.fg);
     }
 }
 

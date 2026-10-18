@@ -19,7 +19,7 @@ keymap = [
     { on = "<C-,>", run = "settings", desc = "Settings" },
     { on = "<F1>", run = "help", desc = "Keys" },
     { on = "<C-S-p>", run = "palette", desc = "Search commands" },
-    { on = "<C-S-g>", run = "cheat", desc = "Git flow sheet" },
+    { on = "i", run = "cheat", desc = "Git flow sheet" },
     { on = "<C-o>", run = "repos", desc = "Switch repository" },
     { on = "<C-t>", run = "repos", desc = "Switch repository" },
     { on = "<C-w>", run = "closetab", desc = "Close tab" },

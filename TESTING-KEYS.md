@@ -235,3 +235,8 @@ A row is added with the change that makes the key, and unticked again when the k
 - `y` copy, still to come: `y u` URL.
 - `?` deep search: rows that do not hit are still drawn faint, not taken away (a "only hits" view is still to come).
 - Panes: Tab on the worktree table itself (one pane) does nothing, on purpose.
+
+### K19 タイトルバーと早見表 (0.89.0)
+
+- [ ] K19.1 タイトルバー — コマンドパレットが窓の中央、右隣にベル（トーストが出ると未読の数）。押すと一覧、Esc か外のクリックで閉じて既読。右端にリポジトリ、その左に「設定」。
+- [ ] K19.2 `i` — Git フロー早見表が開く。最初のタブは樹形図の凡例。別のタブで閉じて開き直すと、そのタブから開く。

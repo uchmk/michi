@@ -363,6 +363,10 @@ pub struct App {
     pub new_title: Option<String>,
     /// One line at the foot, until its instant.
     pub toast: Option<(String, Instant)>,
+    /// What the toasts said, newest last, each with whether it was read at the bell.
+    pub notices: Vec<(String, bool)>,
+    /// The bell's list is open.
+    pub bell_open: bool,
     /// The fetch, pull or push that runs.
     pub net: Option<Running>,
     /// When the repository last fetched (`FETCH_HEAD`'s time).
@@ -419,6 +423,8 @@ pub struct App {
     pub legend: bool,
     /// The Git flow sheet, while open.
     pub cheat: Option<crate::cheat_ui::Cheat>,
+    /// The tab the sheet was left on; it opens there.
+    pub cheat_tab: usize,
     /// A `g` or `y` was typed: its window waits for the second key (#133).
     pub prefix: Option<crate::prefix::Prefix>,
     /// Which pane of the graph view has the keys (Tab moves it).
@@ -513,6 +519,8 @@ impl App {
             detail_wip: None,
             new_title: None,
             toast: None,
+            notices: Vec::new(),
+            bell_open: false,
             net: None,
             last_fetch: None,
             auto_job: false,
@@ -543,6 +551,7 @@ impl App {
             stats: None,
             legend: false,
             cheat: None,
+            cheat_tab: 0,
             prefix: None,
             pane: crate::panes::GraphPane::Tree,
             side_cur: 0,
@@ -620,7 +629,12 @@ impl App {
     }
 
     pub fn say_for(&mut self, text: impl Into<String>, secs: u64) {
-        self.toast = Some((text.into(), Instant::now() + Duration::from_secs(secs)));
+        let text = text.into();
+        self.notices.push((text.clone(), false));
+        if self.notices.len() > 50 {
+            self.notices.remove(0);
+        }
+        self.toast = Some((text, Instant::now() + Duration::from_secs(secs)));
     }
 
     /// How long until the toast goes, if there is one.

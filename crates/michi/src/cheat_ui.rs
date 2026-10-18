@@ -25,11 +25,16 @@ pub struct Cheat {
 
 impl Cheat {
     pub fn topic(&self) -> Topic {
-        Topic::ALL[self.tab.min(Topic::ALL.len() - 1)]
+        Topic::ALL[self.tab.saturating_sub(1).min(Topic::ALL.len() - 1)]
+    }
+
+    /// The first tab is the graph's legend, not a flow.
+    pub fn on_legend(&self) -> bool {
+        self.tab == 0
     }
 
     fn set_tab(&mut self, tab: usize) {
-        if tab < Topic::ALL.len() {
+        if tab <= Topic::ALL.len() {
             self.tab = tab;
             self.sel = None;
         }
@@ -37,11 +42,14 @@ impl Cheat {
 
     fn step_tab(&mut self, by: i32) {
         let n = Topic::ALL.len() as i32;
-        self.set_tab((self.tab as i32 + by).rem_euclid(n) as usize);
+        self.set_tab((self.tab as i32 + by).rem_euclid(n + 1) as usize);
     }
 
     /// The next (or previous) box in reading order; the first or last when none is picked.
     fn walk(&mut self, by: i32) {
+        if self.on_legend() {
+            return;
+        }
         let walk = self.topic().flow().walk();
         let at = self.sel.and_then(|s| walk.iter().position(|&i| i == s));
         let next = match at {
@@ -56,7 +64,9 @@ impl Cheat {
 impl App {
     /// Open the sheet, or close it.
     pub fn toggle_cheat(&mut self) {
-        self.cheat = if self.cheat.is_some() { None } else { Some(Cheat::default()) };
+        // It opens at the tab it was left on.
+        let last = Cheat { tab: self.cheat_tab, sel: None };
+        self.cheat = if self.cheat.is_some() { None } else { Some(last) };
         if self.cheat.is_some() {
             self.mode = crate::app::Mode::Main;
         }
@@ -176,14 +186,24 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 let small = FontId::proportional(12.0);
                 ui.label(RichText::new(app.tr("cheat.title")).strong());
                 ui.horizontal_wrapped(|ui| {
+                    let legend = format!("1 {}", app.tr("legend.title"));
+                    if ui.selectable_label(st.on_legend(), legend).clicked() {
+                        picked_tab = Some(0);
+                    }
                     for (i, tp) in Topic::ALL.iter().enumerate() {
-                        let name = format!("{} {}", i + 1, tp.name().get(&lang));
-                        if ui.selectable_label(st.tab == i, name).clicked() {
-                            picked_tab = Some(i);
+                        let name = format!("{} {}", i + 2, tp.name().get(&lang));
+                        if ui.selectable_label(st.tab == i + 1, name).clicked() {
+                            picked_tab = Some(i + 1);
                         }
                     }
                 });
                 ui.separator();
+                if st.on_legend() {
+                    crate::legend_ui::rows(ui, app);
+                    ui.add_space(4.0);
+                    ui.label(RichText::new(app.tr("cheat.keys")).font(small).color(c.dim));
+                    return;
+                }
                 ui.label(RichText::new(flow.title.get(&lang)).strong().color(c.fg));
                 ui.add_space(4.0);
                 let right_w = (width - left_w - ui.spacing().item_spacing.x * 2.0 - 12.0).max(300.0);
@@ -244,6 +264,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
     if let Some(n) = picked_node {
         st.sel = Some(n);
     }
+    app.cheat_tab = st.tab;
     app.cheat = Some(st);
     if let Some(command) = copy {
         app.cheat_copy(command);
@@ -483,9 +504,9 @@ mod tests {
     #[test]
     fn the_keys_change_the_sheet_and_walk_the_boxes() {
         let mut st = Cheat::default();
-        st.set_tab(3);
+        st.set_tab(4);
         assert_eq!(st.topic(), Topic::Reset);
-        st.step_tab(-4);
+        st.step_tab(-5);
         assert_eq!(st.topic(), Topic::Rescue);
         st.walk(1);
         assert_eq!(st.sel, Some(st.topic().flow().walk()[0]));
