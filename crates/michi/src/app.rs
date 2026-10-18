@@ -82,7 +82,7 @@ impl View {
                 ("j k", "key.move"),
                 ("Tab", "key.panes"),
                 ("n N", "key.files"),
-                ("Enter", "key.to_detail"),
+                ("Enter", "key.side"),
                 ("/", "key.filter"),
                 ("?", "key.deep"),
                 ("z", "key.fold"),
@@ -91,6 +91,7 @@ impl View {
                 ("b", "key.branch"),
                 ("t", "key.revert"),
                 ("g+r", "key.reset"),
+                ("g+w", "key.restore_file"),
                 ("C", "key.cherry_pick"),
                 ("m", "key.merge_commit"),
                 ("Space D", "key.compare"),
@@ -2079,7 +2080,7 @@ impl App {
                     "End" => d.to_end = true,
                     // In the pane itself Enter goes to the file the keys are on.
                     "Enter" if self.pane == crate::panes::GraphPane::Detail => d.scroll_to = Some(d.cur),
-                    "Enter" => self.pane = crate::panes::GraphPane::Detail,
+                    "Enter" => self.toggle_wide(),
                     _ => return self.later(|token| token == name),
                 }
                 return true;
@@ -2093,7 +2094,7 @@ impl App {
                 "End" => g.end(),
                 "ArrowRight" => _ = g.open_fold(),
                 "ArrowLeft" => _ = g.close_fold(),
-                "Enter" => self.pane = crate::panes::GraphPane::Detail,
+                "Enter" => self.toggle_wide(),
                 _ => return self.later(|token| token == name),
             }
             return true;
@@ -2597,8 +2598,8 @@ pub(crate) mod tests {
         assert!(a.toast.is_none() && a.net.is_none(), "no reading thread here: nothing runs");
         assert!(a.feed('s'), "the graph's own key");
         assert_eq!(toast(&a), "No worktree to work in", "the stashes, with nothing read");
-        assert!(a.named("Enter"), "the keys go to the detail");
-        assert_eq!(a.pane, crate::panes::GraphPane::Detail);
+        assert!(a.named("Enter"), "the diff side by side, no longer a later stage");
+        assert!(a.detail.wide);
         a.feed('2');
         assert!(a.feed('c'));
         assert!(a.changes.focus_message, "c goes to the message");
@@ -2803,9 +2804,13 @@ pub(crate) mod tests {
         let mut a = read();
         a.graph.set_filter("f");
         assert!(a.named("Enter"));
+        assert!(a.detail.wide);
         assert_eq!(a.pane, crate::panes::GraphPane::Detail);
         assert!(a.escape());
         assert_eq!(a.pane, crate::panes::GraphPane::Tree, "the keys come back to the tree first");
+        assert!(a.detail.wide);
+        assert!(a.escape());
+        assert!(!a.detail.wide);
         assert_eq!(a.graph.filter(), "f", "the filter goes on the next Escape");
         assert!(a.escape());
         assert_eq!(a.graph.filter(), "");

@@ -80,7 +80,7 @@ impl App {
     pub(crate) fn prefix_choices(&self, p: Prefix) -> Vec<Choice> {
         match (p, self.view) {
             (Prefix::Go, View::Graph) => {
-                vec![ok('g', "pf.first"), risky('r', "pf.reset"), ok('b', "pf.bisect"), ok('?', "pf.cheat")]
+                vec![ok('g', "pf.first"), risky('r', "pf.reset"), risky('w', "detail.restore"), ok('b', "pf.bisect"), ok('?', "pf.cheat")]
             }
             (Prefix::Go, View::Changes) => {
                 vec![ok('g', "pf.first"), risky('d', "key.discard"), risky('a', "key.amend"), ok('i', "key.ignore")]
@@ -121,6 +121,7 @@ impl App {
             (Prefix::Copy, 'f' | 'n') => self.copy_file_field(c == 'n'),
             (Prefix::Go, 'g') => self.go_first(),
             (Prefix::Go, 'r') => self.ask_reset(),
+            (Prefix::Go, 'w') => self.restore_cur(),
             (Prefix::Go, 'b') => self.prefix = Some(Prefix::Bisect),
             (Prefix::Go, '?') => self.toggle_cheat(),
             (Prefix::Go, 'x') => self.ask_remove(),

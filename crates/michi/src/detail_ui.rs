@@ -748,7 +748,9 @@ fn title(ui: &Ui, p: &Painter, app: &App, f: &File, rr: Rect, first: bool, live:
     }
     // Not on the uncommitted row: that is the worktree itself.
     if app.graph.selected_wip().is_none() || app.stash_shown().is_some() {
-        let word = p.text(pos2(end, mid), Align2::RIGHT_CENTER, app.tr("detail.restore"), FontId::proportional(12.0), c.dim);
+        let on_cursor = matches!(app.detail.got(), Some(Ok(d)) if d.files.get(app.detail.cur).is_some_and(|g| g.path == f.path));
+        let key_end = if on_cursor { kbd(ui, p, pos2(end, mid), "g w").left() - 6.0 } else { end };
+        let word = p.text(pos2(key_end, mid), Align2::RIGHT_CENTER, app.tr("detail.restore"), FontId::proportional(12.0), c.dim);
         let hit = word.expand(3.0);
         let resp = ui.interact(hit.intersect(p.clip_rect()), Id::new(("detail-restore", &f.path)), Sense::CLICK);
         if live && pointer.is_some_and(|at| hit.contains(at)) {

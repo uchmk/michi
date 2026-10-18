@@ -203,6 +203,29 @@ impl App {
         }
     }
 
+    /// `Enter` on the graph: the diff side by side with the graph narrowed
+    /// (the keys go to the detail), or back.
+    pub(crate) fn toggle_wide(&mut self) {
+        self.detail.wide = !self.detail.wide;
+        self.pane = if self.detail.wide { GraphPane::Detail } else { GraphPane::Tree };
+    }
+
+    /// `g w`: the file the keys are on in the detail, back as the shown
+    /// commit has it.
+    pub(crate) fn restore_cur(&mut self) {
+        let Some(id) = self.detail.asked() else { return self.say(self.tr("act.pick_commit")) };
+        let file = match self.detail.got() {
+            Some(Ok(d)) => d.files.get(self.detail.cur).map(|f| (f.path.clone(), f.status == michi_core::show::Status::Deleted)),
+            _ => None,
+        };
+        match file {
+            Some((path, deleted)) if self.graph.selected_wip().is_none() || self.stash_shown().is_some() => {
+                self.ask_restore(id, path, deleted)
+            }
+            _ => self.say(self.tr("act.no_file")),
+        }
+    }
+
     /// A character with the keys in the side column or the detail pane.
     pub(crate) fn pane_key(&mut self, c: char) -> bool {
         match (self.pane, c) {
