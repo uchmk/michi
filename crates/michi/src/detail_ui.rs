@@ -11,7 +11,7 @@ use michi_core::show::{Detail, File, Kind, Line, Status};
 use michi_core::wip::Wip;
 
 use crate::app::App;
-use crate::detail::{listed, At, Paired, Unified, FILES_CUT, FILES_SHOWN, MERGED_CUT, MERGED_SHOWN};
+use crate::detail::{listed, At, Paired, Unified, MERGED_CUT, MERGED_SHOWN};
 use crate::graph::{bot, when, FoldState};
 use crate::graph_ui::{claude_look, clipped, paint_pill, pill_width, wip_name};
 use crate::ui::kbd;
@@ -56,7 +56,6 @@ enum Block {
     Gap,
     /// The `k`th file in the list.
     File(usize),
-    FilesMore(usize),
     /// The `k`th file's title over its diff.
     Title(usize),
     Diff(usize),
@@ -71,7 +70,6 @@ enum Block {
 enum Act {
     Go(Oid),
     Scroll(usize),
-    AllFiles,
     Wide(bool),
     /// Go to the tsumugi tab of this session.
     Claude(u64),
@@ -83,7 +81,7 @@ enum Act {
 }
 
 /// The blocks for `d`, whose trunk merge brought in `merged`.
-fn blocks(d: &Detail, merged: usize, all_files: bool) -> Vec<Block> {
+fn blocks(d: &Detail, merged: usize) -> Vec<Block> {
     let mut out = vec![Block::Header];
     if merged > 0 {
         out.push(Block::MergedHead);
@@ -96,11 +94,7 @@ fn blocks(d: &Detail, merged: usize, all_files: bool) -> Vec<Block> {
     let files = &d.files;
     if !files.is_empty() {
         out.push(Block::Gap);
-        let n = listed(files.len(), FILES_SHOWN, FILES_CUT, all_files);
-        out.extend((0..n).map(Block::File));
-        if n < files.len() {
-            out.push(Block::FilesMore(files.len() - n));
-        }
+        out.extend((0..files.len()).map(Block::File));
         out.push(Block::Gap);
     }
     if d.parents.len() > 1 {
@@ -161,7 +155,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     };
     crate::select::begin(&d.id.to_string());
     let merged = app.detail.merged(d.id, app.graph.read()).unwrap_or(&[]);
-    let blocks = blocks(d, merged.len(), app.detail.all_files);
+    let blocks = blocks(d, merged.len());
     let wide = app.detail.wide;
     let mut none = None;
     let header_h = header(ui, app, d, pos2(r.left(), 0.0), r.width(), None, &mut none);
@@ -181,7 +175,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             Block::MergedHead => MERGED_HEAD_H,
             Block::Merged(_) | Block::MergedMore(_) => MERGED_H,
             Block::Gap => 6.0,
-            Block::File(_) | Block::FilesMore(_) => FILE_H,
+            Block::File(_) => FILE_H,
             Block::Title(_) => TITLE_H,
             Block::Diff(k) => app.detail.rows(k).map_or(0.0, |rows| wrap.tops(rows).last().copied().unwrap_or(0.0)) + 6.0,
             Block::Cut => DIFF_H + 6.0,
@@ -285,17 +279,6 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
                     act = Some(Act::Scroll(f));
                 }
             }
-            Block::FilesMore(n) => {
-                if hot {
-                    p.rect_filled(rr, 0.0, c.panel);
-                    ctx.set_cursor_icon(CursorIcon::PointingHand);
-                }
-                let text = app.tr("detail.files_more").replace("{}", &n.to_string());
-                p.text(pos2(rr.left() + X + 16.0, rr.center().y), Align2::LEFT_CENTER, text, FontId::proportional(12.0), c.dim);
-                if click("more") {
-                    act = Some(Act::AllFiles);
-                }
-            }
             Block::Title(f) => {
                 if let Some(a) = title(ui, &p, app, &d.files[f], rr, f == 0, live, pointer) {
                     act = Some(a);
@@ -349,7 +332,6 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     match a {
         Act::Go(id) => app.go_to(id),
         Act::Scroll(f) => app.detail.scroll_to = Some(f),
-        Act::AllFiles => app.detail.all_files = true,
         Act::Wide(w) => app.detail.wide = w,
         Act::Claude(session) => app.act(crate::act::Task::Focus { session }),
         Act::Issue(url) => {
@@ -1024,12 +1006,12 @@ mod tests {
         let b = Oid::parse(&"b".repeat(40)).unwrap();
         let mut d = detail(a, vec![b], 4);
         d.files[2].path = "art/logo.PNG".into();
-        let got = blocks(&d, 0, false);
+        let got = blocks(&d, 0);
         assert!(got.contains(&Block::Image(2)));
         assert!(!got.contains(&Block::Note("detail.binary_note")));
         // A binary that is no picture keeps the note.
         d.files[2].path = "data.bin".into();
-        assert!(blocks(&d, 0, false).contains(&Block::Note("detail.binary_note")));
+        assert!(blocks(&d, 0).contains(&Block::Note("detail.binary_note")));
     }
 
     #[test]
@@ -1037,7 +1019,7 @@ mod tests {
         let a = Oid::parse(&"a".repeat(40)).unwrap();
         let b = Oid::parse(&"b".repeat(40)).unwrap();
         let d = detail(a, vec![b], 4);
-        let got = blocks(&d, 0, false);
+        let got = blocks(&d, 0);
         assert_eq!(got[..7], [Block::Header, Block::Gap, Block::File(0), Block::File(1), Block::File(2), Block::File(3), Block::Gap]);
         assert_eq!(
             got[7..],
@@ -1054,13 +1036,12 @@ mod tests {
                 Block::Cut,
             ]
         );
-        // Many files: the list is cut until it is asked for whole.
+        // Many files: all of them are listed.
         let d = detail(a, vec![b], 13);
-        assert!(blocks(&d, 0, false).contains(&Block::FilesMore(3)));
-        assert!(!blocks(&d, 0, true).iter().any(|b| matches!(b, Block::FilesMore(_))));
+        assert_eq!(blocks(&d, 0).iter().filter(|b| matches!(b, Block::File(_))).count(), 13);
         // A merge: its commits, its files, and a note for the diff.
         let d = detail(a, vec![b, b], 1);
-        let got = blocks(&d, 9, false);
+        let got = blocks(&d, 9);
         assert_eq!(got[..2], [Block::Header, Block::MergedHead]);
         assert!(got.contains(&Block::Merged(6)) && !got.contains(&Block::Merged(7)));
         assert!(got.contains(&Block::MergedMore(2)));

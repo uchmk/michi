@@ -195,6 +195,13 @@ A row is added with the change that makes the key, and unticked again when the k
 | K11.3 | `Space` on the marked commit; `Esc` | The mark goes | [ ] |
 | K11.4 | `D` with no mark | A toast says how to mark | [ ] |
 
+## Detail file list (0.81.0)
+
+| # | Key | Expect | Checked |
+| --- | --- | --- | --- |
+| K12.1 | Select a commit that changes 13+ files | The detail lists every file; no "N more files" row | [ ] |
+| K12.2 | `Tab` to the detail, `j k` | The long list scrolls with the diff | [ ] |
+
 ## To be filled as the redesign lands (issue #133)
 
 - `g` popup, still to come: `g d` discard, `g a` amend, `g h` hand to Claude, `g u` unstage (Changes and Conflict screens), and moving the one-key versions into it.

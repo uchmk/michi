@@ -7,10 +7,6 @@ use michi_core::minimap::Mark;
 use michi_core::oid::Oid;
 use michi_core::show::{self, File, Kind};
 
-/// The files listed before `… N more` when there are many.
-pub const FILES_SHOWN: usize = 10;
-/// More files than this are cut to [`FILES_SHOWN`].
-pub const FILES_CUT: usize = 12;
 /// The commits of a trunk merge listed before `N more` when there are many.
 pub const MERGED_SHOWN: usize = 7;
 /// More commits than this are cut to [`MERGED_SHOWN`].
@@ -164,8 +160,6 @@ pub struct Pane {
     merged: Option<(Oid, usize, Vec<Oid>)>,
     /// The diff side by side, the graph narrowed (`Enter`).
     pub wide: bool,
-    /// Every file in the list, not the first [`FILES_SHOWN`].
-    pub all_files: bool,
     /// The file whose diff to scroll to.
     pub scroll_to: Option<usize>,
     /// The detail is of another commit now: back to its top.
@@ -186,7 +180,6 @@ impl Pane {
         self.asked = id;
         self.got = None;
         self.rows.clear();
-        self.all_files = false;
         self.scroll_to = None;
         self.to_top = true;
         true
@@ -394,9 +387,8 @@ mod tests {
         assert!(d.got().is_none());
         d.take(a, Err(git::Error::NotRepo));
         assert!(d.got().is_some());
-        d.all_files = true;
         assert!(d.select(Some(b)));
-        assert!(d.got().is_none() && !d.all_files && d.to_top);
+        assert!(d.got().is_none() && d.to_top);
     }
 
     #[test]
@@ -418,9 +410,6 @@ mod tests {
 
     #[test]
     fn long_lists_are_cut_short() {
-        assert_eq!(listed(12, FILES_SHOWN, FILES_CUT, false), 12);
-        assert_eq!(listed(13, FILES_SHOWN, FILES_CUT, false), 10);
-        assert_eq!(listed(13, FILES_SHOWN, FILES_CUT, true), 13);
         assert_eq!(listed(9, MERGED_SHOWN, MERGED_CUT, false), 7);
     }
 }
