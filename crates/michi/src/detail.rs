@@ -155,6 +155,9 @@ pub struct Pane {
     got: Option<Result<Box<show::Detail>, git::Error>>,
     /// Each file's diff in rows.
     rows: Vec<Rows>,
+    /// A file's diff height at a width (as the bits of the width, and whether
+    /// side by side): worked out once, kept until another answer comes.
+    diff_heights: std::cell::RefCell<std::collections::HashMap<(usize, u32, bool), f32>>,
     /// The commits the selected trunk merge brought in, as of how many
     /// commits were read.
     merged: Option<(Oid, usize, Vec<Oid>)>,
@@ -240,6 +243,7 @@ impl Pane {
             return;
         }
         self.rows = result.as_ref().map(|d| d.files.iter().map(Rows::of).collect()).unwrap_or_default();
+        self.diff_heights.borrow_mut().clear();
         if self.scroll_to.is_some_and(|f| f >= self.rows.len()) {
             self.scroll_to = None;
         }
@@ -253,6 +257,17 @@ impl Pane {
 
     pub fn rows(&self, file: usize) -> Option<&Rows> {
         self.rows.get(file)
+    }
+
+    /// The height of `file`'s diff at `width`, from `work` the first time.
+    pub fn diff_height(&self, file: usize, width: f32, wide: bool, work: impl FnOnce(&Rows) -> f32) -> f32 {
+        let key = (file, width.to_bits(), wide);
+        if let Some(&h) = self.diff_heights.borrow().get(&key) {
+            return h;
+        }
+        let h = self.rows.get(file).map_or(0.0, work);
+        self.diff_heights.borrow_mut().insert(key, h);
+        h
     }
 
     /// The commits the trunk merge `id` brought in, if counted for `read`

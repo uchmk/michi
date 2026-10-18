@@ -177,7 +177,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             Block::Gap => 6.0,
             Block::File(_) => FILE_H,
             Block::Title(_) => TITLE_H,
-            Block::Diff(k) => app.detail.rows(k).map_or(0.0, |rows| wrap.tops(rows).last().copied().unwrap_or(0.0)) + 6.0,
+            Block::Diff(k) => app.detail.diff_height(k, r.width(), wide, |rows| wrap.tops(rows).last().copied().unwrap_or(0.0)) + 6.0,
             Block::Cut => DIFF_H + 6.0,
             Block::Image(k) => image_job(k).map_or(NOTE_H, |job| crate::images::height(app, &job, r.width())),
             Block::Note(_) => NOTE_H,

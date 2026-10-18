@@ -134,11 +134,14 @@ pub fn rows(app: &App) -> Vec<Row> {
             let row = item(Kind::Branch { color: g.color_of(&r.name) }, r.name.clone(), false, Some(r.id), None);
             out.push(Row { note: note(Some(&r.name)), ..row });
         }
-        let mut groups: Vec<&str> = locals.iter().filter_map(|r| r.name.split_once('/').map(|(p, _)| p)).collect();
-        groups.sort_unstable();
-        groups.dedup();
-        for prefix in groups {
-            let members: Vec<_> = locals.iter().filter(|r| r.name.split_once('/').is_some_and(|(p, _)| p == prefix)).collect();
+        // One pass for the groups (not one per prefix), in the prefixes' order.
+        let mut groups: std::collections::BTreeMap<&str, Vec<_>> = std::collections::BTreeMap::new();
+        for r in locals {
+            if let Some((p, _)) = r.name.split_once('/') {
+                groups.entry(p).or_default().push(r);
+            }
+        }
+        for (prefix, members) in groups {
             let key = format!("b:{prefix}");
             let open = app.side_open.contains(&key);
             out.push(item(Kind::Group { key, open, count: members.len() }, format!("{prefix}/"), false, None, None));
@@ -155,12 +158,12 @@ pub fn rows(app: &App) -> Vec<Row> {
     // The remote branches, a group per remote.
     let remotes: Vec<_> = setup.refs.remotes.iter().filter(|r| r.name != "HEAD").collect();
     if !remotes.is_empty() {
-        let mut names: Vec<&str> = remotes.iter().map(|r| r.remote.as_str()).collect();
-        names.sort_unstable();
-        names.dedup();
-        out.push(heading("side.remotes", names.len()));
-        for remote in names {
-            let members: Vec<_> = remotes.iter().filter(|r| r.remote == remote).collect();
+        let mut by_remote: std::collections::BTreeMap<&str, Vec<_>> = std::collections::BTreeMap::new();
+        for r in &remotes {
+            by_remote.entry(r.remote.as_str()).or_default().push(r);
+        }
+        out.push(heading("side.remotes", by_remote.len()));
+        for (remote, members) in by_remote {
             let key = format!("r:{remote}");
             let open = app.side_open.contains(&key);
             out.push(item(Kind::Group { key, open, count: members.len() }, remote.to_owned(), false, None, None));
