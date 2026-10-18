@@ -53,7 +53,7 @@ A row is added with the change that makes the key, and unticked again when the k
 | K4.9 | `R` | Reset the branch to the commit: soft, mixed or hard (asks first) | [ ] |
 | K4.10 | `C` | Cherry-pick the commit (asks first) | [ ] |
 | K4.11 | `m` | Merge the commit into this worktree (asks first) | [ ] |
-| K4.12 | `D` | Compare the commit marked with Ctrl+click and the selected one | [ ] |
+| K4.12 | `Space` then `D` | Compare the commit marked with Space (or Ctrl+click) and the selected one | [ ] |
 | K4.13 | `T` | Tag the commit | [ ] |
 | K4.14 | `s` | Stash | [ ] |
 | K4.15 | `M` | Remotes | [ ] |
@@ -186,10 +186,18 @@ A row is added with the change that makes the key, and unticked again when the k
 | K10.5 | `F1` | The key list opens; `?` no longer does | [ ] |
 | K10.6 | The window stays alive while a search runs in a big repository | You can still move and scroll | [ ] |
 
+## Marking commits (0.80.0)
+
+| # | Key | Expect | Checked |
+| --- | --- | --- | --- |
+| K11.1 | `Space` (graph) | The selected commit gets the mark | [ ] |
+| K11.2 | `j`, then `D` | The two are compared (the review form) | [ ] |
+| K11.3 | `Space` on the marked commit; `Esc` | The mark goes | [ ] |
+| K11.4 | `D` with no mark | A toast says how to mark | [ ] |
+
 ## To be filled as the redesign lands (issue #133)
 
 - `g` popup, still to come: `g d` discard, `g a` amend, `g h` hand to Claude, `g u` unstage (Changes and Conflict screens), and moving the one-key versions into it.
 - `y` copy, still to come: `y s` file names, `y f` path, `y u` URL, and `y` in the Changes screen.
-- `Space` marks up to two commits, `D` compares, `Esc` clears.
 - `?` deep search: rows that do not hit are still drawn faint, not taken away (a "only hits" view is still to come).
 - Panes, still to come: Tab on the other screens.

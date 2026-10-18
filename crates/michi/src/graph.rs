@@ -485,6 +485,14 @@ impl Graph {
         self.select(k);
     }
 
+    /// Space: marks the selected commit (the mark moves here when another
+    /// was marked), or takes the mark off when it is on this one. Move to
+    /// the other commit and compare the two with `D`.
+    pub fn toggle_mark(&mut self) {
+        let Some(id) = self.selected else { return };
+        self.marked = if self.marked == Some(id) { None } else { Some(id) };
+    }
+
     /// Takes the mark off; whether there was one.
     pub fn unmark(&mut self) -> bool {
         self.marked.take().is_some()
@@ -1128,6 +1136,22 @@ mod tests {
         g.mark_to(2);
         assert!(g.unmark());
         assert!(!g.unmark());
+    }
+
+    #[test]
+    fn space_marks_the_selected_commit_and_a_second_one_is_compared() {
+        let mut g = read();
+        g.select(1);
+        let first = g.selected().unwrap();
+        g.toggle_mark();
+        assert_eq!(g.marked(), Some(first));
+        assert_eq!(g.pair(), None, "not with itself");
+        g.select(3);
+        assert_eq!(g.pair(), Some((first, g.selected().unwrap())));
+        g.toggle_mark();
+        assert_eq!(g.marked(), g.selected(), "the mark moves");
+        g.toggle_mark();
+        assert_eq!(g.marked(), None);
     }
 
     #[test]
