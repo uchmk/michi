@@ -18,6 +18,7 @@ use michi_core::clash::Outcome;
 use michi_core::claude::{Session, State};
 use michi_core::oid::Oid;
 use michi_core::predict::Conflict;
+use michi_core::prwatch::Tone;
 use michi_core::wip::Wip;
 
 /// The band of buttons and the filter over the rows.
@@ -474,6 +475,31 @@ fn rows(ui: &mut Ui, app: &mut App, head: Rect, list: Rect, live: bool) {
                 ui.interact(pr, Id::new(("graph-pill", k, &pill.text)), Sense::hover()).on_hover_text(tip);
             }
             x = pr.right() + 5.0;
+            // The branch's pull request, with how its checks and review stand.
+            let named = matches!(pill.kind, PillKind::Local | PillKind::Worktree);
+            if let Some(found) = named.then(|| app.pr_state.get(&pill.text)).flatten() {
+                let (text, tone) = found.badge();
+                let w = warn_width(ui, &text);
+                if x + w <= cell_end - 60.0 {
+                    let br = Rect::from_min_size(pos2(x, mid - 8.5), vec2(w, 17.0));
+                    let resp = ui.interact(br, Id::new(("graph-pr", k, &pill.text)), Sense::CLICK);
+                    let ink = match tone {
+                        Tone::Ok => c.run,
+                        Tone::Err => c.err,
+                        Tone::Wait => c.wait,
+                        Tone::Dim => c.dim,
+                    };
+                    paint_badge(ui, &p, br, &text, ink, fade, live && resp.hovered());
+                    if live && resp.hovered() {
+                        ctx.set_cursor_icon(CursorIcon::PointingHand);
+                    }
+                    if live && resp.clicked() {
+                        let _ = michi_core::pr::open_url(&found.url);
+                    }
+                    resp.on_hover_text(app.tr("pr.badge.tip").replace("{}", &format!("#{}", found.number)));
+                    x = br.right() + 5.0;
+                }
+            }
         }
         if let Some(tip) = head_clashes(app, commit.id) {
             let text = app.tr("clash.pill");
@@ -961,6 +987,17 @@ fn wip_clashes(app: &App, path: &std::path::Path) -> Option<String> {
 /// How wide the ⚠ pill with `text` is.
 pub(crate) fn warn_width(ui: &Ui, text: &str) -> f32 {
     5.0 + ui.fonts_mut(|f| f.layout_no_wrap(text.to_owned(), FontId::proportional(11.0), Color32::WHITE)).size().x + 5.0
+}
+
+/// A pull request's badge: a rounded outline in `ink`, lit when hovered.
+fn paint_badge(ui: &Ui, p: &egui::Painter, r: Rect, text: &str, ink: Color32, fade: f32, hot: bool) {
+    let ink = ink.gamma_multiply(fade);
+    if hot {
+        p.rect_filled(r, CornerRadius::same(8), ink.gamma_multiply(0.18));
+    }
+    p.rect_stroke(r, CornerRadius::same(8), Stroke::new(1.0, ink.gamma_multiply(0.7)), StrokeKind::Inside);
+    let g = ui.fonts_mut(|f| f.layout_no_wrap(text.to_owned(), FontId::proportional(11.0), ink));
+    p.galley(pos2(r.left() + 5.0, r.center().y - g.size().y / 2.0), g, ink);
 }
 
 /// The ⚠ pill: outlined in the error colour when the commits conflict,

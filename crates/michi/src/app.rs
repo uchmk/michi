@@ -75,7 +75,7 @@ impl View {
     }
 
     /// The keys that work in this view: `(keys, word-table key)`, the one to
-    /// recommend first. The keybar shows the first few; `?` shows them all.
+    /// recommend first. The keybar shows the first few; F1 shows them all.
     pub fn keys(self) -> &'static [(&'static str, &'static str)] {
         match self {
             View::Graph => &[
@@ -317,6 +317,8 @@ pub struct App {
     pub pr_watch: Option<crate::prwatch::PrWatch>,
     /// The watch was started (or could not be): not again.
     pub pr_watch_off: bool,
+    /// The pull requests the watch read last, by branch (the graph's badges).
+    pub pr_state: michi_core::prwatch::Prs,
     /// The pictures of the image diff.
     pub images: crate::images::Images,
     /// The language in force (`en`, `ja`), from common.toml or the OS.
@@ -522,6 +524,7 @@ impl App {
             avatars: Default::default(),
             pr_watch: None,
             pr_watch_off: false,
+            pr_state: Default::default(),
             images: Default::default(),
             prefs,
             lang: "en".into(),

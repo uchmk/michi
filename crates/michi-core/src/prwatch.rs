@@ -47,6 +47,39 @@ pub struct Pr {
     pub review: Review,
 }
 
+/// How a pull request's badge on the graph is coloured.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Tone {
+    Ok,
+    Err,
+    Wait,
+    Dim,
+}
+
+impl Pr {
+    /// The badge for the graph: `#7 ✓`, with its colour. Merged and closed
+    /// say so and stop there; an open one adds what the checks and the
+    /// review come to (a failed check or changes asked for first).
+    pub fn badge(&self) -> (String, Tone) {
+        let n = self.number;
+        match self.state {
+            State::Merged => return (format!("#{n} ⇄"), Tone::Dim),
+            State::Closed => return (format!("#{n} ×"), Tone::Dim),
+            State::Open => {}
+        }
+        let (mark, tone) = match (self.checks, self.review) {
+            (Checks::Failed, _) => ("✕", Tone::Err),
+            (_, Review::ChangesRequested) => ("±", Tone::Err),
+            (Checks::Pending, _) => ("…", Tone::Wait),
+            (Checks::Passed, Review::Approved) => ("✓✓", Tone::Ok),
+            (Checks::Passed, _) => ("✓", Tone::Ok),
+            (Checks::None, Review::Approved) => ("✓", Tone::Ok),
+            (Checks::None, Review::Open) => ("", Tone::Dim),
+        };
+        (format!("#{n} {mark}").trim_end().to_owned(), tone)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
     Merged,
@@ -220,6 +253,20 @@ mod tests {
     }
     fn kinds(old: Pr, new: Pr) -> Vec<Kind> {
         diff(&one(old), &one(new), &["feat".to_owned()]).into_iter().map(|c| c.kind).collect()
+    }
+
+    #[test]
+    fn the_badge_tells_state_checks_and_review() {
+        let pr = |state, checks, review| Pr { number: 7, branch: "f".into(), url: String::new(), state, checks, review };
+        let o = State::Open;
+        assert_eq!(pr(State::Merged, Checks::Failed, Review::Open).badge(), ("#7 ⇄".into(), Tone::Dim));
+        assert_eq!(pr(State::Closed, Checks::None, Review::Open).badge(), ("#7 ×".into(), Tone::Dim));
+        assert_eq!(pr(o, Checks::Failed, Review::Approved).badge(), ("#7 ✕".into(), Tone::Err));
+        assert_eq!(pr(o, Checks::Passed, Review::ChangesRequested).badge(), ("#7 ±".into(), Tone::Err));
+        assert_eq!(pr(o, Checks::Pending, Review::Open).badge(), ("#7 …".into(), Tone::Wait));
+        assert_eq!(pr(o, Checks::Passed, Review::Approved).badge(), ("#7 ✓✓".into(), Tone::Ok));
+        assert_eq!(pr(o, Checks::Passed, Review::Open).badge(), ("#7 ✓".into(), Tone::Ok));
+        assert_eq!(pr(o, Checks::None, Review::Open).badge(), ("#7".into(), Tone::Dim));
     }
 
     #[test]

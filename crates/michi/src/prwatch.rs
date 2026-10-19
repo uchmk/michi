@@ -32,6 +32,12 @@ fn every(front: bool) -> Duration {
     }
 }
 
+/// One reading: all the pull requests found, and what changed since the last.
+struct Reading {
+    prs: Prs,
+    changes: Vec<Change>,
+}
+
 enum Cmd {
     Branches(Vec<String>),
     Front(bool),
@@ -39,7 +45,7 @@ enum Cmd {
 
 pub struct PrWatch {
     cmds: Sender<Cmd>,
-    changes: Receiver<Vec<Change>>,
+    changes: Receiver<Reading>,
     /// The branches the thread was last told of.
     told: Vec<String>,
 }
@@ -73,14 +79,14 @@ impl PrWatch {
         let _ = self.cmds.send(Cmd::Front(front));
     }
 
-    fn take(&self) -> Vec<Change> {
-        self.changes.try_iter().flatten().collect()
+    fn take(&self) -> Vec<Reading> {
+        self.changes.try_iter().collect()
     }
 }
 
 /// The thread's loop: waits for its time (or a command), reads, compares with
-/// the last reading and hands the changes to `send` (false: nobody listens).
-fn run(dir: &std::path::Path, mut front: bool, cmds: &Receiver<Cmd>, send: impl Fn(Vec<Change>) -> bool) {
+/// the last reading and hands it and the changes to `send` (false: nobody listens).
+fn run(dir: &std::path::Path, mut front: bool, cmds: &Receiver<Cmd>, send: impl Fn(Reading) -> bool) {
     let mut branches: Vec<String> = Vec::new();
     let mut last: Option<Prs> = None;
     // Readings that failed one after the other.
@@ -114,11 +120,9 @@ fn run(dir: &std::path::Path, mut front: bool, cmds: &Receiver<Cmd>, send: impl 
         match prwatch::fetch(dir) {
             Ok(now) => {
                 misses = 0;
-                if let Some(old) = &last {
-                    let changes = prwatch::diff(old, &now, &branches);
-                    if !changes.is_empty() && !send(changes) {
-                        return;
-                    }
+                let changes = last.as_ref().map_or_else(Vec::new, |old| prwatch::diff(old, &now, &branches));
+                if !send(Reading { prs: now.clone(), changes }) {
+                    return;
                 }
                 last = Some(now);
             }
@@ -149,8 +153,10 @@ impl App {
         let branches: Vec<String> = self.trees.trees.iter().filter(|t| !t.wt.bare).filter_map(|t| t.wt.branch.clone()).collect();
         let Some(w) = &mut self.pr_watch else { return };
         w.branches(branches);
-        let changes = w.take();
-        self.pr_changes(&changes);
+        for r in w.take() {
+            self.pr_state = r.prs;
+            self.pr_changes(&r.changes);
+        }
     }
 
     /// A notice for each change, pointing at the pull request; the system
