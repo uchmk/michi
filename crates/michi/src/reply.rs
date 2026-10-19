@@ -52,9 +52,9 @@ impl App {
         } else {
             (self.tr("claude.asks").replace("{wt}", &name).replace("{q}", &w.question), format!("{name}: {}", w.question))
         };
-        self.say_for(toast, 15);
+        self.notify(ito_notices::Kind::Wait, toast, Some(crate::app::Target::Worktree(w.wt.clone())), 15);
         let title = self.tr("notify.title_waiting").to_owned();
-        self.tell("done", &title, &body);
+        self.tell("done", &title, &body, Some(self.next_notice));
     }
 
     /// `W`: to the worktree of the Claude that has waited longest (again: the

@@ -719,6 +719,15 @@ impl App {
 
     /// Fold in what the reading thread has sent since the last frame.
     pub fn pump(&mut self) {
+        for id in crate::notify::take_clicks() {
+            let go = self.notices.iter_mut().find(|n| n.id == id).and_then(|n| {
+                n.read = true;
+                n.go.clone()
+            });
+            if let Some(go) = go {
+                self.go(go);
+            }
+        }
         let got: Vec<Answer> = match &self.reading {
             Some(r) => r.answers.try_iter().collect(),
             None => return,
@@ -1535,16 +1544,16 @@ impl App {
                 if h.conflict {
                     check.push(h.wt.clone());
                 }
-                said.push((self.tr("claude.handed_done").replace("{wt}", &crate::act::name(&h.wt)), crate::act::name(&h.wt)));
+                said.push((self.tr("claude.handed_done").replace("{wt}", &crate::act::name(&h.wt)), crate::act::name(&h.wt), h.wt.clone()));
                 return false;
             }
             true
         });
         self.handed = watched;
-        if let Some((t, wt)) = said.last().cloned() {
-            self.say_for(t, 10);
+        if let Some((t, wt, path)) = said.last().cloned() {
+            self.notify(ito_notices::Kind::Ok, t, Some(Target::Worktree(path)), 10);
             let (title, body) = (self.tr("notify.title_done").to_owned(), self.tr("claude.handed_done").replace("{wt}", &wt));
-            self.tell("done", &title, &body);
+            self.tell("done", &title, &body, Some(self.next_notice));
         }
         for wt in check {
             self.act(crate::act::Task::Markers { wt });
@@ -1552,9 +1561,9 @@ impl App {
     }
 
     /// Tell of `event` outside the window, when the window is behind another.
-    pub fn tell(&self, event: &str, title: &str, body: &str) {
+    pub fn tell(&self, event: &str, title: &str, body: &str, notice: Option<u64>) {
         if !self.front {
-            crate::notify::tell(&self.prefs.notify, event, title, body);
+            crate::notify::tell(&self.prefs.notify, event, title, body, notice);
         }
     }
 
@@ -3252,5 +3261,18 @@ pub(crate) mod tests {
         a.named("End");
         a.named("Enter");
         assert_eq!(selected(&a), "m1");
+    }
+
+    #[test]
+    fn a_clicked_notification_marks_its_notice_read_and_goes_there() {
+        let mut a = app();
+        a.notify(ito_notices::Kind::Info, "no place", None, 4);
+        let id = a.notices[0].id;
+        a.notify(ito_notices::Kind::Ok, "committed", Some(Target::Conflict(PathBuf::from("/nowhere"))), 4);
+        let want = a.notices[1].id;
+        crate::notify::push_click(want);
+        a.pump();
+        assert!(a.notices.iter().find(|n| n.id == want).unwrap().read);
+        assert!(!a.notices.iter().find(|n| n.id == id).unwrap().read);
     }
 }

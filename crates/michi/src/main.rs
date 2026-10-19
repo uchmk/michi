@@ -714,6 +714,7 @@ impl eframe::App for Michi {
         // Whatever `keys` returned before reaching is dropped, not kept for a later frame.
         self.tab_stash.clear();
         self.script(&ctx);
+        notify::set_window(&ctx);
         self.app.prefs.pump();
         self.app.detail.unified = !self.app.prefs.diff_side;
         self.app.changes.unified = !self.app.prefs.diff_side;

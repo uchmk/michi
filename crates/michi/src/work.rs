@@ -638,9 +638,10 @@ impl App {
                 let mut text = self.tr("net.failed").replace("{job}", kind.word()).replace("{e}", &self.git_says(&e));
                 text.push_str(&self.auth_noted(&e, None));
                 let title = self.tr("notify.title_failed").replace("{job}", kind.word());
-                self.tell("failed", &title, &e.to_string());
                 self.last_error = Some(text.clone());
-                (text, 10)
+                self.notify(ito_notices::Kind::Err, text, None, 10);
+                self.tell("failed", &title, &e.to_string(), None);
+                return;
             }
         };
         self.say_for(text, secs);

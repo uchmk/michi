@@ -189,11 +189,55 @@ fn icon(side: u32) -> Vec<u8> {
     crate::icon::pixels(side)
 }
 
+/// The ids of the notices whose system notification was clicked, until the frame takes them.
+static CLICKED: std::sync::Mutex<Vec<u64>> = std::sync::Mutex::new(Vec::new());
+/// The window, to wake and raise when a notification is clicked.
+static WINDOW: std::sync::OnceLock<eframe::egui::Context> = std::sync::OnceLock::new();
+static NOTIFIER: std::sync::OnceLock<ito_notify::notifier::Notifier> = std::sync::OnceLock::new();
+
+/// Remember the window, so that a click on a notification can reach it.
+pub fn set_window(ctx: &eframe::egui::Context) {
+    let _ = WINDOW.set(ctx.clone());
+}
+
+/// The notices whose system notification was clicked since the last call.
+pub fn take_clicks() -> Vec<u64> {
+    std::mem::take(&mut *CLICKED.lock().unwrap_or_else(|e| e.into_inner()))
+}
+
+#[cfg(test)]
+pub fn push_click(id: u64) {
+    CLICKED.lock().unwrap_or_else(|e| e.into_inner()).push(id);
+}
+
+fn logo() -> Option<std::path::PathBuf> {
+    ito_notify::toast::icon_file(APP.id, icon)
+}
+
+fn notifier() -> &'static ito_notify::notifier::Notifier {
+    NOTIFIER.get_or_init(|| {
+        let click: ito_notify::notifier::Click = std::sync::Arc::new(|tag, arg| {
+            if arg != ito_notify::notifier::OPEN {
+                return;
+            }
+            if let Ok(id) = tag.parse::<u64>() {
+                CLICKED.lock().unwrap_or_else(|e| e.into_inner()).push(id);
+                if let Some(ctx) = WINDOW.get() {
+                    ctx.send_viewport_cmd(eframe::egui::ViewportCommand::Focus);
+                    ctx.request_repaint();
+                }
+            }
+        });
+        ito_notify::notifier::Notifier::new(APP, Some(logo), click)
+    })
+}
+
 /// Tell of `event` (one of [`EVENTS`]) in every way `n` turns on for it.
-pub fn tell(n: &NotifyCfg, event: &str, title: &str, body: &str) {
+/// `notice` is the bell's notice the system's notification opens when clicked.
+pub fn tell(n: &NotifyCfg, event: &str, title: &str, body: &str, notice: Option<u64>) {
     let on = |list: &[String]| list.iter().any(|e| e == event);
     let sound = if event == "failed" { &n.sound_failed } else { &n.sound_done };
-    send(n, on(&n.system), on(&n.sound).then_some(sound.as_str()), title, body);
+    send(n, on(&n.system), on(&n.sound).then_some(sound.as_str()), title, body, notice);
     let level = if event == "failed" { Level::Error } else { Level::Done };
     ito_notify::webhook::send_all(&n.places, event, level, title, body, "");
 }
@@ -205,7 +249,7 @@ pub fn test(p: &ito_prefs::Notify, what: ito_prefs::Test, title: &str, body: &st
     match what {
         ito_prefs::Test::All => {
             let n = NotifyCfg { focus_mode: p.focus, ..NotifyCfg::default() };
-            send(&n, true, p.sounds.first().map(String::as_str), title, body);
+            send(&n, true, p.sounds.first().map(String::as_str), title, body, None);
             ito_notify::webhook::send_all(&places, "done", Level::Done, title, body, "");
         }
         ito_prefs::Test::Hook(k) => {
@@ -223,9 +267,12 @@ pub fn test(p: &ito_prefs::Notify, what: ito_prefs::Test, title: &str, body: &st
     }
 }
 
-fn send(n: &NotifyCfg, system: bool, sound: Option<&str>, title: &str, body: &str) {
+fn send(n: &NotifyCfg, system: bool, sound: Option<&str>, title: &str, body: &str, notice: Option<u64>) {
     if system {
-        ito_notify::toast::show_with_icon(APP, icon, title, body);
+        match notice {
+            Some(id) => notifier().show(ito_notify::notifier::Toast::open(id, title, body, "Open")),
+            None => ito_notify::toast::show_with_icon(APP, icon, title, body),
+        }
     }
     if let Some(name) = sound {
         if !(n.focus_mode && ito_notify::sound::quiet_time()) {

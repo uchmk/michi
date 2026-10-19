@@ -23,6 +23,7 @@ What text can check (reading the repository, the git version, the command line) 
 | 1.9 | Start michi in a folder with a Japanese name, or on a branch with one | The Japanese draws (after a frame or two), not boxes |
 | 1.10 | Look at the title bar (height, the palette box, the bell with unread notices, the three window buttons); hover each; drag the empty part, double-click it; drag the window edges; click the bell | The same bar as tsumugi (40 high, box corner 6, buttons 46 wide, the badge in the `wait` colour); hovers say Minimize / Maximize or Restore / Close and the key of the palette; drag and double-click move and maximise; the edges resize (not while maximised); the notice list opens right under the bell | [ ] |
 | 1.11 | Commit in the `2` view, then open the bell; let a merge stop at a conflict; make a git task fail; click a row; press Up/Down/Enter/Esc in the list | Each notice has a colour by kind (done, info, warning, failed), the time ("3m ago") and a mark when unread; clicking the commit row selects that commit in the graph, the conflict row opens the `4` view; a click marks only that row read, "Mark all read" marks the rest; the badge turns to the error colour while a failure is unread | [ ] |
+| 1.12 | Hand a conflict to a Claude (or let one ask a question) with the michi window behind another; click the system's notification, or its Open button | The window comes to the front and the worktree table selects that worktree; the notice is read in the bell (Windows; macOS only shows it) | [ ] |
 
 ## 2. Views and keys
 
