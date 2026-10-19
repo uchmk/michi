@@ -313,6 +313,10 @@ pub struct App {
     pub sizes: crate::sizes::Sizes,
     /// The authors' pictures fetched so far.
     pub avatars: crate::avatar::Avatars,
+    /// The watch over the worktrees' pull requests (started once the repository is read).
+    pub pr_watch: Option<crate::prwatch::PrWatch>,
+    /// The watch was started (or could not be): not again.
+    pub pr_watch_off: bool,
     /// The pictures of the image diff.
     pub images: crate::images::Images,
     /// The language in force (`en`, `ja`), from common.toml or the OS.
@@ -516,6 +520,8 @@ impl App {
             mode: Mode::Main,
             sizes,
             avatars: Default::default(),
+            pr_watch: None,
+            pr_watch_off: false,
             images: Default::default(),
             prefs,
             lang: "en".into(),
@@ -743,6 +749,8 @@ impl App {
         for a in got {
             self.take(a);
         }
+        // (Without a window drawn, as in the tests, no thread starts.)
+        self.pr_watch_tick();
         self.seek();
         self.changes_sync();
     }

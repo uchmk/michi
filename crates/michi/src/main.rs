@@ -53,6 +53,7 @@ mod prefix;
 mod prefs;
 mod prform;
 mod prform_ui;
+mod prwatch;
 mod ready;
 mod ready_ui;
 mod reflog;
@@ -767,6 +768,9 @@ impl eframe::App for Michi {
             self.front = front;
             if let Some(r) = &self.app.reading {
                 r.front(front);
+            }
+            if let Some(w) = &self.app.pr_watch {
+                w.front(front);
             }
         }
         self.app.pump();

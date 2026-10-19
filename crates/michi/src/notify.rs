@@ -200,6 +200,11 @@ pub fn set_window(ctx: &eframe::egui::Context) {
     let _ = WINDOW.set(ctx.clone());
 }
 
+/// The window, once a frame has been drawn.
+pub fn window() -> Option<eframe::egui::Context> {
+    WINDOW.get().cloned()
+}
+
 /// The notices whose system notification was clicked since the last call.
 pub fn take_clicks() -> Vec<u64> {
     std::mem::take(&mut *CLICKED.lock().unwrap_or_else(|e| e.into_inner()))

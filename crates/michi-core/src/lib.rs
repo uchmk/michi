@@ -63,6 +63,7 @@ pub mod pr;
 pub mod practice;
 pub mod prcreate;
 pub mod predict;
+pub mod prwatch;
 pub mod queue;
 pub mod ready;
 pub mod rebase;
