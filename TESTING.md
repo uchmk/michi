@@ -1683,4 +1683,5 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 278.3 | In a Graph view press `y` then `d` | The prefix hint says "Repository folder" (ja: リポジトリのフォルダ); in the Worktree view it still says "Worktree folder" |
 | 278.4 | Open two tabs, start a fetch in the first, switch to the second | The first tab's result and toast arrive while it is parked |
 | 278.5 | Put `density = 3` (a number) in `[view]` of config.toml and start michi | Theme, language and the other `[view]` keys keep their values; only density falls back to the default |
-| 279.1 | In a conflict with text places, look at a file head | An "Open in a tool" button sits left of "Restart"; clicking it opens the merge tool (the same as `w`), WinMerge with three panes when `merge` is set as in the settings screen |
+| 278.6 | In a conflict with text places, look at a file head | An "Open in a tool" button sits left of "Restart"; clicking it opens the merge tool (the same as `w`), WinMerge with three panes when `merge` is set as in the settings screen |
+| 278.7 | Set `diff_tool = "winmerge"` in `[open]`, start michi, and press `w` in a conflict without opening the settings screen first | WinMerge opens with three panes (not Explorer) |

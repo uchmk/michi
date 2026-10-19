@@ -214,6 +214,8 @@ impl Prefs {
     /// and wake `ctx` when one has been read again.
     pub fn watch(&mut self, ctx: &egui::Context) {
         self.wake = Some(ctx.clone());
+        // The diff / merge tool `diff_tool` names is looked for now, not when the settings screen is first opened.
+        self.find_tools();
         let os_ctx = ctx.clone();
         self.os_light = ito_common::OsLight::watch(WATCH, move || os_ctx.request_repaint());
         let Some(base) = self.base.clone() else { return };
