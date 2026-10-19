@@ -761,7 +761,12 @@ fn reviews(dir: &Path, wishes: &Receiver<Wish>, latest: &[AtomicU32; 2], send: i
         while let Ok(w) = wishes.try_recv() {
             take(w, &mut checks, &mut list, &mut one);
         }
-        if let Some(Wish::List { gen, branch, trunk, head, end, since, prune }) = list.take() {
+        // Take the wish once: a newer one that comes while this is read stays in `list`.
+        let (listing, comparing) = match list.take() {
+            Some(w @ Wish::Compare { .. }) => (None, Some(w)),
+            w => (w, None),
+        };
+        if let Some(Wish::List { gen, branch, trunk, head, end, since, prune }) = listing {
             let stale = || latest[0].load(Ordering::SeqCst) != gen;
             if !stale() {
                 let result = review::list(dir, &branch, &trunk, &head, &end, since.as_ref(), &stale);
@@ -780,7 +785,7 @@ fn reviews(dir: &Path, wishes: &Receiver<Wish>, latest: &[AtomicU32; 2], send: i
                 }
             }
         }
-        if let (true, Some(Wish::Compare { gen, a, b })) = (matches!(list, Some(Wish::Compare { .. })), list.take()) {
+        if let Some(Wish::Compare { gen, a, b }) = comparing {
             let stale = || latest[0].load(Ordering::SeqCst) != gen;
             if !stale() {
                 let result = review::compare(dir, &a, &b, &stale);
@@ -1009,5 +1014,27 @@ fn wait_reload(asks: &Receiver<Ask>) -> Next {
             Ok(Ask::More) => {}
             Err(_) => return Next::Stop,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_compare_wish_is_answered() {
+        let dir = std::env::temp_dir().join("michi-repo-compare-test");
+        let _ = std::fs::create_dir_all(&dir);
+        let latest = [AtomicU32::new(7), AtomicU32::new(0)];
+        let (tx, rx) = mpsc::channel();
+        let (out_tx, out_rx) = mpsc::channel();
+        let a = Oid::parse(&"a".repeat(40)).unwrap();
+        tx.send(Wish::Compare { gen: 7, a, b: a }).unwrap();
+        drop(tx);
+        reviews(&dir, &rx, &latest, |ans| {
+            let _ = out_tx.send(ans);
+        });
+        let answers: Vec<Answer> = out_rx.try_iter().collect();
+        assert!(matches!(answers.as_slice(), [Answer::ReviewList { gen: 7, .. }]), "{answers:?}");
     }
 }
