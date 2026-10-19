@@ -200,7 +200,11 @@ pub fn run(wt: &Path, base: &Oid, list: &[Entry]) -> Result<Outcome, git::Error>
         }
         Err(git::refused(&format!("{}{}", String::from_utf8_lossy(&out.stderr), String::from_utf8_lossy(&out.stdout))))
     })();
-    let _ = fs::remove_dir_all(&dir);
+    // A stopped rebase still has `exec git commit --amend -F <file>` lines to
+    // run after `--continue`: the message files must stay.
+    if !matches!(result, Ok(Outcome::Stopped { .. })) {
+        let _ = fs::remove_dir_all(&dir);
+    }
     result
 }
 
@@ -344,6 +348,40 @@ mod tests {
         l.swap(n - 1, n - 2);
         let out = run(&r, &base, &l).unwrap();
         assert!(matches!(out, Outcome::Stopped { .. }), "{out:?}");
+        t.git(&r, &["rebase", "--abort"]);
+    }
+
+    #[test]
+    fn a_reword_after_a_clash_still_finds_its_message_on_continue() {
+        let (t, base) = setup("rebase-clash-reword");
+        let r = t.repo.clone();
+        t.write(
+            &r, "d", "one
+",
+        );
+        t.git(&r, &["add", "."]);
+        t.git(&r, &["commit", "-q", "-m", "d one"]);
+        t.write(
+            &r, "d", "two
+",
+        );
+        t.git(&r, &["commit", "-q", "-am", "d two"]);
+        let mut l = entries(&t.repo, &base).unwrap();
+        let n = l.len();
+        l.swap(n - 1, n - 2); // "d two" first: it clashes
+        l[n - 2].action = Action::Reword;
+        l[n - 2].message = Some("Reworded".into());
+        let out = run(&r, &base, &l).unwrap();
+        assert!(matches!(out, Outcome::Stopped { .. }), "{out:?}");
+        t.write(
+            &r, "d", "two
+",
+        );
+        t.git(&r, &["add", "d"]);
+        // It stops again at the next clash, so the exit status is not checked.
+        let _ = git::command().arg("-C").arg(&r).args(["-c", "core.editor=true", "rebase", "--continue"]).output().unwrap();
+        // The next commit clashes again, but the reword before it was done.
+        assert_eq!(t.out(&r, &["log", "-1", "--format=%s", "HEAD"]), "Reworded");
         t.git(&r, &["rebase", "--abort"]);
     }
 
