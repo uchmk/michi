@@ -38,6 +38,8 @@ pub struct Row {
     pub note: String,
     /// A heading that is a glossary term: its hover explains it.
     pub term: Option<&'static str>,
+    /// A local branch's full name: a double-click switches to it.
+    pub local: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -90,7 +92,7 @@ pub fn rows(app: &App) -> Vec<Row> {
         }
         None => String::new(),
     };
-    let item = |kind, text: String, sub, id, tip| Row { kind, text, sub, id, tip, note: String::new(), term: None };
+    let item = |kind, text: String, sub, id, tip| Row { kind, text, sub, id, tip, note: String::new(), term: None, local: None };
     let heading = |key: &'static str, n: usize| {
         // The headings that are Git's words are glossary terms (#104, #105).
         let term = match key {
@@ -103,7 +105,7 @@ pub fn rows(app: &App) -> Vec<Row> {
             Some(t) => app.term(key, t),
             None => app.tr(key).to_owned(),
         };
-        Row { kind: Kind::Heading(n), text, sub: false, id: None, tip: None, note: String::new(), term }
+        Row { kind: Kind::Heading(n), text, sub: false, id: None, tip: None, note: String::new(), term, local: None }
     };
 
     // The worktrees; the one the window is on lit.
@@ -132,7 +134,7 @@ pub fn rows(app: &App) -> Vec<Row> {
         out.push(heading("side.branches", locals.len()));
         for r in locals.iter().filter(|r| !r.name.contains('/')) {
             let row = item(Kind::Branch { color: g.color_of(&r.name) }, r.name.clone(), false, Some(r.id), None);
-            out.push(Row { note: note(Some(&r.name)), ..row });
+            out.push(Row { note: note(Some(&r.name)), local: Some(r.name.clone()), ..row });
         }
         // One pass for the groups (not one per prefix), in the prefixes' order.
         let mut groups: std::collections::BTreeMap<&str, Vec<_>> = std::collections::BTreeMap::new();
@@ -149,7 +151,7 @@ pub fn rows(app: &App) -> Vec<Row> {
                 for r in members {
                     let rest = r.name[prefix.len() + 1..].to_owned();
                     let row = item(Kind::Branch { color: g.color_of(&r.name) }, rest, true, Some(r.id), Some(r.name.clone()));
-                    out.push(Row { note: note(Some(&r.name)), ..row });
+                    out.push(Row { note: note(Some(&r.name)), local: Some(r.name.clone()), ..row });
                 }
             }
         }
@@ -200,6 +202,7 @@ pub fn rows(app: &App) -> Vec<Row> {
 /// What a click on a row does, once they are drawn.
 enum Act {
     Go(Oid),
+    Switch(String),
     Stash(Oid),
     Toggle(String),
 }
@@ -336,7 +339,9 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         if hot && row.id.is_some() {
             ctx.set_cursor_icon(CursorIcon::PointingHand);
         }
-        if let (true, Some(id)) = (live && resp.clicked(), row.id) {
+        if let (true, Some(name)) = (live && resp.double_clicked(), &row.local) {
+            act = Some(Act::Switch(name.clone()));
+        } else if let (true, Some(id)) = (live && resp.clicked(), row.id) {
             act = Some(if row.kind == Kind::Stash { Act::Stash(id) } else { Act::Go(id) });
         }
         if let Some(tip) = &row.tip {
@@ -345,6 +350,7 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     }
     match act {
         Some(Act::Go(id)) => app.go_to(id),
+        Some(Act::Switch(name)) => app.switch_branch_here(name),
         Some(Act::Stash(id)) => app.show_stash(id),
         Some(Act::Toggle(key)) => {
             if !app.side_open.remove(&key) {

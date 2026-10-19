@@ -669,6 +669,25 @@ impl App {
         self.guarded(task, wt, "act.doing", "act.claude_switch");
     }
 
+    /// A double-click on a local branch in the side column: the same guarded
+    /// switch as `b`, for the window's worktree. A branch checked out in a
+    /// worktree is said, not switched to.
+    pub(crate) fn switch_branch_here(&mut self, name: String) {
+        let Some(wt) = self.repo_top() else { return };
+        let there = self.worktrees().into_iter().find(|w| w.branch.as_deref() == Some(name.as_str()));
+        match there {
+            Some(w) if same(&w.path, &wt) => {
+                let text = self.tr("act.here").replace("{wt}", &act::name(&wt)).replace("{name}", &name);
+                self.say(text);
+            }
+            Some(w) => {
+                let text = self.tr("act.elsewhere").replace("{name}", &name).replace("{wt}", &act::name(&w.path));
+                self.say(text);
+            }
+            None => self.switch_to(Task::Switch { wt: wt.clone(), name }, &wt),
+        }
+    }
+
     /// Switches the worktree at `wt` (`task`): not in the middle of a merge
     /// or a rebase; where a Claude is working, after a yes.
     fn switch_to(&mut self, task: Task, wt: &Path) {
