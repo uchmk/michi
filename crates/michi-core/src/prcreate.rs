@@ -1,5 +1,6 @@
-//! Creating a pull request from michi with the GitHub CLI (`gh pr create`):
-//! the form's defaults, the commands, and running them. The branch is pushed
+//! Creating a pull request from michi with the GitHub CLI (`gh pr create`),
+//! or updating the open one of the branch (`gh pr edit`): the form's
+//! defaults, the commands, and running them. The branch is pushed
 //! first when it has no upstream (the caller asks before that: a push goes
 //! outside the machine). Run [`create`] and [`defaults`] on a thread.
 
@@ -39,6 +40,19 @@ pub struct Draft {
     /// The remote the branch has to be pushed to first: none when it has an
     /// upstream already.
     pub push_to: Option<String>,
+    /// The open pull request of the branch, if there is one: the form then
+    /// updates it.
+    pub existing: Option<Existing>,
+}
+
+/// An open pull request, as `gh pr view` tells it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Existing {
+    pub url: String,
+    pub title: String,
+    pub body: String,
+    pub base: String,
+    pub draft: bool,
 }
 
 /// What to create.
@@ -51,6 +65,42 @@ pub struct Request {
     pub draft: bool,
     /// Push the branch to this remote (with `-u`) first.
     pub push_to: Option<String>,
+    /// Update this pull request instead of creating one.
+    pub edit: Option<Existing>,
+}
+
+/// The arguments of `gh pr edit` for `req` on the pull request `old`.
+pub fn edit_args(req: &Request, old: &Existing) -> Vec<String> {
+    ["pr", "edit", &old.url, "--base", &req.base, "--title", &req.title, "--body", &req.body].iter().map(|s| (*s).to_owned()).collect()
+}
+
+/// The arguments of `gh pr ready` that make `old` a draft or ready, when
+/// `req` says the other.
+pub fn ready_args(req: &Request, old: &Existing) -> Option<Vec<String>> {
+    if req.draft == old.draft {
+        return None;
+    }
+    let mut a: Vec<String> = ["pr", "ready", &old.url].iter().map(|s| (*s).to_owned()).collect();
+    if req.draft {
+        a.push("--undo".to_owned());
+    }
+    Some(a)
+}
+
+/// The open pull request in `gh pr view --json url,title,body,baseRefName,isDraft,state`'s `json`.
+pub fn parse_existing(json: &str) -> Option<Existing> {
+    let v: serde_json::Value = serde_json::from_str(json).ok()?;
+    if v.get("state")?.as_str()? != "OPEN" {
+        return None;
+    }
+    let text = |k: &str| v.get(k).and_then(|x| x.as_str()).unwrap_or_default().to_owned();
+    Some(Existing {
+        url: text("url"),
+        title: text("title"),
+        body: text("body"),
+        base: text("baseRefName"),
+        draft: v.get("isDraft")?.as_bool()?,
+    })
 }
 
 /// The arguments of `gh` for `req`.
@@ -109,36 +159,33 @@ fn has_upstream(wt: &Path, branch: &str) -> Result<bool, git::Error> {
     Ok(git::read_maybe(wt, &["config", "--get", &key])?.is_some_and(|v| !String::from_utf8_lossy(&v).trim().is_empty()))
 }
 
-/// The form's starting text for `branch` of the worktree `wt` against `base`.
+/// The open pull request of `branch`, if `gh` is there, signed in and finds
+/// one; anything else is no pull request.
+fn existing(wt: &Path, branch: &str) -> Option<Existing> {
+    let mut c = Command::new("gh");
+    c.args(["pr", "view", branch, "--json", "url,title,body,baseRefName,isDraft,state"])
+        .current_dir(wt)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GH_PROMPT_DISABLED", "1")
+        .stdin(Stdio::null());
+    git::hide_window(&mut c);
+    let out = c.output().ok().filter(|o| o.status.success())?;
+    parse_existing(&String::from_utf8_lossy(&out.stdout))
+}
+
+/// The form's starting text for `branch` of the worktree `wt` against `base`:
+/// the open pull request's own, when there is one.
 pub fn defaults(wt: &Path, branch: &str, base: &str) -> Result<Draft, git::Error> {
     let (title, body) = draft_from(branch, &commits(wt, branch, base));
     let push_to = if has_upstream(wt, branch)? { None } else { Some(pr::remote_of(wt, branch)?) };
-    Ok(Draft { title, body, push_to })
+    let existing = existing(wt, branch);
+    Ok(Draft { title, body, push_to, existing })
 }
 
-/// The address `gh pr create` printed: its last line that is one.
-pub fn parse_url(stdout: &str) -> Option<String> {
-    stdout.lines().rev().map(str::trim).find(|l| l.starts_with("https://") || l.starts_with("http://")).map(str::to_owned)
-}
-
-/// Whether what `gh` wrote on standard error says it is not signed in.
-pub fn says_not_logged_in(stderr: &str) -> bool {
-    let s = stderr.to_ascii_lowercase();
-    s.contains("gh auth login") || s.contains("not logged in") || s.contains("authentication required") || s.contains("gh_token")
-}
-
-/// Pushes when asked, then creates the pull request; its address.
-pub fn create(wt: &Path, req: &Request) -> Result<String, git::Error> {
-    if req.branch.trim().is_empty() || req.title.trim().is_empty() || req.base.trim().is_empty() {
-        return Err(git::Error::Git("a title, a branch and a base are needed".to_owned()));
-    }
-    if let Some(remote) = &req.push_to {
-        let args = push_args(remote, &req.branch);
-        let refs: Vec<&str> = args.iter().map(String::as_str).collect();
-        git::read(wt, &refs)?;
-    }
+/// Runs `gh` with `args` in `wt`; what it printed.
+fn gh(wt: &Path, args: &[String]) -> Result<String, git::Error> {
     let mut c = Command::new("gh");
-    c.args(gh_args(req)).current_dir(wt).env("GIT_TERMINAL_PROMPT", "0").env("GH_PROMPT_DISABLED", "1").stdin(Stdio::null());
+    c.args(args).current_dir(wt).env("GIT_TERMINAL_PROMPT", "0").env("GH_PROMPT_DISABLED", "1").stdin(Stdio::null());
     git::hide_window(&mut c);
     let out = c.output().map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
@@ -152,10 +199,43 @@ pub fn create(wt: &Path, req: &Request) -> Result<String, git::Error> {
         if says_not_logged_in(&err) {
             return Err(git::Error::Git(NOT_LOGGED_IN.to_owned()));
         }
-        let line = err.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("gh pr create failed");
+        let line = err.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("gh failed");
         return Err(git::Error::Told { line: line.to_owned(), all: err });
     }
-    parse_url(&String::from_utf8_lossy(&out.stdout)).ok_or_else(|| git::Error::Io("gh did not print the address".to_owned()))
+    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// The address `gh pr create` printed: its last line that is one.
+pub fn parse_url(stdout: &str) -> Option<String> {
+    stdout.lines().rev().map(str::trim).find(|l| l.starts_with("https://") || l.starts_with("http://")).map(str::to_owned)
+}
+
+/// Whether what `gh` wrote on standard error says it is not signed in.
+pub fn says_not_logged_in(stderr: &str) -> bool {
+    let s = stderr.to_ascii_lowercase();
+    s.contains("gh auth login") || s.contains("not logged in") || s.contains("authentication required") || s.contains("gh_token")
+}
+
+/// Pushes when asked, then creates the pull request or updates the open one;
+/// its address.
+pub fn create(wt: &Path, req: &Request) -> Result<String, git::Error> {
+    if req.branch.trim().is_empty() || req.title.trim().is_empty() || req.base.trim().is_empty() {
+        return Err(git::Error::Git("a title, a branch and a base are needed".to_owned()));
+    }
+    if let Some(remote) = &req.push_to {
+        let args = push_args(remote, &req.branch);
+        let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+        git::read(wt, &refs)?;
+    }
+    if let Some(old) = &req.edit {
+        let printed = gh(wt, &edit_args(req, old))?;
+        if let Some(a) = ready_args(req, old) {
+            gh(wt, &a)?;
+        }
+        return Ok(parse_url(&printed).unwrap_or_else(|| old.url.clone()));
+    }
+    let printed = gh(wt, &gh_args(req))?;
+    parse_url(&printed).ok_or_else(|| git::Error::Io("gh did not print the address".to_owned()))
 }
 
 #[cfg(test)]
@@ -171,7 +251,50 @@ mod tests {
             body: "- a\n- b".into(),
             draft: false,
             push_to: None,
+            edit: None,
         }
+    }
+
+    fn old() -> Existing {
+        Existing { url: "https://github.com/o/r/pull/7".into(), title: "Old".into(), body: "b".into(), base: "main".into(), draft: false }
+    }
+
+    #[test]
+    fn an_update_edits_by_address_and_flips_the_draft_only_when_it_changed() {
+        let a = edit_args(&req(), &old());
+        assert_eq!(
+            a,
+            [
+                "pr",
+                "edit",
+                "https://github.com/o/r/pull/7",
+                "--base",
+                "main",
+                "--title",
+                "Add x",
+                "--body",
+                "- a
+- b"
+            ]
+        );
+        assert_eq!(ready_args(&req(), &old()), None);
+        let to_draft = ready_args(&Request { draft: true, ..req() }, &old()).unwrap();
+        assert_eq!(to_draft, ["pr", "ready", "https://github.com/o/r/pull/7", "--undo"]);
+        let to_ready = ready_args(&req(), &Existing { draft: true, ..old() }).unwrap();
+        assert_eq!(to_ready, ["pr", "ready", "https://github.com/o/r/pull/7"]);
+    }
+
+    #[test]
+    fn only_an_open_pull_request_is_one_to_update() {
+        let j = |state: &str| {
+            format!(
+                r#"{{"url":"https://github.com/o/r/pull/7","title":"T","body":"B","baseRefName":"main","isDraft":true,"state":"{state}"}}"#
+            )
+        };
+        let e = parse_existing(&j("OPEN")).unwrap();
+        assert_eq!((e.title.as_str(), e.body.as_str(), e.base.as_str(), e.draft), ("T", "B", "main", true));
+        assert_eq!(parse_existing(&j("MERGED")), None);
+        assert_eq!(parse_existing("not json"), None);
     }
 
     #[test]

@@ -25,6 +25,7 @@ What text can check (reading the repository, the git version, the command line) 
 | 1.11 | Commit in the `2` view, then open the bell; let a merge stop at a conflict; make a git task fail; click a row; press Up/Down/Enter/Esc in the list | Each notice has a colour by kind (done, info, warning, failed), the time ("3m ago") and a mark when unread; clicking the commit row selects that commit in the graph, the conflict row opens the `4` view; a click marks only that row read, "Mark all read" marks the rest; the badge turns to the error colour while a failure is unread | [ ] |
 | 1.12 | Hand a conflict to a Claude (or let one ask a question) with the michi window behind another; click the system's notification, or its Open button | The window comes to the front and the worktree table selects that worktree; the notice is read in the bell (Windows; macOS only shows it) | [ ] |
 | 1.13 | Make a pull request with `G` (needs `gh`), close the form, then click its notice in the bell; make one fail (e.g. `gh` signed out) and click that notice | The done notice opens the pull request in the browser; the failed notice (failed colour) selects the branch's worktree in the table | [ ] |
+| 1.14 | On a branch with an open pull request press `G` in the worktree table; change the title and the draft box and press Update; press `G` on a branch with none | The form says "Update the pull request" with the PR's own title, body, base and draft; Update changes them on GitHub and the bell notice opens the PR; with no PR the form is the creating one | [ ] |
 
 ## 2. Views and keys
 

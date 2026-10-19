@@ -8,7 +8,7 @@
 use std::path::PathBuf;
 
 use michi_core::git;
-use michi_core::prcreate::{self, Draft, Failure, Request};
+use michi_core::prcreate::{self, Draft, Existing, Failure, Request};
 
 use crate::act::Task;
 use crate::app::App;
@@ -28,6 +28,8 @@ pub struct PrForm {
     pub busy: bool,
     /// The address of the pull request that was made.
     pub done: Option<String>,
+    /// The open pull request of the branch: the form updates it.
+    pub edit: Option<Existing>,
     /// Opened this frame: the click that opened it is not a click outside.
     pub opening: bool,
 }
@@ -42,6 +44,7 @@ impl PrForm {
             body: self.body.trim().to_owned(),
             draft: self.draft,
             push_to: self.push_to.clone(),
+            edit: self.edit.clone(),
         }
     }
 }
@@ -58,17 +61,22 @@ impl App {
     }
 
     pub(crate) fn pr_draft_found(&mut self, wt: &std::path::Path, branch: &str, base: &str, d: Draft) {
+        let (title, body, base, draft) = match &d.existing {
+            Some(e) => (e.title.clone(), e.body.clone(), e.base.clone(), e.draft),
+            None => (d.title, d.body, base.to_owned(), false),
+        };
         self.pr_form = Some(PrForm {
             wt: wt.to_path_buf(),
             branch: branch.to_owned(),
-            base: base.to_owned(),
-            title: d.title,
-            body: d.body,
-            draft: false,
+            base,
+            title,
+            body,
+            draft,
             push_to: d.push_to,
             confirm: false,
             busy: false,
             done: None,
+            edit: d.existing,
             opening: true,
         });
     }
@@ -115,7 +123,8 @@ impl App {
     /// A pull request was made: its address goes to the clipboard and the
     /// form turns to Open and Copy.
     pub(crate) fn pr_created(&mut self, url: String) -> (String, u64) {
-        let said = self.tr("pr.done").replace("{url}", &url);
+        let updated = self.pr_form.as_ref().is_some_and(|f| f.edit.is_some());
+        let said = self.tr(if updated { "pr.updated" } else { "pr.done" }).replace("{url}", &url);
         self.clipboard = Some(url.clone());
         if let Some(f) = &mut self.pr_form {
             f.busy = false;
@@ -142,8 +151,28 @@ mod tests {
             confirm: false,
             busy: false,
             done: None,
+            edit: None,
             opening: false,
         }
+    }
+
+    #[test]
+    fn an_open_pull_request_fills_the_form_and_makes_it_an_update() {
+        let mut a = app();
+        let e = Existing {
+            url: "https://github.com/o/r/pull/7".into(),
+            title: "Old".into(),
+            body: "Why".into(),
+            base: "dev".into(),
+            draft: true,
+        };
+        let d = Draft { title: "New".into(), body: "- x".into(), push_to: None, existing: Some(e.clone()) };
+        a.pr_draft_found(std::path::Path::new("C:/r/feat"), "feat", "main", d);
+        let f = a.pr_form.as_ref().unwrap();
+        assert_eq!((f.title.as_str(), f.body.as_str(), f.base.as_str(), f.draft), ("Old", "Why", "dev", true));
+        assert_eq!(f.request().edit, Some(e));
+        let (t, _) = a.pr_created("https://github.com/o/r/pull/7".into());
+        assert_eq!(t, a.tr("pr.updated").replace("{url}", "https://github.com/o/r/pull/7"));
     }
 
     #[test]

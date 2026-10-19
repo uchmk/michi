@@ -24,7 +24,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
         .show(ctx, |ui| {
             egui::Frame::new().fill(c.panel).stroke(Stroke::new(1.0, c.border)).corner_radius(6.0).inner_margin(10.0).show(ui, |ui| {
                 ui.set_width(width);
-                ui.label(RichText::new(app.tr("pr.title")).strong());
+                ui.label(RichText::new(app.tr(if f.edit.is_some() { "pr.update_title" } else { "pr.title" })).strong());
                 ui.label(RichText::new(format!("{}: {}", app.tr("pr.branch"), f.branch)).size(12.0).color(c.dim));
                 ui.add_space(4.0);
                 if let Some(url) = f.done.clone() {
@@ -65,7 +65,11 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                         return;
                     }
                     ui.label(RichText::new(app.tr("pr.keys")).size(12.0).color(c.dim));
-                    let word = if f.push_to.is_some() { "pr.push_create" } else { "pr.create" };
+                    let word = match (f.edit.is_some(), f.push_to.is_some()) {
+                        (true, _) => "pr.update",
+                        (false, true) => "pr.push_create",
+                        (false, false) => "pr.create",
+                    };
                     go = ui.button(app.tr(word)).clicked();
                     if f.confirm {
                         cancel = ui.button(app.tr("pr.cancel")).clicked();
