@@ -8,29 +8,21 @@
 //! Claude Code ──stdio (JSON-RPC)── michi mcp ──socket / named pipe── michi (the window)
 //! ```
 //!
-//! The window listens on a per-user door ([`address`]); the first window to
+//! The window listens on a per-user door; the first window to
 //! open it holds it, the others try again every half minute. A request is
 //! answered on the UI thread from the state already in memory.
 
 use std::io;
-use std::sync::mpsc::{sync_channel, Receiver, RecvTimeoutError, SyncSender};
-use std::time::Duration;
+use std::sync::mpsc::Receiver;
 
-use ito_ipc::{frame, Address, Listener};
+use ito_ipc::door::{self, Door};
 use ito_mcp::serde_json::{json, Value};
 use ito_mcp::{Server, Tool};
 use serde::{Deserialize, Serialize};
 
-/// Bumped when [`Request`] or [`Reply`] change shape.
-const PROTO: u32 = 1;
-
-/// How long the door waits for the window; a busy window is reported.
-const ANSWER_WAIT: Duration = Duration::from_secs(5);
-
-/// The door: `\\.\pipe\michi-<user>` on Windows; `MICHI_ADDRESS` names another.
-pub fn address() -> Address {
-    Address::per_user("michi", "MICHI_ADDRESS")
-}
+/// The door: `\.\pipe\michi-<user>` on Windows; `MICHI_ADDRESS` names another.
+/// The version is bumped when [`Request`] or the reply change shape.
+const DOOR: Door<Request> = Door::new("michi", "MICHI_ADDRESS", 1);
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Request {
@@ -41,70 +33,18 @@ pub enum Request {
     Conflicts,
 }
 
-/// The tool's text, or why it could not.
-pub type Reply = Result<String, String>;
-
 /// One request handed to the UI thread, with where its answer goes.
-pub struct Ask {
-    pub request: Request,
-    pub reply: SyncSender<Reply>,
-}
+pub type Ask = door::Ask<Request>;
 
 /// Opens the door on a thread of its own and hands each request to the UI
 /// thread through the returned channel, waking it with `ctx`.
 pub fn listen(ctx: egui::Context) -> Receiver<Ask> {
-    let (tx, rx) = sync_channel::<Ask>(16);
-    let at = address();
-    let _ = std::thread::Builder::new().name("michi-mcp".into()).spawn(move || {
-        let listener = loop {
-            match Listener::bind(&at) {
-                Ok(l) => break l,
-                // Another window has it; try again so the door moves on when that one closes.
-                Err(e) if e.kind() == io::ErrorKind::AddrInUse => std::thread::sleep(Duration::from_secs(30)),
-                // The door is a convenience; the window works without it.
-                Err(_) => return,
-            }
-        };
-        while let Ok(conn) = listener.accept() {
-            let (tx, ctx) = (tx.clone(), ctx.clone());
-            let _ = std::thread::Builder::new().name("michi-mcp-conn".into()).spawn(move || {
-                let _ = serve_one(conn, &tx, &ctx);
-            });
-        }
-    });
-    rx
-}
-
-/// One connection: one request, one reply.
-fn serve_one(conn: ito_ipc::Conn, tx: &SyncSender<Ask>, ctx: &egui::Context) -> io::Result<()> {
-    let (mut r, mut w) = conn.split()?;
-    let (proto, request): (u32, Request) = frame::read(&mut r)?;
-    let reply = if proto != PROTO {
-        Err(format!("this michi window speaks version {PROTO} of the door and michi mcp spoke {proto}; run the same michi for both"))
-    } else {
-        answer(request, tx, ctx)
-    };
-    frame::write(&mut w, &reply)
-}
-
-fn answer(request: Request, tx: &SyncSender<Ask>, ctx: &egui::Context) -> Reply {
-    let (reply_tx, reply_rx) = sync_channel(1);
-    if tx.try_send(Ask { request, reply: reply_tx }).is_err() {
-        return Err("the michi window is busy".to_owned());
-    }
-    ctx.request_repaint();
-    match reply_rx.recv_timeout(ANSWER_WAIT) {
-        Ok(reply) => reply,
-        Err(RecvTimeoutError::Disconnected | RecvTimeoutError::Timeout) => Err("the michi window did not answer in time".to_owned()),
-    }
+    DOOR.listen(move || ctx.request_repaint())
 }
 
 /// Asks the running window, for `michi mcp`.
-fn ask(request: Request) -> Reply {
-    let conn = ito_ipc::connect(&address()).map_err(|_| "michi is not running; start michi and ask again".to_owned())?;
-    let (mut r, mut w) = conn.split().map_err(|e| e.to_string())?;
-    frame::write(&mut w, &(PROTO, request)).map_err(|e| format!("could not reach the michi window: {e}"))?;
-    frame::read::<_, Reply>(&mut r).map_err(|e| format!("the michi window did not answer: {e}"))?
+fn ask(request: Request) -> door::Reply {
+    door::ask(&DOOR, &request)
 }
 
 /// The MCP server `michi mcp` runs on its standard input and output.

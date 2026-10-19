@@ -2,6 +2,11 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.98.2] - 2026-10-19
+
+### 変更
+- `michi mcp` の扉を、ito v0.90.0 の `ito_ipc::door::Door` に置き換えた（受け付け・版の食い違いの知らせ・待ち時間は ito 側）。動きは同じ。
+
 ## [0.98.1] - 2026-10-19
 
 ### 変更
