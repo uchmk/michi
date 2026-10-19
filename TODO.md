@@ -161,7 +161,6 @@ All wait for the owner; none is started.
 - [ ] Commit message help（要確認: #74）
 - [ ] Open the worktree in terminal / editor / explorer（要確認: #75）
 - [x] autostash on pull / checkout (recommended option of #76): changes in the way are stashed, kept under `refs/michi/backup/`, and put back; a clash stays marked in the files（要確認: #76）
-- [ ] reset: choose soft / mixed / hard（要確認: #77）
 - [x] reset: choose soft / mixed / hard（`R`、1 soft・2 mixed・3 hard。要確認: #77）
 - [ ] One-button sync（要確認: #78）
 - [ ] Fuzzy pickers everywhere（要確認: #79）
