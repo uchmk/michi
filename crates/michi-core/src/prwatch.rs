@@ -172,6 +172,38 @@ pub fn parse_list(json: &str) -> Prs {
     out
 }
 
+/// The `owner/name` of the repository a pull request's address belongs to.
+pub fn repo_of(url: &str) -> Option<String> {
+    let rest = url.strip_prefix("https://").or_else(|| url.strip_prefix("http://"))?;
+    let mut parts = rest.split('/');
+    let _host = parts.next()?;
+    let (owner, name) = (parts.next().filter(|s| !s.is_empty())?, parts.next().filter(|s| !s.is_empty())?);
+    Some(format!("{owner}/{name}"))
+}
+
+/// Lays minato's answer (`{"prs":[{"number","ci"}]}`, open pull requests
+/// only) over `prs`: the checks of an open one are minato's. Everything else
+/// (merged, closed, the review) stays what `gh` read. Returns whether the
+/// answer was understood.
+pub fn overlay_checks(prs: &mut Prs, minato: &str) -> bool {
+    let Ok(Value::Object(v)) = serde_json::from_str::<Value>(minato) else { return false };
+    let Some(list) = v.get("prs").and_then(Value::as_array) else { return false };
+    for item in list {
+        let (Some(number), Some(branch)) = (item.get("number").and_then(Value::as_u64), item.get("branch").and_then(Value::as_str)) else {
+            continue;
+        };
+        let Some(pr) = prs.get_mut(branch).filter(|p| p.number == number && p.state == State::Open) else { continue };
+        pr.checks = match item.get("ci").and_then(Value::as_str) {
+            Some("success") => Checks::Passed,
+            Some("failure") => Checks::Failed,
+            Some("pending") => Checks::Pending,
+            Some("none") => Checks::None,
+            _ => continue,
+        };
+    }
+    true
+}
+
 /// Reads the repository's pull requests with `gh`, run in `dir`.
 pub fn fetch(dir: &Path) -> Result<Prs, git::Error> {
     let mut c = Command::new("gh");
@@ -253,6 +285,28 @@ mod tests {
     }
     fn kinds(old: Pr, new: Pr) -> Vec<Kind> {
         diff(&one(old), &one(new), &["feat".to_owned()]).into_iter().map(|c| c.kind).collect()
+    }
+
+    #[test]
+    fn minato_lays_its_checks_over_the_open_ones_only() {
+        let mk = |n, state, checks| Pr { number: n, branch: format!("b{n}"), url: String::new(), state, checks, review: Review::Approved };
+        let mut prs = Prs::new();
+        prs.insert("b1".into(), mk(1, State::Open, Checks::Passed));
+        prs.insert("b2".into(), mk(2, State::Merged, Checks::Passed));
+        prs.insert("b3".into(), mk(3, State::Open, Checks::Passed));
+        let json = r#"{"repo":"o/n","prs":[{"branch":"b1","number":1,"ci":"failure"},{"branch":"b2","number":2,"ci":"failure"},{"branch":"b3","number":9,"ci":"failure"}]}"#;
+        assert!(overlay_checks(&mut prs, json));
+        assert_eq!(prs["b1"].checks, Checks::Failed);
+        assert_eq!(prs["b1"].review, Review::Approved);
+        assert_eq!(prs["b2"].checks, Checks::Passed, "a merged one is gh's");
+        assert_eq!(prs["b3"].checks, Checks::Passed, "another number is not the same pull request");
+        assert!(!overlay_checks(&mut prs, "nonsense"));
+    }
+
+    #[test]
+    fn the_repository_is_in_the_address() {
+        assert_eq!(repo_of("https://github.com/uchmk/michi/pull/7").as_deref(), Some("uchmk/michi"));
+        assert_eq!(repo_of("not a url"), None);
     }
 
     #[test]
