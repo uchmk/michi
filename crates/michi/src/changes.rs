@@ -288,6 +288,20 @@ impl Changes {
         self.list_waiting = false;
         let old = self.selected().map(|(side, f)| (side, f.path.clone(), self.index_in(side)));
         let head = self.lists().map(|l| l.head);
+        // The marked files are held by position: when the files moved, they would name other files.
+        let same = match (self.lists(), &result) {
+            (Some(o), Ok(n)) => {
+                let paths = |l: &Lists| -> Vec<(bool, String)> {
+                    l.staged.iter().map(|f| (true, f.path.clone())).chain(l.unstaged.iter().map(|f| (false, f.path.clone()))).collect()
+                };
+                paths(o) == paths(n)
+            }
+            _ => false,
+        };
+        if !same {
+            self.mark = None;
+            self.picks.clear();
+        }
         self.lists = Some(result);
         let mut out = Vec::new();
         let Some(Ok(lists)) = &self.lists else {
@@ -1158,6 +1172,19 @@ pub(crate) mod tests {
         let ws = reread(&mut c, lists(&[], &["a.txt"]));
         assert!(c.diff().is_some());
         assert_eq!(c.gens().1, file_gen(&ws));
+    }
+
+    #[test]
+    fn a_multiple_selection_goes_when_the_files_move_under_it() {
+        let mut c = opened();
+        c.extend(1);
+        assert_eq!(c.marked().len(), 2);
+        // The same files read again: the selection stays.
+        reread(&mut c, lists(&["s.txt"], &["a.txt", "b.txt"]));
+        assert_eq!(c.marked().len(), 2);
+        // A file appeared before them: positions name other files, so the selection goes.
+        reread(&mut c, lists(&["s.txt"], &["0.txt", "a.txt", "b.txt"]));
+        assert_eq!(c.marked().len(), 1);
     }
 
     #[test]
