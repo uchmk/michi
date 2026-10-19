@@ -193,6 +193,21 @@ mod tests {
     }
 
     #[test]
+    fn the_notice_for_a_pull_request_goes_to_it_and_a_failure_to_its_worktree() {
+        use ito_notices::Kind;
+        let mut a = app();
+        a.pr_form = Some(form());
+        let req = form().request();
+        let task = || Task::CreatePr { wt: PathBuf::from("C:/r/feat"), req: req.clone() };
+        a.act_done(task(), Ok(crate::act::Acted::PrUrl("https://github.com/o/r/pull/1".into())));
+        let n = a.notices.last().unwrap();
+        assert_eq!((n.kind, n.go.clone()), (Kind::Ok, Some(crate::app::Target::Pr("https://github.com/o/r/pull/1".into()))));
+        a.act_done(task(), Err(git::Error::Git("boom".into())));
+        let n = a.notices.last().unwrap();
+        assert_eq!((n.kind, n.go.clone()), (Kind::Err, Some(crate::app::Target::Worktree(PathBuf::from("C:/r/feat")))));
+    }
+
+    #[test]
     fn a_made_pull_request_copies_its_address() {
         let mut a = app();
         a.pr_form = Some(form());

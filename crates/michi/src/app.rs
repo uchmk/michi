@@ -297,6 +297,8 @@ pub struct Handed {
 pub enum Target {
     /// A commit in the graph.
     Commit(Oid),
+    /// A pull request, opened at its address in the browser.
+    Pr(String),
     /// The conflict of the worktree at this path.
     Conflict(PathBuf),
     /// A row of the worktree table.
@@ -700,6 +702,12 @@ impl App {
                     self.conflicts.follow = true;
                 } else {
                     self.say(self.tr("cf.none"));
+                }
+            }
+            Target::Pr(url) => {
+                if michi_core::pr::open_url(&url).is_err() {
+                    self.clipboard = Some(url);
+                    self.say(self.tr("pr.open_failed"));
                 }
             }
             Target::Worktree(path) => {

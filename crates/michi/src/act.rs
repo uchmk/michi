@@ -1080,9 +1080,15 @@ impl App {
                 (failed(self, &e), 10)
             }
             (Task::PrDraft { .. }, Err(e)) => (failed(self, &e), 8),
-            (Task::CreatePr { .. }, Err(e)) => self.pr_failed(&e),
+            (Task::CreatePr { wt, .. }, Err(e)) => {
+                go = Some(Target::Worktree(wt.clone()));
+                self.pr_failed(&e)
+            }
             (Task::PrDraft { wt, branch, base }, Ok(Acted::PrDraft(d))) => return self.pr_draft_found(wt, branch, base, d),
-            (Task::CreatePr { .. }, Ok(Acted::PrUrl(url))) => self.pr_created(url),
+            (Task::CreatePr { .. }, Ok(Acted::PrUrl(url))) => {
+                go = Some(Target::Pr(url.clone()));
+                self.pr_created(url)
+            }
             (_, Err(e)) => {
                 let text = failed(self, &e);
                 self.last_error = Some(text.clone());
