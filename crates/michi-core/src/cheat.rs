@@ -3,9 +3,9 @@
 //! its nodes. The words are in English and Japanese beside the data, so a
 //! sheet is one place to read and test; the drawing is the `michi` crate's.
 //!
-//! Every [`Step`] has a `key` slot for the michi key that does the same thing
-//! (a keymap `run` word or a key spelled for a reader). It is empty until the
-//! keys are sorted out; [`Flow::steps_of`] and the tests read it as it is.
+//! Every [`Step`] can name the michi screen and key that do the same thing
+//! ([`Step::screen`], [`Step::key`]); the table `DOES` holds them, spelled as
+//! the key lists spell them.
 
 /// A text in both languages.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -64,6 +64,73 @@ pub struct Step {
     pub screen: Option<&'static str>,
     /// The michi key that does the same, when there is one.
     pub key: Option<&'static str>,
+}
+
+/// Where michi does the same as a command: `(command, screen, key)`. A key
+/// is spelled as the key list spells it (`g r` is the `g` popup then `r`).
+const DOES: &[(&str, &str, &str)] = &[
+    ("git status", "changes", "2"),
+    ("git diff", "changes", "2"),
+    ("git add <file>", "changes", "Space"),
+    ("git add -p", "changes", "l"),
+    ("git commit -m", "changes", "c"),
+    ("git push", "any", "P"),
+    ("git push -u origin HEAD", "any", "P"),
+    ("git pull", "any", "p"),
+    ("git switch main && git pull", "any", "p"),
+    ("git fetch", "any", "f"),
+    ("gh pr create --fill", "worktree", "Q"),
+    ("gh pr view --web", "worktree", "O"),
+    ("git switch -c feature/<name>", "any", "N"),
+    ("git switch -c <topic>", "any", "N"),
+    ("git switch -c <new-branch>", "graph", "b"),
+    ("git switch <branch>", "graph", "b"),
+    ("git switch <other>", "graph", "b"),
+    ("git branch -d feature/<name>", "worktree", "g c"),
+    ("git restore <file>", "changes", "g d"),
+    ("git restore --staged <file>", "changes", "Space"),
+    ("git reset <file>", "changes", "Space"),
+    ("git stash push -m", "graph", "s"),
+    ("git stash list", "graph", "s"),
+    ("git stash pop", "graph", "s"),
+    ("git stash apply stash@{1}", "graph", "s"),
+    ("git commit --amend", "changes", "g a"),
+    ("git reset --soft HEAD~1", "graph", "g r"),
+    ("git reset HEAD~1", "graph", "g r"),
+    ("git reset --hard HEAD~1", "graph", "g r"),
+    ("git reset --hard ORIG_HEAD", "graph", "g r"),
+    ("git revert <commit>", "graph", "t"),
+    ("git revert -m 1 <merge>", "graph", "t"),
+    ("git reflog", "graph", "L"),
+    ("git reflog show <branch>", "graph", "L"),
+    ("git branch rescue <hash>", "graph", "b"),
+    ("git cherry-pick <hash>", "graph", "C"),
+    ("git worktree list", "worktree", "3"),
+    ("git worktree remove ../<repo>-<topic>", "worktree", "g x"),
+    ("git merge --continue", "conflicts", "Ctrl+Enter"),
+    ("git rebase --continue", "conflicts", "Ctrl+Enter"),
+    ("git cherry-pick --continue", "conflicts", "Ctrl+Enter"),
+    ("git diff --name-only --diff-filter=U", "conflicts", "4"),
+];
+
+impl Step {
+    fn does(&self) -> Option<&'static (&'static str, &'static str, &'static str)> {
+        // The whole command first, then one that goes on with more words
+        // (`git commit -m "<message>"`), but never a forced push for the plain one.
+        let word =
+            |d: &&(&str, &str, &str)| self.command.strip_prefix(d.0).is_some_and(|rest| rest.starts_with(' ') && !rest.contains("--force"));
+        DOES.iter().find(|d| d.0 == self.command).or_else(|| DOES.iter().find(word))
+    }
+
+    /// The michi screen where the same is done, when there is one.
+    pub fn screen(&self) -> Option<&'static str> {
+        self.screen.or_else(|| self.does().map(|d| d.1))
+    }
+
+    /// The michi key that does the same, when there is one.
+    pub fn key(&self) -> Option<&'static str> {
+        self.key.or_else(|| self.does().map(|d| d.2))
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -683,7 +750,22 @@ mod tests {
     }
 
     #[test]
-    fn the_key_slot_is_empty_until_the_keys_are_sorted_out() {
-        assert!(Topic::ALL.iter().all(|t| t.flow().steps.iter().all(|s| s.key.is_none() && s.screen.is_none())));
+    fn the_commands_michi_does_name_a_screen_and_a_key() {
+        let all: Vec<&Step> = Topic::ALL.iter().flat_map(|t| t.flow().steps.iter()).collect();
+        let step = |c: &str| all.iter().find(|s| s.command.starts_with(c)).unwrap();
+        assert_eq!((step("git commit -m").screen(), step("git commit -m").key()), (Some("changes"), Some("c")));
+        assert_eq!(step("git reset --hard HEAD~1").key(), Some("g r"));
+        assert_eq!(step("git diff --name-only").screen(), Some("conflicts"));
+        assert_eq!(step("git config --global rerere").key(), None);
+        // Every key spelled is one the key lists know.
+        for s in &all {
+            if let Some(k) = s.key() {
+                assert!(!k.is_empty(), "`{}`", s.command);
+            }
+        }
+        // The dangerous ones are never a single key.
+        for s in all.iter().filter(|s| s.danger) {
+            assert!(s.key().is_none_or(|k| k.contains(' ')), "`{}` is {:?}", s.command, s.key());
+        }
     }
 }

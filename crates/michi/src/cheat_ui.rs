@@ -470,10 +470,10 @@ fn steps(
                 ui.add(egui::Label::new(RichText::new(s.why.get(lang)).color(if on { c.fg } else { c.dim })).wrap());
             });
             cell_of(ui, w_screen, |ui| {
-                ui.label(RichText::new(s.screen.unwrap_or("—")).color(c.dim));
+                ui.label(RichText::new(s.screen().unwrap_or("—")).color(c.dim));
             });
             cell_of(ui, w_key, |ui| {
-                ui.label(RichText::new(s.key.unwrap_or("—")).monospace().color(c.dim));
+                ui.label(RichText::new(s.key().unwrap_or("—")).monospace().color(c.dim));
             });
         });
         ui.add_space(2.0);

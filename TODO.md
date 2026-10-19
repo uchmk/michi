@@ -153,7 +153,7 @@ All wait for the owner; none is started.
 - [ ] Context menus (commit, branch, file)（要確認: #66）
 - [ ] Drag and drop (merge / rebase / cherry-pick)（要確認: #67）
 - [ ] Syntax highlighting in diffs（要確認: #68）
-- [ ] CI / PR state on the graph（要確認: #69）
+- [x] CI / PR state on the graph: a badge after the branch name (0.98.0)（要確認: #69）
 - [x] Auto fetch (recommended option of #70): while the window is in front, fetch every 5 minutes (`[net] auto_fetch` in config.toml, minutes, 0 is off); a failure shows small on the keybar, no toast（要確認: #70）
 - [ ] Hide / solo branches（要確認: #71）
 - [ ] Tree view of changed files（要確認: #72）
@@ -220,7 +220,7 @@ All wait for the owner; none is started. Related: #64 (Undo), #74, #77, #80-#83.
 - [x] Unify Japanese and English terms（要確認: #125）
 
 - [x] Git flow sheet (Ctrl+Shift+G): 7 tabs of flowcharts with commands（要確認: question issue）
-- [ ] Sort out all shortcut keys by how often they are used, then fill the key column of the Git flow sheet (`Step.key` in `cheat.rs`) and enable its "key exists" test
+- [x] Sort out all shortcut keys by how often they are used, then fill the key column of the Git flow sheet (`Step.key` in `cheat.rs`) and enable its "key exists" test (the key and screen columns come from the `DOES` table, 0.98.1)
 
 ## Owner
 
