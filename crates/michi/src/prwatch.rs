@@ -21,6 +21,9 @@ const FRONT: Duration = Duration::from_secs(60);
 /// … and while it is behind.
 const BEHIND: Duration = Duration::from_secs(300);
 
+/// The watch stops after this many readings in a row that failed.
+const GIVE_UP: u32 = 2;
+
 fn every(front: bool) -> Duration {
     if front {
         FRONT
@@ -80,6 +83,8 @@ impl PrWatch {
 fn run(dir: &std::path::Path, mut front: bool, cmds: &Receiver<Cmd>, send: impl Fn(Vec<Change>) -> bool) {
     let mut branches: Vec<String> = Vec::new();
     let mut last: Option<Prs> = None;
+    // Readings that failed one after the other.
+    let mut misses = 0;
     let mut due = Instant::now();
     loop {
         match cmds.recv_timeout(due.saturating_duration_since(Instant::now())) {
@@ -108,6 +113,7 @@ fn run(dir: &std::path::Path, mut front: bool, cmds: &Receiver<Cmd>, send: impl 
         }
         match prwatch::fetch(dir) {
             Ok(now) => {
+                misses = 0;
                 if let Some(old) = &last {
                     let changes = prwatch::diff(old, &now, &branches);
                     if !changes.is_empty() && !send(changes) {
@@ -118,8 +124,15 @@ fn run(dir: &std::path::Path, mut front: bool, cmds: &Receiver<Cmd>, send: impl 
             }
             // Not there or not signed in: nothing to watch with.
             Err(e) if prcreate::failure_of(&e) != Failure::Other => return,
-            // Offline or the like: the next time.
-            Err(_) => {}
+            // Offline or the like: the next time, but not for ever (a remote
+            // that is not GitHub fails every time).
+            Err(_) => {
+                misses += 1;
+                if misses >= GIVE_UP {
+                    return;
+                }
+                continue;
+            }
         }
     }
 }
@@ -172,6 +185,7 @@ mod tests {
     #[test]
     fn it_reads_every_minute_in_front_and_every_five_behind() {
         assert_eq!((every(true), every(false)), (Duration::from_secs(60), Duration::from_secs(300)));
+        assert_eq!(GIVE_UP, 2, "two failed readings in a row stop the watch");
     }
 
     #[test]
