@@ -20,7 +20,7 @@ use michi_core::stash::{self, Applied, Saved};
 use michi_core::tidy::{self, Found, Item, Outcome};
 use michi_core::{branch, tag, worktree};
 
-use crate::app::{App, Repo, View};
+use crate::app::{App, Repo, Target, View};
 use crate::work::{Band, Job, Then};
 
 /// What the act thread is to do.
@@ -967,6 +967,8 @@ impl App {
         if let Task::Undo { .. } = &task {
             self.undoing = false;
         }
+        let bad = result.is_err();
+        let mut go = None;
         let (text, secs) = match (&task, result) {
             (Task::Undo { entry, redo }, Ok(_)) => {
                 if *redo {
@@ -1320,17 +1322,20 @@ impl App {
             }
             (Task::Conclude { wt, doing, .. }, Ok(Acted::Committed(new))) => {
                 let text = self.tr("act.concluded").replace("{doing}", &self.doing_word(*doing)).replace("{wt}", &self::name(wt));
+                go = Some(Target::Commit(new));
                 (text.replace("{new}", &new.short()), 6)
             }
             (Task::Abort { wt, doing }, Ok(Acted::Kept(saved))) => {
                 let text = self.tr("act.aborted").replace("{doing}", &self.doing_word(*doing)).replace("{wt}", &self::name(wt));
                 let kept = saved.as_deref().map(|s| self.tr("act.aborted_kept").replace("{}", backup::short(s))).unwrap_or_default();
+                go = Some(Target::Worktree(wt.clone()));
                 (text + &kept, 10)
             }
             // Each task ends one way when it goes.
             (_, Ok(_)) => return,
         };
-        self.say_for(text, secs);
+        let kind = if bad { ito_notices::Kind::Err } else { ito_notices::Kind::Ok };
+        self.notify(kind, text, go, secs);
     }
 
     /// A merge, a pick or a revert stopped on a clash in the worktree at
@@ -1339,6 +1344,8 @@ impl App {
         self.conflicts.wt = Some(wt.to_path_buf());
         self.conflicts.show(wt);
         self.view = View::Conflict;
+        let text = self.tr("cf.stopped").replace("{wt}", &self::name(wt));
+        self.say_go(ito_notices::Kind::Warn, text, Target::Conflict(wt.to_path_buf()));
         // Once a session, ask whether to reuse what is solved here (rerere).
         if !std::mem::replace(&mut self.rerere_asked, true) {
             self.act(Task::AskRerere { wt: wt.to_path_buf() });

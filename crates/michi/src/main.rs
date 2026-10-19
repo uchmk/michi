@@ -829,12 +829,21 @@ impl eframe::App for Michi {
         }
         if out.bell {
             self.app.bell_open = !self.app.bell_open;
-            if !self.app.bell_open {
-                self.app.notices.iter_mut().for_each(|n| n.1 = true);
+        } else if self.app.bell_open {
+            match ui::bell_list(&ctx, &self.app, out.bell_rect) {
+                None => {}
+                Some(ito_notices::Action::Close) => self.app.bell_open = false,
+                Some(ito_notices::Action::ReadAll) => self.app.notices.iter_mut().for_each(|n| n.read = true),
+                Some(ito_notices::Action::Open(go, id)) => {
+                    if let Some(n) = self.app.notices.iter_mut().find(|n| n.id == id) {
+                        n.read = true;
+                    }
+                    if let Some(go) = go {
+                        self.app.bell_open = false;
+                        self.app.go(go);
+                    }
+                }
             }
-        } else if self.app.bell_open && ui::bell_list(&ctx, &self.app, out.bell_rect) {
-            self.app.bell_open = false;
-            self.app.notices.iter_mut().for_each(|n| n.1 = true);
         }
         match out.key {
             Some(ui::BarKey::Char(c)) => self.app.run_pick(cmdpalette::Pick::Key(c)),

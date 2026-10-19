@@ -433,7 +433,7 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
     let c = ito_theme::colors();
     ui.painter().rect_filled(r, 0.0, c.side);
     let maximized = ctx.input(|i| i.viewport().maximized.unwrap_or(false));
-    let unread = app.notices.iter().filter(|n| !n.1).count();
+    let unread = ito_notices::unread(&app.notices);
     let search = app.tr("palette.hint").to_owned();
     let key = app
         .prefs
@@ -455,7 +455,7 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
         left: if cfg!(target_os = "macos") { 78.0 } else { 0.0 },
         maximized,
         unread,
-        any_error: false,
+        any_error: ito_notices::any_error(&app.notices),
         centre: true,
         words,
     };
@@ -568,40 +568,19 @@ fn right_slot(ui: &mut Ui, app: &App, free: Rect) -> bool {
     clicked
 }
 
-/// The list the bell opens, under it: newest first. True when it should
-/// close (Esc, or a click outside it).
-pub fn bell_list(ctx: &egui::Context, app: &App, bell: Option<Rect>) -> bool {
-    let c = ito_theme::colors();
+/// The list the bell opens, under it (see `ito_notices::show`).
+pub fn bell_list(ctx: &egui::Context, app: &App, bell: Option<Rect>) -> Option<ito_notices::Action<crate::app::Target>> {
     let r = ctx.content_rect();
-    let title = Rect::from_min_size(r.min, vec2(r.width(), TITLE_H));
-    // Under the bell, the list ending at its right edge.
-    let right = bell.map_or(title.center().x + 100.0 + 340.0, |b| b.right());
-    let at = pos2((right - 360.0).min(r.right() - 372.0).max(r.left() + 8.0), title.bottom() + 4.0);
-    let mut inside = false;
-    let resp = egui::Area::new(egui::Id::new("bell-list")).order(egui::Order::Foreground).fixed_pos(at).show(ctx, |ui| {
-        egui::Frame::NONE
-            .fill(c.raised())
-            .stroke(Stroke::new(1.0, c.border_strong()))
-            .corner_radius(CornerRadius::same(8))
-            .inner_margin(10.0)
-            .show(ui, |ui| {
-                ui.set_width(340.0);
-                if app.notices.is_empty() {
-                    ui.label(egui::RichText::new(app.tr("bell.empty")).color(c.dim));
-                    return;
-                }
-                egui::ScrollArea::vertical().max_height(360.0).auto_shrink([false, true]).show(ui, |ui| {
-                    for (text, read) in app.notices.iter().rev() {
-                        ui.label(egui::RichText::new(text).color(if *read { c.dim } else { c.fg }).size(12.5));
-                        ui.separator();
-                    }
-                });
-            });
-    });
-    inside |= resp.response.contains_pointer();
-    let click_out =
-        ctx.input(|i| i.pointer.any_pressed()) && !inside && !ctx.input(|i| i.pointer.hover_pos().is_some_and(|p| p.y < title.bottom()));
-    click_out || ctx.input(|i| i.key_pressed(egui::Key::Escape))
+    let anchor = bell.unwrap_or_else(|| Rect::from_min_size(pos2(r.center().x + 100.0, r.top()), vec2(28.0, TITLE_H)));
+    let title = app.tr("bell.hover").replace("{}", &ito_notices::unread(&app.notices).to_string());
+    let words = ito_notices::Words {
+        title: &title,
+        mark_read: app.tr("bell.mark_read"),
+        empty: app.tr("bell.empty"),
+        ago: app.tr("bell.ago"),
+        kinds: [app.tr("bell.ok"), app.tr("bell.info"), app.tr("bell.warn"), app.tr("bell.err"), app.tr("bell.wait")],
+    };
+    ito_notices::show(ctx, anchor, &app.notices, &words)
 }
 
 /// The repository chip, right-aligned to `right`: the name, then the branch

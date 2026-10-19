@@ -292,6 +292,17 @@ pub struct Handed {
     pub conflict: bool,
 }
 
+/// Where a notice in the bell jumps to.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Target {
+    /// A commit in the graph.
+    Commit(Oid),
+    /// The conflict of the worktree at this path.
+    Conflict(PathBuf),
+    /// A row of the worktree table.
+    Worktree(PathBuf),
+}
+
 pub struct App {
     pub view: View,
     pub mode: Mode,
@@ -372,8 +383,10 @@ pub struct App {
     pub new_title: Option<String>,
     /// One line at the foot, until its instant.
     pub toast: Option<(String, Instant)>,
-    /// What the toasts said, newest last, each with whether it was read at the bell.
-    pub notices: Vec<(String, bool)>,
+    /// What the toasts said, newest last; the bell lists them.
+    pub notices: Vec<ito_notices::Notice<Target>>,
+    /// The id the next notice gets.
+    pub next_notice: u64,
     /// The bell's list is open.
     pub bell_open: bool,
     /// The fetch, pull or push that runs.
@@ -537,6 +550,7 @@ impl App {
             new_title: None,
             toast: None,
             notices: Vec::new(),
+            next_notice: 0,
             bell_open: false,
             net: None,
             last_fetch: None,
@@ -646,12 +660,56 @@ impl App {
     }
 
     pub fn say_for(&mut self, text: impl Into<String>, secs: u64) {
+        self.notify(ito_notices::Kind::Info, text, None, secs);
+    }
+
+    /// Says `text` with a kind, and a place the bell can jump to.
+    pub fn say_go(&mut self, kind: ito_notices::Kind, text: impl Into<String>, go: Target) {
+        self.notify(kind, text, Some(go), if kind == ito_notices::Kind::Err { 8 } else { 4 });
+    }
+
+    pub(crate) fn notify(&mut self, kind: ito_notices::Kind, text: impl Into<String>, go: Option<Target>, secs: u64) {
         let text = text.into();
-        self.notices.push((text.clone(), false));
+        self.next_notice += 1;
+        self.notices.push(ito_notices::Notice {
+            id: self.next_notice,
+            at: SystemTime::now(),
+            kind,
+            title: text.clone(),
+            note: None,
+            go,
+            read: false,
+        });
         if self.notices.len() > 50 {
             self.notices.remove(0);
         }
         self.toast = Some((text, Instant::now() + Duration::from_secs(secs)));
+    }
+
+    /// Jumps to what a notice points at.
+    pub fn go(&mut self, target: Target) {
+        match target {
+            Target::Commit(id) => {
+                self.view = View::Graph;
+                self.go_to(id);
+            }
+            Target::Conflict(wt) => {
+                if self.conflicts.of(&wt).is_some() {
+                    self.conflicts.show(&wt);
+                    self.view = View::Conflict;
+                    self.conflicts.follow = true;
+                } else {
+                    self.say(self.tr("cf.none"));
+                }
+            }
+            Target::Worktree(path) => {
+                let key = paths::key(&path);
+                if let Some(i) = self.trees.trees.iter().position(|t| paths::key(&t.wt.path) == key) {
+                    self.wt_sel = i;
+                    self.view = View::Worktree;
+                }
+            }
+        }
     }
 
     /// How long until the toast goes, if there is one.
@@ -891,7 +949,7 @@ impl App {
                 match &result {
                     Ok(Did::Committed(id)) => {
                         let text = self.tr("changes.committed").replace("{}", &id.short());
-                        self.say(text);
+                        self.say_go(ito_notices::Kind::Ok, text, Target::Commit(*id));
                     }
                     Ok(Did::Discarded { path, untracked, lines, saved }) => {
                         let key = match (untracked, lines) {
