@@ -821,7 +821,6 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
     }
 }
 
-/// A place in the worktree at `wt` was solved or put back: it is read again.
 /// The brief written, then the Claude asked: in session `session`, or in a
 /// new tab of the worktree.
 fn hand_off(c: &Conflict, session: Option<u64>) -> Result<(), git::Error> {
@@ -869,6 +868,7 @@ fn flag(wt: &Path, branch: &str) -> Result<(), git::Error> {
     ito_common::write_atomic(&file, flags.to_json()).map_err(|e| git::Error::Io(e.to_string()))
 }
 
+/// A place in the worktree at `wt` was solved or put back: it is read again.
 fn solved(wt: &Path, saved: Option<String>) -> Acted {
     Acted::Solved(Box::new(Solved { saved, read: conflict::read(wt).ok() }))
 }
@@ -879,7 +879,6 @@ pub fn name(wt: &Path) -> String {
 }
 
 impl App {
-    /// Sends `task` to the act thread.
     /// Enter in the filter with a content search typed (`s:` `g:` `p:` `d:`) that git
     /// has not answered: asks, off the UI thread. False when there is
     /// nothing to ask (Enter then goes to the next hit).
@@ -891,6 +890,7 @@ impl App {
         true
     }
 
+    /// Sends `task` to the act thread.
     pub(crate) fn act(&mut self, task: Task) {
         if let Some(r) = &self.reading {
             r.act(task);
