@@ -832,7 +832,7 @@ impl eframe::App for Michi {
             if !self.app.bell_open {
                 self.app.notices.iter_mut().for_each(|n| n.1 = true);
             }
-        } else if self.app.bell_open && ui::bell_list(&ctx, &self.app) {
+        } else if self.app.bell_open && ui::bell_list(&ctx, &self.app, out.bell_rect) {
             self.app.bell_open = false;
             self.app.notices.iter_mut().for_each(|n| n.1 = true);
         }
@@ -856,7 +856,9 @@ impl eframe::App for Michi {
         if self.app.quit {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }
-        ui::resize_edges(&ctx);
+        if !ctx.input(|i| i.viewport().maximized.unwrap_or(false)) {
+            ito_titlebar::resize_edges(&ctx);
+        }
     }
 
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
@@ -970,12 +972,11 @@ fn main() -> eframe::Result {
     // A script plays on a window that keeps no place, and leaves none.
     let saved =
         ito_common::window::Saved::load(script.is_none().then(|| crate::prefs::window_dir(ito_common::base_dir().as_deref())).flatten());
-    let viewport = egui::ViewportBuilder::default()
+    let viewport = ito_titlebar::frameless(egui::ViewportBuilder::default())
         .with_title("michi")
         .with_inner_size([1280.0, 800.0])
         .with_min_inner_size([720.0, 420.0])
-        // The frame is drawn by ui.rs: the title bar, the buttons, the edges.
-        .with_decorations(false)
+        // The frame is drawn by ui.rs and ito-titlebar: the bar, the buttons, the edges.
         // Alt+Tab and the taskbar; build.rs bakes the same drawing into
         // michi.exe for Explorer.
         .with_icon(std::sync::Arc::new(egui::IconData { rgba: icon::pixels(ICON_PX), width: ICON_PX, height: ICON_PX }));
