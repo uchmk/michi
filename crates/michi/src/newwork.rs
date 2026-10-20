@@ -180,6 +180,7 @@ mod tests {
             written: None,
             left_out: Vec::new(),
             theirs: None,
+            staged: Vec::new(),
         };
         a.wips = vec![wip];
         assert!(a.new_work_warning(&a.new_work_overlaps("do something")).is_none());

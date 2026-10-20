@@ -354,6 +354,7 @@ mod tests {
             written: None,
             left_out: vec![],
             theirs: None,
+            staged: Vec::new(),
         };
         let s = sides(&all, &[w], None);
         assert_eq!((s[1].head, s[1].tip), (id(3), id(4)));

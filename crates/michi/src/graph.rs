@@ -973,6 +973,7 @@ pub(crate) mod fixture {
             written,
             left_out: Vec::new(),
             theirs: None,
+            staged: Vec::new(),
         }
     }
 

@@ -390,7 +390,8 @@ fn graph_view(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         if let Some(p) = ui.ctx().input(|i| i.pointer.primary_pressed().then(|| i.pointer.interact_pos()).flatten()) {
             use crate::panes::GraphPane;
             if cols.side.is_some_and(|r| r.contains(p)) {
-                app.pane = GraphPane::Side;
+                let in_tree = crate::side_ui::tree_rect(ui.ctx()).is_some_and(|t| t.contains(p));
+                app.pane = if in_tree { GraphPane::Files } else { GraphPane::Side };
             } else if cols.graph.is_some_and(|r| r.contains(p)) {
                 app.pane = GraphPane::Tree;
             } else if cols.detail.contains(p) {
@@ -401,7 +402,11 @@ fn graph_view(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     // The blue frame is where the keys are.
     let here = match app.pane {
         crate::panes::GraphPane::Tree => cols.graph,
-        crate::panes::GraphPane::Side => cols.side,
+        crate::panes::GraphPane::Side => cols.side.map(|s| match crate::side_ui::tree_rect(ui.ctx()) {
+            Some(t) => Rect::from_min_max(s.min, pos2(s.right(), t.top() - 1.0)),
+            None => s,
+        }),
+        crate::panes::GraphPane::Files => crate::side_ui::tree_rect(ui.ctx()).or(cols.side),
         crate::panes::GraphPane::Detail => Some(cols.detail),
     };
     if let Some(r) = here {

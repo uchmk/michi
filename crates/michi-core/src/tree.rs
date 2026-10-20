@@ -111,6 +111,26 @@ pub fn visible(rows: &[Row]) -> Vec<usize> {
     rows.iter().filter_map(|r| if let Row::File { index, .. } = r { Some(*index) } else { None }).collect()
 }
 
+/// The path of every folder of `files`, however deep (what folding all
+/// folds).
+pub fn dir_paths(files: &[File]) -> Vec<String> {
+    rows(files, |_| false)
+        .into_iter()
+        .filter_map(|r| match r {
+            Row::Dir { path, .. } => Some(path),
+            Row::File { .. } => None,
+        })
+        .collect()
+}
+
+/// The row of the folder `rows[i]` is in, if it is in one.
+pub fn parent_of(rows: &[Row], i: usize) -> Option<usize> {
+    let depth = match rows.get(i)? {
+        Row::Dir { depth, .. } | Row::File { depth, .. } => *depth,
+    };
+    (0..i).rev().find(|j| matches!(&rows[*j], Row::Dir { depth: d, .. } if *d + 1 == depth))
+}
+
 /// The paths of the files below the folder `dir`, with those a renamed one
 /// came from when `with_from` (taking a rename out of the index takes both).
 pub fn under(files: &[File], dir: &str, with_from: bool) -> Vec<String> {
@@ -199,6 +219,17 @@ mod tests {
         assert_eq!(under(&files, "src", false), ["src/new.rs", "src/a/b.rs"]);
         assert_eq!(under(&files, "src", true), ["src/new.rs", "old/was.rs", "src/a/b.rs"]);
         assert!(under(&files, "sr", true).is_empty());
+    }
+
+    #[test]
+    fn every_folder_is_named_and_a_row_knows_its_parent() {
+        assert_eq!(dir_paths(&sample()), ["docs/one/two", "src", "src/a/b"]);
+        let r = rows(&sample(), |_| false);
+        assert_eq!(parent_of(&r, 1), Some(0));
+        assert_eq!(parent_of(&r, 3), Some(2));
+        assert_eq!(parent_of(&r, 4), Some(3));
+        assert_eq!(parent_of(&r, 7), None);
+        assert_eq!(parent_of(&r, 99), None);
     }
 
     #[test]

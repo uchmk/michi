@@ -387,6 +387,13 @@ pub struct App {
     /// A file clicked in that tree: the commit it is in and its path; the
     /// detail scrolls to its diff once that commit is read.
     pub want_file: Option<(Oid, String)>,
+    /// The worktree clicked in the side column: the tree shows its changes
+    /// (unless a worktree's change is selected in the graph).
+    pub tree_wt: Option<PathBuf>,
+    /// The row of the changed-files tree the keys are on, and whether the
+    /// tree should scroll to show it.
+    pub tree_cur: usize,
+    pub tree_follow: bool,
     /// A commit clicked in the side column that is not read yet: read on
     /// until it is, then select it.
     seeking: Option<Oid>,
@@ -563,6 +570,9 @@ impl App {
             side_open: HashSet::new(),
             tree_folded: HashSet::new(),
             want_file: None,
+            tree_wt: None,
+            tree_cur: 0,
+            tree_follow: false,
             seeking: None,
             detail_wip: None,
             new_title: None,

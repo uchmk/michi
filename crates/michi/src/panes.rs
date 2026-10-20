@@ -13,6 +13,8 @@ pub enum GraphPane {
     Tree,
     Side,
     Detail,
+    /// The changed-files tree under the side column's lists.
+    Files,
 }
 
 impl App {
@@ -132,7 +134,7 @@ impl App {
         if self.detail.wide {
             vec![GraphPane::Tree, GraphPane::Detail]
         } else {
-            vec![GraphPane::Tree, GraphPane::Detail, GraphPane::Side]
+            vec![GraphPane::Tree, GraphPane::Detail, GraphPane::Side, GraphPane::Files]
         }
     }
 
@@ -146,10 +148,15 @@ impl App {
             self.side_cur = self.side_selectable(self.side_cur as i64, 0);
             self.side_follow = true;
         }
+        if self.pane == GraphPane::Files {
+            self.tree_cur = self.tree_cur.min(crate::side_ui::tree_rows(self).len().saturating_sub(1));
+            self.tree_follow = true;
+        }
         let word = match self.pane {
             GraphPane::Tree => "pane.tree",
             GraphPane::Side => "pane.side",
             GraphPane::Detail => "pane.detail",
+            GraphPane::Files => "pane.changed",
         };
         let said = self.tr("pane.now").replace("{pane}", self.tr(word));
         self.say(said);
@@ -195,11 +202,58 @@ impl App {
                 self.show_stash(id);
                 self.pane = GraphPane::Tree;
             }
+            (Kind::Worktree { .. }, Some(id)) => {
+                if let Some(path) = &row.tip {
+                    self.tree_wt = Some(std::path::PathBuf::from(path));
+                }
+                self.go_to(id);
+                self.pane = GraphPane::Tree;
+            }
             (_, Some(id)) => {
                 self.go_to(id);
                 self.pane = GraphPane::Tree;
             }
             _ => {}
+        }
+    }
+
+    fn files_move(&mut self, dir: i64) {
+        let n = crate::side_ui::tree_rows(self).len();
+        if n > 0 {
+            self.tree_cur = (self.tree_cur as i64 + dir).clamp(0, n as i64 - 1) as usize;
+            self.tree_follow = true;
+        }
+    }
+
+    /// Enter on the tree's row: a folder folds or opens, a file shows its
+    /// diff in the detail.
+    fn files_activate(&mut self) {
+        use michi_core::tree::Row;
+        match crate::side_ui::tree_rows(self).get(self.tree_cur) {
+            Some(Row::Dir { path, .. }) => crate::side_ui::tree_toggle(self, path.clone()),
+            Some(Row::File { index, .. }) => crate::side_ui::tree_open(self, *index),
+            None => {}
+        }
+    }
+
+    /// `l` (`open`) or `h` on the tree: a folder opens or folds; `l` on an
+    /// open folder goes into it, `h` on a file or a folded folder goes up to
+    /// the folder it is in.
+    fn files_fold(&mut self, open: bool) {
+        use michi_core::tree::Row;
+        let rows = crate::side_ui::tree_rows(self);
+        match (rows.get(self.tree_cur), open) {
+            (Some(Row::Dir { folded: true, path, .. }), true) => crate::side_ui::tree_toggle(self, path.clone()),
+            (Some(Row::Dir { folded: false, path, .. }), false) => crate::side_ui::tree_toggle(self, path.clone()),
+            (Some(Row::Dir { .. }), true) => self.files_move(1),
+            (Some(Row::File { index, .. }), true) => crate::side_ui::tree_open(self, *index),
+            (Some(_), false) => {
+                if let Some(up) = michi_core::tree::parent_of(&rows, self.tree_cur) {
+                    self.tree_cur = up;
+                    self.tree_follow = true;
+                }
+            }
+            (None, _) => {}
         }
     }
 
@@ -232,6 +286,10 @@ impl App {
             (GraphPane::Side, 'j') => self.side_move(1),
             (GraphPane::Side, 'k') => self.side_move(-1),
             (GraphPane::Side, 'l' | 'h') => {}
+            (GraphPane::Files, 'j') => self.files_move(1),
+            (GraphPane::Files, 'k') => self.files_move(-1),
+            (GraphPane::Files, 'l') => self.files_fold(true),
+            (GraphPane::Files, 'h') => self.files_fold(false),
             (GraphPane::Detail, 'j') => self.detail.lines += 1,
             (GraphPane::Detail, 'k') => self.detail.lines -= 1,
             (GraphPane::Detail, 'G') => self.detail.to_end = true,
@@ -262,6 +320,11 @@ impl App {
             (GraphPane::Side, "Enter") => self.side_activate(),
             // Sideways does not leave the column (Tab and Esc do).
             (GraphPane::Side, "ArrowRight" | "ArrowLeft") => {}
+            (GraphPane::Files, "ArrowDown") => self.files_move(1),
+            (GraphPane::Files, "ArrowUp") => self.files_move(-1),
+            (GraphPane::Files, "ArrowRight") => self.files_fold(true),
+            (GraphPane::Files, "ArrowLeft") => self.files_fold(false),
+            (GraphPane::Files, "Enter") => self.files_activate(),
             _ => return false,
         }
         true
@@ -293,9 +356,11 @@ mod tests {
         assert!(a.named("Tab"));
         assert_eq!(a.pane, GraphPane::Side);
         assert!(a.named("Tab"));
+        assert_eq!(a.pane, GraphPane::Files);
+        assert!(a.named("Tab"));
         assert_eq!(a.pane, GraphPane::Tree);
         assert!(a.named("Shift+Tab"));
-        assert_eq!(a.pane, GraphPane::Side);
+        assert_eq!(a.pane, GraphPane::Files);
         assert!(a.escape());
         assert_eq!(a.pane, GraphPane::Tree);
     }
