@@ -735,6 +735,8 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
     };
     let mut buttons = Vec::new();
     let keys = b.keys();
+    // The keys are on the buttons; only the typed step, with no button for
+    // yes, has a line of its own.
     let mut hint = Vec::new();
     // The strongest step has no button to click: the name is typed.
     let mut notes = b.notes.clone();
@@ -742,18 +744,13 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
         notes.push(format!("> {}_", b.typed));
         hint.push(format!("Enter {}", app.tr("changes.yes")));
     } else if b.parents == 0 {
-        buttons.push(app.tr("changes.yes").to_owned());
-        hint.push(format!("Ctrl+Enter {}", app.tr("changes.yes")));
+        buttons.push(format!("{}  Ctrl+Enter", app.tr("changes.yes")));
     }
     for n in 1..=u32::from(b.parents) {
-        let d = char::from_digit(n, 10).unwrap_or('1');
         let word = app.tr(b.parent_key(n)).replace("{}", &n.to_string());
-        hint.push(format!("{d} {word}"));
-        buttons.push(word);
+        buttons.push(format!("{word}  {n}"));
     }
-    buttons.push(app.tr("changes.no").to_owned());
-    hint.push(format!("Esc {}", app.tr("changes.no")));
-    hint.push(app.tr("band.walk").to_owned());
+    buttons.push(format!("{}  Esc", app.tr("changes.no")));
     debug_assert_eq!(buttons.len(), keys.len(), "the buttons and their keys are drawn in one order");
     let body: Vec<String> = std::iter::once(b.text.clone()).chain(b.plan.iter().cloned()).collect();
     let q = ito_confirm::Question {
