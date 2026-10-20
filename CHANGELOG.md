@@ -2,6 +2,11 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.103.1] - 2026-10-20
+
+### 変更
+- タブ・手前のタブ・その画面の保存先を、設定のフォルダの `tabs.txt` から、状態のフォルダ（tsumugi・yagura・minato と同じ `state_dir`）の `state.toml` に移した。`state.toml` がまだ無いときは、前の `tabs.txt` を一度だけ読む。
+
 ## [0.103.0] - 2026-10-20
 
 ### 追加

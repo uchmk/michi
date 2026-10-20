@@ -69,6 +69,7 @@ mod review_notes;
 mod review_ui;
 mod script;
 mod select;
+mod session;
 mod settings;
 mod side_ui;
 mod sizes;
@@ -337,15 +338,22 @@ impl Michi {
         self.app.tab_labels = self.tabs.labels();
         self.app.tab_active = at;
         let Some(kept) = &mut self.tabs_kept else { return };
-        // The conflict view is only there while something clashed, so it is not kept.
-        let view = if self.app.view == View::Conflict { View::Graph } else { self.app.view };
-        let text = self.tabs.text_with_view(view.digit());
+        let text = session::Session::of(&self.tabs, self.app.view).text();
         if *kept == text {
             return;
         }
-        if let Some(file) = prefs::window_dir(self.app.prefs.base.as_deref()).map(|d| d.join("tabs.txt")) {
+        if let Some(file) = session::path() {
             let text = text.clone();
+            // Writes can overtake each other on their threads; the newest wins.
+            static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+            static DONE: std::sync::Mutex<u64> = std::sync::Mutex::new(0);
+            let n = SEQ.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
             std::thread::spawn(move || {
+                let Ok(mut done) = DONE.lock() else { return };
+                if n < *done {
+                    return;
+                }
+                *done = n;
                 if let Some(dir) = file.parent() {
                     let _ = std::fs::create_dir_all(dir);
                 }
@@ -1016,15 +1024,15 @@ fn main() -> eframe::Result {
             // The tabs of the last run come back beside the folder asked for
             // (not when a folder was named, nor under a script); one on a
             // folder that is gone is let go.
-            let kept = script_is_none.then(|| prefs::window_dir(prefs.base.as_deref()).map(|d| d.join("tabs.txt"))).flatten();
-            let saved_text = kept.as_ref().filter(|_| restore).and_then(|f| std::fs::read_to_string(f).ok());
-            let (tabs, dir, view) = match &saved_text {
+            let kept = script_is_none.then(session::path).flatten();
+            let last_run = kept.as_ref().filter(|_| restore).and_then(|_| session::load(prefs.base.as_deref()));
+            let (tabs, dir, view) = match &last_run {
                 // Started with no folder: the tabs, the front one and its view as they were left.
-                Some(text) => {
-                    let mut tabs = Tabs::resume(text, &dir);
+                Some(s) => {
+                    let mut tabs = s.to_tabs(&dir);
                     if tabs.retain(|p| p.is_dir()) {
                         let front = tabs.paths()[tabs.active()].clone();
-                        (tabs, front, Tabs::saved_view(text).and_then(View::from_digit).filter(|v| *v != View::Conflict))
+                        (tabs, front, s.view())
                     } else {
                         (Tabs::new(&dir), dir, None)
                     }

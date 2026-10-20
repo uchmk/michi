@@ -88,17 +88,32 @@ impl Tabs {
         self.paths.iter().enumerate().map(|(i, p)| format!("{}{}\n", if i == self.active { "* " } else { "" }, p.display())).collect()
     }
 
-    /// [`Tabs::text`] and the digit of the view the front tab is on.
-    pub fn text_with_view(&self, view: char) -> String {
-        format!("{}# view {view}\n", self.text())
-    }
-
-    /// The digit [`Tabs::text_with_view`] left in `text`.
-    pub fn saved_view(text: &str) -> Option<char> {
-        let rest = text.lines().find_map(|l| l.trim().strip_prefix("# view "))?;
-        let mut cs = rest.trim().chars();
-        let c = cs.next()?;
-        cs.next().is_none().then_some(c)
+    /// These folders as tabs with number `active` in front (the first when
+    /// there is no such tab); repeats and those past [`MAX`] are let go.
+    /// `first` alone when there is none.
+    pub fn from_paths(paths: &[PathBuf], active: usize, first: &Path) -> Self {
+        let mut t = Self { paths: Vec::new(), active: 0 };
+        let mut front = None;
+        for (i, p) in paths.iter().enumerate() {
+            if p.as_os_str().is_empty() || t.paths.len() >= MAX {
+                continue;
+            }
+            let at = match t.index_of(p) {
+                Some(at) => at,
+                None => {
+                    t.paths.push(p.clone());
+                    t.paths.len() - 1
+                }
+            };
+            if i == active {
+                front = Some(at);
+            }
+        }
+        if t.paths.is_empty() {
+            return Self::new(first);
+        }
+        t.active = front.unwrap_or(0);
+        t
     }
 
     /// Drop the tabs whose folder `keep` refuses; the first tab comes to the
@@ -222,20 +237,27 @@ mod tests {
     fn resume_keeps_the_front_tab_and_the_view() {
         let mut t = three();
         t.activate(1);
-        let text = t.text_with_view('2');
-        let back = Tabs::resume(&text, &p("/z"));
-        assert_eq!(back, t);
-        assert_eq!(Tabs::saved_view(&text), Some('2'));
-        // Older files have no view line, and the line is no tab for `restore`.
-        assert_eq!(Tabs::saved_view(&t.text()), None);
-        assert_eq!(Tabs::restore(&text, &p("/b")).paths().len(), 3);
-        assert_eq!(Tabs::saved_view("# view 12\n"), None);
+        assert_eq!(Tabs::resume(&t.text(), &p("/z")), t);
+        assert_eq!(Tabs::from_paths(t.paths(), 1, &p("/z")), t);
+        // A view line from a build before is no tab.
+        assert_eq!(Tabs::restore("/a\n# view 2\n", &p("/a")).paths().len(), 1);
+    }
+
+    #[test]
+    fn from_paths_lets_go_repeats_and_finds_the_front() {
+        let t = Tabs::from_paths(&[p("/a"), p("/a"), p("/b")], 2, &p("/z"));
+        assert_eq!((t.paths().to_vec(), t.active()), (vec![p("/a"), p("/b")], 1));
+        let t = Tabs::from_paths(&[p("/a"), p("/b")], 9, &p("/z"));
+        assert_eq!(t.active(), 0);
+        assert_eq!(Tabs::from_paths(&[], 0, &p("/z")), Tabs::new(&p("/z")));
+        assert_eq!(Tabs::from_paths(&[p("")], 0, &p("/z")), Tabs::new(&p("/z")));
     }
 
     #[test]
     fn resume_without_tabs_is_the_folder_asked_for() {
         assert_eq!(Tabs::resume("", &p("/z")), Tabs::new(&p("/z")));
         assert_eq!(Tabs::resume("# view 2\n\n", &p("/z")), Tabs::new(&p("/z")));
+        assert_eq!(Tabs::resume("/a\n* /b\n/a\n", &p("/z")).active(), 1);
         // No mark: the first tab is in front.
         assert_eq!(Tabs::resume("/a\n/b\n", &p("/z")).active(), 0);
     }
