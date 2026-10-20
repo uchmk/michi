@@ -96,14 +96,14 @@
 - [ ] **6.14** Drag the thumb; click the track; click a mark → The thumb stays under the pointer to the release; a click on the track brings that part into the middle; a click on a mark selects its row 〔未訳〕
 - [ ] **6.15** Look at commits by dependabot[bot] and github-actions[bot] → The author reads `⚙ dependabot` and `⚙ actions`; hovering shows the full name 〔未訳〕
 - [ ] **6.16** Open a repository with more than 2000 commits → The first screen comes at once; scrolling near the foot reads on by itself; the last row says how many older commits are left and reads them when clicked; the thumb shrinks as the list grows 〔未訳〕
-- [ ] **6.17** Look at a second worktree's commits → They run on their own lane in the worktree's colour, from where they left main 〔未訳〕
+- [~] **6.17** Look at a second worktree's commits → They run on their own lane in the worktree's colour, from where they left main 〔未訳〕
 - [ ] **6.18** Narrow the window to 720 wide; switch to the light theme → The subject is cut with an ellipsis and the names drop before they crowd it; the filter field stays inside the band; every colour stays readable in light 〔未訳〕
 - [ ] **6.19** Open a repository with more than 2000 commits and no `.git\objects\info\commit-graph*` (a fresh `git clone` of a long history), wait a few seconds, close michi and open it again → `.git\objects\info\commit-graphs` appears while michi is open, with no toast; the history looks the same, and the second opening shows the first screen sooner. A repository with fewer commits gets none 〔未訳〕
 - [ ] **6.20** In a history of 100,000 commits, press `z` to fold and unfold, and type in the filter (`/`) → Each answers at once, with no stall while typing; scrolling far down lays the rows out as they come in sight. After `End` has read the whole history, `z` there may take a moment 〔未訳〕
 
 ## 7. Side column
 
-- [ ] **7.1** Look at the column left of the graph → Headings with counts: worktree, Branches, Remotes, Tags and Stash (when there is one); the worktree the window is on is lit; each worktree and branch has a dot in its lane's colour; there is no scrollbar, the wheel scrolls it 〔未訳〕
+- [~] **7.1** Look at the column left of the graph → Headings with counts: worktree, Branches, Remotes, Tags and Stash (when there is one); the worktree the window is on is lit; each worktree and branch has a dot in its lane's colour; there is no scrollbar, the wheel scrolls it 〔未訳〕
 - [ ] **7.2** Click a worktree, a branch and a tag → The graph selects that commit and scrolls it into sight; the detail follows 〔未訳〕
 - [ ] **7.3** Click a group (`test/`, `origin`) → It opens to list its branches further in, with the count at its right; again, it closes; hovering a branch inside shows its full name 〔未訳〕
 - [ ] **7.4** Click a branch whose commit is older than what is read → The graph reads on until it gets there and selects it; one that is not in the history gives the toast `Not in the history: <hash>` 〔未訳〕
