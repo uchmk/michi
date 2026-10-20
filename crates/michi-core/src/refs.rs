@@ -49,6 +49,21 @@ pub struct Refs {
     pub stashes: Vec<Stash>,
 }
 
+impl Refs {
+    /// Whether the ref `full` (`refs/heads/x`, `refs/remotes/o/x`, `refs/tags/x`) exists.
+    pub fn has_full(&self, full: &str) -> bool {
+        if let Some(n) = full.strip_prefix("refs/heads/") {
+            self.locals.iter().any(|r| r.name == n)
+        } else if let Some(n) = full.strip_prefix("refs/tags/") {
+            self.tags.iter().any(|r| r.name == n)
+        } else if let Some(n) = full.strip_prefix("refs/remotes/") {
+            self.remotes.iter().any(|r| format!("{}/{}", r.remote, r.name) == n)
+        } else {
+            false
+        }
+    }
+}
+
 /// What points at one commit, for the pills on its row.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Labels {
@@ -250,6 +265,22 @@ pub fn trunk(dir: &Path, refs: &Refs, main_branch: Option<&str>) -> Result<Optio
 mod tests {
     use super::*;
     use crate::testrepo::TempRepo;
+
+    #[test]
+    fn full_names_are_found_by_kind() {
+        let o = Oid::parse(&id('a')).unwrap();
+        let refs = Refs {
+            locals: vec![Ref { name: "feat/x".into(), id: o }],
+            tags: vec![Ref { name: "v1".into(), id: o }],
+            remotes: vec![RemoteRef { remote: "origin".into(), name: "side".into(), id: o }],
+            ..Refs::default()
+        };
+        assert!(refs.has_full("refs/heads/feat/x"));
+        assert!(refs.has_full("refs/tags/v1"));
+        assert!(refs.has_full("refs/remotes/origin/side"));
+        assert!(!refs.has_full("refs/heads/side"));
+        assert!(!refs.has_full("origin/side"));
+    }
 
     fn id(c: char) -> String {
         c.to_string().repeat(40)

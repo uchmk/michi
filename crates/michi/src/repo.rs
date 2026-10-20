@@ -947,7 +947,14 @@ fn history(dir: &Path, first: Result<Setup, git::Error>, asks: &Receiver<Ask>, s
         // is met by this reading.
         while asks.try_recv().is_ok() {}
         let setup = first.take().unwrap_or_else(|| Setup::read(dir));
-        let now = scope.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        // A hidden or solo branch that is gone is forgotten, so the graph never stays empty.
+        let now = {
+            let mut g = scope.lock().unwrap_or_else(|e| e.into_inner());
+            if let Ok(s) = &setup {
+                g.retain(|f| s.refs.has_full(f));
+            }
+            g.clone()
+        };
         match read(dir, gen, setup, &now, asks, &mut graph_asked, &send) {
             Next::Reload => {}
             Next::Stop => return,

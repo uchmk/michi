@@ -370,6 +370,28 @@ mod tests {
     }
 
     #[test]
+    fn hiding_the_trunk_still_builds_a_history() {
+        let r = branches("history-scope-trunk");
+        let mut scope = crate::log::Scope::default();
+        scope.toggle_hidden("refs/heads/main");
+        let setup = Setup::read(&r.repo).unwrap();
+        let mut log = Reader::start_in(&r.repo, &setup.heads_in(&scope), &scope).unwrap();
+        let mut h = History::new(setup);
+        h.extend(log.next_batch(1000).unwrap());
+        // The worktree's branch still shows, with what it needs; nothing panics.
+        assert!(h.len() >= 2);
+        assert!(h.rows().iter().any(|r| r.commit.subject == "w1"));
+        scope.clear();
+        scope.toggle_solo("refs/heads/other");
+        let setup = Setup::read(&r.repo).unwrap();
+        let mut log = Reader::start_in(&r.repo, &setup.heads_in(&scope), &scope).unwrap();
+        let mut h = History::new(setup);
+        h.extend(log.next_batch(1000).unwrap());
+        assert!(h.rows().iter().any(|r| r.commit.subject == "o1"));
+        assert!(!h.rows().iter().any(|r| r.commit.subject == "w1"));
+    }
+
+    #[test]
     fn a_trunk_merge_folds_what_it_brought_in() {
         let r = branches("history-fold");
         let h = read(&r);
