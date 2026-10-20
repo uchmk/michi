@@ -162,46 +162,85 @@ pub fn parse_list(json: &str) -> Prs {
         };
         let checks = fold_checks(v.get("statusCheckRollup").unwrap_or(&Value::Null));
         let pr = Pr { number, branch: branch.to_owned(), url: url.to_owned(), state, checks, review };
-        match out.get(branch) {
-            Some(old) if old.number > number => {}
-            _ => {
-                out.insert(branch.to_owned(), pr);
-            }
-        }
+        keep_newest(&mut out, pr);
     }
     out
 }
 
-/// The `owner/name` of the repository a pull request's address belongs to.
-pub fn repo_of(url: &str) -> Option<String> {
-    let rest = url.strip_prefix("https://").or_else(|| url.strip_prefix("http://"))?;
-    let mut parts = rest.split('/');
-    let _host = parts.next()?;
-    let (owner, name) = (parts.next().filter(|s| !s.is_empty())?, parts.next().filter(|s| !s.is_empty())?);
-    Some(format!("{owner}/{name}"))
+/// Puts `pr` in, unless the branch already has a newer one.
+fn keep_newest(prs: &mut Prs, pr: Pr) {
+    match prs.get(&pr.branch) {
+        Some(old) if old.number > pr.number => {}
+        _ => {
+            prs.insert(pr.branch.clone(), pr);
+        }
+    }
 }
 
-/// Lays minato's answer (`{"prs":[{"number","ci"}]}`, open pull requests
-/// only) over `prs`: the checks of an open one are minato's. Everything else
-/// (merged, closed, the review) stays what `gh` read. Returns whether the
-/// answer was understood.
-pub fn overlay_checks(prs: &mut Prs, minato: &str) -> bool {
-    let Ok(Value::Object(v)) = serde_json::from_str::<Value>(minato) else { return false };
-    let Some(list) = v.get("prs").and_then(Value::as_array) else { return false };
+/// minato's answer to `PrState`: the pull requests it knows (the open ones,
+/// then the recent merged and closed ones once it has fetched those), and
+/// whether it has (`past`).
+#[derive(Debug, PartialEq, Eq)]
+pub struct Minato {
+    pub prs: Prs,
+    pub past: bool,
+}
+
+/// One of minato's items as a [`Pr`], and whether it said what the review came
+/// to (`decision`; a minato before 0.70.1 does not).
+fn minato_item(item: &Value) -> Option<(Pr, bool)> {
+    let s = |k: &str| item.get(k).and_then(Value::as_str);
+    let number = item.get("number").and_then(Value::as_u64)?;
+    let branch = s("branch").filter(|b| !b.is_empty())?;
+    let state = match s("state") {
+        Some("merged") => State::Merged,
+        Some("closed") => State::Closed,
+        _ => State::Open,
+    };
+    let checks = match s("ci") {
+        Some("success") => Checks::Passed,
+        Some("failure") => Checks::Failed,
+        Some("pending") => Checks::Pending,
+        _ => Checks::None,
+    };
+    let (review, decided) = match s("decision") {
+        Some("approved") => (Review::Approved, true),
+        Some("changes_requested") => (Review::ChangesRequested, true),
+        Some(_) => (Review::Open, true),
+        None => (Review::Open, false),
+    };
+    Some((Pr { number, branch: branch.to_owned(), url: s("url").unwrap_or("").to_owned(), state, checks, review }, decided))
+}
+
+/// Reads minato's answer (`{"prs":[…],"past":bool}`); `None` when it is not one.
+pub fn parse_minato(json: &str) -> Option<Minato> {
+    let Value::Object(v) = serde_json::from_str::<Value>(json).ok()? else { return None };
+    let list = v.get("prs")?.as_array()?;
+    let mut prs = Prs::new();
     for item in list {
-        let (Some(number), Some(branch)) = (item.get("number").and_then(Value::as_u64), item.get("branch").and_then(Value::as_str)) else {
+        if let Some((pr, _)) = minato_item(item) {
+            keep_newest(&mut prs, pr);
+        }
+    }
+    Some(Minato { prs, past: v.get("past").and_then(Value::as_bool).unwrap_or(false) })
+}
+
+/// Lays minato's answer over `gh`'s reading while minato has not fetched the
+/// merged and closed ones yet (`past` false): the checks, and the review when
+/// it says, of an open pull request with the same number are minato's.
+pub fn lay_minato(prs: &mut Prs, json: &str) {
+    let Ok(Value::Object(v)) = serde_json::from_str::<Value>(json) else { return };
+    for item in v.get("prs").and_then(Value::as_array).into_iter().flatten() {
+        let Some((from, decided)) = minato_item(item) else { continue };
+        let Some(pr) = prs.get_mut(&from.branch).filter(|p| p.number == from.number && p.state == State::Open && from.state == State::Open)
+        else {
             continue;
         };
-        let Some(pr) = prs.get_mut(branch).filter(|p| p.number == number && p.state == State::Open) else { continue };
-        pr.checks = match item.get("ci").and_then(Value::as_str) {
-            Some("success") => Checks::Passed,
-            Some("failure") => Checks::Failed,
-            Some("pending") => Checks::Pending,
-            Some("none") => Checks::None,
-            _ => continue,
-        };
+        pr.checks = from.checks;
+        if decided {
+            pr.review = from.review;
+        }
     }
-    true
 }
 
 /// Reads the repository's pull requests with `gh`, run in `dir`.
@@ -287,26 +326,40 @@ mod tests {
         diff(&one(old), &one(new), &["feat".to_owned()]).into_iter().map(|c| c.kind).collect()
     }
 
+    const MINATO: &str = r#"{"repo":"o/r","past":true,"prs":[
+      {"branch":"feat","number":3,"url":"https://github.com/o/r/pull/3","state":"open","ci":"failure","decision":"changes_requested"},
+      {"branch":"fix","number":2,"url":"https://github.com/o/r/pull/2","state":"merged","ci":"none","decision":"approved"},
+      {"branch":"feat","number":1,"url":"https://github.com/o/r/pull/1","state":"closed","ci":"none","decision":"none"}]}"#;
+
     #[test]
-    fn minato_lays_its_checks_over_the_open_ones_only() {
+    fn minato_answers_with_the_open_and_the_past_ones() {
+        let m = parse_minato(MINATO).unwrap();
+        assert!(m.past);
+        let feat = &m.prs["feat"];
+        assert_eq!((feat.number, feat.state, feat.checks, feat.review), (3, State::Open, Checks::Failed, Review::ChangesRequested));
+        assert_eq!((m.prs["fix"].state, m.prs["fix"].review), (State::Merged, Review::Approved));
+        assert_eq!(m.prs.len(), 2, "the newest pull request of a branch wins");
+        let first = parse_minato(r#"{"prs":[]}"#).unwrap();
+        assert!(!first.past && first.prs.is_empty(), "no word of the past is not the past");
+        assert_eq!(parse_minato("nonsense"), None);
+    }
+
+    #[test]
+    fn minato_lays_its_checks_and_review_over_the_open_ones_only() {
         let mk = |n, state, checks| Pr { number: n, branch: format!("b{n}"), url: String::new(), state, checks, review: Review::Approved };
         let mut prs = Prs::new();
         prs.insert("b1".into(), mk(1, State::Open, Checks::Passed));
         prs.insert("b2".into(), mk(2, State::Merged, Checks::Passed));
         prs.insert("b3".into(), mk(3, State::Open, Checks::Passed));
-        let json = r#"{"repo":"o/n","prs":[{"branch":"b1","number":1,"ci":"failure"},{"branch":"b2","number":2,"ci":"failure"},{"branch":"b3","number":9,"ci":"failure"}]}"#;
-        assert!(overlay_checks(&mut prs, json));
-        assert_eq!(prs["b1"].checks, Checks::Failed);
-        assert_eq!(prs["b1"].review, Review::Approved);
+        prs.insert("b4".into(), mk(4, State::Open, Checks::Passed));
+        let json = r#"{"prs":[{"branch":"b1","number":1,"ci":"failure","decision":"none"},{"branch":"b2","number":2,"ci":"failure"},
+          {"branch":"b3","number":9,"ci":"failure"},{"branch":"b4","number":4,"ci":"pending"}]}"#;
+        lay_minato(&mut prs, json);
+        assert_eq!((prs["b1"].checks, prs["b1"].review), (Checks::Failed, Review::Open));
         assert_eq!(prs["b2"].checks, Checks::Passed, "a merged one is gh's");
         assert_eq!(prs["b3"].checks, Checks::Passed, "another number is not the same pull request");
-        assert!(!overlay_checks(&mut prs, "nonsense"));
-    }
-
-    #[test]
-    fn the_repository_is_in_the_address() {
-        assert_eq!(repo_of("https://github.com/uchmk/michi/pull/7").as_deref(), Some("uchmk/michi"));
-        assert_eq!(repo_of("not a url"), None);
+        assert_eq!((prs["b4"].checks, prs["b4"].review), (Checks::Pending, Review::Approved), "no decision: gh's review stays");
+        lay_minato(&mut prs, "nonsense");
     }
 
     #[test]

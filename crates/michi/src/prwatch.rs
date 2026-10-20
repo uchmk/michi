@@ -2,7 +2,8 @@
 //! its own asks `gh pr list` (one call for all of them) every minute while the
 //! window is in front and every five behind, and sends what changed since the
 //! last reading; the first reading is only the baseline. The UI thread never
-//! waits for it. minato, when it runs, lays its checks over the reading.
+//! waits for it. minato, when it runs, is asked first (its door knows the
+//! merged and closed ones too); `gh` reads when it is not there.
 //! `gh` missing or not signed in stops the thread, silently.
 //! What the changes come to on screen (a notice that jumps to the pull
 //! request, the system's notification behind) is `App::pr_changes`.
@@ -13,6 +14,7 @@ use std::time::{Duration, Instant};
 
 use ito_ipc::door::{self, Door};
 use ito_notices::Kind as Notice;
+use michi_core::issues;
 use michi_core::prcreate::{self, Failure};
 use michi_core::prwatch::{self, Change, Kind, Prs};
 
@@ -23,9 +25,9 @@ const FRONT: Duration = Duration::from_secs(60);
 /// … and while it is behind.
 const BEHIND: Duration = Duration::from_secs(300);
 
-/// minato's door (minato#67): it knows the open pull requests it already
-/// searched, so its checks are laid over what `gh` read. Same shape as
-/// `minato_core::door::Rq`; postcard numbers the variants.
+/// minato's door (minato#67, #68): it keeps the pull requests of the
+/// repositories it was asked about. Same shape as `minato_core::door::Rq`;
+/// postcard numbers the variants.
 #[derive(serde::Serialize, serde::Deserialize)]
 enum MinatoRq {
     PrState { repo: String },
@@ -33,12 +35,22 @@ enum MinatoRq {
 
 const MINATO: Door<MinatoRq> = Door::new("minato", "MINATO_ADDRESS", 1);
 
-/// Asks minato about the open pull requests and lays its checks over `prs`;
-/// minato not running (or not knowing the repository) leaves `gh`'s reading.
-fn overlay_minato(prs: &mut Prs) {
-    let Some(repo) = prs.values().find_map(|p| prwatch::repo_of(&p.url)) else { return };
-    if let Ok(json) = door::ask(&MINATO, &MinatoRq::PrState { repo }) {
-        prwatch::overlay_checks(prs, &json);
+/// The reading: minato's when it runs and has the merged and closed ones too
+/// (the first ask only starts that fetch, so `gh` reads this time, with
+/// minato's checks laid over); `gh`'s alone when minato is not there, does not
+/// know the repository, or answers nonsense.
+fn read(dir: &std::path::Path) -> Result<Prs, michi_core::git::Error> {
+    let asked = issues::slug_of(dir).ok().flatten().and_then(|(owner, name)| {
+        let json = door::ask(&MINATO, &MinatoRq::PrState { repo: format!("{owner}/{name}") }).ok()?;
+        Some((prwatch::parse_minato(&json)?, json))
+    });
+    match asked {
+        Some((m, _)) if m.past => Ok(m.prs),
+        Some((_, json)) => prwatch::fetch(dir).map(|mut prs| {
+            prwatch::lay_minato(&mut prs, &json);
+            prs
+        }),
+        None => prwatch::fetch(dir),
     }
 }
 
@@ -138,10 +150,9 @@ fn run(dir: &std::path::Path, mut front: bool, cmds: &Receiver<Cmd>, send: impl 
         if branches.is_empty() {
             continue;
         }
-        match prwatch::fetch(dir) {
-            Ok(mut now) => {
+        match read(dir) {
+            Ok(now) => {
                 misses = 0;
-                overlay_minato(&mut now);
                 let changes = last.as_ref().map_or_else(Vec::new, |old| prwatch::diff(old, &now, &branches));
                 if !send(Reading { prs: now.clone(), changes }) {
                     return;
