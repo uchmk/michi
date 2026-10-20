@@ -337,7 +337,9 @@ impl Michi {
         self.app.tab_labels = self.tabs.labels();
         self.app.tab_active = at;
         let Some(kept) = &mut self.tabs_kept else { return };
-        let text = self.tabs.text();
+        // The conflict view is only there while something clashed, so it is not kept.
+        let view = if self.app.view == View::Conflict { View::Graph } else { self.app.view };
+        let text = self.tabs.text_with_view(view.digit());
         if *kept == text {
             return;
         }
@@ -1015,17 +1017,25 @@ fn main() -> eframe::Result {
             // (not when a folder was named, nor under a script); one on a
             // folder that is gone is let go.
             let kept = script_is_none.then(|| prefs::window_dir(prefs.base.as_deref()).map(|d| d.join("tabs.txt"))).flatten();
-            let mut tabs = match kept.as_ref().filter(|_| restore).and_then(|f| std::fs::read_to_string(f).ok()) {
-                Some(text) => Tabs::restore(&text, &dir),
-                None => Tabs::new(&dir),
-            };
-            for i in (0..tabs.len()).rev() {
-                if i != tabs.active() && !tabs.paths()[i].is_dir() {
-                    tabs.close(i);
+            let saved_text = kept.as_ref().filter(|_| restore).and_then(|f| std::fs::read_to_string(f).ok());
+            let (tabs, dir, view) = match &saved_text {
+                // Started with no folder: the tabs, the front one and its view as they were left.
+                Some(text) => {
+                    let mut tabs = Tabs::resume(text, &dir);
+                    if tabs.retain(|p| p.is_dir()) {
+                        let front = tabs.paths()[tabs.active()].clone();
+                        (tabs, front, Tabs::saved_view(text).and_then(View::from_digit).filter(|v| *v != View::Conflict))
+                    } else {
+                        (Tabs::new(&dir), dir, None)
+                    }
                 }
-            }
+                None => (Tabs::new(&dir), dir, None),
+            };
             let parked: Vec<Option<App>> = (0..tabs.len()).map(|_| None).collect();
             let mut app = App::new(prefs, dir.clone());
+            if let Some(v) = view {
+                app.view = v;
+            }
             app.reading = Some(repo::start(dir, cc.egui_ctx.clone()));
             let mcp = script_is_none.then(|| mcp::listen(cc.egui_ctx.clone()));
             let script = script.map(|steps| {

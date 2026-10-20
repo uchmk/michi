@@ -44,7 +44,7 @@ impl Tabs {
         for line in text.lines() {
             let line = line.trim();
             let line = line.strip_prefix("* ").unwrap_or(line).trim();
-            if line.is_empty() || t.index_of(Path::new(line)).is_some() || t.paths.len() >= MAX - 1 {
+            if line.is_empty() || line.starts_with('#') || t.index_of(Path::new(line)).is_some() || t.paths.len() >= MAX - 1 {
                 continue;
             }
             t.paths.push(PathBuf::from(line));
@@ -53,9 +53,61 @@ impl Tabs {
         t
     }
 
+    /// The tabs of `text` as they were left, the one marked `* ` in front;
+    /// `first` alone when `text` has none. Lines are read as in [`Tabs::restore`].
+    pub fn resume(text: &str, first: &Path) -> Self {
+        let mut t = Self { paths: Vec::new(), active: 0 };
+        for line in text.lines() {
+            let line = line.trim();
+            let (line, marked) = match line.strip_prefix("* ") {
+                Some(rest) => (rest.trim(), true),
+                None => (line, false),
+            };
+            if line.is_empty() || line.starts_with('#') || t.paths.len() >= MAX {
+                continue;
+            }
+            match t.index_of(Path::new(line)) {
+                Some(i) if marked => t.active = i,
+                Some(_) => {}
+                None => {
+                    t.paths.push(PathBuf::from(line));
+                    if marked {
+                        t.active = t.paths.len() - 1;
+                    }
+                }
+            }
+        }
+        if t.paths.is_empty() {
+            return Self::new(first);
+        }
+        t
+    }
+
     /// The tabs as text, for [`Tabs::restore`].
     pub fn text(&self) -> String {
         self.paths.iter().enumerate().map(|(i, p)| format!("{}{}\n", if i == self.active { "* " } else { "" }, p.display())).collect()
+    }
+
+    /// [`Tabs::text`] and the digit of the view the front tab is on.
+    pub fn text_with_view(&self, view: char) -> String {
+        format!("{}# view {view}\n", self.text())
+    }
+
+    /// The digit [`Tabs::text_with_view`] left in `text`.
+    pub fn saved_view(text: &str) -> Option<char> {
+        let rest = text.lines().find_map(|l| l.trim().strip_prefix("# view "))?;
+        let mut cs = rest.trim().chars();
+        let c = cs.next()?;
+        cs.next().is_none().then_some(c)
+    }
+
+    /// Drop the tabs whose folder `keep` refuses; the first tab comes to the
+    /// front when the front one is dropped. Whether any tab is left.
+    pub fn retain(&mut self, keep: impl Fn(&Path) -> bool) -> bool {
+        let front = self.paths.get(self.active).cloned();
+        self.paths.retain(|p| keep(p));
+        self.active = front.and_then(|f| self.index_of(&f)).unwrap_or(0).min(self.paths.len().saturating_sub(1));
+        !self.paths.is_empty()
     }
 
     pub fn paths(&self) -> &[PathBuf] {
@@ -164,6 +216,45 @@ mod tests {
 
     fn p(s: &str) -> PathBuf {
         PathBuf::from(s)
+    }
+
+    #[test]
+    fn resume_keeps_the_front_tab_and_the_view() {
+        let mut t = three();
+        t.activate(1);
+        let text = t.text_with_view('2');
+        let back = Tabs::resume(&text, &p("/z"));
+        assert_eq!(back, t);
+        assert_eq!(Tabs::saved_view(&text), Some('2'));
+        // Older files have no view line, and the line is no tab for `restore`.
+        assert_eq!(Tabs::saved_view(&t.text()), None);
+        assert_eq!(Tabs::restore(&text, &p("/b")).paths().len(), 3);
+        assert_eq!(Tabs::saved_view("# view 12\n"), None);
+    }
+
+    #[test]
+    fn resume_without_tabs_is_the_folder_asked_for() {
+        assert_eq!(Tabs::resume("", &p("/z")), Tabs::new(&p("/z")));
+        assert_eq!(Tabs::resume("# view 2\n\n", &p("/z")), Tabs::new(&p("/z")));
+        // No mark: the first tab is in front.
+        assert_eq!(Tabs::resume("/a\n/b\n", &p("/z")).active(), 0);
+    }
+
+    #[test]
+    fn retain_drops_tabs_and_keeps_the_front_in_range() {
+        let mut t = three();
+        t.activate(1);
+        assert!(t.retain(|q| q != Path::new("/b")));
+        assert_eq!(t.paths(), [p("/a"), p("/c")]);
+        assert_eq!(t.active(), 0);
+        let mut t = three();
+        t.activate(2);
+        assert!(t.retain(|q| q != Path::new("/a")));
+        assert_eq!((t.paths()[t.active()].clone(), t.len()), (p("/c"), 2));
+        let mut t = three();
+        assert!(t.retain(|q| q == Path::new("/a")));
+        assert_eq!((t.len(), t.active()), (1, 0));
+        assert!(!t.retain(|_| false));
     }
 
     fn three() -> Tabs {

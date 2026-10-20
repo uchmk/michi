@@ -38,6 +38,8 @@
 - [ ] **1.25** Click the `CHANGES` heading → Every folder folds (the pointer is a hand, the tip tells it); another click opens them all → | [ ] 〔未訳〕
 - [ ] **1.26** Drag the divider away from its place, then double-click it, restart → The divider goes back to the default place (about 62% of the column) and stays there after the restart → | [ ] 〔未訳〕
 - [ ] **1.27** Right-click a file in the tree → A menu with the editor, the diff tool and copy the path: the first two open the file / its diff in the tools of `[open]` (a deleted file says it cannot be opened), the last copies the path and says so in a toast → | [ ] 〔未訳〕
+- [ ] **1.28** Open two or three repositories in tabs, go to the second tab and press `2`, close michi, start it again with no folder (the icon, `michi.com` alone) → The same tabs come back, the same tab is in front and it is on the changes view; a tab behind opens on the graph when first shown → | [ ] 〔未訳〕
+- [ ] **1.29** Close michi with a tab on a folder you then rename, start it again; then start with `michi <folder>` → The gone folder's tab is left out without a message (the others and the front tab are kept); with a folder named, that folder alone opens as before → | [ ] 〔未訳〕
 
 ## 2. Views and keys
 
