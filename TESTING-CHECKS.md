@@ -61,11 +61,11 @@
 
 ## 4. Settings
 
-- [ ] **4.1** Press `,` → The settings open between the title bar and the keybar; the title bar stays, the `,` button is lit and no tab is lit; the keybar shows `Esc Back` and `Ctrl+Tab Next page` 〔未訳〕
-- [ ] **4.2** Press Ctrl+Tab → The page moves from General to Theme, with a small michi preview (the three tabs, two branches) 〔未訳〕
+- [~] **4.1** Press `,` → The settings open between the title bar and the keybar; the title bar stays, the `,` button is lit and no tab is lit; the keybar shows `Esc Back` and `Ctrl+Tab Next page` 〔未訳〕
+- [x] **4.2** Press Ctrl+Tab → The page moves from General to Theme, with a small michi preview (the three tabs, two branches) 〔未訳〕
 - [ ] **4.3** Change the language to 日本語 → Every word of michi turns Japanese at once (the tabs 樹形図・変更・worktree, the keybar, the empty views), and other uchmk apps follow 〔未訳〕
 - [ ] **4.4** Change the theme, and the size → The whole window follows at once; the logo and the chip stay readable in light and dark 〔未訳〕
-- [ ] **4.5** Press Esc, click the `,` button, or click a tab → Each leaves the settings; a tab opens its view 〔未訳〕
+- [~] **4.5** Press Esc, click the `,` button, or click a tab → Each leaves the settings; a tab opens its view 〔未訳〕
 - [ ] **4.6** Edit common.toml by hand while michi is open → michi follows within a second 〔未訳〕
 - [ ] **4.7** In the settings open the Keys page; press `+ Add` on a row, press `Ctrl+Shift+K`, Enter; then `Ctrl+=`, `Ctrl+-`, `Ctrl+0` in the graph; edit keymap.toml (beside common.toml) by hand → The page lists the keys by layer (names in the language chosen); the new key is written to keymap.toml under `prepend_keymap` and a toast says `keymap.toml: 1 changed`; the keys zoom the window and say the size; a hand edit shows in the page within a second; Esc while a key is being pressed ends that, not the settings 〔未訳〕
 
