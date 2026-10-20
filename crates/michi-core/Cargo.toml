@@ -8,7 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-ito-match = { git = "https://github.com/uchmk/ito", rev = "1df5e610601348b6a4f8a34b2906a531e7e7577a" }
+ito-match = { git = "https://github.com/uchmk/ito", rev = "c34e28d93e0cabc96301c207fc8ed73a79988c21" }
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

@@ -12,12 +12,12 @@
 ## 1. Window and title bar
 
 - [~] **1.1** Start `michi C:\dev\tsumugi` (any repository) → A 1280x800 window with no system title bar; the logo, `michi` (never 道), the tabs `1 Graph` `2 Changes` `3 Worktrees` hanging from the bar's foot, the repository chip, a palette field, the `,` button and three window buttons on the right 〔未訳〕
-- [ ] **1.2** Look at the chip → The repository's name in the accent colour, a drawn branch mark (a trunk and a twig with three dots, not a box), then `main · worktree N` with the real count; hovering shows the repository's top folder 〔未訳〕
+- [~] **1.2** Look at the chip → The repository's name in the accent colour, a drawn branch mark (a trunk and a twig with three dots, not a box), then `main · worktree N` with the real count; hovering shows the repository's top folder 〔未訳〕
 - [x] **1.3** Look at the window title (Alt+Tab, the taskbar) → `tsumugi — michi` once the repository is read 〔未訳〕
 - [ ] **1.4** Drag the empty part of the title bar → The window moves; double-click maximises and restores 〔未訳〕
 - [ ] **1.5** Click minimise, maximise, close → Each does what it says; close shows a red button under the pointer; the maximise glyph turns into two squares while maximised 〔未訳〕
 - [ ] **1.6** Drag each edge and corner → The window resizes with the matching pointer; nothing resizes while maximised 〔未訳〕
-- [ ] **1.7** Shrink the window to its smallest → It stops at 720x420; the palette field shortens, then the chip drops the branch, then the chip goes; the tabs never overlap the buttons 〔未訳〕
+- [~] **1.7** Shrink the window to its smallest → It stops at 720x420; the palette field shortens, then the chip drops the branch, then the chip goes; the tabs never overlap the buttons 〔未訳〕
 - [ ] **1.8** Look at michi.exe in Explorer, the taskbar and Alt+Tab → The same logo as in the title bar (the forked path on the tile), sharp at each size 〔未訳〕
 - [ ] **1.9** Start michi in a folder with a Japanese name, or on a branch with one → The Japanese draws (after a frame or two), not boxes 〔未訳〕
 - [~] **1.10** Look at the title bar (height, the palette box, the bell with unread notices, the three window buttons); hover each; drag the empty part, double-click it; drag the window edges; click the bell → The same bar as tsumugi (40 high, box corner 6, buttons 46 wide, the badge in the `wait` colour); hovers say Minimize / Maximize or Restore / Close and the key of the palette; drag and double-click move and maximise; the edges resize (not while maximised); the notice list opens right under the bell 〔未訳〕

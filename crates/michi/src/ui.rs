@@ -474,6 +474,7 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
         unread,
         any_error: ito_notices::any_error(&app.notices),
         centre: true,
+        right_min: 210.0,
         words,
     };
     let mut view = None;
