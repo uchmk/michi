@@ -173,7 +173,7 @@ impl Prefs {
             (p.notify, p.notify_warn) = NotifyCfg::read(config.as_deref());
             (p.open, p.open_warn) = ito_openin::Config::read(config.as_deref());
             p.read_view(config.as_deref());
-            if let Some(text) = window_dir(Some(b)).and_then(|d| std::fs::read_to_string(d.join("guides.txt")).ok()) {
+            if let Some(text) = state_file(Some(b), "guides.txt").and_then(|f| std::fs::read_to_string(f).ok()) {
                 p.guides = michi_core::guide::Guides::parse(&text);
             }
         }
@@ -200,7 +200,7 @@ impl Prefs {
     }
 
     fn save_guides(&self) {
-        let Some(file) = window_dir(self.base.as_deref()).map(|d| d.join("guides.txt")) else { return };
+        let Some(file) = state_folder(self.base.as_deref()).map(|d| d.join("guides.txt")) else { return };
         let text = self.guides.text();
         std::thread::spawn(move || {
             if let Some(dir) = file.parent() {
@@ -551,6 +551,31 @@ pub fn keymap_path(base: &Path) -> PathBuf {
 /// The folder window.toml lives in: michi's own, beside keymap.toml.
 pub fn window_dir(base: Option<&Path>) -> Option<PathBuf> {
     base.and_then(|b| keymap_path(b).parent().map(Path::to_path_buf))
+}
+
+/// The folder michi keeps what it learns between runs in (window place, panel
+/// sizes, the recent list, guides, the session): ito's state folder when `base`
+/// is the real `uchmk` folder; beside the settings otherwise, so a test with a
+/// temporary `base` never touches the real one.
+pub fn state_folder(base: Option<&Path>) -> Option<PathBuf> {
+    let base = base?;
+    if ito_common::base_dir().as_deref() == Some(base) || ito_common::env_dir("MICHI_STATE_HOME").is_some() {
+        ito_common::state_dir("michi")
+    } else {
+        window_dir(Some(base)).map(|d| d.join("state"))
+    }
+}
+
+/// A state file `name`, copied once from michi's settings folder where
+/// older builds kept it (the old file stays).
+pub fn state_file(base: Option<&Path>, name: &str) -> Option<PathBuf> {
+    let new = state_folder(base)?.join(name);
+    if let Some(old) = window_dir(base).map(|d| d.join(name)) {
+        if old != new {
+            let _ = ito_common::kept::copy_old(&old, &new);
+        }
+    }
+    Some(new)
 }
 
 /// config.toml's full path: in michi's own folder, beside keymap.toml.

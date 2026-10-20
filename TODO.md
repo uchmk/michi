@@ -221,7 +221,7 @@ All wait for the owner; none is started. Related: #64 (Undo), #74, #77, #80-#83.
 - [x] Git flow sheet (Ctrl+Shift+G): 7 tabs of flowcharts with commands（要確認: question issue）
 - [x] Sort out all shortcut keys by how often they are used, then fill the key column of the Git flow sheet (`Step.key` in `cheat.rs`) and enable its "key exists" test (the key and screen columns come from the `DOES` table, 0.98.1)
 - [x] A tree of the current worktree's changed files under the left column of the `1` view, with a divider the mouse moves (0.101.0, 0.101.1; TESTING 1.20; a click on a file shows that file's diff)
-- [ ] Move the rest of what michi keeps between runs (`window.toml`, the sizes, `recent.txt`, `guides.txt`) from the settings folder to the state folder beside `state.toml` (ito's `window.rs` expects `window.toml` there); read the old files once and leave them
+- [x] Move the rest of what michi keeps between runs (`window.toml`, the sizes, `recent.txt`, `guides.txt`) from the settings folder to the state folder beside `state.toml` (ito's `window.rs` expects `window.toml` there); read the old files once and leave them
 
 ## Owner
 

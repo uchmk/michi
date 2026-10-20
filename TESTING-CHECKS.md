@@ -39,6 +39,7 @@
 - [ ] **1.26** Drag the divider away from its place, then double-click it, restart → The divider goes back to the default place (about 62% of the column) and stays there after the restart → | [ ] 〔未訳〕
 - [ ] **1.27** Right-click a file in the tree → A menu with the editor, the diff tool and copy the path: the first two open the file / its diff in the tools of `[open]` (a deleted file says it cannot be opened), the last copies the path and says so in a toast → | [ ] 〔未訳〕
 - [ ] **1.28** Open two or three repositories in tabs (kept in `state.toml` of the state folder, `%LOCALAPPDATA%\uchmk\michi` on Windows), go to the second tab and press `2`, close michi, start it again with no folder (the icon, `michi.com` alone) → The same tabs come back, the same tab is in front and it is on the changes view; a tab behind opens on the graph when first shown → | [ ] 〔未訳〕
+- [ ] **1.30** Start michi over a settings folder from before 0.104.0 (with `window.toml`, `layout.toml`, `recent.txt`, `guides.txt`), move the window and a divider, open a folder → The window opens where it was; the four files are now in `%LOCALAPPDATA%\uchmk\michi` (`window.toml` moved, the others copied, the old copies stay); later changes are written there only → | [ ] 〔未訳〕
 - [ ] **1.29** Close michi with a tab on a folder you then rename, start it again; then start with `michi <folder>` → The gone folder's tab is left out without a message (the others and the front tab are kept); with a folder named, that folder alone opens as before → | [ ] 〔未訳〕
 
 ## 2. Views and keys
@@ -338,7 +339,7 @@
 
 - [ ] **23.1** With the window behind another, let a handed Claude stop; then make a fetch fail (a remote that is not there); open settings, the Notifications page, turn each column on and off, press the test buttons → The system's notification with michi's icon, and a sound if on, come for each event only while the window is not in front; a webhook set on the page gets the event; the test buttons send at once; edits are written to `config.toml`'s `[notify]` and a hand edit is read back 〔未訳〕
 - [ ] **23.2** Press `F12` in any view; read the form that opens; then add `{ on = "<F9>", run = "bugreport" }` to `prepend_keymap` in `keymap.toml` and press `F9` → The browser opens michi's issue form with `version` (`michi 0.41.0 (x86_64)`), `os` and `context` filled (Scale, Config named like `uchmk\michi\config.toml`, the last failure if there was one) and no user name in any of it; a toast says nothing is sent until you submit; `F9` does the same 〔未訳〕
-- [ ] **23.3** Move and resize the window, wait a second, close it, start michi again; maximise, close, start again; start with `--keys` and move the window → The window opens where and as big as it was (on the same screen, maximized if it was, with the size it had before when you restore it); `window.toml` sits beside `config.toml`; a start with `--keys` neither reads nor writes it 〔未訳〕
+- [ ] **23.3** Move and resize the window, wait a second, close it, start michi again; maximise, close, start again; start with `--keys` and move the window → The window opens where and as big as it was (on the same screen, maximized if it was, with the size it had before when you restore it); `window.toml` sits in the state folder (row 1.30); a start with `--keys` neither reads nor writes it 〔未訳〕
 
 ## 24. Command palette
 

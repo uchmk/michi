@@ -57,7 +57,7 @@ impl Session {
 
 /// Where the session is kept.
 pub fn path() -> Option<PathBuf> {
-    ito_common::state_dir("michi").map(|d| d.join("state.toml"))
+    crate::prefs::state_folder(ito_common::base_dir().as_deref()).map(|d| d.join("state.toml"))
 }
 
 /// The session of the last run. A build before kept the tabs in `tabs.txt`

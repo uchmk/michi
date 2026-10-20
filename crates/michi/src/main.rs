@@ -343,22 +343,9 @@ impl Michi {
             return;
         }
         if let Some(file) = session::path() {
-            let text = text.clone();
-            // Writes can overtake each other on their threads; the newest wins.
-            static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-            static DONE: std::sync::Mutex<u64> = std::sync::Mutex::new(0);
-            let n = SEQ.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-            std::thread::spawn(move || {
-                let Ok(mut done) = DONE.lock() else { return };
-                if n < *done {
-                    return;
-                }
-                *done = n;
-                if let Some(dir) = file.parent() {
-                    let _ = std::fs::create_dir_all(dir);
-                }
-                let _ = ito_common::write_atomic(&file, text);
-            });
+            // One writer: saves can overtake each other on their threads; the newest wins.
+            static WRITER: std::sync::OnceLock<ito_common::kept::Writer> = std::sync::OnceLock::new();
+            WRITER.get_or_init(|| ito_common::kept::Writer::new(file, true)).save(text.clone());
         }
         *kept = text;
     }
@@ -994,8 +981,15 @@ fn main() -> eframe::Result {
         ito_keyscript::install_panic_report(done.clone());
     }
     // A script plays on a window that keeps no place, and leaves none.
-    let saved =
-        ito_common::window::Saved::load(script.is_none().then(|| crate::prefs::window_dir(ito_common::base_dir().as_deref())).flatten());
+    let saved = if script.is_none() {
+        let base = ito_common::base_dir();
+        ito_common::window::Saved::load_moved(
+            crate::prefs::state_folder(base.as_deref()),
+            crate::prefs::window_dir(base.as_deref()).as_deref(),
+        )
+    } else {
+        ito_common::window::Saved::load(None)
+    };
     let viewport = ito_titlebar::frameless(egui::ViewportBuilder::default())
         .with_title("michi")
         .with_inner_size([1280.0, 800.0])

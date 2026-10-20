@@ -52,15 +52,12 @@ pub struct Opening {
 
 /// The file the list is kept in.
 pub fn file(base: Option<&Path>) -> Option<PathBuf> {
-    crate::prefs::window_dir(base).map(|d| d.join("recent.txt"))
+    crate::prefs::state_file(base, "recent.txt")
 }
 
 pub fn load(base: Option<&Path>) -> Recent {
     file(base).and_then(|f| std::fs::read_to_string(f).ok()).map(|t| Recent::parse(&t)).unwrap_or_default()
 }
-
-static RECENT_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-static RECENT_WRITE: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 fn home() -> Option<PathBuf> {
     ito_common::home_dir()
@@ -223,20 +220,17 @@ impl App {
 
     fn save_recent(&self) {
         let Some(file) = file(self.prefs.base.as_deref()) else { return };
-        let text = self.recent.text();
-        // Writes run on threads; only the newest one's text is written, and one at a time,
-        // so an older list cannot land after a newer one.
-        let seq = RECENT_SEQ.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-        std::thread::spawn(move || {
-            let _one = RECENT_WRITE.lock().unwrap_or_else(|e| e.into_inner());
-            if RECENT_SEQ.load(std::sync::atomic::Ordering::SeqCst) != seq {
-                return;
+        // One writer per file: the newest list wins and the UI never waits on the disk.
+        static WRITERS: std::sync::Mutex<Vec<ito_common::kept::Writer>> = std::sync::Mutex::new(Vec::new());
+        let mut all = WRITERS.lock().unwrap_or_else(|e| e.into_inner());
+        let i = match all.iter().position(|w| w.path() == file) {
+            Some(i) => i,
+            None => {
+                all.push(ito_common::kept::Writer::new(file, true));
+                all.len() - 1
             }
-            if let Some(dir) = file.parent() {
-                let _ = std::fs::create_dir_all(dir);
-            }
-            let _ = ito_common::write_atomic(&file, text);
-        });
+        };
+        all[i].save(self.recent.text());
     }
 }
 

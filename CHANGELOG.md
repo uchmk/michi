@@ -2,6 +2,12 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.104.0] - 2026-10-20
+
+### 変更
+- 窓の位置（`window.toml`）・パネルの幅（`layout.toml`）・最近のフォルダ（`recent.txt`）・説明の既読（`guides.txt`）の保存先を、設定のフォルダから状態のフォルダ（Windows は `%LOCALAPPDATA%\uchmk\michi`）に移した。前のファイルは一度だけ移す・写す（`window.toml` は移動、ほかは写して元を残す）。
+- ito を v0.92.0 に上げ、書き込みを ito の `kept::Writer`（最新の保存が勝つ）に替えた。
+
 ## [0.103.1] - 2026-10-20
 
 ### 変更

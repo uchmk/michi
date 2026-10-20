@@ -521,7 +521,9 @@ pub struct App {
 
 impl App {
     pub fn new(prefs: Prefs, dir: PathBuf) -> Self {
-        let sizes = crate::sizes::Sizes::load(crate::prefs::window_dir(prefs.base.as_deref()).as_deref());
+        let sizes = crate::sizes::Sizes::load(
+            crate::prefs::state_file(prefs.base.as_deref(), "layout.toml").as_deref().and_then(std::path::Path::parent),
+        );
         let recent = crate::repos::load(prefs.base.as_deref());
         Self::with_window(prefs, dir, sizes, recent)
     }
