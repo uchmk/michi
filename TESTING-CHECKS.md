@@ -84,14 +84,14 @@
 - [~] **6.2** Look at the names before the subjects → A worktree's branch as a filled pill with a worktree mark (main in the trunk's colour, others in their lane's); a remote branch as a dashed outline (`origin/main`); a tag in amber with a diamond; hovering a worktree pill shows its folder 〔未訳〕
 - [~] **6.3** Look at the merges into main → Each is folded: a ring on the trunk, a chip `▸N` (the commits inside) before the subject in the merged lane's colour; hovering the chip says how many it folds and names the branches still inside; the header's `Fold PRs z` toggle is lit 〔未訳〕
 - [~] **6.4** Press `z`, then `z` again → The merges open (side lanes appear) with the toast "Unfolded all the merges."; again, they fold with a toast giving how many merges and commits; the header toggle follows (lit or grey) 〔未訳〕
-- [ ] **6.5** Click the header toggle → The same as `z` 〔未訳〕
+- [~] **6.5** Click the header toggle → The same as `z` 〔未訳〕
 - [~] **6.6** Select a folded merge with `j`, press `l` (or →), then `h` (or ←) → `l` opens it: the chip becomes `▾N` with a dashed outline and its commits show on their own lane; `h` folds it again 〔未訳〕
 - [ ] **6.7** Click a chip → Its merge opens or folds; the selection stays where it was 〔未訳〕
 - [ ] **6.8** Press `j` `k`, ↓ ↑, PageDown PageUp, Home End → The selected row (lit across) moves and the list scrolls to keep it in sight; End goes to the oldest row read so far 〔未訳〕
-- [ ] **6.9** Click a row; scroll with the wheel → The row is selected; the wheel scrolls the list without moving the selection 〔未訳〕
+- [~] **6.9** Click a row; scroll with the wheel → The row is selected; the wheel scrolls the list without moving the selection 〔未訳〕
 - [~] **6.10** Press `/` and type part of a subject, a hash or an author's name → The field at the right of the tool band takes the keys, with the count (`3 hits`) at its right; the text sits in the middle of the field; the other rows dim; the hits get marks on the scrollbar 〔未訳〕
 - [ ] **6.11** In the field, press Enter, Shift+Enter, ↓, ↑ → Enter selects the next hit (round to the first after the last), Shift+Enter the one before; the arrows move the selection; the field keeps the keys 〔未訳〕
-- [ ] **6.12** Press Esc in the field → The filter clears and every row is bright again 〔未訳〕
+- [~] **6.12** Press Esc in the field → The filter clears and every row is bright again 〔未訳〕
 - [ ] **6.13** Look at the scrollbar → Marks for the worktrees' heads (in their lanes' colours), the tags (amber) and the selected row (the accent); hovering a mark tells what it is 〔未訳〕
 - [ ] **6.14** Drag the thumb; click the track; click a mark → The thumb stays under the pointer to the release; a click on the track brings that part into the middle; a click on a mark selects its row 〔未訳〕
 - [ ] **6.15** Look at commits by dependabot[bot] and github-actions[bot] → The author reads `⚙ dependabot` and `⚙ actions`; hovering shows the full name 〔未訳〕
@@ -104,7 +104,7 @@
 ## 7. Side column
 
 - [~] **7.1** Look at the column left of the graph → Headings with counts: worktree, Branches, Remotes, Tags and Stash (when there is one); the worktree the window is on is lit; each worktree and branch has a dot in its lane's colour; there is no scrollbar, the wheel scrolls it 〔未訳〕
-- [ ] **7.2** Click a worktree, a branch and a tag → The graph selects that commit and scrolls it into sight; the detail follows 〔未訳〕
+- [~] **7.2** Click a worktree, a branch and a tag → The graph selects that commit and scrolls it into sight; the detail follows 〔未訳〕
 - [~] **7.3** Click a group (`test/`, `origin`) → It opens to list its branches further in, with the count at its right; again, it closes; hovering a branch inside shows its full name 〔未訳〕
 - [ ] **7.4** Click a branch whose commit is older than what is read → The graph reads on until it gets there and selects it; one that is not in the history gives the toast `Not in the history: <hash>` 〔未訳〕
 - [ ] **7.5** Have a branch ahead of its upstream and one behind (commit without pushing; `git fetch` after a push from elsewhere), and a stash (`git stash`) → The branch and its worktree show `↑N`, `↓N` or both in dim at the right; no number when even or with no upstream. A `Stash` section comes last with each stash's message and a hollow square; hovering shows its hash; a click shows it in the detail (17.9) 〔未訳〕
