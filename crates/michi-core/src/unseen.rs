@@ -106,13 +106,13 @@ struct Mark {
 }
 
 impl Marks {
-    /// From the state file's text; a file that cannot be read starts afresh.
+    /// From the state file's text (TOML; a JSON file of an older build reads too); a file that cannot be read starts afresh.
     pub fn parse(text: &str) -> Marks {
-        serde_json::from_str(text).unwrap_or_default()
+        toml::from_str(text).or_else(|_| serde_json::from_str(text)).unwrap_or_default()
     }
 
-    pub fn to_json(&self) -> String {
-        serde_json::to_string_pretty(self).unwrap_or_default()
+    pub fn to_toml(&self) -> String {
+        toml::to_string(self).unwrap_or_default()
     }
 
     /// Marks the commit `id` seen in each worktree of `unseen` that has it;
@@ -246,7 +246,7 @@ pub fn file_name(name: &str, common: &Path) -> String {
         h = h.wrapping_mul(0x0100_0000_01b3);
     }
     let safe: String = name.chars().map(|c| if c.is_alphanumeric() || c == '-' || c == '_' || c == '.' { c } else { '_' }).collect();
-    format!("{safe}-{h:016x}.json")
+    format!("{safe}-{h:016x}.toml")
 }
 
 /// The common git folder of the repository `dir` is in, in full.
@@ -284,7 +284,7 @@ mod tests {
     fn file_names_keep_two_clones_apart() {
         let a = file_name("michi", Path::new("C:/dev/michi/.git"));
         let b = file_name("michi", Path::new("C:/work/michi/.git"));
-        assert!(a.starts_with("michi-") && a.ends_with(".json"));
+        assert!(a.starts_with("michi-") && a.ends_with(".toml"));
         assert_ne!(a, b);
         assert_eq!(a, file_name("michi", Path::new("C:/dev/michi/.git")));
         assert!(file_name("a/b:c", Path::new("/x")).starts_with("a_b_c-"));
@@ -294,8 +294,11 @@ mod tests {
     fn marks_survive_the_state_file() {
         let mut m = Marks::default();
         m.branches.insert("feat".into(), Mark { base: "a".repeat(40), seen: vec!["b".repeat(40)] });
-        assert_eq!(Marks::parse(&m.to_json()), m);
-        assert_eq!(Marks::parse("not json"), Marks::default());
+        assert_eq!(Marks::parse(&m.to_toml()), m);
+        assert_eq!(Marks::parse("not toml {"), Marks::default());
+        // The JSON an older build kept reads too.
+        let json = serde_json::to_string_pretty(&m).unwrap();
+        assert_eq!(Marks::parse(&json), m);
     }
 
     #[test]
@@ -326,7 +329,7 @@ mod tests {
         let (u, _) = read(&r.repo, &trees(&r), &mut marks, &mut cache);
         assert_eq!(subjects(&u, &wt), ["Merge branch 'main' into feat", "f1"]);
         // Read again from a file.
-        let mut marks = Marks::parse(&marks.to_json());
+        let mut marks = Marks::parse(&marks.to_toml());
         let (u, _) = read(&r.repo, &trees(&r), &mut marks, &mut Cache::default());
         assert_eq!(subjects(&u, &wt), ["Merge branch 'main' into feat", "f1"]);
         // All seen: the base moves up.

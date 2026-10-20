@@ -462,7 +462,7 @@ struct Last {
 fn watch(dir: &Path, pokes: &Receiver<Poke>, asks: &Sender<Ask>, mut fs: Fs, send: impl Fn(Answer)) {
     let common = unseen::common_dir(dir).ok();
     let marks_file = common.as_deref().and_then(|c| state_path(c, "seen"));
-    let mut marks = marks_file.as_deref().and_then(|f| std::fs::read_to_string(f).ok()).map(|t| Marks::parse(&t)).unwrap_or_default();
+    let mut marks = marks_file.as_deref().and_then(read_state).map(|t| Marks::parse(&t)).unwrap_or_default();
     let mut last = Last::default();
     let mut caches = (track::Cache::default(), clash::Cache::default(), unseen::Cache::default(), queue::Cache::default());
     let mut worktrees: Vec<Worktree> = Vec::new();
@@ -620,7 +620,7 @@ fn read_trees(
                 send(Answer::Unseen(unseen));
             }
             let common = unseen::common_dir(dir).ok();
-            let read = |folder: &str| common.as_deref().and_then(|c| state_path(c, folder)).and_then(|p| std::fs::read_to_string(p).ok());
+            let read = |folder: &str| common.as_deref().and_then(|c| state_path(c, folder)).and_then(|p| read_state(&p));
             let checks = Checks::parse(&read("review").unwrap_or_default());
             let flags = queue::Flags::parse(&read("flagged").unwrap_or_default());
             match queue::read(dir, &trees, &checks, &flags, queued) {
@@ -720,9 +720,14 @@ pub(crate) fn state_path(common: &Path, folder: &str) -> Option<PathBuf> {
     Some(ito_common::state_dir("michi")?.join(folder).join(unseen::file_name(&name, common)))
 }
 
+/// A state file's text: the file, else the `.json` an older build kept under the same name.
+pub(crate) fn read_state(file: &Path) -> Option<String> {
+    std::fs::read_to_string(file).or_else(|_| std::fs::read_to_string(file.with_extension("json"))).ok()
+}
+
 fn save_marks(marks: &Marks, file: Option<&Path>) {
     let Some(file) = file else { return };
-    if let Err(e) = ito_common::write_atomic(file, marks.to_json()) {
+    if let Err(e) = ito_common::write_atomic(file, marks.to_toml()) {
         eprintln!("michi: {e}");
     }
 }
@@ -732,10 +737,10 @@ fn save_marks(marks: &Marks, file: Option<&Path>) {
 /// (a read stopped and dropped once a newer one comes), and every check.
 fn reviews(dir: &Path, wishes: &Receiver<Wish>, latest: &[AtomicU32; 2], send: impl Fn(Answer)) {
     let file = unseen::common_dir(dir).ok().and_then(|c| state_path(&c, "review"));
-    let mut checks = file.as_deref().and_then(|f| std::fs::read_to_string(f).ok()).map(|t| Checks::parse(&t)).unwrap_or_default();
+    let mut checks = file.as_deref().and_then(read_state).map(|t| Checks::parse(&t)).unwrap_or_default();
     let save = |checks: &Checks| {
         let Some(file) = &file else { return };
-        if let Err(e) = ito_common::write_atomic(file, checks.to_json()) {
+        if let Err(e) = ito_common::write_atomic(file, checks.to_toml()) {
             eprintln!("michi: {e}");
         }
     };

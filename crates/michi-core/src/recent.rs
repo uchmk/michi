@@ -6,24 +6,36 @@ use std::path::{Path, PathBuf};
 /// The most paths kept.
 pub const MAX: usize = 30;
 
+#[derive(serde::Serialize, serde::Deserialize)]
+struct Kept {
+    #[serde(default)]
+    paths: Vec<String>,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Recent {
     paths: Vec<PathBuf>,
 }
 
 impl Recent {
-    /// The list as `text` has it: one path per line, blank lines let go.
+    /// The list as `text` has it: TOML (`paths = [...]`, newest first); a
+    /// file of an older build has one path per line. Blank lines let go.
     pub fn parse(text: &str) -> Self {
+        let lines: Vec<String> = match toml::from_str::<Kept>(text) {
+            Ok(k) => k.paths,
+            Err(_) => text.lines().map(str::to_owned).collect(),
+        };
         let mut r = Self::default();
-        for line in text.lines().rev().map(str::trim).filter(|l| !l.is_empty()) {
+        for line in lines.iter().rev().map(|l| l.trim()).filter(|l| !l.is_empty()) {
             r.push(Path::new(line));
         }
         r
     }
 
-    /// The list as text, newest first.
+    /// The list as TOML, newest first.
     pub fn text(&self) -> String {
-        self.paths.iter().map(|p| format!("{}\n", p.display())).collect()
+        let paths = self.paths.iter().map(|p| p.display().to_string()).collect();
+        toml::to_string(&Kept { paths }).unwrap_or_default()
     }
 
     /// `path` to the front; an earlier entry for the same folder goes.
@@ -96,6 +108,11 @@ mod tests {
         r.push(&p("/b"));
         assert_eq!(Recent::parse(&r.text()), r);
         assert_eq!(Recent::parse("\n  \n/x\n\n/y\n").paths(), &[p("/x"), p("/y")]);
+        // A Windows path keeps its backslashes through TOML.
+        let mut w = Recent::default();
+        w.push(&p(r"C:\dev\michi"));
+        assert!(w.text().starts_with("paths = "));
+        assert_eq!(Recent::parse(&w.text()), w);
     }
 
     #[test]

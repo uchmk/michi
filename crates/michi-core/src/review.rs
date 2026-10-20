@@ -132,13 +132,13 @@ impl Check {
 }
 
 impl Checks {
-    /// From the state file's text; a file that cannot be read starts afresh.
+    /// From the state file's text (TOML; a JSON file of an older build reads too); a file that cannot be read starts afresh.
     pub fn parse(text: &str) -> Checks {
-        serde_json::from_str(text).unwrap_or_default()
+        toml::from_str(text).or_else(|_| serde_json::from_str(text)).unwrap_or_default()
     }
 
-    pub fn to_json(&self) -> String {
-        serde_json::to_string_pretty(self).unwrap_or_default()
+    pub fn to_toml(&self) -> String {
+        toml::to_string(self).unwrap_or_default()
     }
 
     /// The files of `branch` checked.
@@ -315,7 +315,7 @@ mod tests {
         assert_eq!(c.of("lane"), BTreeSet::from([key(&a), key(&gone)]));
         assert!(c.of("other").is_empty());
 
-        let back = Checks::parse(&c.to_json());
+        let back = Checks::parse(&c.to_toml());
         assert_eq!(back, c);
 
         let a2 = file("a.txt", Some("3"));

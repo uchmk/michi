@@ -173,7 +173,7 @@ impl Prefs {
             (p.notify, p.notify_warn) = NotifyCfg::read(config.as_deref());
             (p.open, p.open_warn) = ito_openin::Config::read(config.as_deref());
             p.read_view(config.as_deref());
-            if let Some(text) = state_file(Some(b), "guides.txt").and_then(|f| std::fs::read_to_string(f).ok()) {
+            if let Some(text) = state_text(Some(b), "guides.toml", "guides.txt") {
                 p.guides = michi_core::guide::Guides::parse(&text);
             }
         }
@@ -200,7 +200,7 @@ impl Prefs {
     }
 
     fn save_guides(&self) {
-        let Some(file) = state_folder(self.base.as_deref()).map(|d| d.join("guides.txt")) else { return };
+        let Some(file) = state_folder(self.base.as_deref()).map(|d| d.join("guides.toml")) else { return };
         let text = self.guides.text();
         std::thread::spawn(move || {
             if let Some(dir) = file.parent() {
@@ -576,6 +576,16 @@ pub fn state_file(base: Option<&Path>, name: &str) -> Option<PathBuf> {
         }
     }
     Some(new)
+}
+
+/// The text of the state file `name` (TOML), else of `legacy`, the text file an
+/// older build kept in the state folder or in the settings folder.
+pub fn state_text(base: Option<&Path>, name: &str, legacy: &str) -> Option<String> {
+    let new = state_folder(base)?;
+    std::fs::read_to_string(new.join(name))
+        .or_else(|_| std::fs::read_to_string(new.join(legacy)))
+        .or_else(|e| window_dir(base).map_or(Err(e), |d| std::fs::read_to_string(d.join(legacy))))
+        .ok()
 }
 
 /// config.toml's full path: in michi's own folder, beside keymap.toml.

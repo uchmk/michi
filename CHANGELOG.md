@@ -2,6 +2,12 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.105.0] - 2026-10-20
+
+### 変更
+- 状態のフォルダに置くファイルを TOML にそろえた（ito の「状態のファイルも TOML」）。最近のフォルダは `recent.toml`、説明の既読は `guides.toml`、見た印・確認の印・旗は `seen\*.toml`・`review\*.toml`・`flagged\*.toml`。
+- 前の版の `recent.txt`・`guides.txt`・`*.json` は、新しいファイルが無いときだけ読み、そのまま残す（書くのは TOML だけ）。
+
 ## [0.104.0] - 2026-10-20
 
 ### 変更

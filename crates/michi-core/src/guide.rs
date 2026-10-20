@@ -34,6 +34,12 @@ impl Topic {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+struct Kept {
+    #[serde(default)]
+    dismissed: Vec<String>,
+}
+
 /// The topics that were dismissed.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Guides {
@@ -41,15 +47,21 @@ pub struct Guides {
 }
 
 impl Guides {
-    /// Read from the kept text (one topic name per line); unknown lines are
-    /// ignored so a newer file does not break an older michi.
+    /// Read from the kept text (TOML: `dismissed = ["stage", ...]`; a file of
+    /// an older build has one topic name per line); unknown names are ignored
+    /// so a newer file does not break an older michi.
     pub fn parse(text: &str) -> Self {
-        Self { dismissed: text.lines().filter_map(|l| Topic::from_name(l.trim())).collect() }
+        let names: Vec<String> = match toml::from_str::<Kept>(text) {
+            Ok(k) => k.dismissed,
+            Err(_) => text.lines().map(str::to_owned).collect(),
+        };
+        Self { dismissed: names.iter().filter_map(|l| Topic::from_name(l.trim())).collect() }
     }
 
-    /// The text to keep.
+    /// The text to keep (TOML).
     pub fn text(&self) -> String {
-        self.dismissed.iter().map(|t| format!("{}\n", t.name())).collect()
+        let dismissed = self.dismissed.iter().map(|t| t.name().to_owned()).collect();
+        toml::to_string(&Kept { dismissed }).unwrap_or_default()
     }
 
     /// Whether `t` is to be shown in full (it was not dismissed).
@@ -114,6 +126,15 @@ pub fn card(at: usize, delta: i32) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_text_is_toml_and_the_lines_of_an_older_build_read() {
+        let mut g = Guides::default();
+        g.dismiss(Topic::Conflict);
+        assert!(g.text().starts_with("dismissed = "));
+        assert_eq!(Guides::parse(&g.text()), g);
+        assert_eq!(Guides::parse("conflict\nnope\n"), g);
+    }
 
     #[test]
     fn everything_is_shown_until_it_is_dismissed() {

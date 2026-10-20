@@ -2,7 +2,7 @@
 //! newest first, to switch to without leaving the window, drawn by
 //! `ito-palette`. What is typed narrows the list; a typed path (a drive, a
 //! slash, `~` or `.` first) adds a row that opens it. The list is kept in
-//! `recent.txt` in michi's folder. A folder is read on a thread first and
+//! `recent.toml` in michi's state folder. A folder is read on a thread first and
 //! only a repository replaces the one in the window.
 
 use std::path::{Path, PathBuf};
@@ -52,11 +52,11 @@ pub struct Opening {
 
 /// The file the list is kept in.
 pub fn file(base: Option<&Path>) -> Option<PathBuf> {
-    crate::prefs::state_file(base, "recent.txt")
+    crate::prefs::state_folder(base).map(|d| d.join("recent.toml"))
 }
 
 pub fn load(base: Option<&Path>) -> Recent {
-    file(base).and_then(|f| std::fs::read_to_string(f).ok()).map(|t| Recent::parse(&t)).unwrap_or_default()
+    crate::prefs::state_text(base, "recent.toml", "recent.txt").map(|t| Recent::parse(&t)).unwrap_or_default()
 }
 
 fn home() -> Option<PathBuf> {

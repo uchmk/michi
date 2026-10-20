@@ -73,13 +73,13 @@ pub struct Flags {
 }
 
 impl Flags {
-    /// From the state file's text; a file that cannot be read starts afresh.
+    /// From the state file's text (TOML; a JSON file of an older build reads too); a file that cannot be read starts afresh.
     pub fn parse(text: &str) -> Flags {
-        serde_json::from_str(text).unwrap_or_default()
+        toml::from_str(text).or_else(|_| serde_json::from_str(text)).unwrap_or_default()
     }
 
-    pub fn to_json(&self) -> String {
-        serde_json::to_string_pretty(self).unwrap_or_default()
+    pub fn to_toml(&self) -> String {
+        toml::to_string(self).unwrap_or_default()
     }
 
     pub fn of(&self, branch: &str) -> Option<Oid> {
@@ -209,7 +209,7 @@ mod tests {
     fn flags_round_trip() {
         let mut f = Flags::default();
         f.set("lane", &oid("a"));
-        assert_eq!(Flags::parse(&f.to_json()).of("lane"), Some(oid("a")));
+        assert_eq!(Flags::parse(&f.to_toml()).of("lane"), Some(oid("a")));
         assert_eq!(f.of("other"), None);
         assert_eq!(Flags::parse("nope"), Flags::default());
     }

@@ -863,9 +863,9 @@ fn flag(wt: &Path, branch: &str) -> Result<(), git::Error> {
     let head = michi_core::oid::Oid::parse(head.trim()).ok_or_else(|| git::Error::Io("no HEAD".into()))?;
     let common = michi_core::unseen::common_dir(wt)?;
     let Some(file) = crate::repo::state_path(&common, "flagged") else { return Ok(()) };
-    let mut flags = std::fs::read_to_string(&file).map(|t| michi_core::queue::Flags::parse(&t)).unwrap_or_default();
+    let mut flags = crate::repo::read_state(&file).map(|t| michi_core::queue::Flags::parse(&t)).unwrap_or_default();
     flags.set(branch, &head);
-    ito_common::write_atomic(&file, flags.to_json()).map_err(|e| git::Error::Io(e.to_string()))
+    ito_common::write_atomic(&file, flags.to_toml()).map_err(|e| git::Error::Io(e.to_string()))
 }
 
 /// A place in the worktree at `wt` was solved or put back: it is read again.
