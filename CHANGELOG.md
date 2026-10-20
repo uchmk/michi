@@ -2,6 +2,11 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.106.3] - 2026-10-20
+
+### 変更
+- ito を v0.96.0 に上げた。設定のフォルダー（keymap.toml・config.toml）を `ito_common::app_dir_in` で決める（`MICHI_CONFIG_HOME` の扱いは変わらない）。
+
 ## [0.106.2] - 2026-10-20
 
 ### 修正

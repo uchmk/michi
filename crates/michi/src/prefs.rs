@@ -545,7 +545,7 @@ impl Prefs {
 /// keymap.toml's full path: in michi's own folder (`MICHI_CONFIG_HOME` when
 /// set, else `michi` in the `uchmk` folder `base`).
 pub fn keymap_path(base: &Path) -> PathBuf {
-    ito_common::env_dir("MICHI_CONFIG_HOME").unwrap_or_else(|| base.join("michi")).join("keymap.toml")
+    ito_common::app_dir_in(base, "michi").join("keymap.toml")
 }
 
 /// The folder window.toml lives in: michi's own, beside keymap.toml.
