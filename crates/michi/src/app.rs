@@ -384,6 +384,9 @@ pub struct App {
     pub side_open: HashSet<String>,
     /// The changed-files tree's folders that are folded (their paths).
     pub tree_folded: HashSet<String>,
+    /// A file clicked in that tree: the commit it is in and its path; the
+    /// detail scrolls to its diff once that commit is read.
+    pub want_file: Option<(Oid, String)>,
     /// A commit clicked in the side column that is not read yet: read on
     /// until it is, then select it.
     seeking: Option<Oid>,
@@ -559,6 +562,7 @@ impl App {
             last_view: View::Graph,
             side_open: HashSet::new(),
             tree_folded: HashSet::new(),
+            want_file: None,
             seeking: None,
             detail_wip: None,
             new_title: None,

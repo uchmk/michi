@@ -426,10 +426,27 @@ fn divider(ui: &mut Ui, app: &mut App, full: Rect, y: f32, live: bool) {
     }
 }
 
+/// Scrolls the detail to the diff of the file clicked in the tree, once the
+/// commit it is in has been read (not before: the detail still holds the
+/// one before).
+fn show_wanted_file(app: &mut App) {
+    let Some((id, path)) = app.want_file.clone() else { return };
+    if app.detail.asked() != Some(id) {
+        return;
+    }
+    let Some(Ok(d)) = app.detail.got() else { return };
+    let at = d.files.iter().position(|f| f.path == path);
+    app.want_file = None;
+    if let Some(i) = at {
+        app.detail.cur = i;
+        app.detail.scroll_to = Some(i);
+    }
+}
+
 /// What a click in the changed-files tree does.
 enum TreeAct {
     Fold(String),
-    Open(Oid),
+    Open(Oid, String),
 }
 
 /// The changed files of the worktree the window is on as a tree of folders
@@ -438,6 +455,7 @@ enum TreeAct {
 fn changes_tree(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let c = ito_theme::colors();
     let ctx = ui.ctx().clone();
+    show_wanted_file(app);
     ui.painter().rect_filled(r, 0.0, c.side);
     let p = ui.painter_at(r);
     let d = app.prefs.density;
@@ -505,7 +523,7 @@ fn changes_tree(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
                 pb.text(pos2(x + 4.0, mid), Align2::CENTER_CENTER, f.status.letter(), FontId::monospace(11.0), status_ink(f.status));
                 clipped(ui, &pb, pos2(x + 14.0, mid), name, FontId::proportional(12.5), c.fg, right - x - 14.0);
                 if let (true, Some(id)) = (live && resp.clicked(), commit) {
-                    act = Some(TreeAct::Open(id));
+                    act = Some(TreeAct::Open(id, f.path.clone()));
                 }
                 resp.on_hover_text(&f.path);
             }
@@ -517,7 +535,10 @@ fn changes_tree(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
                 app.tree_folded.insert(path);
             }
         }
-        Some(TreeAct::Open(id)) => app.go_to(id),
+        Some(TreeAct::Open(id, path)) => {
+            app.go_to(id);
+            app.want_file = Some((id, path));
+        }
         None => return,
     }
     ctx.request_repaint();
