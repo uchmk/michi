@@ -9,6 +9,7 @@ use michi_core::oid::Oid;
 use michi_core::paths;
 
 use crate::app::{App, Repo};
+use crate::detail_ui::status_ink;
 use crate::graph_ui::{caret, clipped};
 
 const TOP_PAD: f32 = 6.0;
@@ -21,6 +22,34 @@ const RIGHT: f32 = 12.0;
 
 fn scroll_id() -> Id {
     Id::new("side-scroll")
+}
+
+fn tree_scroll_id() -> Id {
+    Id::new("side-tree-scroll")
+}
+
+/// The least height of the lists above the changed-files tree, and of the
+/// tree under them.
+const LIST_MIN: f32 = 80.0;
+const TREE_MIN: f32 = 70.0;
+/// How far from the divider the mouse still takes hold of it.
+const GRAB: f32 = 4.0;
+
+/// The height the lists keep in a column `h` high when they are `ratio` of
+/// it, held within the least of both; `None` when the column is too short
+/// for the tree (the lists then have all of it).
+pub fn list_height(h: f32, ratio: f32) -> Option<f32> {
+    let most = h - TREE_MIN - 1.0;
+    (most >= LIST_MIN).then(|| (h * ratio).clamp(LIST_MIN, most))
+}
+
+/// The worktree the window is on, else the first.
+fn current_wip(app: &App) -> Option<&michi_core::wip::Wip> {
+    let top = match &app.repo {
+        Repo::Ready(s) => Some(paths::key(&s.top)),
+        _ => None,
+    };
+    app.wips.iter().find(|w| Some(paths::key(&w.path)) == top).or_else(|| app.wips.first())
 }
 
 /// A row of the side column.
@@ -208,10 +237,18 @@ enum Act {
 }
 
 /// The side column in `r`.
-pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
+pub fn show(ui: &mut Ui, app: &mut App, full: Rect, live: bool) {
     let c = ito_theme::colors();
     let ansi = c.ansi();
     let ctx = ui.ctx().clone();
+    // The lists above, the changed files under them, the divider between.
+    let (r, below) = match list_height(full.height(), app.sizes.tree) {
+        Some(h) => (
+            Rect::from_min_size(full.min, vec2(full.width(), h)),
+            Some(Rect::from_min_max(pos2(full.left(), full.top() + h + 1.0), full.max)),
+        ),
+        None => (full, None),
+    };
     ui.painter().rect_filled(r, 0.0, c.side);
     let rows = rows(app);
     let total: f32 = TOP_PAD + rows.iter().map(|r| r.height(app.prefs.density)).sum::<f32>() + 12.0;
@@ -348,6 +385,10 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             resp.on_hover_text(tip);
         }
     }
+    if let Some(below) = below {
+        changes_tree(ui, app, below, live);
+        divider(ui, app, full, r.bottom(), live);
+    }
     match act {
         Some(Act::Go(id)) => app.go_to(id),
         Some(Act::Switch(name)) => app.switch_branch_here(name),
@@ -357,6 +398,126 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
                 app.side_open.insert(key);
             }
         }
+        None => return,
+    }
+    ctx.request_repaint();
+}
+
+/// The line between the lists and the tree, dragged up and down; the share
+/// the lists keep is saved when the mouse is let go.
+fn divider(ui: &mut Ui, app: &mut App, full: Rect, y: f32, live: bool) {
+    let c = ito_theme::colors();
+    let line = Rect::from_min_size(pos2(full.left(), y), vec2(full.width(), 1.0));
+    ui.painter().rect_filled(line, 0.0, c.border);
+    if !live {
+        return;
+    }
+    let grab = Rect::from_min_max(pos2(full.left(), y - GRAB), pos2(full.right(), y + 1.0 + GRAB));
+    let resp = ui.interact(grab, Id::new("side-tree-divider"), Sense::click_and_drag());
+    if resp.hovered() || resp.dragged() {
+        ui.ctx().set_cursor_icon(CursorIcon::ResizeVertical);
+        ui.painter().rect_filled(line, 0.0, c.blue);
+    }
+    if let (true, Some(p)) = (resp.dragged(), resp.interact_pointer_pos()) {
+        app.sizes.tree = ((p.y - full.top()) / full.height()).clamp(0.05, 0.95);
+    }
+    if resp.drag_stopped() {
+        app.sizes.save();
+    }
+}
+
+/// What a click in the changed-files tree does.
+enum TreeAct {
+    Fold(String),
+    Open(Oid),
+}
+
+/// The changed files of the worktree the window is on as a tree of folders
+/// (the `2` view's, in short): a click on a folder folds it, on a file
+/// selects the worktree's change in the graph.
+fn changes_tree(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
+    let c = ito_theme::colors();
+    let ctx = ui.ctx().clone();
+    ui.painter().rect_filled(r, 0.0, c.side);
+    let p = ui.painter_at(r);
+    let d = app.prefs.density;
+    let (rows, files, commit, count) = match current_wip(app) {
+        Some(w) => (michi_core::tree::rows(&w.files, |f| app.tree_folded.contains(f)), w.files.clone(), Some(w.commit), w.files.len()),
+        None => (Vec::new(), Vec::new(), None, 0),
+    };
+    // The heading stays; the rows scroll under it.
+    let head = Rect::from_min_size(r.min, vec2(r.width(), d.px(HEAD_H)));
+    let mid = head.top() + 8.0 + 13.0 / 2.0;
+    let n = p.text(pos2(head.right() - RIGHT, mid), Align2::RIGHT_CENTER, count.to_string(), FontId::monospace(10.5), c.dim);
+    let title: String = app.tr("side.changes").to_uppercase().chars().flat_map(|ch| [ch, '\u{200A}']).collect();
+    clipped(
+        ui,
+        &p,
+        pos2(head.left() + 12.0, mid),
+        title.trim_end(),
+        FontId::proportional(11.0),
+        c.dim,
+        n.left() - 6.0 - head.left() - 12.0,
+    );
+    let body = Rect::from_min_max(pos2(r.left(), head.bottom()), r.max);
+    if rows.is_empty() {
+        let text = app.tr("side.changes_none").to_owned();
+        p.text(pos2(body.left() + LEFT, body.top() + 10.0), Align2::LEFT_CENTER, text, FontId::proportional(12.0), c.dim);
+        return;
+    }
+    let row_h = d.px(ROW_H);
+    let total = rows.len() as f32 * row_h + 8.0;
+    let mut scroll = ctx.data(|d| d.get_temp::<f32>(tree_scroll_id())).unwrap_or(0.0);
+    if live && ui.rect_contains_pointer(body) {
+        scroll -= ui.input(|i| i.smooth_scroll_delta.y);
+    }
+    scroll = scroll.clamp(0.0, (total - body.height()).max(0.0));
+    ctx.data_mut(|d| d.insert_temp(tree_scroll_id(), scroll));
+    let pb = ui.painter_at(body);
+    let mut act = None;
+    let mut y = body.top() - scroll;
+    for (k, row) in rows.iter().enumerate() {
+        let rr = Rect::from_min_size(pos2(body.left(), y), vec2(body.width(), row_h));
+        y += row_h;
+        if rr.bottom() < body.top() || rr.top() > body.bottom() {
+            continue;
+        }
+        let resp = ui.interact(rr.intersect(body), Id::new(("side-tree-row", k)), Sense::click());
+        if live && resp.hovered() {
+            pb.rect_filled(rr, 0.0, c.panel);
+            ctx.set_cursor_icon(CursorIcon::PointingHand);
+        }
+        let mid = rr.center().y;
+        let right = rr.right() - RIGHT;
+        match row {
+            michi_core::tree::Row::Dir { path, name, depth, files: n, folded } => {
+                let x = rr.left() + LEFT + *depth as f32 * 12.0;
+                caret(&pb, pos2(x + 4.0, mid), !*folded, c.dim);
+                let count = pb.text(pos2(right, mid), Align2::RIGHT_CENTER, n.to_string(), FontId::monospace(11.0), c.dim);
+                clipped(ui, &pb, pos2(x + 14.0, mid), name, FontId::proportional(12.5), c.fg, count.left() - 6.0 - x - 14.0);
+                if live && resp.clicked() {
+                    act = Some(TreeAct::Fold(path.clone()));
+                }
+            }
+            michi_core::tree::Row::File { index, name, depth } => {
+                let x = rr.left() + LEFT + *depth as f32 * 12.0;
+                let f = &files[*index];
+                pb.text(pos2(x + 4.0, mid), Align2::CENTER_CENTER, f.status.letter(), FontId::monospace(11.0), status_ink(f.status));
+                clipped(ui, &pb, pos2(x + 14.0, mid), name, FontId::proportional(12.5), c.fg, right - x - 14.0);
+                if let (true, Some(id)) = (live && resp.clicked(), commit) {
+                    act = Some(TreeAct::Open(id));
+                }
+                resp.on_hover_text(&f.path);
+            }
+        }
+    }
+    match act {
+        Some(TreeAct::Fold(path)) => {
+            if !app.tree_folded.remove(&path) {
+                app.tree_folded.insert(path);
+            }
+        }
+        Some(TreeAct::Open(id)) => app.go_to(id),
         None => return,
     }
     ctx.request_repaint();
@@ -442,6 +603,52 @@ mod tests {
         assert_eq!(rows[at].kind, Kind::Group { key: "b:feat".into(), open: true, count: 2 });
         assert_eq!(texts(&rows)[at + 1..at + 3], ["a", "b"]);
         assert_eq!(rows[at + 2].tip.as_deref(), Some("feat/b"));
+    }
+
+    #[test]
+    fn the_divider_keeps_room_for_both_parts() {
+        assert_eq!(list_height(600.0, 0.5), Some(300.0));
+        assert_eq!(list_height(600.0, 0.01), Some(LIST_MIN));
+        assert_eq!(list_height(600.0, 0.99), Some(600.0 - TREE_MIN - 1.0));
+        assert_eq!(list_height(120.0, 0.5), None, "too short for a tree");
+    }
+
+    #[test]
+    fn the_tree_column_draws_with_changes_and_folds() {
+        let ctx = egui::Context::default();
+        let mut a = app();
+        let file = |path: &str| michi_core::show::File {
+            status: michi_core::show::Status::Modified,
+            path: path.into(),
+            from: None,
+            blob: None,
+            counts: Some((1, 0)),
+            hunks: Vec::new(),
+            eol_only: false,
+            cut: false,
+            not_utf8: false,
+        };
+        let wip = michi_core::wip::Wip {
+            path: "C:/r/wt".into(),
+            branch: Some("wip".into()),
+            head: id(2),
+            commit: id(9),
+            files: vec![file("src/a.rs"), file("src/b/c.rs"), file("README.md")],
+            written: None,
+            left_out: Vec::new(),
+            theirs: None,
+        };
+        a.wips = vec![wip];
+        a.tree_folded.insert("src/b".into());
+        for _ in 0..2 {
+            let input =
+                egui::RawInput { screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(220.0, 600.0))), ..Default::default() };
+            let mut out = ctx.run_ui(input, |ui| {
+                let r = ui.max_rect();
+                show(ui, &mut a, r, true);
+            });
+            out.textures_delta.clear();
+        }
     }
 
     #[test]

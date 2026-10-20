@@ -382,6 +382,8 @@ pub struct App {
     last_view: View,
     /// The side column's groups that are open (`b:feat`, `r:origin`).
     pub side_open: HashSet<String>,
+    /// The changed-files tree's folders that are folded (their paths).
+    pub tree_folded: HashSet<String>,
     /// A commit clicked in the side column that is not read yet: read on
     /// until it is, then select it.
     seeking: Option<Oid>,
@@ -556,6 +558,7 @@ impl App {
             conflicts: Conflicts::default(),
             last_view: View::Graph,
             side_open: HashSet::new(),
+            tree_folded: HashSet::new(),
             seeking: None,
             detail_wip: None,
             new_title: None,

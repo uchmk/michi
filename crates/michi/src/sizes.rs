@@ -24,6 +24,8 @@ pub struct Sizes {
     pub table: [f32; TABLE],
     /// The name column's share of the room the Claude column shares with it.
     pub name_share: f32,
+    /// The side column's share of its height that the lists keep; the changed-files tree has the rest.
+    pub tree: f32,
     file: Option<PathBuf>,
 }
 
@@ -38,6 +40,7 @@ impl Default for Sizes {
             hash: 64.0,
             table: [230.0, 180.0, 130.0, 130.0, 200.0, 250.0],
             name_share: 0.45,
+            tree: 0.62,
             file: None,
         }
     }
@@ -71,6 +74,7 @@ impl Sizes {
                 "author" if wide => self.author = v,
                 "date" if wide => self.date = v,
                 "hash" if wide => self.hash = v,
+                "tree_ratio" if ratio => self.tree = v,
                 "name_share" if (0.2..=0.8).contains(&v) => self.name_share = v,
                 k if wide => {
                     if let Some(n) = k.strip_prefix("table_").and_then(|n| n.parse::<usize>().ok()).filter(|n| *n < TABLE) {
@@ -97,6 +101,7 @@ wide_ratio = {:.3}
         for (n, v) in self.table.iter().enumerate() {
             out += &format!("table_{n} = {v:.0}\n");
         }
+        out += &format!("tree_ratio = {:.3}\n", self.tree);
         out + &format!("name_share = {:.2}\n", self.name_share)
     }
 
@@ -132,7 +137,7 @@ mod tests {
     fn what_was_written_reads_back_and_odd_lines_are_left() {
         let mut table = Sizes::default().table;
         table[2] = 99.0;
-        let s = Sizes { side: 0.3, table, name_share: 0.6, ..Sizes::default() };
+        let s = Sizes { side: 0.3, tree: 0.4, table, name_share: 0.6, ..Sizes::default() };
         let mut back = Sizes::default();
         back.read(&s.text());
         assert_eq!(back, s);
