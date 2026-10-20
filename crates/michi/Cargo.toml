@@ -16,36 +16,36 @@ name = "make-testcheck"
 test = true
 
 [build-dependencies]
-ito-winres = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
+ito-winres = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
 
 [dependencies]
 michi-core = { path = "../michi-core" }
 # Every ito crate at the same rev.
-ito-i18n = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0", features = ["edit"] }
-ito-layout = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0", features = ["egui"] }
-ito-common = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0", features = ["clock", "egui"] }
-ito-fonts = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0", features = ["egui"] }
-ito-select = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
-ito-confirm = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
-ito-theme = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
-ito-prefs = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
-ito-openin = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
-ito-graph = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0", features = ["egui"] }
-ito-match = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
+ito-i18n = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533", features = ["edit"] }
+ito-layout = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533", features = ["egui"] }
+ito-common = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533", features = ["clock", "egui"] }
+ito-fonts = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533", features = ["egui"] }
+ito-select = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
+ito-confirm = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
+ito-theme = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
+ito-prefs = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
+ito-openin = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
+ito-graph = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533", features = ["egui"] }
+ito-match = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
 # `michi.com` (src/bin/michi-com.rs) and the answers `say` writes.
-ito-keys = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0", features = ["egui"] }
-ito-keymap = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
-ito-help = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
-ito-palette = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
-ito-keyscript = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
-ito-bugreport = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
-ito-notify = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
-ito-titlebar = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
-ito-notices = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
-ito-console = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
+ito-keys = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533", features = ["egui"] }
+ito-keymap = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
+ito-help = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
+ito-palette = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
+ito-keyscript = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
+ito-bugreport = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
+ito-notify = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
+ito-titlebar = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
+ito-notices = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
+ito-console = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
 # `michi mcp` (src/mcp.rs).
-ito-mcp = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
-ito-ipc = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
+ito-mcp = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
+ito-ipc = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }
 # eframe's own defaults, but for `winit/default` (see tsumugi): the Wayland
 # frame is drawn without the title's text, which brings an unmaintained crate.
 eframe = { version = "0.36", default-features = false, features = ["accesskit", "default_fonts", "links", "wayland", "web_screen_reader", "wgpu", "x11"] }
@@ -60,4 +60,4 @@ toml = "1.1"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico"] }
 
 [dev-dependencies]
-ito-testcheck = { git = "https://github.com/uchmk/ito", rev = "7c89de0ea874f2225d9ab7cc6d53d20ec541fec0" }
+ito-testcheck = { git = "https://github.com/uchmk/ito", rev = "d6ed4c6d220470f85db03866aac66a98d4dfc533" }

@@ -752,6 +752,9 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
     }
     buttons.push(format!("{}  Esc", app.tr("changes.no")));
     debug_assert_eq!(buttons.len(), keys.len(), "the buttons and their keys are drawn in one order");
+    // ito-confirm sits the last button at the right: No on the left, yes at the right.
+    buttons.reverse();
+    let last = buttons.len() - 1;
     let body: Vec<String> = std::iter::once(b.text.clone()).chain(b.plan.iter().cloned()).collect();
     let q = ito_confirm::Question {
         title: app.tr(match b.strength {
@@ -764,9 +767,11 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
         notes: &notes,
         buttons: &buttons,
         hint: &hint.join(" · "),
-        focus: b.focus,
+        focus: b.focus.map(|f| last - f),
+        // The yes button is the one on the right.
+        primary: (!b.typing() && b.parents == 0).then_some(last),
     };
-    let clicked = ito_confirm::show(ui.ctx(), &q, &style);
+    let clicked = ito_confirm::show(ui.ctx(), &q, &style).map(|i| last - i);
     if let (true, Some(i)) = (live, clicked) {
         if app.band.as_ref().is_some_and(|b| b.typing()) {
             // The only button left is No; `n` would be a letter of the name.
