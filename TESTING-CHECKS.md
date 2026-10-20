@@ -86,7 +86,7 @@
 - [~] **6.4** Press `z`, then `z` again → The merges open (side lanes appear) with the toast "Unfolded all the merges."; again, they fold with a toast giving how many merges and commits; the header toggle follows (lit or grey) 〔未訳〕
 - [~] **6.5** Click the header toggle → The same as `z` 〔未訳〕
 - [~] **6.6** Select a folded merge with `j`, press `l` (or →), then `h` (or ←) → `l` opens it: the chip becomes `▾N` with a dashed outline and its commits show on their own lane; `h` folds it again 〔未訳〕
-- [ ] **6.7** Click a chip → Its merge opens or folds; the selection stays where it was 〔未訳〕
+- [~] **6.7** Click a chip → Its merge opens or folds; the selection stays where it was 〔未訳〕
 - [~] **6.8** Press `j` `k`, ↓ ↑, PageDown PageUp, Home End → The selected row (lit across) moves and the list scrolls to keep it in sight; End goes to the oldest row read so far 〔未訳〕
 - [~] **6.9** Click a row; scroll with the wheel → The row is selected; the wheel scrolls the list without moving the selection 〔未訳〕
 - [~] **6.10** Press `/` and type part of a subject, a hash or an author's name → The field at the right of the tool band takes the keys, with the count (`3 hits`) at its right; the text sits in the middle of the field; the other rows dim; the hits get marks on the scrollbar 〔未訳〕
