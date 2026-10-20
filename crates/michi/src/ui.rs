@@ -461,8 +461,14 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
     };
     let mut view = None;
     let mut settings = false;
-    let bar =
-        ito_titlebar::show(ui, &spec, |ui, rect| left_slot(ui, app, rect, &mut view), |ui, free| settings = right_slot(ui, app, free));
+    // ito-titlebar takes the bar to be its ui's whole rect, so it gets a ui of just the bar.
+    let mut bar_ui = ui.new_child(egui::UiBuilder::new().max_rect(r));
+    let bar = ito_titlebar::show(
+        &mut bar_ui,
+        &spec,
+        |ui, rect| left_slot(ui, app, rect, &mut view),
+        |ui, free| settings = right_slot(ui, app, free),
+    );
     if let Some(op) = bar.window {
         ito_titlebar::apply(&ctx, op, maximized);
     }
