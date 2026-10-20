@@ -159,14 +159,14 @@ All wait for the owner; none is started.
 - [ ] Tree view of changed files（要確認: #72）
 - [ ] Progress and cancel for long operations（要確認: #73）
 - [ ] Commit message help（要確認: #74）
-- [ ] Open the worktree in terminal / editor / explorer（要確認: #75）
+- [x] Open the worktree in terminal / editor / explorer（要確認: #75）
 - [x] autostash on pull / checkout (recommended option of #76): changes in the way are stashed, kept under `refs/michi/backup/`, and put back; a clash stays marked in the files（要確認: #76）
 - [x] reset: choose soft / mixed / hard（`R`、1 soft・2 mixed・3 hard。要確認: #77）
-- [ ] One-button sync（要確認: #78）
+- [x] One-button sync（要確認: #78）
 - [ ] Fuzzy pickers everywhere（要確認: #79）
-- [ ] Same strength of confirmation for destructive operations（要確認: #80）
+- [x] Same strength of confirmation for destructive operations（要確認: #80）
 - [x] First-run tour and empty states: no tour; the empty graph, a single worktree and a missing tsumugi each show one next step (recommended option of #81)（要確認: #81）
-- [ ] Key hints on hover（要確認: #82）
+- [x] Key hints on hover（要確認: #82）
 - [ ] Keys whose meaning changes per screen（要確認: #83）
 - [x] Author avatars（要確認: #84）
 - [ ] Bundled monospace font（要確認: #85）
@@ -204,7 +204,7 @@ All wait for the owner; none is started. Related: #64 (Undo), #74, #77, #80-#83.
 - [ ] Stop commits on the wrong branch（要確認: #110）
 - [ ] Warn about large files and secrets before committing（要確認: #111）
 - [ ] Show what a push will send（要確認: #112）
-- [ ] A "calm down" button that saves the current state（要確認: #113）
+- [x] A "calm down" button that saves the current state（要確認: #113）
 - [ ] Operation history（要確認: #114）
 - [ ] Basic and full modes（要確認: #115）
 - [ ] First-run setup guidance (git, name/email, auth)（要確認: #116）
