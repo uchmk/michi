@@ -536,7 +536,10 @@ fn changes_tree(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             }
         }
         Some(TreeAct::Open(id, path)) => {
-            app.go_to(id);
+            // The change is a row of the worktree's own, not of the history.
+            if let Some(wt) = app.wips.iter().find(|w| w.commit == id).map(|w| w.path.clone()) {
+                app.graph.select_wip(&wt);
+            }
             app.want_file = Some((id, path));
         }
         None => return,
