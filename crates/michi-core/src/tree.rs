@@ -41,6 +41,16 @@ struct Node {
 /// The rows for `files`, without those below a folder `folded` says is
 /// folded (given its path).
 pub fn rows(files: &[File], folded: impl Fn(&str) -> bool) -> Vec<Row> {
+    build(files, folded, false)
+}
+
+/// Like [`rows`], but folders and files share one order by name, as the
+/// flat list of a commit's files (in path order) has them.
+pub fn rows_by_name(files: &[File], folded: impl Fn(&str) -> bool) -> Vec<Row> {
+    build(files, folded, true)
+}
+
+fn build(files: &[File], folded: impl Fn(&str) -> bool, mixed: bool) -> Vec<Row> {
     let mut root = Node::default();
     for (index, f) in files.iter().enumerate() {
         let mut node = &mut root;
@@ -55,11 +65,12 @@ pub fn rows(files: &[File], folded: impl Fn(&str) -> bool) -> Vec<Row> {
         }
     }
     let mut out = Vec::new();
-    emit(&root, "", 0, &folded, &mut out);
+    emit(&root, "", 0, &folded, mixed, &mut out);
     out
 }
 
-fn emit(node: &Node, base: &str, depth: usize, folded: &impl Fn(&str) -> bool, out: &mut Vec<Row>) {
+fn emit(node: &Node, base: &str, depth: usize, folded: &impl Fn(&str) -> bool, mixed: bool, out: &mut Vec<Row>) {
+    let mut dirs = Vec::new();
     for (name, child) in &node.dirs {
         let (mut name, mut child) = (name.clone(), child);
         while child.files.is_empty() && child.dirs.len() == 1 {
@@ -67,17 +78,31 @@ fn emit(node: &Node, base: &str, depth: usize, folded: &impl Fn(&str) -> bool, o
             name = format!("{name}/{n}");
             child = c;
         }
-        let path = if base.is_empty() { name.clone() } else { format!("{base}/{name}") };
-        let is_folded = folded(&path);
-        out.push(Row::Dir { path: path.clone(), name, depth, files: child.count, folded: is_folded });
-        if !is_folded {
-            emit(child, &path, depth + 1, folded, out);
-        }
+        dirs.push((name, child));
     }
     let mut files = node.files.clone();
     files.sort();
-    for (name, index) in files {
-        out.push(Row::File { index, name, depth });
+    let mut dirs = dirs.into_iter().peekable();
+    let mut files = files.into_iter().peekable();
+    loop {
+        let dir_first = match (dirs.peek(), files.peek()) {
+            (Some((d, _)), Some((f, _))) => !mixed || d <= f,
+            (Some(_), None) => true,
+            (None, Some(_)) => false,
+            (None, None) => break,
+        };
+        if dir_first {
+            let (name, child) = dirs.next().expect("a folder");
+            let path = if base.is_empty() { name.clone() } else { format!("{base}/{name}") };
+            let is_folded = folded(&path);
+            out.push(Row::Dir { path: path.clone(), name, depth, files: child.count, folded: is_folded });
+            if !is_folded {
+                emit(child, &path, depth + 1, folded, mixed, out);
+            }
+        } else {
+            let (name, index) = files.next().expect("a file");
+            out.push(Row::File { index, name, depth });
+        }
     }
 }
 
@@ -117,6 +142,18 @@ mod tests {
             cut: false,
             not_utf8: false,
         }
+    }
+
+    #[test]
+    fn by_name_mixes_folders_and_files() {
+        let files = vec![file("src/app.rs", None), file("colors.txt", None), file("docs/g.md", None), file("names.txt", None)];
+        let names: Vec<_> = rows_by_name(&files, |_| true)
+            .iter()
+            .map(|r| match r {
+                Row::Dir { name, .. } | Row::File { name, .. } => name.clone(),
+            })
+            .collect();
+        assert_eq!(names, ["colors.txt", "docs", "names.txt", "src"]);
     }
 
     fn shape(rows: &[Row]) -> Vec<String> {

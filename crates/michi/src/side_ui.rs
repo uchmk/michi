@@ -460,7 +460,9 @@ fn changes_tree(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let p = ui.painter_at(r);
     let d = app.prefs.density;
     let (rows, files, commit, count) = match current_wip(app) {
-        Some(w) => (michi_core::tree::rows(&w.files, |f| app.tree_folded.contains(f)), w.files.clone(), Some(w.commit), w.files.len()),
+        Some(w) => {
+            (michi_core::tree::rows_by_name(&w.files, |f| app.tree_folded.contains(f)), w.files.clone(), Some(w.commit), w.files.len())
+        }
         None => (Vec::new(), Vec::new(), None, 0),
     };
     // The heading stays; the rows scroll under it.
@@ -521,7 +523,13 @@ fn changes_tree(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
                 let x = rr.left() + LEFT + *depth as f32 * 12.0;
                 let f = &files[*index];
                 pb.text(pos2(x + 4.0, mid), Align2::CENTER_CENTER, f.status.letter(), FontId::monospace(11.0), status_ink(f.status));
-                clipped(ui, &pb, pos2(x + 14.0, mid), name, FontId::proportional(12.5), c.fg, right - x - 14.0);
+                let mut end = right;
+                if let Some((a, dl)) = f.counts {
+                    let dr = pb.text(pos2(right, mid), Align2::RIGHT_CENTER, format!("−{dl}"), FontId::monospace(11.0), c.err);
+                    let ar = pb.text(pos2(dr.left() - 5.0, mid), Align2::RIGHT_CENTER, format!("+{a}"), FontId::monospace(11.0), c.done);
+                    end = ar.left() - 8.0;
+                }
+                clipped(ui, &pb, pos2(x + 14.0, mid), name, FontId::proportional(12.5), c.fg, end - x - 14.0);
                 if let (true, Some(id)) = (live && resp.clicked(), commit) {
                     act = Some(TreeAct::Open(id, f.path.clone()));
                 }
