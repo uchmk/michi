@@ -188,11 +188,24 @@ impl App {
         self.side_follow = true;
     }
 
+    fn side_scope_key(&mut self, c: char) {
+        if c == 'X' {
+            return self.scope_clear();
+        }
+        let full = rows(self).get(self.side_cur).and_then(|r| r.full.clone());
+        match (full, c) {
+            (Some(full), 'x') => self.scope_hide(&full),
+            (Some(full), _) => self.scope_solo(&full),
+            (None, _) => self.say(self.tr("side.scope_pick")),
+        }
+    }
+
     /// Enter on the side column's row: what a click on it does.
     fn side_activate(&mut self) {
         let rows = rows(self);
         let Some(row) = rows.get(self.side_cur) else { return };
         match (&row.kind, row.id) {
+            (Kind::Scope, _) => self.scope_clear(),
             (Kind::Group { key, .. }, _) => {
                 if !self.side_open.remove(key) {
                     self.side_open.insert(key.clone());
@@ -286,6 +299,8 @@ impl App {
             (GraphPane::Side, 'j') => self.side_move(1),
             (GraphPane::Side, 'k') => self.side_move(-1),
             (GraphPane::Side, 'l' | 'h') => {}
+            // Hide the branch from the graph, show only it, or all again (#71).
+            (GraphPane::Side, 'x' | 'o' | 'X') => self.side_scope_key(c),
             (GraphPane::Files, 'j') => self.files_move(1),
             (GraphPane::Files, 'k') => self.files_move(-1),
             (GraphPane::Files, 'l') => self.files_fold(true),
@@ -430,6 +445,29 @@ mod tests {
         assert!(a.pane == GraphPane::Side);
         assert!(a.pane_named("Enter"));
         assert!(a.side_open.contains("r:origin"));
+    }
+
+    #[test]
+    fn refs_in_the_side_column_carry_their_full_names_for_hiding() {
+        let mut a = app();
+        a.side_open.insert("r:origin".to_owned());
+        let rs = rows(&a);
+        for r in &rs {
+            match r.kind {
+                Kind::Branch { .. } if r.local.is_some() => {
+                    assert_eq!(r.full.as_deref(), Some(format!("refs/heads/{}", r.local.as_ref().unwrap()).as_str()))
+                }
+                Kind::Branch { .. } => assert!(r.full.as_deref().unwrap().starts_with("refs/remotes/origin/")),
+                Kind::Tag => assert!(r.full.as_deref().unwrap().starts_with("refs/tags/")),
+                _ => assert!(r.full.is_none() || matches!(r.kind, Kind::Worktree { .. })),
+            }
+            assert!(!r.off, "nothing is hidden by default");
+        }
+        assert!(rs.iter().all(|r| r.kind != Kind::Scope));
+        // A group has no ref: the key says so and changes nothing.
+        a.pane = GraphPane::Side;
+        a.side_cur = rs.iter().position(|r| matches!(r.kind, Kind::Group { .. })).unwrap();
+        assert!(a.pane_key('x') && a.pane_key('o') && a.pane_key('X'));
     }
 
     #[test]

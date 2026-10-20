@@ -1382,3 +1382,11 @@
 - [ ] **278.6** In a conflict with text places, look at a file head → An "Open in a tool" button sits left of "Restart"; clicking it opens the merge tool (the same as `w`), WinMerge with three panes when `merge` is set as in the settings screen 〔未訳〕
 - [ ] **278.7** Set `diff_tool = "winmerge"` in `[open]`, start michi, and press `w` in a conflict without opening the settings screen first → WinMerge opens with three panes (not Explorer) 〔未訳〕
 - [ ] **278.8** Double-click a local branch in the graph's left column (clean tree; then with uncommitted files; then mid-merge) → The worktree switches to it as `b` does; with uncommitted files a confirmation band comes first; mid-merge it is refused with the usual message. A branch checked out elsewhere is only said. A single click still selects its commit 〔未訳〕
+
+## 279. Hide / solo branches, stop a clone
+
+- [ ] **279.1** Right-click a local branch in the graph's left column and choose "Hide from graph" → The row is struck through with a hollow swatch; its commits leave the graph unless reachable from a shown branch; a "◐" row appears at the top 〔未訳〕
+- [ ] **279.2** Right-click a branch and choose "Show only this" → Only that branch's history stays in the graph; clicking the "◐" row (or `X` in the left column) shows every branch again 〔未訳〕
+- [ ] **279.3** In the left column, on a branch row press `x`, then `o`, then `X` → `x` hides / shows it, `o` shows only it / all again, `X` clears; on a row with no ref a toast says to pick a branch 〔未訳〕
+- [ ] **279.4** Start a clone of a big repository from `<C-o>` → The keybar shows "clone · Receiving objects NN%" with "Esc / click stops" 〔未訳〕
+- [ ] **279.5** Press Esc during the clone (then again with another clone, click the keybar status) → The clone stops, the half-made folder is gone, and a toast says so; the window stays on the old repository 〔未訳〕

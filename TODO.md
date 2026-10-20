@@ -112,20 +112,14 @@ All wait for the owner; none is started.
 - [x] Content search (pickaxe `s:`, regex `g:`) in the `/` filter, asked with Enter（要確認: #38）
 - [x] clone: paste an address in the repository screen (Ctrl+O) to clone beside the open repository, TESTING 239; init later（要確認: #39）
 - [x] Remote management: `M` in the graph lists the remotes, adds one (name then address) and removes one after a yes (TESTING 40)（要確認: #40）
-- [ ] Authentication guidance（要確認: #41）
 - [x] Gitflow: `G` starts a feature, release or hotfix and finishes the worktree flow branch with plain git (TESTING 242)（要確認: #42）
 - [x] Authentication guidance（要確認: #41）: a failed fetch, push or clone is classified from git's stderr (ssh key, host key, https login, expired token, SSO, network), the toast names the cause, and `K` (or the palette) opens a panel with the facts and numbered copy-only fix commands (TESTING 241)
-- [ ] Gitflow（要確認: #42）
 - [x] Built-in editor（要確認: #43）: no built-in editor (owner's answer); michi opens an external editor at a line (`e`, blame `e`, conflict `E`), the file's diff in an external diff tool (`x`) and a conflicted file in an external merge tool (`w`), configured on the Settings "External tools" page via ito-openin (TESTING 243)
-- [ ] Issue tracker integration（要確認: #44）
 - [x] Multi-repository tabs: Ctrl+O / Ctrl+T opens a repository in a tab, Ctrl+Tab / Ctrl+W / Alt+N, tabs kept between runs, TESTING 245（要確認: #45）
 - [x] Issue tracker integration（要確認: #44）（TESTING 244）
-- [ ] Multi-repository tabs / workspaces（要確認: #45）
 - [x] Patch export / apply（要確認: #46）
-- [ ] Statistics and contributor graphs（要確認: #47）
 - [x] Statistics and contributor graphs（要確認: #47）
 - [x] Diff extras (word diff was there already; ignore whitespace with `w`; images: side by side, swipe, onion, difference with `O` in the detail and the `2` view; the external diff tool is not built, it waits on uchmk/ito#20)（要確認: #48）
-- [ ] .gitignore editing（要確認: #49）
 - [x] reflog screen（要確認: #50）
 - [x] Commit search scope in the `/` filter（要確認: #51）
 - [x] Per-file operations (restore a version from the detail; "open" not done)（要確認: #52）
@@ -133,13 +127,9 @@ All wait for the owner; none is started.
 - [x] Co-Authored-By on michi commits (recommended option of #54: `[commit] co_author = "Name <email>"` in config.toml, off by default)（要確認: #54）
 - [x] Moving uncommitted changes between worktrees（要確認: #55）
 - [x] Conflict-prediction marks on the graph（要確認: #56）
-- [ ] Pre-merge checklist (test / verify results)（要確認: #57）
 - [x] Hook output and rerun on failure (`r` over a refused commit's panel runs it again; recommended option of #58)（要確認: #58）
 - [x] Speed target for very large repositories (recommended option of #59: budget in `scale.rs`, `bench-large` in CI; first screen from a real repository is checked by hand, TESTING 259)（要確認: #59）
-- [ ] Conflict-prediction marks on the graph（要確認: #56）
 - [x] Pre-merge checklist (test / verify results)（要確認: #57）
-- [ ] Hook output and rerun on failure（要確認: #58）
-- [ ] Speed target for very large repositories（要確認: #59）
 - [x] Accessibility（要確認: #60） — text size and themes come from ito; rows in TESTING.md 268; high-contrast/screen-reader crate-request noted
 - [x] Key list (`?`) and macOS Cmd check（要確認: #61） — Cmd spelling on macOS (keyhelp::native), TESTING.md 266
 - [x] Real-machine checks off Windows（要確認: #62） — macos and linux lanes, TESTING.md 267
@@ -150,30 +140,30 @@ All wait for the owner; none is started.
 
 - [x] Undo / Redo on one key（要確認: #64） — michi-core undo.rs (reset, delete, rename), Ctrl+Z / Ctrl+Shift+Z, TESTING.md 265
 - [x] Compare any two commits or branches（要確認: #65）
-- [ ] Context menus (commit, branch, file)（要確認: #66）
-- [ ] Drag and drop (merge / rebase / cherry-pick)（要確認: #67）
-- [ ] Syntax highlighting in diffs（要確認: #68）
+- [x] Context menus (commit, branch, file)（要確認: #66）
+- [x] Drag and drop (merge / rebase / cherry-pick)（要確認: #67）
+- [x] Syntax highlighting in diffs（要確認: #68）
 - [x] CI / PR state on the graph: a badge after the branch name (0.98.0)（要確認: #69）
 - [x] Auto fetch (recommended option of #70): while the window is in front, fetch every 5 minutes (`[net] auto_fetch` in config.toml, minutes, 0 is off); a failure shows small on the keybar, no toast（要確認: #70）
-- [ ] Hide / solo branches（要確認: #71）
-- [ ] Tree view of changed files（要確認: #72）
-- [ ] Progress and cancel for long operations（要確認: #73）
-- [ ] Commit message help（要確認: #74）
+- [x] Hide / solo branches（要確認: #71）
+- [x] Tree view of changed files（要確認: #72）
+- [x] Progress and cancel for long operations（要確認: #73）
+- [x] Commit message help（要確認: #74）
 - [x] Open the worktree in terminal / editor / explorer（要確認: #75）
 - [x] autostash on pull / checkout (recommended option of #76): changes in the way are stashed, kept under `refs/michi/backup/`, and put back; a clash stays marked in the files（要確認: #76）
 - [x] reset: choose soft / mixed / hard（`R`、1 soft・2 mixed・3 hard。要確認: #77）
 - [x] One-button sync（要確認: #78）
-- [ ] Fuzzy pickers everywhere（要確認: #79）
+- [x] Fuzzy pickers everywhere（要確認: #79）
 - [x] Same strength of confirmation for destructive operations（要確認: #80）
 - [x] First-run tour and empty states: no tour; the empty graph, a single worktree and a missing tsumugi each show one next step (recommended option of #81)（要確認: #81）
 - [x] Key hints on hover（要確認: #82）
-- [ ] Keys whose meaning changes per screen（要確認: #83）
+- [x] Keys whose meaning changes per screen（要確認: #83）
 - [x] Author avatars（要確認: #84）
-- [ ] Bundled monospace font（要確認: #85）
-- [ ] Row density (compact / cozy)（要確認: #86）
-- [ ] Diff minimap and next change（要確認: #87）
-- [ ] Short animations（要確認: #88）
-- [ ] HiDPI and Windows 11 frame checks（要確認: #89）
+- [x] Bundled monospace font（要確認: #85）
+- [x] Row density (compact / cozy)（要確認: #86）
+- [x] Diff minimap and next change（要確認: #87）
+- [x] Short animations（要確認: #88）
+- [x] HiDPI and Windows 11 frame checks（要確認: #89）
 - [x] Loading skeletons（要確認: #90）
 
 ## What only michi can do (2026-10-17)
@@ -182,38 +172,38 @@ Worktrees and parallel Claude work are the base; no other client has them.
 
 - [x] Snapshot and diff per Claude turn: `refs/michi/turn/<branch>/N` kept when a Claude stops, `y` / `Y` step through the diffs (TESTING 91)（要確認: #91）
 - [x] Suggested order to land worktrees on main: a "Land n of m" note in the worktree table (TESTING 92)（要確認: #92）
-- [ ] Land a worktree (merge in, verify, ff, clean up)（要確認: #93）
+- [x] Land a worktree (merge in, verify, ff, clean up)（要確認: #93）
 - [x] Review queue of finished Claude work: the worktree table's Review column (unreviewed / in review / flagged / approved) (TESTING 94)（要確認: #94）
-- [ ] From a commit to the Claude session that made it（要確認: #95）
+- [x] From a commit to the Claude session that made it（要確認: #95）
 - [x] Warn before a new task overlaps a running worktree（要確認: #97）
-- [ ] Answer a waiting Claude from a notification in one step（要確認: #98）
-- [ ] Hand-off of a conflict to Claude through to review, in one band（要確認: #99）
-- [ ] Trial merge of several worktrees in a chosen order（要確認: #100）
-- [ ] Ideas from the other uchmk apps (2026-10-17): drag-select copy through `ito-select` in the commit detail (v0.52.0; the changes, conflict and review panes too in v0.54.0) （要確認: #101）; `michi mcp` through `ito-mcp` / `ito-ipc` (v0.53.0, read-only: worktrees and conflicts; the shared pattern is asked of ito, ito#11) （要確認: #102）; PR / CI state from minato （要確認: #103）
+- [x] Answer a waiting Claude from a notification in one step（要確認: #98）
+- [x] Hand-off of a conflict to Claude through to review, in one band（要確認: #99）
+- [x] Trial merge of several worktrees in a chosen order（要確認: #100）
+- [x] Ideas from the other uchmk apps (2026-10-17): drag-select copy through `ito-select` in the commit detail (v0.52.0; the changes, conflict and review panes too in v0.54.0) （要確認: #101）; `michi mcp` through `ito-mcp` / `ito-ipc` (v0.53.0, read-only: worktrees and conflicts; the shared pattern is asked of ito, ito#11) （要確認: #102）; PR / CI state from minato （要確認: #103）
 
 ## Easy for beginners (2026-10-17)
 
 All wait for the owner; none is started. Related: #64 (Undo), #74, #77, #80-#83.
 
-- [ ] Plain-language display for Git terms（要確認: #104）
-- [ ] Hover glossary for terms on screen（要確認: #105）
-- [ ] Say what an operation will do before it runs（要確認: #106）
-- [ ] Always say where you are in plain words（要確認: #107）
-- [ ] Translate git errors into cause and next step（要確認: #108）
-- [ ] Explain detached HEAD and the way back（要確認: #109）
-- [ ] Stop commits on the wrong branch（要確認: #110）
-- [ ] Warn about large files and secrets before committing（要確認: #111）
-- [ ] Show what a push will send（要確認: #112）
+- [x] Plain-language display for Git terms（要確認: #104）
+- [x] Hover glossary for terms on screen（要確認: #105）
+- [x] Say what an operation will do before it runs（要確認: #106）
+- [x] Always say where you are in plain words（要確認: #107）
+- [x] Translate git errors into cause and next step（要確認: #108）
+- [x] Explain detached HEAD and the way back（要確認: #109）
+- [x] Stop commits on the wrong branch（要確認: #110）
+- [x] Warn about large files and secrets before committing（要確認: #111）
+- [x] Show what a push will send（要確認: #112）
 - [x] A "calm down" button that saves the current state（要確認: #113）
-- [ ] Operation history（要確認: #114）
-- [ ] Basic and full modes（要確認: #115）
-- [ ] First-run setup guidance (git, name/email, auth)（要確認: #116）
-- [ ] Practice repository（要確認: #117）
-- [ ] Legend for the graph symbols（要確認: #118）
-- [ ] Next-step suggestion from the current state（要確認: #119）
-- [ ] Diagram of stage and commit in Changes（要確認: #120）
-- [ ] Beginner explanation of conflicts（要確認: #121）
-- [ ] Explain worktrees（要確認: #122）
+- [x] Operation history（要確認: #114）
+- [x] Basic and full modes（要確認: #115）
+- [x] First-run setup guidance (git, name/email, auth)（要確認: #116）
+- [x] Practice repository（要確認: #117）
+- [x] Legend for the graph symbols（要確認: #118）
+- [x] Next-step suggestion from the current state（要確認: #119）
+- [x] Diagram of stage and commit in Changes（要確認: #120）
+- [x] Beginner explanation of conflicts（要確認: #121）
+- [x] Explain worktrees（要確認: #122）
 - [x] Keybar entries are clickable (#123); gaps still open: drag-select in the diff, moving by row without `j k`（要確認: #123）
 - [x] Commit message writing guide（要確認: #124）
 - [x] Unify Japanese and English terms（要確認: #125）

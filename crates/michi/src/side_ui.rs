@@ -69,6 +69,10 @@ pub struct Row {
     pub term: Option<&'static str>,
     /// A local branch's full name: a double-click switches to it.
     pub local: Option<String>,
+    /// The ref's full name (`refs/heads/x`), what hiding or showing only it is keyed by (#71).
+    pub full: Option<String>,
+    /// Not read into the graph: hidden, or not the one shown alone.
+    pub off: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -92,6 +96,8 @@ pub enum Kind {
     },
     Tag,
     Stash,
+    /// The branches shown are narrowed (#71): a click puts them all back.
+    Scope,
 }
 
 impl Row {
@@ -121,7 +127,21 @@ pub fn rows(app: &App) -> Vec<Row> {
         }
         None => String::new(),
     };
-    let item = |kind, text: String, sub, id, tip| Row { kind, text, sub, id, tip, note: String::new(), term: None, local: None };
+    let scope = app.reading.as_ref().map(|r| r.scope()).unwrap_or_default();
+    let item = |kind, text: String, sub, id, tip| Row {
+        kind,
+        text,
+        sub,
+        id,
+        tip,
+        note: String::new(),
+        term: None,
+        local: None,
+        full: None,
+        off: false,
+    };
+    // `row` for the ref `full`: kept by that name, struck through when it is out of the graph.
+    let with_ref = |row: Row, full: String| Row { off: scope.hides(&full), full: Some(full), ..row };
     let heading = |key: &'static str, n: usize| {
         // The headings that are Git's words are glossary terms (#104, #105).
         let term = match key {
@@ -134,8 +154,26 @@ pub fn rows(app: &App) -> Vec<Row> {
             Some(t) => app.term(key, t),
             None => app.tr(key).to_owned(),
         };
-        Row { kind: Kind::Heading(n), text, sub: false, id: None, tip: None, note: String::new(), term, local: None }
+        Row {
+            kind: Kind::Heading(n),
+            text,
+            sub: false,
+            id: None,
+            tip: None,
+            note: String::new(),
+            term,
+            local: None,
+            full: None,
+            off: false,
+        }
     };
+    if !scope.is_all() {
+        let text = match &scope.solo {
+            Some(s) => app.tr("side.scope_solo").replace("{}", s.rsplit('/').next().unwrap_or(s)),
+            None => app.tr("side.scope_hidden").replace("{}", &scope.hidden.len().to_string()),
+        };
+        out.push(item(Kind::Scope, text, false, None, None));
+    }
 
     // The worktrees; the one the window is on lit.
     let top = match &app.repo {
@@ -152,7 +190,11 @@ pub fn rows(app: &App) -> Vec<Row> {
             let cur = top.as_deref() == Some(paths::key(&w.path).as_str());
             let note = note(w.branch.as_deref());
             let row = item(Kind::Worktree { color: g.color_of(&text), cur }, text, false, Oid::parse(&w.head), Some(path.into_owned()));
-            out.push(Row { note, ..row });
+            let row = Row { note, ..row };
+            out.push(match w.branch.as_ref().map(|b| format!("refs/heads/{b}")) {
+                Some(full) => with_ref(row, full),
+                None => row,
+            });
         }
     }
 
@@ -163,7 +205,8 @@ pub fn rows(app: &App) -> Vec<Row> {
         out.push(heading("side.branches", locals.len()));
         for r in locals.iter().filter(|r| !r.name.contains('/')) {
             let row = item(Kind::Branch { color: g.color_of(&r.name) }, r.name.clone(), false, Some(r.id), None);
-            out.push(Row { note: note(Some(&r.name)), local: Some(r.name.clone()), ..row });
+            let row = Row { note: note(Some(&r.name)), local: Some(r.name.clone()), ..row };
+            out.push(with_ref(row, format!("refs/heads/{}", r.name)));
         }
         // One pass for the groups (not one per prefix), in the prefixes' order.
         let mut groups: std::collections::BTreeMap<&str, Vec<_>> = std::collections::BTreeMap::new();
@@ -180,7 +223,8 @@ pub fn rows(app: &App) -> Vec<Row> {
                 for r in members {
                     let rest = r.name[prefix.len() + 1..].to_owned();
                     let row = item(Kind::Branch { color: g.color_of(&r.name) }, rest, true, Some(r.id), Some(r.name.clone()));
-                    out.push(Row { note: note(Some(&r.name)), local: Some(r.name.clone()), ..row });
+                    let row = Row { note: note(Some(&r.name)), local: Some(r.name.clone()), ..row };
+                    out.push(with_ref(row, format!("refs/heads/{}", r.name)));
                 }
             }
         }
@@ -201,7 +245,11 @@ pub fn rows(app: &App) -> Vec<Row> {
             if open {
                 for r in members {
                     let full = format!("{}/{}", r.remote, r.name);
-                    out.push(item(Kind::Branch { color: g.color_of(&r.name) }, r.name.clone(), true, Some(r.id), Some(full)));
+                    let refname = format!("refs/remotes/{full}");
+                    out.push(with_ref(
+                        item(Kind::Branch { color: g.color_of(&r.name) }, r.name.clone(), true, Some(r.id), Some(full)),
+                        refname,
+                    ));
                 }
             }
         }
@@ -211,7 +259,7 @@ pub fn rows(app: &App) -> Vec<Row> {
     if !tags.is_empty() {
         out.push(heading("side.tags", tags.len()));
         for t in tags {
-            out.push(item(Kind::Tag, t.name.clone(), false, Some(t.id), None));
+            out.push(with_ref(item(Kind::Tag, t.name.clone(), false, Some(t.id), None), format!("refs/tags/{}", t.name)));
         }
     }
 
@@ -234,6 +282,11 @@ enum Act {
     Switch(String),
     Stash(Oid),
     Toggle(String),
+    ClearScope,
+    /// Hide or show a ref (the menu).
+    Hide(String),
+    /// Show only a ref, or all again.
+    Solo(String),
 }
 
 /// The side column in `r`.
@@ -295,7 +348,7 @@ pub fn show(ui: &mut Ui, app: &mut App, full: Rect, live: bool) {
             }
             continue;
         }
-        let clickable = row.id.is_some() || matches!(row.kind, Kind::Group { .. });
+        let clickable = row.id.is_some() || matches!(row.kind, Kind::Group { .. } | Kind::Scope);
         let draggable = matches!(row.kind, Kind::Branch { .. }) && row.id.is_some();
         let sense = if draggable {
             Sense::click_and_drag()
@@ -347,11 +400,28 @@ pub fn show(ui: &mut Ui, app: &mut App, full: Rect, live: bool) {
                 }
                 continue;
             }
+            Kind::Scope => {
+                p.text(pos2(x + 4.0, mid), Align2::CENTER_CENTER, "◐", FontId::proportional(12.0), crate::ui::accent());
+                x += 14.0;
+                clipped(ui, &p, pos2(x, mid), &row.text, FontId::proportional(12.5), crate::ui::accent(), right - x);
+                if hot {
+                    ctx.set_cursor_icon(CursorIcon::PointingHand);
+                }
+                if live && resp.clicked() {
+                    act = Some(Act::ClearScope);
+                }
+                resp.on_hover_text(app.tr("side.scope_clear"));
+                continue;
+            }
             Kind::Worktree { color, cur } => {
                 swatch(&p, pos2(x + 4.0, mid), ansi[*color as usize & 15]);
                 if *cur {
                     ink = c.run;
                 }
+            }
+            Kind::Branch { .. } if row.off => {
+                p.rect_stroke(Rect::from_center_size(pos2(x + 4.0, mid), vec2(8.0, 8.0)), 1.0, Stroke::new(1.0, c.dim), StrokeKind::Inside);
+                ink = c.dim;
             }
             Kind::Branch { color } => swatch(&p, pos2(x + 4.0, mid), ansi[*color as usize & 15]),
             Kind::Tag => {
@@ -373,6 +443,27 @@ pub fn show(ui: &mut Ui, app: &mut App, full: Rect, live: bool) {
             end = n.left() - 6.0;
         }
         clipped(ui, &p, pos2(x, mid), &row.text, FontId::proportional(12.5), ink, end - x);
+        if row.off {
+            let w = ui.fonts_mut(|f| f.layout_no_wrap(row.text.clone(), FontId::proportional(12.5), ink)).size().x.min(end - x);
+            p.line_segment([pos2(x, mid), pos2(x + w, mid)], Stroke::new(1.0, c.dim));
+        }
+        if let (true, Some(full)) = (live, &row.full) {
+            let (off, solo) = (row.off, app.reading.as_ref().is_some_and(|r| r.scope().solo.is_some()));
+            resp.context_menu(|ui| {
+                if !solo {
+                    let label = app.tr(if off { "side.menu_show" } else { "side.menu_hide" });
+                    if ui.button(label).clicked() {
+                        act = Some(Act::Hide(full.clone()));
+                        ui.close();
+                    }
+                }
+                let label = app.tr(if solo && !off { "side.menu_all" } else { "side.menu_solo" });
+                if ui.button(label).clicked() {
+                    act = Some(Act::Solo(full.clone()));
+                    ui.close();
+                }
+            });
+        }
         if hot && row.id.is_some() {
             ctx.set_cursor_icon(CursorIcon::PointingHand);
         }
@@ -409,9 +500,42 @@ pub fn show(ui: &mut Ui, app: &mut App, full: Rect, live: bool) {
                 app.side_open.insert(key);
             }
         }
+        Some(Act::ClearScope) => app.scope_clear(),
+        Some(Act::Hide(full)) => app.scope_hide(&full),
+        Some(Act::Solo(full)) => app.scope_solo(&full),
         None => return,
     }
     ctx.request_repaint();
+}
+
+impl App {
+    fn scope_change(&mut self, f: impl FnOnce(&mut michi_core::log::Scope)) {
+        let Some(r) = &self.reading else { return };
+        let mut scope = r.scope();
+        let before = scope.clone();
+        f(&mut scope);
+        if scope == before {
+            return;
+        }
+        let text = self.tr(if scope.is_all() { "side.scope_all" } else { "side.scope_changed" }).to_owned();
+        r.set_scope(scope);
+        self.say(text);
+    }
+
+    /// Hide the branch `full` from the graph, or show it again (#71).
+    pub fn scope_hide(&mut self, full: &str) {
+        self.scope_change(|s| s.toggle_hidden(full));
+    }
+
+    /// Show only the branch `full` in the graph, or all again (#71).
+    pub fn scope_solo(&mut self, full: &str) {
+        self.scope_change(|s| s.toggle_solo(full));
+    }
+
+    /// Show every branch again (#71).
+    pub fn scope_clear(&mut self) {
+        self.scope_change(|s| s.clear());
+    }
 }
 
 /// The line between the lists and the tree, dragged up and down; the share

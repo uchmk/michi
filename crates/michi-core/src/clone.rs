@@ -82,10 +82,49 @@ pub fn run(url: &str, dest: &Path) -> Result<(), git::Error> {
     Err(git::refused_all(&String::from_utf8_lossy(&out.stderr)))
 }
 
+/// Like [`run`], telling git's progress as it comes and stopping when `stop`
+/// is set: `Ok(false)` then, with the half-made folder taken away when this
+/// call made it.
+pub fn run_stoppable(
+    url: &str,
+    dest: &Path,
+    stop: &std::sync::atomic::AtomicBool,
+    tell: &mut dyn FnMut(crate::net::Progress),
+) -> Result<bool, git::Error> {
+    let existed = dest.exists();
+    let mut c = git::command();
+    c.args(["clone", "--progress", "--"]).arg(url).arg(dest);
+    let said = crate::net::run(c, stop, tell)?;
+    if matches!(&said, Some(s) if s.ok) {
+        return Ok(true);
+    }
+    if !existed {
+        let _ = std::fs::remove_dir_all(dest);
+    }
+    match said {
+        Some(s) => Err(s.refused()),
+        None => Ok(false),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::testrepo::TempRepo;
+
+    #[test]
+    fn a_stoppable_clone_clones_and_a_stopped_one_leaves_no_folder() {
+        use std::sync::atomic::AtomicBool;
+        let t = TempRepo::new("clone-stoppable");
+        let url = t.repo.to_string_lossy().into_owned();
+        let parent = t.root.join("dests");
+        std::fs::create_dir_all(&parent).unwrap();
+        let (a, b) = (parent.join("a"), parent.join("b"));
+        assert!(run_stoppable(&url, &a, &AtomicBool::new(false), &mut |_| {}).unwrap());
+        assert!(a.join(".git").exists());
+        assert!(!run_stoppable(&url, &b, &AtomicBool::new(true), &mut |_| {}).unwrap());
+        assert!(!b.exists(), "the half-made folder is taken away");
+    }
 
     #[test]
     fn addresses_are_told_from_paths_and_searches() {

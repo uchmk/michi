@@ -6,7 +6,9 @@
 //! only a repository replaces the one in the window.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver};
+use std::sync::{Arc, Mutex};
 
 use eframe::egui::{self, Key, Modifiers};
 use ito_palette::{Answer, Entry, Style, Tone, View, Words};
@@ -32,7 +34,22 @@ pub struct Cloning {
     pub dest: PathBuf,
     /// The address being cloned, for the sign-in help when it fails.
     pub url: String,
-    pub answer: Receiver<Result<(), michi_core::git::Error>>,
+    /// `Ok(true)` cloned, `Ok(false)` stopped (the half-made folder is gone).
+    pub answer: Receiver<Result<bool, michi_core::git::Error>>,
+    /// Set to stop it (Esc, or a click on the keybar's status).
+    pub stop: Arc<AtomicBool>,
+    /// The last progress git told.
+    pub progress: Arc<Mutex<Option<michi_core::net::Progress>>>,
+}
+
+impl Cloning {
+    pub fn stopping(&self) -> bool {
+        self.stop.load(Ordering::Relaxed)
+    }
+
+    pub fn progress(&self) -> Option<michi_core::net::Progress> {
+        self.progress.lock().ok().and_then(|p| p.clone())
+    }
 }
 
 /// The row that clones what `query` asks for into `parent` (the folder
@@ -194,12 +211,21 @@ impl App {
         let text = self.tr("repos.cloning").replace("{}", &url);
         self.say_for(text, 8);
         let (tx, answer) = mpsc::channel();
-        let (d, ctx, u) = (dest.clone(), ctx.clone(), url.clone());
+        let stop = Arc::new(AtomicBool::new(false));
+        let progress = Arc::new(Mutex::new(None));
+        let (d, ctx, u, s, pr) = (dest.clone(), ctx.clone(), url.clone(), stop.clone(), progress.clone());
         std::thread::spawn(move || {
-            let _ = tx.send(clone::run(&u, &d));
+            let tell_ctx = ctx.clone();
+            let mut tell = |p: michi_core::net::Progress| {
+                if let Ok(mut g) = pr.lock() {
+                    *g = Some(p);
+                }
+                tell_ctx.request_repaint();
+            };
+            let _ = tx.send(clone::run_stoppable(&u, &d, &s, &mut tell));
             ctx.request_repaint();
         });
-        self.cloning = Some(Cloning { dest, url, answer });
+        self.cloning = Some(Cloning { dest, url, answer, stop, progress });
     }
 
     pub fn forget_repo(&mut self, dir: &Path) {

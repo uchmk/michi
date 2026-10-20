@@ -431,6 +431,16 @@ impl App {
 
     /// Esc with nothing else to close: stop the job that runs.
     pub(crate) fn net_stop(&mut self) -> bool {
+        if self.net.is_none() {
+            let Some(c) = &self.cloning else { return false };
+            if c.stopping() {
+                return false;
+            }
+            c.stop.store(true, Ordering::Relaxed);
+            let text = self.tr("net.stopping").replace("{}", "clone");
+            self.say(text);
+            return true;
+        }
         let Some(n) = &self.net else { return false };
         if n.stopping() {
             return false;
@@ -731,6 +741,24 @@ mod tests {
         a.net_done(Job::Fetch, Ok(Done::Stopped));
         assert!(a.net.is_none());
         assert_eq!(toast(&a), "fetch stopped");
+    }
+
+    #[test]
+    fn esc_stops_a_clone_too() {
+        let mut a = app();
+        let (_tx, answer) = std::sync::mpsc::channel();
+        let stop = Arc::new(AtomicBool::new(false));
+        a.cloning = Some(crate::repos::Cloning {
+            dest: PathBuf::from("/r/x"),
+            url: "u".into(),
+            answer,
+            stop: stop.clone(),
+            progress: Arc::new(std::sync::Mutex::new(None)),
+        });
+        assert!(a.escape());
+        assert!(stop.load(Ordering::Relaxed));
+        assert_eq!(toast(&a), "Stopping clone…");
+        assert!(!a.escape());
     }
 
     #[test]

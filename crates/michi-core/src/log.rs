@@ -28,10 +28,71 @@ const FORMAT: &str = "--format=%H%n%P%n%an%n%ae%n%at%n%s";
 
 /// Where the history starts: every branch, remote branch and tag, and the
 /// commits `tips` (the worktrees' heads, detached ones too).
-fn args(tips: &[Oid]) -> Vec<String> {
-    let mut a: Vec<String> = ["--branches", "--remotes", "--tags"].map(String::from).to_vec();
+fn args(tips: &[Oid], scope: &Scope) -> Vec<String> {
+    if let Some(solo) = &scope.solo {
+        return vec![solo.clone()];
+    }
+    let mut a: Vec<String> = Vec::new();
+    for (pseudo, prefix) in [("--branches", "refs/heads/"), ("--remotes", "refs/remotes/"), ("--tags", "refs/tags/")] {
+        // `--exclude` holds for the next pseudo-ref option only, so it is said again before each,
+        // and it takes the name without that option's prefix.
+        a.extend(scope.hidden.iter().filter_map(|h| h.strip_prefix(prefix)).map(|h| format!("--exclude={h}")));
+        a.push(pseudo.to_owned());
+    }
     a.extend(tips.iter().filter(|t| !t.is_zero()).map(Oid::to_string));
     a
+}
+
+/// Which branches the history is read from (issue #71): the whole of it by
+/// default, without the `hidden` refs, or only the `solo` ref and what it
+/// reaches. Refs are full names (`refs/heads/x`, `refs/remotes/origin/x`,
+/// `refs/tags/v1`). A commit that a shown ref reaches stays shown.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Scope {
+    pub hidden: std::collections::BTreeSet<String>,
+    pub solo: Option<String>,
+}
+
+impl Scope {
+    /// Whether everything is shown.
+    pub fn is_all(&self) -> bool {
+        self.hidden.is_empty() && self.solo.is_none()
+    }
+
+    /// Whether `full` is not read from (hidden, or not the solo one).
+    pub fn hides(&self, full: &str) -> bool {
+        match &self.solo {
+            Some(s) => s != full,
+            None => self.hidden.contains(full),
+        }
+    }
+
+    /// Hide `full` if it is shown, show it if hidden. Leaves solo.
+    pub fn toggle_hidden(&mut self, full: &str) {
+        self.solo = None;
+        if !self.hidden.remove(full) {
+            self.hidden.insert(full.to_owned());
+        }
+    }
+
+    /// Show only `full`; again on the one that is solo, show all.
+    pub fn toggle_solo(&mut self, full: &str) {
+        self.solo = if self.solo.as_deref() == Some(full) { None } else { Some(full.to_owned()) };
+    }
+
+    /// Show everything again.
+    pub fn clear(&mut self) {
+        self.hidden.clear();
+        self.solo = None;
+    }
+
+    /// Drop refs that no longer exist (`exists` says whether one does).
+    pub fn retain(&mut self, exists: impl Fn(&str) -> bool) {
+        self.hidden.retain(|h| exists(h));
+        if self.solo.as_deref().is_some_and(|s| !exists(s)) {
+            self.solo = None;
+        }
+    }
 }
 
 /// A `git log` read a batch at a time. Dropping it stops git.
@@ -42,9 +103,14 @@ pub struct Reader {
 
 impl Reader {
     pub fn start(dir: &Path, tips: &[Oid]) -> Result<Reader, git::Error> {
+        Self::start_in(dir, tips, &Scope::default())
+    }
+
+    /// Like [`start`](Self::start), read within `scope`.
+    pub fn start_in(dir: &Path, tips: &[Oid], scope: &Scope) -> Result<Reader, git::Error> {
         let mut c = git::command();
         c.arg("-C").arg(dir);
-        c.args(["log", "-z", "--date-order", "--no-show-signature", "--encoding=UTF-8", FORMAT]).args(args(tips));
+        c.args(["log", "-z", "--date-order", "--no-show-signature", "--encoding=UTF-8", FORMAT]).args(args(tips, scope));
         Ok(Reader { run: git::Running::start(c, "log")?, done: false })
     }
 
@@ -96,8 +162,13 @@ fn parse(record: &[u8]) -> Option<Commit> {
 
 /// How many commits the whole history has (what [`Reader`] would read).
 pub fn count(dir: &Path, tips: &[Oid]) -> Result<u64, git::Error> {
+    count_in(dir, tips, &Scope::default())
+}
+
+/// Like [`count`], within `scope`.
+pub fn count_in(dir: &Path, tips: &[Oid], scope: &Scope) -> Result<u64, git::Error> {
     let mut a = vec!["rev-list".to_owned(), "--count".to_owned()];
-    a.extend(args(tips));
+    a.extend(args(tips, scope));
     let a: Vec<&str> = a.iter().map(String::as_str).collect();
     let text = git::read_text(dir, &a)?;
     text.trim().parse().map_err(|_| git::Error::Io(format!("unexpected `git rev-list --count`: {text}")))
@@ -198,6 +269,64 @@ mod tests {
         assert!(first[1].time > crate::testrepo::START && first[1].time < first[0].time);
         assert!(log.next_batch(10).unwrap().is_empty());
         assert_eq!(count(&r.repo, &tips).unwrap(), 6);
+    }
+
+    fn subjects(r: &TempRepo, scope: &Scope) -> Vec<String> {
+        let mut log = Reader::start_in(&r.repo, &[], scope).unwrap();
+        log.next_batch(50).unwrap().into_iter().map(|c| c.subject).collect()
+    }
+
+    #[test]
+    fn hiding_and_soloing_a_branch_narrow_the_history() {
+        let r = TempRepo::new("log-scope");
+        r.git(&r.repo, &["checkout", "-q", "-b", "feat"]);
+        r.git(&r.repo, &["commit", "-q", "--allow-empty", "-m", "on-feat"]);
+        r.git(&r.repo, &["checkout", "-q", "main"]);
+        r.git(&r.repo, &["commit", "-q", "--allow-empty", "-m", "on-main"]);
+        let mut scope = Scope::default();
+        assert!(scope.is_all());
+        assert_eq!(subjects(&r, &scope).len(), 3);
+        assert_eq!(count_in(&r.repo, &[], &scope).unwrap(), 3);
+
+        // Hidden: its own commits go, what main reaches stays.
+        scope.toggle_hidden("refs/heads/feat");
+        assert!(scope.hides("refs/heads/feat") && !scope.hides("refs/heads/main"));
+        assert_eq!(subjects(&r, &scope), ["on-main", "first"]);
+        assert_eq!(count_in(&r.repo, &[], &scope).unwrap(), 2);
+        scope.toggle_hidden("refs/heads/feat");
+        assert!(scope.is_all());
+
+        // Solo: only that branch and its ancestors.
+        scope.toggle_solo("refs/heads/feat");
+        assert!(scope.hides("refs/heads/main"));
+        assert_eq!(subjects(&r, &scope), ["on-feat", "first"]);
+        scope.toggle_solo("refs/heads/feat");
+        assert!(scope.is_all());
+
+        // A commit a shown branch reaches stays even if the branch at it is hidden.
+        r.git(&r.repo, &["branch", "at-first", "main~1"]);
+        scope.toggle_hidden("refs/heads/at-first");
+        assert_eq!(subjects(&r, &scope).len(), 3);
+        scope.retain(|f| f != "refs/heads/at-first");
+        assert!(scope.is_all());
+    }
+
+    #[test]
+    fn hidden_remote_branches_and_tags_go_too() {
+        let r = TempRepo::new("log-scope-refs");
+        r.git(&r.repo, &["commit", "-q", "--allow-empty", "-m", "tagged"]);
+        r.git(&r.repo, &["tag", "v1"]);
+        r.git(&r.repo, &["commit", "-q", "--allow-empty", "-m", "head"]);
+        r.git(&r.repo, &["update-ref", "refs/remotes/origin/side", "HEAD"]);
+        r.git(&r.repo, &["checkout", "-q", "--detach", "HEAD~1"]);
+        r.git(&r.repo, &["branch", "-q", "-f", "main", "HEAD~1"]);
+        let mut scope = Scope::default();
+        assert_eq!(subjects(&r, &scope).len(), 3);
+        scope.toggle_hidden("refs/remotes/origin/side");
+        assert_eq!(subjects(&r, &scope), ["tagged", "first"]);
+        scope.clear();
+        scope.toggle_hidden("refs/tags/v1");
+        assert_eq!(subjects(&r, &scope).len(), 3, "the other refs still reach it");
     }
 
     #[test]

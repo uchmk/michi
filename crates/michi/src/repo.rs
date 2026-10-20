@@ -35,7 +35,7 @@ use std::collections::{BTreeSet, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
 use michi_core::change::{self, Places};
@@ -47,7 +47,7 @@ use michi_core::git::{self, Version};
 use michi_core::history::Setup;
 use michi_core::identity;
 use michi_core::ignore;
-use michi_core::log::{self, Commit, Reader};
+use michi_core::log::{self, Commit, Reader, Scope};
 use michi_core::net::{self, Progress};
 use michi_core::oid::Oid;
 use michi_core::queue::{self, Reviews};
@@ -174,6 +174,8 @@ pub struct Reading {
     nets: Sender<Order>,
     /// The branches, tags and reverts to do.
     acts: Sender<Task>,
+    /// Which branches the history is read from (#71); the reading thread takes it at each start.
+    scope: Arc<Mutex<Scope>>,
 }
 
 /// What the window, and the folders' watcher, tell the watching thread.
@@ -263,6 +265,17 @@ impl Reading {
     pub fn act(&self, task: Task) {
         let _ = self.acts.send(task);
     }
+
+    /// The branches the history is read from.
+    pub fn scope(&self) -> Scope {
+        self.scope.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    /// Read the history again from `scope`.
+    pub fn set_scope(&self, scope: Scope) {
+        *self.scope.lock().unwrap_or_else(|e| e.into_inner()) = scope;
+        let _ = self.asks.send(Ask::Reload);
+    }
 }
 
 impl Drop for Reading {
@@ -341,6 +354,7 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         };
         networks(&net_dir, &net_rx, &net_pokes, send);
     });
+    let scope = Arc::new(Mutex::new(Scope::default()));
     let (acts, act_rx) = mpsc::channel();
     let (act_tx, act_dir, act_ctx, act_pokes, act_asks) = (tx.clone(), dir.clone(), ctx.clone(), pokes.clone(), asks.clone());
     // No thread for the tasks: none ends.
@@ -371,6 +385,7 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         }
     });
     let thread_tx = tx.clone();
+    let thread_scope = scope.clone();
     let spawned = std::thread::Builder::new().name("repo".into()).spawn(move || {
         let send = |a: Answer| {
             let _ = thread_tx.send(a);
@@ -384,14 +399,14 @@ pub fn start(dir: PathBuf, ctx: egui::Context) -> Reading {
         send(Answer::Summary(summary));
         if ok {
             send(Answer::IssueSlug(michi_core::issues::slug_of(&dir).ok().flatten()));
-            history(&dir, setup, &ask_rx, send);
+            history(&dir, setup, &ask_rx, &thread_scope, send);
         }
     });
     if let Err(e) = spawned {
         // No thread: say so where the summary would have gone.
         let _ = tx.send(Answer::Summary(Err(git::Error::Io(e.to_string()))));
     }
-    Reading { answers, asks, wants, latest, pokes, looks, look_latest, stages, stage_latest, nets, acts }
+    Reading { answers, asks, wants, latest, pokes, looks, look_latest, stages, stage_latest, nets, acts, scope }
 }
 
 /// Runs each fetch, pull and push in turn, telling git's progress as it
@@ -922,7 +937,7 @@ pub(crate) fn first(dir: &Path) -> (Result<Version, git::Error>, Result<Summary,
 
 /// Reads the history of `dir`, once per generation, until the window is
 /// gone; the first reading with the setup read already.
-fn history(dir: &Path, first: Result<Setup, git::Error>, asks: &Receiver<Ask>, send: impl Fn(Answer)) {
+fn history(dir: &Path, first: Result<Setup, git::Error>, asks: &Receiver<Ask>, scope: &Mutex<Scope>, send: impl Fn(Answer)) {
     let mut first = Some(first);
     let mut gen = 0;
     let mut graph_asked = false;
@@ -932,7 +947,8 @@ fn history(dir: &Path, first: Result<Setup, git::Error>, asks: &Receiver<Ask>, s
         // is met by this reading.
         while asks.try_recv().is_ok() {}
         let setup = first.take().unwrap_or_else(|| Setup::read(dir));
-        match read(dir, gen, setup, asks, &mut graph_asked, &send) {
+        let now = scope.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        match read(dir, gen, setup, &now, asks, &mut graph_asked, &send) {
             Next::Reload => {}
             Next::Stop => return,
         }
@@ -948,6 +964,7 @@ fn read(
     dir: &Path,
     gen: u32,
     setup: Result<Setup, git::Error>,
+    scope: &Scope,
     asks: &Receiver<Ask>,
     graph_asked: &mut bool,
     send: &impl Fn(Answer),
@@ -960,9 +977,9 @@ fn read(
         Ok(s) => s,
         Err(e) => return failed(e),
     };
-    let heads = setup.heads();
+    let heads = setup.heads_in(scope);
     send(Answer::Setup { gen, setup: Box::new(setup) });
-    let mut log = match Reader::start(dir, &heads) {
+    let mut log = match Reader::start_in(dir, &heads, scope) {
         Ok(l) => l,
         Err(e) => return failed(e),
     };
@@ -980,7 +997,7 @@ fn read(
         return wait_reload(asks);
     }
     if !log.done() {
-        if let Ok(count) = log::count(dir, &heads) {
+        if let Ok(count) = log::count_in(dir, &heads, scope) {
             send(Answer::Total { gen, count });
         }
         // A history longer than the first batch: once the first screen is

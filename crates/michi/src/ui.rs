@@ -79,6 +79,8 @@ pub struct Out {
     pub calm: bool,
     /// The suggested next step's button was pressed (#119).
     pub next: bool,
+    /// The running network job's status in the keybar was clicked: stop it (#73).
+    pub stop_net: bool,
     /// Between the title bar and the keybar: where the settings go.
     pub body: Rect,
 }
@@ -102,8 +104,18 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     let here_r = here.as_ref().map(|_| Rect::from_min_size(under, vec2(rect.width(), WHERE_H)));
     let top = under + vec2(0.0, strip.map_or(0.0, |s| s.height()) + here_r.map_or(0.0, |r| r.height()));
     let body = Rect::from_min_max(top, keybar.right_top());
-    let mut out =
-        Out { view: None, settings: false, palette: false, bell: false, bell_rect: None, key: None, calm: false, next: false, body };
+    let mut out = Out {
+        view: None,
+        settings: false,
+        palette: false,
+        bell: false,
+        bell_rect: None,
+        key: None,
+        calm: false,
+        next: false,
+        stop_net: false,
+        body,
+    };
     if app.mode != Mode::Settings {
         // The key list goes over the view; the mouse is the list's then.
         // The columns stay clear of the window's resize edge.
@@ -815,6 +827,23 @@ fn net_status(ui: &Ui, app: &App, p: &egui::Painter, right: f32, mid: f32) -> f3
         paint_icon(p, pos2(t.left() - 9.0, mid), icon, c.wait);
         return t.left() - 18.0 - 14.0;
     }
+    if let Some(cl) = &app.cloning {
+        let hint = p.text(pos2(right, mid), Align2::RIGHT_CENTER, app.tr("net.stop_hint"), font.clone(), c.dim);
+        let mut s = "clone".to_owned();
+        if let Some(pr) = cl.progress() {
+            s.push_str(" · ");
+            s.push_str(&pr.step);
+            if let Some(pc) = pr.percent {
+                s.push_str(&format!(" {pc}%"));
+            }
+        }
+        if cl.stopping() {
+            s.push_str(" …");
+        }
+        let t = p.text(pos2(hint.left() - 10.0, mid), Align2::RIGHT_CENTER, s, font, c.wait);
+        paint_icon(p, pos2(t.left() - 9.0, mid), Icon::Fetch, c.wait);
+        return t.left() - 18.0 - 14.0;
+    }
     let s = match (app.last_fetch, app.fetch_failed) {
         (Some(at), failed) => {
             let key = if failed { "net.last_failed" } else { "net.last" };
@@ -857,7 +886,16 @@ fn key_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
         let t = p.text(pos2(right, mid), Align2::RIGHT_CENTER, text, FontId::proportional(12.0), color);
         right = t.left() - 14.0;
     }
+    let before = right;
     right = net_status(ui, app, &p, right, mid);
+    if app.net.is_some() || app.cloning.is_some() {
+        let hit = Rect::from_min_max(pos2(right + 14.0, r.top() + 1.0), pos2(before, r.bottom()));
+        let resp = ui.interact(hit, ui.id().with("net_stop"), Sense::CLICK);
+        if resp.hovered() {
+            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+        }
+        out.stop_net = resp.clicked();
+    }
     if app.mode == Mode::Main && matches!(app.repo, Repo::Ready(_)) {
         let (left, clicked) = pill(ui, "calm", app.tr("calm.button"), app.tr("calm.tip"), right, mid, c.dim);
         out.calm = clicked;

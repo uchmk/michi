@@ -525,15 +525,15 @@ fn counts(dir: &Path, range: &str) -> Result<(usize, usize), git::Error> {
 }
 
 /// What git said.
-struct Said {
-    ok: bool,
+pub(crate) struct Said {
+    pub(crate) ok: bool,
     out: String,
     /// The lines of its standard error that were not progress.
     lines: Vec<String>,
 }
 
 impl Said {
-    fn refused(&self) -> git::Error {
+    pub(crate) fn refused(&self) -> git::Error {
         git::refused_all(&self.lines.join("\n"))
     }
 }
@@ -587,7 +587,7 @@ fn kill_tree(child: &mut Child) {
 #[cfg(not(any(windows, unix)))]
 fn own_group(_: &mut Command) {}
 
-fn run(mut c: Command, stop: &AtomicBool, tell: &mut dyn FnMut(Progress)) -> Result<Option<Said>, git::Error> {
+pub(crate) fn run(mut c: Command, stop: &AtomicBool, tell: &mut dyn FnMut(Progress)) -> Result<Option<Said>, git::Error> {
     c.stdout(Stdio::piped()).stderr(Stdio::piped());
     own_group(&mut c);
     let mut child = c.spawn().map_err(git::started)?;

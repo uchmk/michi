@@ -179,7 +179,11 @@ impl Michi {
         if let Some(done) = self.app.cloning.as_ref().and_then(|c| c.answer.try_recv().ok()) {
             if let Some(c) = self.app.cloning.take() {
                 match done {
-                    Ok(()) => {
+                    Ok(false) => {
+                        let text = self.app.tr("repos.clone_stopped").replace("{}", &c.dest.display().to_string());
+                        self.app.say_for(text, 8);
+                    }
+                    Ok(true) => {
                         let text = self.app.tr("repos.cloned").replace("{}", &c.dest.display().to_string());
                         self.app.say_for(text, 6);
                         self.app.open_req = Some(c.dest);
@@ -819,6 +823,9 @@ impl eframe::App for Michi {
         self.app.changes_sync();
         if out.settings {
             self.app.mode = if self.app.mode == Mode::Settings { Mode::Main } else { Mode::Settings };
+        }
+        if out.stop_net {
+            self.app.net_stop();
         }
         if out.calm {
             self.app.calm();

@@ -52,6 +52,20 @@ impl Setup {
     pub fn heads(&self) -> Vec<Oid> {
         self.worktrees.iter().filter_map(|w| Oid::parse(&w.head)).filter(|h| !h.is_zero()).collect()
     }
+
+    /// [`heads`](Self::heads) within `scope`: none for a solo one, and not those
+    /// of a worktree whose branch is hidden.
+    pub fn heads_in(&self, scope: &crate::log::Scope) -> Vec<Oid> {
+        if scope.solo.is_some() {
+            return Vec::new();
+        }
+        self.worktrees
+            .iter()
+            .filter(|w| !w.branch.as_ref().is_some_and(|b| scope.hides(&format!("refs/heads/{b}"))))
+            .filter_map(|w| Oid::parse(&w.head))
+            .filter(|h| !h.is_zero())
+            .collect()
+    }
 }
 
 #[derive(Clone, Debug)]
