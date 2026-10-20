@@ -2,6 +2,14 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.106.2] - 2026-10-20
+
+### 修正
+- クローンを止めたとき、もとからあった空のフォルダは空にして残す（以前は中身の無いまま残るだけで、途中の `.git` が残ることがあった）。中身のあるフォルダには触らない。
+
+### 変更
+- ito を v0.95.2 に上げた。`scripts/lanes.sh` と `scripts/lanes.conf` を取り込み、`ito-required.txt`・`release-sums.sh` を ito からそろえる（`verify.sh` が `lanes.sh check` も回す）。ワークフローは michi のものをそのまま使う。
+
 ## [0.106.1] - 2026-10-20
 
 ### 修正

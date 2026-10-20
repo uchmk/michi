@@ -43,4 +43,5 @@ done
 # The checklist follows TESTING.md.
 run cargo run -q -p michi --example make-testcheck -- --check
 run python scripts/ito-first.py
+run bash scripts/lanes.sh check
 echo "ALL OK: $tests"

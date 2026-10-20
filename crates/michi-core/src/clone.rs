@@ -92,6 +92,8 @@ pub fn run_stoppable(
     tell: &mut dyn FnMut(crate::net::Progress),
 ) -> Result<bool, git::Error> {
     let existed = dest.exists();
+    // git clones into an existing folder only when it is empty; such a folder stays, emptied.
+    let empty = existed && std::fs::read_dir(dest).is_ok_and(|mut d| d.next().is_none());
     let mut c = git::command();
     c.args(["clone", "--progress", "--"]).arg(url).arg(dest);
     let said = crate::net::run(c, stop, tell)?;
@@ -100,6 +102,11 @@ pub fn run_stoppable(
     }
     if !existed {
         let _ = std::fs::remove_dir_all(dest);
+    } else if empty {
+        for e in std::fs::read_dir(dest).into_iter().flatten().flatten() {
+            let p = e.path();
+            let _ = if p.is_dir() { std::fs::remove_dir_all(&p) } else { std::fs::remove_file(&p) };
+        }
     }
     match said {
         Some(s) => Err(s.refused()),
@@ -124,6 +131,15 @@ mod tests {
         assert!(a.join(".git").exists());
         assert!(!run_stoppable(&url, &b, &AtomicBool::new(true), &mut |_| {}).unwrap());
         assert!(!b.exists(), "the half-made folder is taken away");
+        // An empty folder that was there stays, emptied; a full one is never touched.
+        let (e, f) = (parent.join("e"), parent.join("f"));
+        std::fs::create_dir_all(&e).unwrap();
+        std::fs::create_dir_all(&f).unwrap();
+        std::fs::write(f.join("mine.txt"), "x").unwrap();
+        assert!(!run_stoppable(&url, &e, &AtomicBool::new(true), &mut |_| {}).unwrap());
+        assert!(e.exists() && std::fs::read_dir(&e).unwrap().next().is_none());
+        assert!(run_stoppable(&url, &f, &AtomicBool::new(false), &mut |_| {}).is_err());
+        assert!(f.join("mine.txt").exists());
     }
 
     #[test]
