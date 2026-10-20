@@ -50,7 +50,7 @@
 - [~] **2.3** Press `?` in `1`, `2` and `3`; narrow the window below 460 wide and press `?` → A card with the keys: "Everywhere" first, then the view's, two to a line with the word at the left and the keys at the right, every key there down to `Esc`; the tab stays lit under it; `?` or Esc closes it; the narrow window has one to a line 〔未訳〕
 - [ ] **2.4** Press `N` in any view (Enter spreads the diff: 8.5; `f` `p` `P`: 15; `b` `T` `t`: 16; `s`: 17) → A toast at the foot names the key's work and says it comes in a later stage; it goes after 4 seconds 〔未訳〕
 - [~] **2.5** Press Ctrl+Shift+P, or click the palette field → The same toast for the command search; the field lights under the pointer with a text cursor 〔未訳〕
-- [ ] **2.6** Press a key with no work (`q`, `4`) → Nothing happens 〔未訳〕
+- [ ] **2.6** Press a key with no work (`q`) → Nothing happens 〔未訳〕
 - [~] **2.7** Press `?` (or `F1`), in a window short enough that the list does not fit; then `Down`, `PageDown`, `End`, `Home`; then bind another key to Quit on the Keys page and press `?` again → The list has the global keys and the keymap's keys (`Ctrl+Q`, `Ctrl+Shift+P`, ...), then the keys of the view in front; the keys move the list and a thin bar shows where it is; the new Quit key shows in the list; `?` or Esc closes it 〔未訳〕
 
 ## 3. Keybar and clock
@@ -61,18 +61,18 @@
 
 ## 4. Settings
 
-- [~] **4.1** Press `,` → The settings open between the title bar and the keybar; the title bar stays, the `,` button is lit and no tab is lit; the keybar shows `Esc Back` and `Ctrl+Tab Next page` 〔未訳〕
+- [~] **4.1** Press `Ctrl+,` → The settings open between the title bar and the keybar; the title bar stays, the settings button is lit and no tab is lit; the keybar shows `Esc Back` and `Ctrl+Tab Next page` 〔未訳〕
 - [x] **4.2** Press Ctrl+Tab → The page moves from General to Theme, with a small michi preview (the three tabs, two branches) 〔未訳〕
 - [ ] **4.3** Change the language to 日本語 → Every word of michi turns Japanese at once (the tabs 樹形図・変更・worktree, the keybar, the empty views), and other uchmk apps follow 〔未訳〕
 - [ ] **4.4** Change the theme, and the size → The whole window follows at once; the logo and the chip stay readable in light and dark 〔未訳〕
-- [~] **4.5** Press Esc, click the `,` button, or click a tab → Each leaves the settings; a tab opens its view 〔未訳〕
+- [~] **4.5** Press Esc, click the settings button, or click a tab → Each leaves the settings; a tab opens its view 〔未訳〕
 - [ ] **4.6** Edit common.toml by hand while michi is open → michi follows within a second 〔未訳〕
 - [ ] **4.7** In the settings open the Keys page; press `+ Add` on a row, press `Ctrl+Shift+K`, Enter; then `Ctrl+=`, `Ctrl+-`, `Ctrl+0` in the graph; edit keymap.toml (beside common.toml) by hand → The page lists the keys by layer (names in the language chosen); the new key is written to keymap.toml under `prepend_keymap` and a toast says `keymap.toml: 1 changed`; the keys zoom the window and say the size; a hand edit shows in the page within a second; Esc while a key is being pressed ends that, not the settings 〔未訳〕
 
 ## 5. git and errors
 
-- [ ] **5.1** Start `michi C:\dev` (not a repository) → The chip shows `✗ Not a Git repository` in red and a toast says so with the folder; the title stays `michi` 〔未訳〕
-- [ ] **5.2** Start `michi C:\no\such` from a terminal → The message `michi: not a folder: C:\no\such` in the terminal, exit code 2, no window 〔未訳〕
+- [~] **5.1** Start `michi C:\dev` (not a repository) → The middle of the window reads `Not a Git repository` in red with the folder under it, and a toast says so with the folder; the title stays `michi` 〔未訳〕
+- [x] **5.2** Start `michi C:\no\such` from a terminal → The message `michi: not a folder: C:\no\such` in the terminal, exit code 2, no window 〔未訳〕
 - [ ] **5.3** Start `michi --version` and `michi --help` from cmd and from PowerShell → The version or the usage prints in that terminal, exit code 0, no window 〔未訳〕
 - [ ] **5.4** Start michi with no git on the PATH → The chip shows `✗ git was not found`; the keybar shows `⚠ git` in red 〔未訳〕
 - [ ] **5.5** Start michi with a git older than 2.38 on the PATH → A toast for 10 seconds names the version and asks to update; the keybar keeps `⚠ git 2.x.y` in amber 〔未訳〕
