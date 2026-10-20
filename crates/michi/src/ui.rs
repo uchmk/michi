@@ -577,6 +577,10 @@ fn right_slot(ui: &mut Ui, app: &App, free: Rect) -> bool {
     let mid = free.center().y;
     let right = free.right();
     let word = ui.fonts_mut(|f| f.layout_no_wrap(app.tr("view.settings").to_owned(), FontId::proportional(12.5), c.fg));
+    // No room for the word beside the bell: leave it out rather than draw it over the tabs (the palette and the key still open it).
+    if free.width() < word.size().x + 16.0 {
+        return false;
+    }
     let chip_w = chip(ui, app, &p, free.left() + word.size().x + 24.0, right, mid);
     let chip_x = if chip_w > 0.0 { right - chip_w - 8.0 } else { right };
     let gear = Rect::from_min_max(pos2(chip_x - word.size().x - 16.0, mid - 12.0), pos2(chip_x, mid + 12.0));
