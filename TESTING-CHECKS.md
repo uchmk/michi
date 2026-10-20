@@ -105,7 +105,7 @@
 
 - [~] **7.1** Look at the column left of the graph → Headings with counts: worktree, Branches, Remotes, Tags and Stash (when there is one); the worktree the window is on is lit; each worktree and branch has a dot in its lane's colour; there is no scrollbar, the wheel scrolls it 〔未訳〕
 - [ ] **7.2** Click a worktree, a branch and a tag → The graph selects that commit and scrolls it into sight; the detail follows 〔未訳〕
-- [ ] **7.3** Click a group (`test/`, `origin`) → It opens to list its branches further in, with the count at its right; again, it closes; hovering a branch inside shows its full name 〔未訳〕
+- [~] **7.3** Click a group (`test/`, `origin`) → It opens to list its branches further in, with the count at its right; again, it closes; hovering a branch inside shows its full name 〔未訳〕
 - [ ] **7.4** Click a branch whose commit is older than what is read → The graph reads on until it gets there and selects it; one that is not in the history gives the toast `Not in the history: <hash>` 〔未訳〕
 - [ ] **7.5** Have a branch ahead of its upstream and one behind (commit without pushing; `git fetch` after a push from elsewhere), and a stash (`git stash`) → The branch and its worktree show `↑N`, `↓N` or both in dim at the right; no number when even or with no upstream. A `Stash` section comes last with each stash's message and a hollow square; hovering shows its hash; a click shows it in the detail (17.9) 〔未訳〕
 
