@@ -473,7 +473,7 @@
 ## 41. Autostash on pull and switch
 
 - [~] **41.1** In a worktree with an uncommitted edit to a file the upstream also changed (different lines), press `p` → The pull goes through instead of stopping; the toast says the changes were stashed and put back, with the `michi/backup/...` name; the edit is still there; `git stash list` is empty → | [ ] 〔未訳〕
-- [ ] **41.2** Same, but the edit touches the same lines the upstream changed → The pull goes through; the toast says the stash clashed in the file; the file has `<<<<<<<` marks and the stash stays in the list and under `michi/backup/` → | [ ] 〔未訳〕
+- [~] **41.2** Same, but the edit touches the same lines the upstream changed → The pull goes through; the toast says the stash clashed in the file; the file has `<<<<<<<` marks and the stash stays in the list and under `michi/backup/` → | [ ] 〔未訳〕
 - [ ] **41.3** Switch a worktree with changes to a branch that would overwrite them (branch picker) → The switch happens, the toast says the changes were stashed and put back (or clashed) → | [ ] 〔未訳〕
 - [ ] **41.4** Pull or switch with no changes, or with changes that do not stand in the way → Behaves as before; no stash, no backup, no extra text in the toast → | [ ] 〔未訳〕
 - [ ] **41.5** Switch to a branch that does not exist, with changes in the worktree → The error is shown as before and the changes are still in the worktree (nothing left in the stash list) → | [ ] 〔未訳〕
