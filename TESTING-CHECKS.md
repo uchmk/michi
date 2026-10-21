@@ -786,16 +786,16 @@
 
 ## 38. Content search in the `/` filter (`s:` pickaxe, `g:` regex)
 
-- [~] **38.1** Press `/`, type `s:` followed by a string you know a commit added (e.g. a function name) → The right of the field reads `Enter: search the changes`; no row is a hit yet → | [ ] 〔未訳〕
-- [~] **38.2** Press Enter → After a moment the count reads `N hits`; the commits that added or removed the string are bright, the rest faint; marks appear on the scrollbar → | [ ] 〔未訳〕
-- [~] **38.3** Press Enter again, and Shift+Enter → The selection moves to the next and previous hit (it does not search again) → | [ ] 〔未訳〕
+- [~] **38.1** Press `/`, type `s:` followed by a string you know a commit added (e.g. a function name) → The right of the field reads `Enter: search the changes`; no row is a hit yet → | [ ]  (seen: s:f2 shows the hint Enter: search the changes with every row faint before Enter) 〔未訳〕
+- [~] **38.2** Press Enter → After a moment the count reads `N hits`; the commits that added or removed the string are bright, the rest faint; marks appear on the scrollbar → | [ ]  (seen: after Enter the count reads 1 hit, only first msg is bright; scrollbar marks not visible in a 4-row graph) 〔未訳〕
+- [~] **38.3** Press Enter again, and Shift+Enter → The selection moves to the next and previous hit (it does not search again) → | [ ]  (undecidable: hist1 has a single hit so the selection cannot be seen to move) 〔未訳〕
 - [~] **38.4** Type `g:` and a regex (e.g. `g:fn +main`), press Enter → Commits whose diff has a changed line matching it (any case) are the hits → | [ ] 〔未訳〕
-- [~] **38.5** Type a word before it: `fix s:foo` → Only commits that match both the word and the content search stay bright → | [ ] 〔未訳〕
-- [~] **38.6** Edit the text after `s:` → The hits go and `Enter: search the changes` comes back; the old answer is never shown for the new text → | [ ] 〔未訳〕
-- [ ] **38.7** Type `g:(` and press Enter → A toast says the search failed, with the reason; the window stays usable → | [ ] 〔未訳〕
-- [ ] **38.8** Press Esc → The filter clears and every row is bright again → | [ ] 〔未訳〕
-- [ ] **38.9** In a large repository press Enter on a search → The window stays responsive while the search runs; the hits come in when it is done → | [ ] 〔未訳〕
-- [ ] **38.10** Switch EN and JA → The hint in the empty field and the `Enter: ...` line read well and fit → | [ ] 〔未訳〕
+- [~] **38.5** Type a word before it: `fix s:foo` → Only commits that match both the word and the content search stay bright → | [ ]  (undecidable: the combined word plus s: search was not distinguishable in the frames) 〔未訳〕
+- [~] **38.6** Edit the text after `s:` → The hits go and `Enter: search the changes` comes back; the old answer is never shown for the new text → | [ ]  (undecidable: the frames lag and the hint after editing was not caught) 〔未訳〕
+- [ ] **38.7** Type `g:(` and press Enter → A toast says the search failed, with the reason; the window stays usable → | [ ]  (undecidable: no toast was caught in the frames for g:() 〔未訳〕
+- [ ] **38.8** Press Esc → The filter clears and every row is bright again → | [ ]  (seen: after clearing the filter every row is bright again and the field shows its placeholder) 〔未訳〕
+- [ ] **38.9** In a large repository press Enter on a search → The window stays responsive while the search runs; the hits come in when it is done → | [ ]  (skipped: needs a large repository with a slow search; big1 not set up for it) 〔未訳〕
+- [ ] **38.10** Switch EN and JA → The hint in the empty field and the `Enter: ...` line read well and fit → | [ ]  (skipped: the harness cannot switch EN and JA) 〔未訳〕
 
 ## 129. Submodules: state and update (#29)
 
@@ -1104,11 +1104,11 @@
 
 ## 114. Operation history (#114)
 
-- [ ] **114.1** Commit, switch branch, reset to `HEAD~1`, then press `L` → Rows read in plain words with the time at the left ("Committed: ...", "Switched from a to b", "Moved the branch to HEAD~1"), the commit id at the right; michi's backups read "michi kept this before: ..." 〔未訳〕
-- [ ] **114.2** Press `r` in the list, then `r` again → The rows switch to git's own wording (`HEAD@{n}`, `checkout: moving from ...`) and back 〔未訳〕
-- [ ] **114.3** Select a row and press `g` → The list closes and the graph shows that commit selected; for a commit not in the graph a toast says so 〔未訳〕
+- [ ] **114.1** Commit, switch branch, reset to `HEAD~1`, then press `L` → Rows read in plain words with the time at the left ("Committed: ...", "Switched from a to b", "Moved the branch to HEAD~1"), the commit id at the right; michi's backups read "michi kept this before: ..." → [ ] (seen: L lists plain-word rows (moved the branch to HEAD~1, committed c3) with the time at the left and the id at the right; no michi backup row since none was made in ig1) 〔未訳〕
+- [ ] **114.2** Press `r` in the list, then `r` again → The rows switch to git's own wording (`HEAD@{n}`, `checkout: moving from ...`) and back → [ ] (seen: r switches to HEAD@{n} and reset: moving to ... wording; r back not tried) 〔未訳〕
+- [ ] **114.3** Select a row and press `g` → The list closes and the graph shows that commit selected; for a commit not in the graph a toast says so → [ ] (seen: g on c3 (not in the graph) closes the list and toasts that it is not in the history) 〔未訳〕
 - [ ] **114.4** Select a row and press Enter → The band asks to bring it back as a new branch (the undo path); nothing moves until `y` 〔未訳〕
-- [ ] **114.5** Check the keybar and `?` with the list open; switch EN and JA → `g` and `r` are listed; both languages read well 〔未訳〕
+- [ ] **114.5** Check the keybar and `?` with the list open; switch EN and JA → `g` and `r` are listed; both languages read well → [ ] (partly seen: the keybar lists g and r in Japanese; EN not tried) 〔未訳〕
 
 ## 108. Git errors as a cause and a next step (#108)
 
