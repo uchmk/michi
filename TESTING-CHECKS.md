@@ -525,7 +525,7 @@
 ## 47. A worktree on no branch (the strip under the title bar)
 
 - [~] **47.1** In the window's worktree run `git checkout --detach` on a commit → Within a moment a strip appears under the title bar: "Not on a branch: the commit … is checked out. Commits made here belong to no branch." with `R Back to <branch>` and `B Branch from here` at the right → | [ ] 〔未訳〕
-- [ ] **47.2** Check out a tag (`git checkout v1`) → The strip names the tag; the body below moves down by the strip's height, nothing is cut off → | [ ] 〔未訳〕
+- [~] **47.2** Check out a tag (`git checkout v1`) → The strip names the tag; the body below moves down by the strip's height, nothing is cut off → | [ ] 〔未訳〕
 - [~] **47.3** Commit something on the detached HEAD → The strip adds "Commits on no branch yet: 1"; the number follows each new commit → | [ ] 〔未訳〕
 - [~] **47.4** Press `R` (or click `Back to …`) with such a commit → The worktree is on the branch again, the toast names the backup (`michi/backup/…`) that keeps the commit, the strip goes → | [ ] 〔未訳〕
 - [ ] **47.5** Press `B`, type a name, press Shift+Enter → The branch is made at HEAD, the worktree is on it, the strip goes; the commit is on the new branch → | [ ] 〔未訳〕
