@@ -1120,27 +1120,27 @@
 
 ## 104. Easy display (plain wording of Git's terms)
 
-- [ ] **104.1** Open settings (`,`), General page, find "Easy display" (also by searching "easy") → A card with a checkbox "Show Git terms in plain words"; off by default; EN and JA both read well 〔未訳〕
-- [ ] **104.2** Tick it, open the `2` view and the `1` view → The list headings read "In the next commit (Staged)" / "Not in the next commit (Not staged)"; the footer reads "N in the next commit"; the side column's headings read "working folder (worktree)", "name for a commit (tag)", "set aside for later (stash)"; JA reads "次のコミットに入る（Staged）", "あとで使うために置いておく（stash）" 〔未訳〕
-- [ ] **104.3** Untick it (or delete `easy` from `[view]` in config.toml) → The usual words come back within a couple of seconds, without restarting 〔未訳〕
-- [ ] **104.4** Write `easy = "yes"` under `[view]` in config.toml → A warning about `[view] easy` shows and the usual words stay 〔未訳〕
+- [ ] **104.1** Open settings (`,`), General page, find "Easy display" (also by searching "easy") → A card with a checkbox "Show Git terms in plain words"; off by default; EN and JA both read well → [ ] (undecidable: the settings search box takes focus but typed text does not land, and the page needs a wheel to scroll) 〔未訳〕
+- [ ] **104.2** Tick it, open the `2` view and the `1` view → The list headings read "In the next commit (Staged)" / "Not in the next commit (Not staged)"; the footer reads "N in the next commit"; the side column's headings read "working folder (worktree)", "name for a commit (tag)", "set aside for later (stash)"; JA reads "次のコミットに入る（Staged）", "あとで使うために置いておく（stash）" → [ ] (seen in the 2 view with easy=true: headings read 次のコミットに入る（Staged） / 次のコミットに入らない（Not staged）, footer 次のコミットに 2 件; side column not compared) 〔未訳〕
+- [ ] **104.3** Untick it (or delete `easy` from `[view]` in config.toml) → The usual words come back within a couple of seconds, without restarting → [ ] (skipped: no way to untick from the harness; not seen) 〔未訳〕
+- [ ] **104.4** Write `easy = "yes"` under `[view]` in config.toml → A warning about `[view] easy` shows and the usual words stay → [ ] (undecidable: the bell count rose 1 to 2 after easy = "yes" but the toast was not in any frame) 〔未訳〕
 
 ## 105. Hover glossary
 
-- [ ] **105.1** Look at the `2` view's list headings, the file title over the diff and the side column's worktree / tag / stash headings → Each of these terms has a dotted underline 〔未訳〕
-- [ ] **105.2** Rest the pointer on one for a moment → A small card shows the Git word, its plain wording and a one or two line explanation; it goes when the pointer leaves; it does not hide the click targets nearby 〔未訳〕
-- [ ] **105.3** Repeat with the easy display on, and with EN and JA → The card is the same either way and reads well in both languages; the dots line up under the whole label 〔未訳〕
+- [ ] **105.1** Look at the `2` view's list headings, the file title over the diff and the side column's worktree / tag / stash headings → Each of these terms has a dotted underline → [ ] (seen: dotted underlines under the 2 view headings and the WORKTREE heading) 〔未訳〕
+- [ ] **105.2** Rest the pointer on one for a moment → A small card shows the Git word, its plain wording and a one or two line explanation; it goes when the pointer leaves; it does not hide the click targets nearby → [ ] (skipped: no hover tooltip in the harness) 〔未訳〕
+- [ ] **105.3** Repeat with the easy display on, and with EN and JA → The card is the same either way and reads well in both languages; the dots line up under the whole label → [ ] (skipped: no hover tooltip and no EN/JA switch in the harness) 〔未訳〕
 
 ## 115. Basic and full levels
 
-- [ ] **115.1** Open settings (`,`), General page: find "How much to show" → Basic and Full buttons, Full selected by default; EN and JA both read well 〔未訳〕
-- [ ] **115.2** Choose Basic → Within a couple of seconds `[view] level = "basic"` is in config.toml; the key bar loses reset, discard, rebase and force push and keeps the everyday keys 〔未訳〕
-- [ ] **115.3** In Basic, press `?` → The list leaves out the same keys and ends with a line saying how many more commands are in the command palette 〔未訳〕
-- [ ] **115.4** In Basic, open the command palette (`Ctrl+Shift+P`) and search "reset" or "discard" → The command is found and picking it works as the key does 〔未訳〕
-- [ ] **115.5** In Basic, press a hidden key directly (e.g. the discard key in the `2` view) → It still works, and still asks before it destroys anything 〔未訳〕
-- [ ] **115.6** Choose Full → Key bar and `?` list every key again 〔未訳〕
-- [ ] **115.7** Write `level = "expert"` in `[view]` by hand → A warning says it is not basic or full, and Full is used 〔未訳〕
-- [ ] **115.8** Search "basic" in the settings → The General page is listed 〔未訳〕
+- [ ] **115.1** Open settings (`,`), General page: find "How much to show" → Basic and Full buttons, Full selected by default; EN and JA both read well → [ ] (undecidable: needs the settings page scrolled; not reachable) 〔未訳〕
+- [ ] **115.2** Choose Basic → Within a couple of seconds `[view] level = "basic"` is in config.toml; the key bar loses reset, discard, rebase and force push and keeps the everyday keys → [ ] (skipped: needs a click on the Basic button in the scrolled settings page) 〔未訳〕
+- [ ] **115.3** In Basic, press `?` → The list leaves out the same keys and ends with a line saying how many more commands are in the command palette → [ ] (undecidable: ? list with level = basic screenshotted, but the frame lagged and showed no list) 〔未訳〕
+- [ ] **115.4** In Basic, open the command palette (`Ctrl+Shift+P`) and search "reset" or "discard" → The command is found and picking it works as the key does → [ ] (skipped: needs the palette typed text, which does not land reliably) 〔未訳〕
+- [ ] **115.5** In Basic, press a hidden key directly (e.g. the discard key in the `2` view) → It still works, and still asks before it destroys anything → [ ] (skipped: needs a destructive key against a lab repo; not driven) 〔未訳〕
+- [ ] **115.6** Choose Full → Key bar and `?` list every key again → [ ] (skipped: needs the settings page) 〔未訳〕
+- [ ] **115.7** Write `level = "expert"` in `[view]` by hand → A warning says it is not basic or full, and Full is used → [ ] (undecidable: the bell count rose after level = "expert" but the toast was not in any frame) 〔未訳〕
+- [ ] **115.8** Search "basic" in the settings → The General page is listed → [ ] (undecidable: settings search typing does not land) 〔未訳〕
 
 ## 116. First-run guide
 
