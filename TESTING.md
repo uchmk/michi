@@ -152,7 +152,7 @@ Open a repository whose worktree has edits, a deleted file and a new file; run a
 | 9.1 | Look at the top of the graph | A row `Uncommitted: N files (+a −d)` in italics above the newest commit, with a dashed dot on the lane of the worktree's branch, author `—`, the time the change was last written and the hash `WIP`; the main worktree's change is on top when it was written last |
 | 9.2 | Edit a file in the worktree with michi in front | Within about a second the row's counts and time follow without a key; the selection stays on the row it was on |
 | 9.3 | Select the WIP row | The detail says `Uncommitted changes on <branch>`, the worktree's folder in mono, when it was last written, `Read only here. Stage and commit in Changes (2).`, then the files and the diff from the worktree's `HEAD`; the new file is listed as added |
-| 9.4 | With the WIP row selected, have the Claude there run, then stop or ask | A box under the hint: `Claude is writing.` or `Claude has stopped.` with its state (glyph and word), the tab, its title and since when; a question in amber |
+| 9.4 | With the WIP row selected, have the Claude there run, then stop or ask | A box under the hint: `Claude is writing.` or `Claude has stopped.` with its state (glyph and word), the tab, its title and since when; a question in amber (skipped: needs a real Claude or tsumugi session) |
 | 9.5 | Put a file over 10 MB (or a folder over 2000 files or 50 MB) in the worktree, not ignored | The WIP row and its counts leave it out; the detail says `Untracked, too big to count: <path>` (three at most, then `and N more`); `git count-objects -vH` in the repository does not grow by its size; no `git.exe` keeps running after michi is closed |
 | 9.6 | Make the worktree clean again | The WIP row goes within about a second; a worktree whose only change is a big untracked folder has no WIP row |
 | 9.7 | Look at `git status` and the index after michi read the change | Nothing was staged; `git status` shows the same as before |
@@ -164,7 +164,7 @@ Open a repository with a main worktree, a worktree on a branch that is pushed an
 | # | Do | Expect |
 | --- | --- | --- |
 | 10.1 | Press `3` | `Reading the worktrees…`, then a title `<repo> · N worktrees` with the sort (`s`), `Read again` and `New work` (`N`) at the right, a dismissable `What is a worktree` note, and a table: `Branch · folder`, `Claude (tsumugi)`, `From main`, `Uncommitted`, `Unseen`, `Review`, `Conflict forecast`, and buttons; under it the forecast grid and the `Unseen changes` box; the main worktree on top, each row with its branch in its lane colour and its folder under it |
-| 10.2 | Run a Claude in a worktree from tsumugi, then quit tsumugi | The title adds ` · Claude N` and a `Claude (tsumugi)` column shows the state chip in bold, its note (two rows at most), `Tab N · <title>` with `o` and since when; rows with none say `No Claude running`; within a few seconds of quitting tsumugi the column goes |
+| 10.2 | Run a Claude in a worktree from tsumugi, then quit tsumugi | The title adds ` · Claude N` and a `Claude (tsumugi)` column shows the state chip in bold, its note (two rows at most), `Tab N · <title>` with `o` and since when; rows with none say `No Claude running`; within a few seconds of quitting tsumugi the column goes (skipped: needs a real Claude or tsumugi session) |
 | 10.3 | Look at the `From main` column | `↑a ↓b` against main, and under it the branch against its upstream: `Same as origin/x`, `N not pushed to origin/x`, `origin/x is N ahead`, `Diverged from origin/x (↑a ↓b)`, `Not pushed yet`; the main row reads against `origin/main` |
 | 10.4 | Look at the `Uncommitted` column; then put a folder over 2000 files in a worktree, not ignored | `N files`, `+a −d` in green and red and `written at <time>`, or `None`; the big folder adds `Too big to count: <path>` and is not counted |
 | 10.5 | Look at the locked worktree with no branch | `No branch, at <hash>` and a `Locked` mark; a worktree whose folder was deleted says `Its folder is gone (git can prune it)` |
@@ -174,8 +174,8 @@ Open a repository with a main worktree, a worktree on a branch that is pushed an
 | 10.9 | Click `Read again` | The toast `Reading the worktrees again…`, and the table follows a change made outside (a new commit, a new worktree) |
 | 10.10 | Narrow the window below 960 wide | Each worktree becomes a card: the branch and folder, then the Claude, `From main`, `Uncommitted`, `Unseen` and `Conflicts ahead` lines, then the buttons, which wrap; still readable at the smallest width |
 | 10.11 | Look at the foot, and switch to the light theme | Only when the Claude column shows, a line on how often it reads tsumugi; colours stay readable in both themes |
-| 10.12 | With a Claude running in a worktree, select its row and press `o`; on a row without a Claude; press `o` in the graph | tsumugi goes to that Claude's tab (waiting or done one first) and a toast `Went to the Claude tab N in tsumugi`; without one a toast `No Claude is running in <worktree>` | [ ] |
-| 10.13 | Select a linked worktree with uncommitted files and a Claude, press `g x` (or click `Remove`); Esc; once more and `y`; on the main worktree and on this window's own | A band `Remove the worktree …? The folder goes; the branch … stays.` naming the Claude tab(s), the uncommitted files and the unpushed commits; Esc removes nothing; yes closes the tabs, keeps the change under `refs/michi/backup/` and removes the folder (the branch stays; a toast names the backup); main and the window's own say they stay | [~] |
+| 10.12 | With a Claude running in a worktree, select its row and press `o`; on a row without a Claude; press `o` in the graph | tsumugi goes to that Claude's tab (waiting or done one first) and a toast `Went to the Claude tab N in tsumugi`; without one a toast `No Claude is running in <worktree>` | [ ] (skipped: needs a real Claude or tsumugi session) |
+| 10.13 | Select a linked worktree with uncommitted files and a Claude, press `g x` (or click `Remove`); Esc; once more and `y`; on the main worktree and on this window's own | A band `Remove the worktree …? The folder goes; the branch … stays.` naming the Claude tab(s), the uncommitted files and the unpushed commits; Esc removes nothing; yes closes the tabs, keeps the change under `refs/michi/backup/` and removes the folder (the branch stays; a toast names the backup); main and the window's own say they stay | [~] (skipped: needs a real Claude or tsumugi session) |
 | 10.14 | In the graph or the worktree table press `N`; type a branch, pick the base with Up/Down, type an instruction, raise the count to 2; Ctrl+Enter. Once with an empty branch; once with Esc | A form with the branch (default `tsumugi/MMDD-HHMM`), the base chips, the instruction, the count, the folder and the `tsumugi new …` line as it will run; Ctrl+Enter opens a tsumugi tab with a new worktree and Claude per count (`-1`, `-2` on the branch) and a toast `Started N`; an empty branch says so and stays; Esc closes it and starts nothing | [~] |
 | 10.15 | In the worktree table select a worktree on a branch pushed to GitHub, press `O`; on a detached one; on a branch whose remote is not GitHub | The browser opens `https://github.com/<owner>/<repo>/pull/new/<branch>` and a toast says so; the detached one says it is not on a branch; the other says the remote is not on GitHub | [x] (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 10.16 | In the worktree table select a worktree with 3+ commits since main, press `r`; move one with `J`/`K`, fold one with `s` and another with `f`, reword one with `r` (edit, Ctrl+Enter), drop one with `d`; Enter, then yes. Once with nothing changed; once with the first commit folded; once with a clash (two commits touching the same lines, swapped); once with uncommitted changes in the worktree | The commits are listed oldest first with pick/squash/fixup/reword/drop, a dropped one struck through; Enter with nothing changed or the first commit folded says so; the band names the counts and refs/michi/backup/; after yes the log is as the list said and a toast names the backup; a clash stops, the 4 view shows it and a toast says so; uncommitted changes refuse with a toast | [x] |
@@ -233,7 +233,7 @@ Set up: a worktree on a branch with two commits from main (a renamed file, a cha
 | 13.10 | Commit in the worktree while the review is open; switch the worktree to another branch from a terminal | The list follows the new commit within about a second, keeping the ticks; on another branch the list stays as it was and nothing is read |
 | 13.11 | Narrow the window to its smallest; switch to the light theme | The branch name is cut with `…`, the files keep their counts and the key bar folds what does not fit; the colours stay readable in both themes (skipped: needs a narrower window, which the harness lacks) |
 | 13.12 | In the review of a branch behind main press `m`; Esc; once more and `y`; on `main`'s own review | A band `Merge main into <branch> in <worktree>?`; Esc merges nothing; yes merges (a toast; a clash opens the `4` view); on main a toast says it is main itself | [x] |
-| 13.13 | In the review of a branch with a Claude in its worktree: `J` `K` over a diff, click a line, `n`, type a note, Ctrl+Enter; on a second line another; Esc and `d` again; `g` | The cursor line is tinted blue and scrolls into sight; a line with a note has an amber bar on its left and the note shows under the diff; the top bar reads `Notes 2`; the notes are still there after closing the review; `g` toasts that 2 notes were sent, the Claude gets one line naming a file in the temp folder (`michi-notes`) and does not commit, and the notes are gone from the review | [ ] |
+| 13.13 | In the review of a branch with a Claude in its worktree: `J` `K` over a diff, click a line, `n`, type a note, Ctrl+Enter; on a second line another; Esc and `d` again; `g` | The cursor line is tinted blue and scrolls into sight; a line with a note has an amber bar on its left and the note shows under the diff; the top bar reads `Notes 2`; the notes are still there after closing the review; `g` toasts that 2 notes were sent, the Claude gets one line naming a file in the temp folder (`michi-notes`) and does not commit, and the notes are gone from the review | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 13.14 | `n` on a line that has a note, empty it, Ctrl+Enter; `g` with no notes; Esc while writing | The note is taken away; a toast says there are no notes yet; Esc leaves the note as it was |
 
 ## 14. Changes: stage and commit
@@ -251,10 +251,10 @@ michi writes only through `git add`, `git reset`, `git apply --cached` and `git 
 | 14.6 | Press Ctrl+Enter with nothing staged; then stage a file and press Ctrl+Enter with an empty box | The toasts `Nothing staged to commit` and `Write a commit message first (c)`; nothing is written |
 | 14.7 | On a commit not pushed press `A`, change the message, Ctrl+Enter | The switch lights and the box fills with the head's message (the title reads `Message of the commit amended`, the button `Amend`); the head is replaced: one commit, not two; `A` again before writing empties the box |
 | 14.8 | On a pushed commit press `A`, then Ctrl+Enter; Esc; Ctrl+Enter and `y` | A band under the top bar: `The last commit is pushed: amending it rewrites history others may have.` with `Go ahead y` and `Not now Esc`; Esc leaves the commit as it was; `y` amends it |
-| 14.9 | Start a Claude in a worktree from tsumugi; in michi open that worktree in `2` and press Space; press `x`, Esc, Space, `y`, then Space on another file | The band `A Claude is writing in this worktree. Write beside it?`; `x` does nothing while it waits; Esc says no and nothing is staged; `y` stages; the next Space does not ask again until that Claude stops or another worktree is shown |
+| 14.9 | Start a Claude in a worktree from tsumugi; in michi open that worktree in `2` and press Space; press `x`, Esc, Space, `y`, then Space on another file | The band `A Claude is writing in this worktree. Write beside it?`; `x` does nothing while it waits; Esc says no and nothing is staged; `y` stages; the next Space does not ask again until that Claude stops or another worktree is shown (skipped: needs a real Claude or tsumugi session) |
 | 14.10 | Write a message, press `]` and `[`; click another worktree's chip; open a repository with one worktree and press `]` | Each worktree's files are read anew and the chip lights; the message written stays with its worktree; with one worktree, the toast `There is only one worktree` |
 | 14.11 | Press Enter, then Esc; pick lines and press Enter again | The diff spreads side by side, old on the left and new on the right; the picked lines are tinted on their side only; Esc goes back to one column (on the lines, the first Esc leaves the lines) |
-| 14.12 | With `2` open, save a file in the worktree from an editor; let a Claude commit there | The list follows within about a second and keeps the selection on the same file; staged lines stay staged |
+| 14.12 | With `2` open, save a file in the worktree from an editor; let a Claude commit there | The list follows within about a second and keeps the selection on the same file; staged lines stay staged (skipped: needs a real Claude or tsumugi session) |
 | 14.13 | Leave `2` for `1`; then make the worktree clean | The `2` tab still counts the uncommitted files of the worktree last shown; with none, no number |
 | 14.14 | Add a pre-commit hook that prints a line and exits 1, then commit | The toast `Could not write: …` with the hook's words for 8 seconds; the staged list and the message stay |
 | 14.15 | Narrow the window to its smallest; switch to the light theme | The list keeps at least 240 px, the chips end in `…`, the key bar folds what does not fit; the tints, the band and the letters stay readable in both themes (skipped: needs a narrower window, which the harness lacks) |
@@ -276,7 +276,7 @@ michi runs `git fetch --prune --progress`, `git pull --ff-only`, `git push` (and
 | 15.6 | On a branch only behind its upstream press `P`, then `F` | Both say `Nothing to push: origin/main is n ahead (p pulls)`; no band |
 | 15.7 | Add a remote that does not answer (`git remote add slow https://10.255.255.1/x.git`), press `f`, then `f` again, then Esc | The key bar shows `fetch` and `Esc stops` in amber; the second `f` says `fetch is running: Esc stops it`; Esc says `Stopping fetch…`, then `fetch stopped`; afterwards no `git`, `git-remote-https` process is left (Task Manager); remove the remote after |
 | 15.8 | In `1` press `p` / `P`; in `3` select another worktree's row and press `P`; click `pull p` on a card; in `2` show another worktree and press `p` | `1` works on the worktree michi was opened in; `3` on the selected worktree; `2` on the worktree shown; a band (15.5) shows over `2` and `3` too |
-| 15.9 | Start a Claude in a worktree from tsumugi; press `p` for that worktree; Esc; `p` and `y` | The band `A Claude is working in <worktree>. Pull there anyway?`; Esc pulls nothing; `y` pulls |
+| 15.9 | Start a Claude in a worktree from tsumugi; press `p` for that worktree; Esc; `p` and `y` | The band `A Claude is working in <worktree>. Pull there anyway?`; Esc pulls nothing; `y` pulls (skipped: needs a real Claude or tsumugi session) |
 | 15.10 | Fetch from an https remote that needs a sign-in; fetch from an ssh remote whose key has a passphrase and no ssh-agent | The Git Credential Manager window comes up as it does in a terminal and the fetch goes on after it; the ssh one fails at once (no prompt hangs) with `fetch failed: … — start ssh-agent and ssh-add your key` |
 | 15.11 | Narrow the window to its smallest with a band shown and a fetch running; switch to the light theme | The band wraps its text and grows, its keys stay whole; the key bar folds its keys before the fetch progress or age; both stay readable in both themes (skipped: needs a narrower window, which the harness lacks) |
 | 15.12 | In a clone with two remotes and no `origin` (`git remote rename origin up`, `git remote add mine <path>`), press `P` on a branch with unpushed commits; type `mi`, Enter, `y` on the band (112.1); then `P` again on another branch; Esc | The box `Push to: pick a remote` (`pushing <worktree>`) lists `mine` and `up`; the keys read `Enter pushes to it (and sets the upstream) · Esc closes`; `mi` leaves `mine`; Enter closes it and pushes there (`Pushed … to mine`, upstream becomes `mine/<branch>`); Esc pushes nothing. With `origin` or a `pushRemote` set no box shows | [ ] |
@@ -295,7 +295,7 @@ and `git update-ref refs/michi/backup/<time>` before it deletes.
 | 16.4 | Pick a branch no worktree has and Enter; type the name of a remote branch with no local one (`origin/x`) and Enter; type it without `origin/` | `<worktree> is on <name> now`; `Made <name> following origin/<name>; <worktree> is on it` and `git status -sb` shows `<name>...origin/<name>`; the name without `origin/` lists `origin/<name>` and no `make it` row |
 | 16.5 | Pick the branch this worktree is on; pick one checked out in another worktree; in a worktree in the middle of a merge (`git merge` that clashes) pick a branch and Enter, then type a new name and Enter | `<worktree> is on <name> already`; `<name> is checked out in <worktree>: a branch is in one worktree at a time`; `Branches can be made. Switching is stopped in <worktree>: it is in the middle of a merge.` for 8 seconds; the palette stays open each time; the new name is made; `git merge --abort` after |
 | 16.6 | Select another worktree's uncommitted row in `1` and press `b`, pick a branch and Enter; select a commit and press `b` | With the uncommitted row the palette reads `<that worktree> · at <its HEAD>` and switches that worktree; with a commit, the window's own worktree and that commit |
-| 16.7 | Start a Claude in a worktree from tsumugi; select its uncommitted row, `b`, pick a branch and Enter; Esc; again and `y` | The band `A Claude is working in <worktree>. Switch it to <name> anyway?`; Esc switches nothing; `y` switches |
+| 16.7 | Start a Claude in a worktree from tsumugi; select its uncommitted row, `b`, pick a branch and Enter; Esc; again and `y` | The band `A Claude is working in <worktree>. Switch it to <name> anyway?`; Esc switches nothing; `y` switches (skipped: needs a real Claude or tsumugi session) |
 | 16.8 | Select a branch no worktree has, whose commits no other branch or tag has, and press Delete; Esc; again and `y`; delete a branch merged into main the same way | A dialog (`Go ahead Ctrl+Enter` / `Not now Esc`, `y` and `n` too) `Delete branch <name>? When no other branch or tag has its commits, they are kept under refs/michi/backup/ first.`; Esc deletes nothing; `y`: `Deleted branch <name>; its commits are kept in michi/backup/<time>` and `git log refs/michi/backup/<time>` shows them; the merged one: `Deleted branch <name>` and no new backup |
 | 16.9 | Press Delete on the branch checked out here, on one checked out in another worktree, on a remote branch | `<name> is checked out in <worktree>: switch it away first`; `Remote branches are not deleted here: git push origin --delete <name> does it` for 8 seconds; nothing is deleted |
 | 16.10 | Select a commit and press `T`; type `v0.1 first release` and Enter; `T`, `v0.2` and Enter | The box reads `Tag: a name, then its message if any`, the tags are listed, the last row reads `v0.1  on <commit>`, the foot `Enter makes or shows · Shift+Enter makes and pushes · Del deletes · Esc closes`; `Made tag v0.1 at <commit>` and the graph shows `◆ v0.1`; `git cat-file -t v0.1` gives `tag` and its message is `first release`; `v0.2` is a light tag (`git cat-file -t` gives `commit`) |
@@ -320,7 +320,7 @@ and `git update-ref refs/michi/backup/<time>` before it drops one.
 | 17.4 | On a stash press Enter; then `git checkout -- . ; git clean -fd` in a terminal; `s`, the same stash and Shift+Enter | Enter: `Put the stash back on <worktree>; it stays in the list`, the changes are back, the untracked file too, and the stash is still listed; Shift+Enter: `Put the stash back on <worktree> and dropped it` and it is gone from the palette and the side column |
 | 17.5 | With the stash's file changed again, Enter on the stash; then `git checkout -- .`, commit a change to the same lines and Shift+Enter on it | The first: `stash apply failed: error: Your local changes to the following files would be overwritten by merge: <file>` and nothing changes; the second: `The stash clashed on <worktree> in <file>: resolve the marks there and git add them; the stash is kept`, `git status` shows `UU <file>` with the marks in it and the stash is still listed |
 | 17.6 | On a stash press Delete; Esc; again and `y`; Delete on the first row | The band `Drop stash <hash> “<message>”? It is kept under refs/michi/backup/ first.`; Esc drops nothing; `y`: `Dropped stash <hash>; kept in michi/backup/<time>`, `git stash list` no longer has it and `git rev-parse refs/michi/backup/<time>` gives its hash; Delete on the first row does nothing |
-| 17.7 | In a worktree in the middle of a merge, `s` and Enter on the first row, then on a stash; with a Claude working in the worktree (from tsumugi), `s` and Enter; Esc; again and `y`; the same on a stash | `Stashes are stopped in <worktree>: it is in the middle of a merge.` for 8 seconds and the palette stays; with the Claude the band `A Claude is working in <worktree>. Put its changes away anyway?` (`Put the stash back there anyway?` on a stash); Esc does nothing; `y` does it |
+| 17.7 | In a worktree in the middle of a merge, `s` and Enter on the first row, then on a stash; with a Claude working in the worktree (from tsumugi), `s` and Enter; Esc; again and `y`; the same on a stash | `Stashes are stopped in <worktree>: it is in the middle of a merge.` for 8 seconds and the palette stays; with the Claude the band `A Claude is working in <worktree>. Put its changes away anyway?` (`Put the stash back there anyway?` on a stash); Esc does nothing; `y` does it (skipped: needs a real Claude or tsumugi session) |
 | 17.8 | Select another worktree's uncommitted row in `1` and press `s`, Enter; with no changes anywhere press `s` and Enter | The palette reads `in <that worktree>` and puts that worktree's changes away; with none: `<worktree> has no changes to put away` |
 | 17.9 | Click a stash in the side column; Esc; click it again and press `j` | The detail shows the stash as in 17.3 and its row is lit in blue; Esc brings back the selected commit and the row goes dark; `j` does too |
 | 17.10 | Press `?`; narrow the window to its smallest with the palette open; switch to the light theme | Help lists `s Stash`; the palette narrows with the window, long messages end in `…` and the hashes stay at the right; readable in both themes |
@@ -337,7 +337,7 @@ or `git apply --reverse` with the picked lines; an untracked file is kept in a c
 | 18.2 | On the file with two changes press `l`, `v`, `j` over the first change and `d`, `y` | The band `<file> の 2 行の変更を捨てますか？…`; `y`: `<file> の 2 行を捨てました。…`, the first change is gone, the second stays and the cursor stays in the lines; the backup has the file with both changes; `git diff --cached` is as it was |
 | 18.3 | `h`, on `u/new.txt` press `d`, `y` | The band `u/new.txt を消しますか？Git が追っていないファイルです。…`; `y`: `u/new.txt を消しました。…`, the file and the empty folder `u` are gone and `git show refs/michi/backup/<time>:u/new.txt` has it |
 | 18.4 | Stage a file (Space) and press `d` on it in Staged | `ステージした変更は捨てません。先に外してください（Space）` and nothing changes |
-| 18.5 | With a Claude working in the worktree (from tsumugi), `d` on a file | The band carries both the question for the file and `この worktree では Claude が書いている途中です。横から書き込みますか？`; Esc does nothing; `y` throws the changes away |
+| 18.5 | With a Claude working in the worktree (from tsumugi), `d` on a file | The band carries both the question for the file and `この worktree では Claude が書いている途中です。横から書き込みますか？`; Esc does nothing; `y` throws the changes away (skipped: needs a real Claude or tsumugi session) |
 | 18.6 | Press `?`; narrow the window to its smallest with the band up; switch to the light theme | Help lists `d 変更を捨てる（先に確かめる）`; the band's text wraps or ends in `…` with `y` and `Esc` still visible; readable in both themes |
 
 ## 19. Clean up
@@ -355,7 +355,7 @@ michi lists with `git for-each-ref --merged` and the upstream's `[gone]`; for ea
 | 19.3 | `g c`, Enter with nothing ticked | The toast `Pick the rows to clean up with Space first`; the list stays |
 | 19.4 | `a`, Enter; Esc | A dialog `Clean up 4: done, feat, squashed and 1 more? The worktree folders go too, with the files git ignores in them: r-feat. Commits no other branch has are kept under refs/michi/backup/ first.` with `Go ahead y` / `Not now Esc`; Esc goes back to the list and nothing is gone |
 | 19.5 | Enter, `y` | The toast `Cleaned up 4: done, feat, squashed and 1 more. Unmerged commits are kept in michi/backup/<time>`; the list closes; the table has `main` and `busy` left and the top bar's chip reads `worktree 2`; `git branch` no longer has `done`, `feat` and `squashed`, `git worktree list` no longer has `r-feat` and `r-old`, the folder `r-feat` is gone, and `git log -1 refs/michi/backup/<time>` is `squashed: one` |
-| 19.6 | Open a tsumugi tab in a merged branch's worktree; press `g` then `c` | That worktree's row is grey with `a tsumugi tab is open there`; closing the tab and pressing `g c` again lists it with a box |
+| 19.6 | Open a tsumugi tab in a merged branch's worktree; press `g` then `c` | That worktree's row is grey with `a tsumugi tab is open there`; closing the tab and pressing `g c` again lists it with a box (skipped: needs a real Claude or tsumugi session) |
 | 19.7 | Commit to a ticked branch from a terminal while its dialog is up, then `y` | It stays: `… Stayed: <branch> (it moved after it was listed)`; the others go |
 | 19.8 | With nothing left to clean up press `g` then `c` | The toast `Nothing to clean up: no branch is merged into main or gone from its remote, and no worktree's folder is gone`; no list opens |
 | 19.9 | Press `?` in `3`; narrow the window to its smallest with the list open; switch to the light theme | Help lists `g c Clean up`; long rows end in `…` with the boxes and hashes still visible; readable in both themes |
@@ -403,7 +403,7 @@ files under `refs/michi/backup/<time>` first.
 | 21.16 | With nothing in progress, in `x`'s window: `C` on a `main` commit that clashes; `y` | The band `Pick <id> “<subject>” onto feat in x?` with `Go ahead y` / `Not now Esc`; `y`: `Picking <id> onto x clashed in <files>: solve it in the 4 view` and the `4` view opens on it; a commit that picks cleanly: `Picked <id> onto x: <new>`; a merge commit: the band asks against which parent, with `against parent 1 1` / `against parent 2 2` (a revert's says `keep parent 1`) |
 | 21.17 | `3`, `m` on `main`'s own row; on `x`; `y` | `r is on main itself: there is nothing to merge`; the band `Merge main into feat in x?`; `y`: `Merging main into x clashed in <files>: solve it in the 4 view` and the `4` view on `x`; when it merges cleanly: `Merged main into x: <new>` |
 | 21.18 | `t` (revert) on a commit whose revert clashes; `y` | `Reverting <id> clashed in <files>: solve it in the 4 view`; the view on it (`Reverting <id> on main`) and Ctrl+Enter commits it |
-| 21.19 | With a Claude working in `r` (from tsumugi), solve all and Ctrl+Enter | The band `A Claude is working in r. Commit the merge there anyway?`; Esc commits nothing; `y` commits |
+| 21.19 | With a Claude working in `r` (from tsumugi), solve all and Ctrl+Enter | The band `A Claude is working in r. Commit the merge there anyway?`; Esc commits nothing; `y` commits (skipped: needs a real Claude or tsumugi session) |
 | 21.20 | Press `?` in `4`; narrow the window to its smallest; switch to the light theme | Help lists `] [ Next / previous place`, `o Take ours`, `t Take theirs`, `b B Take both (ours first / theirs first)`, `Ctrl+Enter Commit once all is solved`; the bar's pill and button stay visible, long lines end in `…` or wrap; readable in both themes |
 | 21.21 | In a worktree stopped by a merge (the `r` repo of #23), open the graph (`1`) and the worktree table (`3`) | The graph's top has a red-ringed row with dashed edges to both parents, `⚠ 衝突 残り N` and `マージ中: feat → main`, the hash `MERGE`; solving every place in `4` turns it to `✓ 解けた`. No `⚠ 衝突の予測` pill anywhere; the table's clash column is `—`, the pairs show `·` with「予測は衝突の解消（4）の実物に変わりました。」 |
 | 21.22 | While `r` is stopped by the merge, look at the graph's tool band and hover `Pull` and `Stash`; press `p` | `Pull` and `Stash` are dimmed, the hover says `Held while a merge is under way`; `p` toasts why it waits; the other buttons are unchanged |
@@ -412,9 +412,9 @@ files under `refs/michi/backup/<time>` first.
 | 21.25 | Merge two branches that changed the same lines in different commits so `4` opens, and select a place | Under the place's header two rows appear, `自分` and `相手`, each with the short hash, subject, author and date of the commit that changed those lines on that side (a side no commit touched says so); they show a moment after the place is selected, not at once, and the window never stalls; a long subject is clipped, not wrapped |
 | 21.26 | In the `4` view select an open text place and press `e`; edit the lines; Ctrl+Enter. Then `e` on a solved place and on a file that clashed whole; `e` and Esc | The result box turns into a field holding ours then theirs, with a hint (Ctrl+Enter solves, Esc leaves); Ctrl+Enter solves the place with exactly what was written (tag `ここで書いた`, the file shows it after the next read) and moves to the next open place; Esc leaves the place as it was; a solved place says to restart the file, a whole-file clash says to take a side; the field keeps the keys (letters type, they do not pick) |
 | 21.27 | Merge two branches that changed one line in different words (e.g. `let a = 1;` to `let a = 22;` and to `let a = 3;`) so `4` opens | In the ours and theirs columns only the words that differ from the base are on a stronger ground (`22`, `3`); with the base column hidden or unknown they are compared with the other side; a line one side added is marked whole; unchanged lines are plain; long lines are still cut with … |
-| 21.28 | In `4` with places left and a Claude (tsumugi tab) in that worktree, press `g` or click「Claude に渡す」in the bar; then do the same in a worktree with no Claude tab | A toast says the Claude was asked / a new tab started; in the first case the request line (path of the brief + 「Do not commit」) is typed into that Claude's tab; in the second a new tsumugi tab named after the worktree starts `claude` with it; the brief (`%TEMP%\michi-handoff\<worktree>-<time>.md`) lists each open place with ours / base / theirs and both sides' intent; the repository itself gets no new file; when the Claude adds the files the remaining count falls by itself; with nothing left `g` only says so |
+| 21.28 | In `4` with places left and a Claude (tsumugi tab) in that worktree, press `g` or click「Claude に渡す」in the bar; then do the same in a worktree with no Claude tab | A toast says the Claude was asked / a new tab started; in the first case the request line (path of the brief + 「Do not commit」) is typed into that Claude's tab; in the second a new tsumugi tab named after the worktree starts `claude` with it; the brief (`%TEMP%\michi-handoff\<worktree>-<time>.md`) lists each open place with ours / base / theirs and both sides' intent; the repository itself gets no new file; when the Claude adds the files the remaining count falls by itself; with nothing left `g` only says so (skipped: needs a real Claude or tsumugi session) |
 | 21.29 | In `4` with a file that clashed whole (deleted on one side, or binary), click「外部ツールで開く」or press `w`; once with `merge.tool` set in git config (e.g. `vscode`, `meld`), once without | With a merge tool: `git mergetool` opens that tool on the file, and when it is closed a toast says so, the file is added if the tool reported success, and the count falls; without: the file opens in the program the system has for it (Explorer / `open` / `xdg-open`) and the toast says so; a failure shows git's first line that is not a warning; with a file deleted on one side and a tool set, git wants a terminal to ask which side to keep, and the toast says to use `o` or `t` |
-| 21.30 | Hand a conflict to a Claude with `g` (21.28); keep michi open while that Claude works until it stops and waits for you | While it runs nothing is said; once it stops (waiting or done) a toast「<worktree> の Claude が止まりました（待ちか済み）: diff を見てください」shows for 10 s, once | [ ] |
+| 21.30 | Hand a conflict to a Claude with `g` (21.28); keep michi open while that Claude works until it stops and waits for you | While it runs nothing is said; once it stops (waiting or done) a toast「<worktree> の Claude が止まりました（待ちか済み）: diff を見てください」shows for 10 s, once | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 21.31 | As 21.30: after the stop toast | A second toast says how many places still have conflict markers, or that none are left; a Claude handed notes (13.13) gets no second toast | [ ] |
 ## 22. Branch changes from the picker and the graph
 
@@ -492,7 +492,7 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 31.1 | With michi open on a repository with two worktrees, run `claude mcp add michi -- michi.com mcp`, then ask Claude Code "which worktrees are behind main?" | Claude calls `michi_worktrees` and answers with each worktree's branch, ahead / behind and uncommitted files | | [x] |
+| 31.1 | With michi open on a repository with two worktrees, run `claude mcp add michi -- michi.com mcp`, then ask Claude Code "which worktrees are behind main?" | Claude calls `michi_worktrees` and answers with each worktree's branch, ahead / behind and uncommitted files | | [x] (skipped: needs a real Claude or tsumugi session) |
 | 31.2 | Make two worktrees edit the same file, wait for michi's prediction, ask "which worktrees would conflict?" | `michi_conflicts` names the pair and the file | | [x] |
 | 31.3 | Close michi and ask again | The tool answers "michi is not running; start michi and ask again" | | [x] |
 | 31.4 | Open two michi windows, close the first, ask again after half a minute | The second window answers | | [x] |
@@ -537,9 +537,9 @@ files under `refs/michi/backup/<time>` first.
 | 35.4 | Type the answer with a Japanese IME and confirm the conversion with Enter | The conversion is confirmed without sending; the next Enter sends | | [ ] |
 | 35.5 | With two Claudes waiting, press `W` twice | The first press goes to the one that has waited longest, the second to the next one, then round | | [ ] |
 | 35.6 | Press Esc in the answer line | The line closes; the review stays open | | [ ] |
-| 35.7 | Answer the Claude in its own tab while the line is open | The line closes by itself once michi sees the Claude is no longer waiting | | [ ] |
+| 35.7 | Answer the Claude in its own tab while the line is open | The line closes by itself once michi sees the Claude is no longer waiting | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 35.8 | Press `W` with no Claude waiting | The toast says `No Claude is waiting` | | [ ] |
-| 35.9 | Start michi while a Claude is already waiting | No toast for it (only waits that begin while michi runs are told); `W` still goes to it | | [ ] |
+| 35.9 | Start michi while a Claude is already waiting | No toast for it (only waits that begin while michi runs are told); `W` still goes to it | | [ ] (skipped: needs a real Claude or tsumugi session) |
 
 ## 36. Warning about overlapping work in New work (`N`)
 
@@ -631,7 +631,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 43.4 | With an edited tracked file and an untracked file, press `g r` and `3` | The edit is gone, the untracked file stays; the toast names two backup refs (the tip, the changes); `git show <changes>:file` has the edit | | [ ] |
 | 43.5 | Press `g r`, then Esc (or `n`, or `y`) | Nothing changes (y does nothing: only 1 2 3 choose) | | [ ] |
 | 43.6 | Press `g r` in a worktree in the middle of a merge or rebase; with no commit selected | A toast says to finish it first / to pick a commit; no band | | [ ] |
-| 43.7 | Press `g r` where a Claude is working | The band ends with the note that a Claude is working there | | [ ] |
+| 43.7 | Press `g r` where a Claude is working | The band ends with the note that a Claude is working there | | [ ] (skipped: needs a real Claude or tsumugi session) |
 
 ## 44. Ignoring an untracked file (`i`, #49)
 
@@ -650,7 +650,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 45.2 | Click a folder row | It folds (▸) and its files vanish from the list; click again to open it (▾). Staged and unstaged fold apart |
 | 45.3 | Click the `+` at the right of an unstaged folder; then the `−` of a staged one | Every file below it goes into the index, then every one (a rename's old path too) comes out; the count at the right matches |
 | 45.4 | With a folder folded, press `j` / `k` and the arrow keys | The selection walks the files in the order shown and skips the folded ones; a selection folded away moves to the nearest shown file |
-| 45.5 | Stage a folder while a Claude is writing in the worktree | The same question for a yes as for a file |
+| 45.5 | Stage a folder while a Claude is writing in the worktree | The same question for a yes as for a file (skipped: needs a real Claude or tsumugi session) |
 
 ## 46. Comparing two commits or branches
 
@@ -674,7 +674,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 47.5 | Press `B`, type a name, press Shift+Enter | The branch is made at HEAD, the worktree is on it, the strip goes; the commit is on the new branch | | [ ] |
 | 47.6 | Detach, then delete the branch it came from, then look at the strip | `R` is not offered for a branch that is gone (an earlier existing one, or only `B`) | | [ ] |
 | 47.7 | Start `git rebase -i` and stop it at an edit | The strip says it is a rebase, with no buttons; it goes when the rebase ends | | [ ] |
-| 47.8 | With a Claude working in the worktree press `R` | A yes is asked first, as for a switch | | [ ] |
+| 47.8 | With a Claude working in the worktree press `R` | A yes is asked first, as for a switch | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 47.9 | Open the settings (`,`) or the key list (`?`) while the strip is up; switch EN and JA | The strip stays tidy at a narrow width (the text is cut with an ellipsis, the buttons stay); both languages read well | | [ ] |
 
 ## 74. Commit message help (history and template)
@@ -730,11 +730,11 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 95.1 | With tsumugi running, select a commit that is only on a worktree's branch (not on main) whose worktree has a Claude tab | The detail header shows `Claude in this worktree  tab N · <title>` under the names; the title is the tab's | [ ] |
+| 95.1 | With tsumugi running, select a commit that is only on a worktree's branch (not on main) whose worktree has a Claude tab | The detail header shows `Claude in this worktree  tab N · <title>` under the names; the title is the tab's | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 95.2 | Click that `tab N · title` | The tab comes to the front in tsumugi (same as `o`); a toast says so | [ ] |
 | 95.3 | Select a commit on main that no worktree has checked out | No Claude line; select the one the main worktree has checked out (with a Claude there): the line shows | [ ] |
 | 95.4 | A worktree with two or more Claudes | The first two are listed and `+N more` follows; narrow the window and the line wraps | [ ] |
-| 95.5 | Quit tsumugi (or have no Claude in the worktree) and select the same commit | The line goes within a few seconds; nothing else changes; the WIP row has no such line | [ ] |
+| 95.5 | Quit tsumugi (or have no Claude in the worktree) and select the same commit | The line goes within a few seconds; nothing else changes; the WIP row has no such line | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 95.6 | Switch EN and JA | `Claude in this worktree` / `この worktree の Claude`, `tab` / `タブ` read well | [ ] |
 
 ## 66. Right-click menus for a commit, a branch and a file
@@ -791,20 +791,20 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 93.8 | Press `l`, then `3`, then `l`, then `4` on the same branch | The second run skips what was done ("main was in … already") and only cleans up |
 | 93.9 | Use a repository without a verify script | The toast says "no check found (skipped)" and the landing goes on |
 | 93.10 | Select the window's own worktree and press `l` | Only `1` to `3` are offered and a note says it cannot be removed from here |
-| 93.11 | Land with a Claude working in the worktree | The band notes a Claude is working there and that its tabs close at the last stage |
+| 93.11 | Land with a Claude working in the worktree | The band notes a Claude is working there and that its tabs close at the last stage (skipped: needs a real Claude or tsumugi session) |
 | 93.12 | Switch to JA and press `l` | The band, the buttons and every toast read in Japanese; `?` lists `l` among the worktree keys |
 
 ## 91. A snapshot and diff per Claude turn (`y`)
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 91.1 | Let a Claude in a worktree edit a file and stop to wait (tsumugi shows it `waiting` or `done`) | Within a few seconds `git for-each-ref refs/michi/turn/` lists `refs/michi/turn/<branch>/1`; the index, HEAD and files are untouched; no toast appears | | [ ] |
+| 91.1 | Let a Claude in a worktree edit a file and stop to wait (tsumugi shows it `waiting` or `done`) | Within a few seconds `git for-each-ref refs/michi/turn/` lists `refs/michi/turn/<branch>/1`; the index, HEAD and files are untouched; no toast appears | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 91.2 | In the `3` view select that worktree and press `y` | The compare review opens titled `Turn 1 of 1 on <branch>` listing what the Claude changed in that turn | | [ ] |
-| 91.3 | Give the Claude a second instruction that changes another file; after it stops press `y` | `Turn 2 of 2`: only the second instruction's change is listed | | [ ] |
+| 91.3 | Give the Claude a second instruction that changes another file; after it stops press `y` | `Turn 2 of 2`: only the second instruction's change is listed | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 91.4 | In the turn review press `y`, then `Y` | `y` goes to the older turn and `Y` to the newer one; at the ends a toast says "That is the oldest turn kept" / "That is the newest turn" | | [ ] |
-| 91.5 | Let a Claude stop without changing any file | No new turn ref is made | | [ ] |
+| 91.5 | Let a Claude stop without changing any file | No new turn ref is made | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 91.6 | Press `y` on a worktree whose Claude never stopped under michi | A toast says no turn is kept yet | | [ ] |
-| 91.7 | Restart michi while a Claude is already waiting, then let it work and stop | Only the turn ended after michi looked is kept (the first list is a baseline) | | [ ] |
+| 91.7 | Restart michi while a Claude is already waiting, then let it work and stop | Only the turn ended after michi looked is kept (the first list is a baseline) | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 91.8 | Switch to JA; press `?` in the worktree table and in the review | Titles and toasts read in Japanese; `y` and `y Y` are listed | | [ ] |
 
 ## 78. Sync: fetch, pull and push in one (`S`)
@@ -819,7 +819,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 78.6 | A new branch with no upstream: press `S` | It is pushed and gets the upstream; the toast says `Synced: pushed to origin/<b>, now its upstream` | | [ ] |
 | 78.7 | With two remotes and no `origin`: press `S` | The remote chooser opens; choosing one runs the sync to it | | [ ] |
 | 78.8 | In sync already: press `S` | The toast says `Already in sync with origin/<b>` | | [ ] |
-| 78.9 | Press `S` while a Claude works in the worktree, or in the middle of a merge | The Claude case asks `Sync there anyway?` (y/n); the merge case says sync waits (and the button is greyed) | | [ ] |
+| 78.9 | Press `S` while a Claude works in the worktree, or in the middle of a merge | The Claude case asks `Sync there anyway?` (y/n); the merge case says sync waits (and the button is greyed) | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 78.10 | Press `S` in the 2, 3 and 4 views; open `?`; switch EN and JA | `S` works in each; the key list has a `S` line; both languages read well | | [ ] |
 
 ## 67. Drag and drop onto a worktree
@@ -872,13 +872,13 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 99.1 | In a worktree with a Claude and a merge conflict, press `4` then `g` | A row appears under the bar: "Asked the Claude in ...; waiting for it to stop..."; no buttons yet; `a` and `r` say the Claude is still working | | [ ] |
+| 99.1 | In a worktree with a Claude and a merge conflict, press `4` then `g` | A row appears under the bar: "Asked the Claude in ...; waiting for it to stop..."; no buttons yet; `a` and `r` say the Claude is still working | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 99.2 | Let the Claude solve everything (git add) and stop | The toast and notification say it stopped; the row turns green: "... stopped and solved everything", with "Look at the diff" `d`, "Adopt" `a`, "Send back" `r` | | [ ] (skipped: needs OS or machine features the harness lacks) |
 | 99.3 | Press `d` (or click the button) | The Changes view opens on that worktree and shows what the Claude did | | [ ] |
 | 99.4 | Back in `4`, press `a` | The usual commit flow runs (message check, Claude-working check); the merge is committed and the row goes away with the conflict | | [ ] |
-| 99.5 | Hand over again, let the Claude leave one place marked, stop it | The row is red with "N places still have markers"; only "Look at the diff" and "Send back" show; `a` says places are left | | [ ] |
+| 99.5 | Hand over again, let the Claude leave one place marked, stop it | The row is red with "N places still have markers"; only "Look at the diff" and "Send back" show; `a` says places are left | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 99.6 | Press `r` | The line "Your solution was not accepted ..." is typed into the Claude; the row goes back to waiting; when it stops, the row updates again | | [ ] |
-| 99.7 | Press `r` with no Claude session open in the worktree | A new tsumugi tab with a Claude starts with the same line | | [ ] |
+| 99.7 | Press `r` with no Claude session open in the worktree | A new tsumugi tab with a Claude starts with the same line | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 99.8 | Abort the merge, or finish it by hand | The row goes away; `d`, `a`, `r` do nothing | | [ ] |
 | 99.9 | Switch EN and JA; narrow the window | The row reads well in both and wraps without hiding the buttons | | [ ] |
 
@@ -926,8 +926,8 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 81.1 | Open a repository with no commit (`git init` only) in the graph view | Under `No commits yet.` one brighter line reads `Next: press 2 to stage your files and make the first commit.`; pressing `2` opens Changes | [ ] |
 | 81.2 | Make the first commit | The line goes at once and the graph shows the commit | [ ] |
 | 81.3 | Open a repository with commits and one worktree, go to the worktree view (`3`) | Under the table a line reads `Next: press N to start new work in a worktree of its own.`; `N` opens New work | [ ] |
-| 81.4 | Add a second worktree (and run tsumugi) | The line is gone | [ ] |
-| 81.5 | With two or more worktrees and tsumugi not running, look at the worktree view | The line reads `Next: start tsumugi to see the Claude Code running in each worktree.`; start tsumugi and it goes within a few seconds | [ ] |
+| 81.4 | Add a second worktree (and run tsumugi) | The line is gone | [ ] (skipped: needs a real Claude or tsumugi session) |
+| 81.5 | With two or more worktrees and tsumugi not running, look at the worktree view | The line reads `Next: start tsumugi to see the Claude Code running in each worktree.`; start tsumugi and it goes within a few seconds | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 81.6 | While the history is still being read (a big repository) | No guidance line shows (the skeleton only) | [ ] |
 | 81.7 | Switch EN and JA; narrow the window | The line reads well in both and wraps without overlapping the table | [ ] |
 
@@ -1031,7 +1031,7 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 52.5 | Restore the same version again | The toast says it is as `<hash>` has it already; nothing changes | | [ ] |
 | 52.6 | Stage a change to `a.txt`, then restore an older version | The worktree file is the old version; `git diff --cached` still shows the staged change | | [ ] |
 | 52.7 | Select a commit that deletes a file and click its `Restore this version` | A toast says there is no version to bring back; no band | | [ ] |
-| 52.8 | With a Claude working in the worktree, click it; then with the worktree mid-merge | The band also notes that a Claude is working there; mid-merge a toast says to finish the merge first and no band appears | | [ ] |
+| 52.8 | With a Claude working in the worktree, click it; then with the worktree mid-merge | The band also notes that a Claude is working there; mid-merge a toast says to finish the merge first and no band appears | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 52.9 | Switch EN and JA; narrow the window; switch to the light theme | The link, band and toasts read well in both languages; the file name is cut with `…` before it collides with the link; readable in both themes | | [ ] |
 
 ## 54. Co-Authored-By on michi's commits
@@ -1068,7 +1068,7 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 37.9 | Press `B` on a file deleted by the commit, then with nothing selected | A toast says there is nothing to blame (`... was deleted here`) or that no file is selected; no screen opens | [ ] |
 | 37.10 | Select a worktree's uncommitted row in the graph and press `B` | The file is blamed as that worktree has it | [ ] |
 | 37.11 | Check the keybar and `?` over the screen; switch EN and JA | The keybar names j k, B H Tab, Enter, PageDown PageUp, Esc; global keys are not listed; text reads well in both languages and long lines end in `…` | [ ] |
-| 37.12 | With Claude writing in the worktree, press `B` | Nothing changes in the worktree and no `index.lock` appears (a read only) | [ ] |
+| 37.12 | With Claude writing in the worktree, press `B` | Nothing changes in the worktree and no `index.lock` appears (a read only) | [ ] (skipped: needs a real Claude or tsumugi session) |
 
 ## 253. Per-worktree author and email (#53)
 
@@ -1114,7 +1114,7 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 | 255.5 | Make the target change that file in a commit so the changes clash, move | The target has conflict marks, a toast says where, and the stash stays in the list | [ ] |
 | 255.6 | Press `v` on a worktree with no changes, then in a repository with one worktree | A toast says there is nothing to move / no other worktree; no palette opens | [ ] |
 | 255.7 | Start a merge in either worktree and move | A toast says it is in the middle of a merge; the palette stays | [ ] |
-| 255.8 | With a Claude working in either worktree, move | The question also says a Claude is working there | [ ] |
+| 255.8 | With a Claude working in either worktree, move | The question also says a Claude is working there | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 255.9 | Switch EN and JA; check the keybar and `?` in the `3` view | `v` Move changes appears; text reads well in both languages | [ ] |
 
 ## 245. Repository tabs (#45)
@@ -1147,7 +1147,7 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 | 246.6 | Paste ordinary text (a branch name) over the graph; paste in the filter box and in the commit message box | Nothing is asked over the graph; the text goes into the boxes as usual |
 | 246.7 | Press Ctrl+V with the changes view, the blame screen or a bar in front | The paste does not open the question |
 | 246.8 | With a rebase or merge stopped in the worktree, paste a patch | A toast says the worktree is in the middle of it and to finish first |
-| 246.9 | Paste a patch while a Claude is working in the worktree | The question ends with the note that a Claude is working there |
+| 246.9 | Paste a patch while a Claude is working in the worktree | The question ends with the note that a Claude is working there (skipped: needs a real Claude or tsumugi session) |
 | 246.10 | Check the keybar and `?` over the graph; switch EN and JA | `Y` and Ctrl+V are listed with their words in both languages |
 
 ## 258. Run a refused commit again (#58)
@@ -1204,7 +1204,7 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 | 232.6 | Press `X` while bisecting, answer `y` | The worktree returns to where it was; the backup ref stays; the strip goes | [ ] |
 | 232.7 | Press `r` | A `git bisect run` line is on the clipboard and works when `<test-command>` is replaced | [ ] |
 | 232.8 | Run a bisect with a second worktree present | The other worktrees are untouched | [ ] |
-| 232.9 | With a Claude working in the worktree, start | The question also says a Claude is working there | [ ] |
+| 232.9 | With a Claude working in the worktree, start | The question also says a Claude is working there | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 232.10 | Switch EN and JA; check the keybar and `?` | The bisect keys appear; text reads well in both languages | [ ] |
 
 ## 242. Gitflow (`G`)
@@ -1223,7 +1223,7 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 | 242.10 | Make `main` and a release branch change the same line, then finish the release | A toast says the merge would clash; no branch moved, no backup was made | [ ] |
 | 242.11 | Finish a release whose tag already exists | A toast says the tag is already there; nothing changed | [ ] |
 | 242.12 | Stop in the middle of a rebase or merge, then use a row | A toast says it is in the middle of it | [ ] |
-| 242.13 | Finish while a Claude is working in the worktree | The question ends with a note that a Claude is working there | [ ] |
+| 242.13 | Finish while a Claude is working in the worktree | The question ends with a note that a Claude is working there | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 242.14 | Check the keybar and `?` over the graph and the `3` view; switch EN and JA | `G` Gitflow is listed; the palette and toasts read well in both languages | [ ] |
 
 ## 243. External editor, diff and merge tools (#43)
@@ -1474,7 +1474,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 110.2 | Do the same on a feature branch | The commit goes straight, with no band | | [ ] |
 | 110.3 | Write `[commit]` `protect = ["release/*"]` in config.toml (no restart); commit on `release/1.0`, then on `main` | `release/1.0` asks, `main` does not | | [ ] |
 | 110.4 | Write `protect = []` and commit on `main` | No band | | [ ] |
-| 110.5 | Commit on `main` while a Claude is writing in the worktree | One band tells both reasons; one `y` covers both | | [ ] |
+| 110.5 | Commit on `main` while a Claude is writing in the worktree | One band tells both reasons; one `y` covers both | | [ ] (skipped: needs a real Claude or tsumugi session) |
 ## 111. A commit warns of big files and secrets (#111)
 
 | # | Do | Should | Notes | OK |
