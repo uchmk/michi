@@ -480,11 +480,11 @@
 
 ## 42. Reflog screen (`L`, #50)
 
-- [ ] **42.1** In the graph or the worktree table press `L` → A list opens at the top: HEAD's reflog (`HEAD@{n}`, what happened, the commit's subject) and the backups under `refs/michi/backup/` (tinted), newest first; the window does not freeze on a big repository → | [ ] 〔未訳〕
-- [ ] **42.2** Reset a branch (`git reset --hard HEAD~1`) in a worktree, then press `R` → The reset is the top `HEAD@{0}` row and the commit it dropped is the row under it → | [ ] 〔未訳〕
+- [~] **42.1** In the graph or the worktree table press `L` → A list opens at the top: HEAD's reflog (`HEAD@{n}`, what happened, the commit's subject) and the backups under `refs/michi/backup/` (tinted), newest first; the window does not freeze on a big repository → | [ ] 〔未訳〕
+- [ ] **42.2** Reset a branch (`git reset --hard HEAD~1`) in a worktree, then press `L` → The reset is the top `HEAD@{0}` row and the commit it dropped is the row under it → | [ ] 〔未訳〕
 - [ ] **42.3** Move with `j k`, the arrow keys, PageUp/PageDown, Home/End and the mouse; click a row → The selection follows; a click on the selected row asks as Enter does; a click outside the list closes it → | [ ] 〔未訳〕
-- [ ] **42.4** Select a row and press Enter → The band asks to bring the commit back as a new branch and says nothing moves; `y` makes `recovered/<id>` at that commit (`-2` after it if taken), the list closes and a toast names the branch; HEAD and the worktree are untouched → | [ ] 〔未訳〕
-- [ ] **42.5** After a force push or a branch delete (which keep a backup), press `R` → The backup is listed with the reason michi wrote; bringing it back gives a branch at its commit → | [ ] 〔未訳〕
+- [~] **42.4** Select a row and press Enter → The band asks to bring the commit back as a new branch and says nothing moves; `y` makes `recovered/<id>` at that commit (`-2` after it if taken), the list closes and a toast names the branch; HEAD and the worktree are untouched → | [ ] 〔未訳〕
+- [ ] **42.5** After a force push or a branch delete (which keep a backup), press `L` → The backup is listed with the reason michi wrote; bringing it back gives a branch at its commit → | [ ] 〔未訳〕
 - [ ] **42.6** Press `R` in a repository with no commits and nothing kept → A toast says the reflog and backups are empty; no list opens → | [ ] 〔未訳〕
 - [ ] **42.7** Switch the language to Japanese and open the list → The title, hints, band and toast are in Japanese → | [ ] 〔未訳〕
 
@@ -814,7 +814,7 @@
 - [~] **280.2** Type `mine https://example.com/x.git` → One row `mine`, lit, reads `add it at https://example.com/x.git`; Enter adds it, a toast says nothing was fetched; `M` lists it 〔未訳〕
 - [ ] **280.3** Type only `mine` and press Enter → A toast asks for the address after the name; the list stays open 〔未訳〕
 - [~] **280.4** Type `a/b https://x` and press Enter → A toast says `'a/b' is not a valid remote name`; the list stays open and nothing is added 〔未訳〕
-- [~] **280.5** Select a remote and press Delete → The red question names the remote and its address and says its remote-tracking branches go; Ctrl+Enter removes it (`y` does nothing), the graph drops its `origin/...` pills, the toast says where it was 〔未訳〕
+- [~] **280.5** Select a remote and press Delete → The red question names the remote and its address and says its remote-tracking branches go; `y` or Ctrl+Enter removes it, the graph drops its `origin/...` pills, the toast says where it was 〔未訳〕
 - [~] **280.6** Press `Esc` on that question → Nothing is removed 〔未訳〕
 - [~] **280.7** Press `M` in a repository with no remote → The list opens empty; typing a name and address still adds one 〔未訳〕
 - [ ] **280.8** Switch EN and JA → The hint, the keys line, the question and the toasts read well and fit 〔未訳〕
