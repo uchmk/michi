@@ -636,10 +636,10 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 44.1 | In the `2` view make an untracked file `x.log` in the worktree, select it in the unstaged list and press `i` | No question; a toast says `Added /x.log to .gitignore`; the file leaves the list after the next read and `.gitignore` in the worktree's root has the line (made if there was none) | [ ] |
-| 44.2 | Press `i` on a tracked (modified) file, on a staged file; then on an untracked file with `[` `]` and `*` in its name | The first two toast that only an untracked file can be ignored and change nothing; the brackets and star are escaped in the line (`/a\[1\]\*.log`) and git ignores only that file | [ ] |
-| 44.3 | Press `i` on a file whose line is already in `.gitignore` (an exact line, e.g. after a hand edit) | A toast says the line is in `.gitignore` already; the file is not changed; with a CRLF `.gitignore` the new line gets CRLF | [ ] |
-| 44.4 | Open the help (`?`) in the `2` view | `i` is listed: Add the untracked file to .gitignore (JA: 追っていないファイルを .gitignore に足す) | [ ] |
+| 44.1 | In the `2` view make an untracked file `x.log` in the worktree, select it in the unstaged list and press `g i` | No question; a toast says `Added /x.log to .gitignore`; the file leaves the list after the next read and `.gitignore` in the worktree's root has the line (made if there was none) | [ ] |
+| 44.2 | Press `g i` on a tracked (modified) file, on a staged file; then on an untracked file with `[` `]` and `*` in its name | The first two toast that only an untracked file can be ignored and change nothing; the brackets and star are escaped in the line (`/a\[1\]\*.log`) and git ignores only that file | [ ] |
+| 44.3 | Press `g i` on a file whose line is already in `.gitignore` (an exact line, e.g. after a hand edit) | A toast says the line is in `.gitignore` already; the file is not changed; with a CRLF `.gitignore` the new line gets CRLF | [ ] |
+| 44.4 | Open the help (`?`) in the `2` view | `g i` is listed: Add the untracked file to .gitignore (JA: 追っていないファイルを .gitignore に足す) | [ ] |
 
 ## 45. Changes as a tree of folders
 
