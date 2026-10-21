@@ -156,9 +156,9 @@
 
 ## 11. Conflict prediction
 
-- [ ] **11.1** Press `1` and look at the two worktrees' head commits → Each has a red `⚠ Conflict ahead` pill after its names; hovering says `Would conflict with <branch> in N places (<files>)`, one line per worktree it clashes with 〔未訳〕
-- [ ] **11.2** Look at the third worktree's `Uncommitted` row → A dashed yellow `⚠ Conflict ahead` pill after the counts; hovering says `Counting the uncommitted changes, would conflict with <branch> in N places (<files>)` 〔未訳〕
-- [ ] **11.3** Press `3` and look at the `Conflicts ahead` column → Red `⚠ <branch>: N places` with the files under it, one for each worktree it clashes with; yellow with `(uncommitted)` for the third; `None` for a worktree that clashes with nothing 〔未訳〕
+- [~] **11.1** Press `1` and look at the two worktrees' head commits → Each has a red `⚠ Conflict ahead` pill after its names; hovering says `Would conflict with <branch> in N places (<files>)`, one line per worktree it clashes with 〔未訳〕
+- [~] **11.2** Look at the third worktree's `Uncommitted` row → A dashed yellow `⚠ Conflict ahead` pill after the counts; hovering says `Counting the uncommitted changes, would conflict with <branch> in N places (<files>)` 〔未訳〕
+- [~] **11.3** Press `3` and look at the `Conflicts ahead` column → Red `⚠ <branch>: N places` with the files under it, one for each worktree it clashes with; yellow with `(uncommitted)` for the third; `None` for a worktree that clashes with nothing 〔未訳〕
 - [ ] **11.4** Look at the box under the table → `Conflicts ahead (uncommitted changes counted)`, a table of the worktrees' short names both ways: `—` against itself, `·` for a clean pair, the number of places in red, or in yellow with a dashed frame for the uncommitted one; the hint under it and the foot about `git merge-tree` 〔未訳〕
 - [ ] **11.5** Hover a number, then click it, then click it again → The tip lists each file with its places; the click frames the cell and the note reads `<a> × <b>: <file> N places. ` with what to expect when they go into main (or, for the yellow one, that committing turns the frame solid); the second click puts the hint back 〔未訳〕
 - [ ] **11.6** Commit the third worktree's change; then undo the conflicting edit in one of the first two and commit → Within about a second with michi in front, the yellow pill and cell turn red; then the red ones go, and the column says `None` 〔未訳〕
