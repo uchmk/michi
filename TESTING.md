@@ -84,7 +84,7 @@ What text can check (reading the repository, the git version, the command line) 
 | 5.2 | Start `michi C:\no\such` from a terminal | The message `michi: not a folder: C:\no\such` in the terminal, exit code 2, no window |
 | 5.3 | Start `michi --version` and `michi --help` from cmd and from PowerShell | The version or the usage prints in that terminal, exit code 0, no window |
 | 5.4 | Start michi with no git on the PATH | The chip shows `✗ git was not found`; the keybar shows `⚠ git` in red |
-| 5.5 | Start michi with a git older than 2.38 on the PATH | A toast for 10 seconds names the version and asks to update; the keybar keeps `⚠ git 2.x.y` in amber |
+| 5.5 | Start michi with a git older than 2.38 on the PATH | A toast for 10 seconds names the version and asks to update; the keybar keeps `⚠ git 2.x.y` in amber (skipped: needs OS or machine features the harness lacks) |
 | 5.6 | Start `michi` in a worktree other than the main one | The chip names the repository (not the worktree's folder) and its branch; the count is the whole repository's |
 
 ## 6. Graph
@@ -106,13 +106,13 @@ Open a repository with merges, tags, a remote and a second worktree (`C:\dev\tsu
 | 6.11 | In the field, press Enter, Shift+Enter, ↓, ↑ | Enter selects the next hit (round to the first after the last), Shift+Enter the one before; the arrows move the selection; the field keeps the keys |
 | 6.12 | Press Esc in the field | The filter clears and every row is bright again |
 | 6.13 | Look at the scrollbar | Marks for the worktrees' heads (in their lanes' colours), the tags (amber) and the selected row (the accent); hovering a mark tells what it is |
-| 6.14 | Drag the thumb; click the track; click a mark | The thumb stays under the pointer to the release; a click on the track brings that part into the middle; a click on a mark selects its row |
+| 6.14 | Drag the thumb; click the track; click a mark | The thumb stays under the pointer to the release; a click on the track brings that part into the middle; a click on a mark selects its row (skipped: needs drag or wheel, which the harness lacks) |
 | 6.15 | Look at commits by dependabot[bot] and github-actions[bot] | The author reads `⚙ dependabot` and `⚙ actions`; hovering shows the full name |
 | 6.16 | Open a repository with more than 2000 commits | The first screen comes at once; scrolling near the foot reads on by itself; the last row says how many older commits are left and reads them when clicked; the thumb shrinks as the list grows |
 | 6.17 | Look at a second worktree's commits | They run on their own lane in the worktree's colour, from where they left main |
-| 6.18 | Narrow the window to 720 wide; switch to the light theme | The subject is cut with an ellipsis and the names drop before they crowd it; the filter field stays inside the band; every colour stays readable in light |
+| 6.18 | Narrow the window to 720 wide; switch to the light theme | The subject is cut with an ellipsis and the names drop before they crowd it; the filter field stays inside the band; every colour stays readable in light (skipped: needs a narrower window, which the harness lacks) |
 | 6.19 | Open a repository with more than 2000 commits and no `.git\objects\info\commit-graph*` (a fresh `git clone` of a long history), wait a few seconds, close michi and open it again | `.git\objects\info\commit-graphs` appears while michi is open, with no toast; the history looks the same, and the second opening shows the first screen sooner. A repository with fewer commits gets none |
-| 6.20 | In a history of 100,000 commits, press `z` to fold and unfold, and type in the filter (`/`) | Each answers at once, with no stall while typing; scrolling far down lays the rows out as they come in sight. After `End` has read the whole history, `z` there may take a moment |
+| 6.20 | In a history of 100,000 commits, press `z` to fold and unfold, and type in the filter (`/`) | Each answers at once, with no stall while typing; scrolling far down lays the rows out as they come in sight. After `End` has read the whole history, `z` there may take a moment (skipped: needs OS or machine features the harness lacks) |
 
 ## 7. Side column
 
@@ -138,7 +138,7 @@ The same repository as section 6.
 | 8.6 | Click a parent link | The graph selects the parent and the detail shows it |
 | 8.7 | Select a merge into main | `N commits came into main by this merge` with their hashes, subjects and times, and whether they are folded or open in the graph; the note that a merge's diff comes in the next stage; no diff |
 | 8.8 | Select a commit with a binary file, and a big one | The binary file says it has no diff to show; a very long diff ends with `… the rest is left out` |
-| 8.9 | Narrow the window below 900 wide | The side column goes and the detail stacks under the graph, still readable; Enter still spreads the diff |
+| 8.9 | Narrow the window below 900 wide | The side column goes and the detail stacks under the graph, still readable; Enter still spreads the diff (skipped: needs a narrower window, which the harness lacks) |
 | 8.10 | Switch to the light theme | The diff's greens, reds and blues and the hatching stay readable |
 | 8.11 | Look at a commit adding a file that is not UTF-8 (Latin-1 `café`) | Under the file's name: `Not UTF-8: bad bytes show as �` (one line, not cut at the pane's edge); the bytes show as that mark (a box in this font) in the diff |
 | 8.12 | Look at the diff of a long line, in one column and side by side (`Enter`), in a narrow and a wide window; also a long Japanese line | It wraps at the pane's edge with the next part under it, the line number only on the first line; the row is as tall as its text, with no empty lines under a Japanese one and nothing cut off with `…` |
@@ -170,14 +170,14 @@ Open a repository with a main worktree, a worktree on a branch that is pushed an
 | 10.5 | Look at the locked worktree with no branch | `No branch, at <hash>` and a `Locked` mark; a worktree whose folder was deleted says `Its folder is gone (git can prune it)` |
 | 10.6 | Press `j` / `k`, the arrows, PageDown / PageUp, Home / End, and click a row | The selection moves (10 rows a page) and the table scrolls to keep it in view; the wheel scrolls the table with no scrollbar |
 | 10.7 | Press Enter on a row with changes, and double-click a clean row | On the main row the graph opens (`Show in the graph`); on a linked worktree row the review view opens (`main…<branch>`, `Esc` back) |
-| 10.8 | Select a linked worktree and press `d`, then `Esc`; `m`, then `Esc`; `t`, `e`, `E`; `O`, `Q`, `I` | `d` opens the review view (`main…<branch>`, the files, the diff, `Esc` back); `m` asks to bring main in; `t` `e` `E` open the terminal, the editor and the file manager on its folder; `O` opens its pull request page, `Q` the pull request form, `I` the issue; the main row shows `Pull` and `Show in the graph` instead of the review, merge and `Remove` buttons |
+| 10.8 | Select a linked worktree and press `d`, then `Esc`; `m`, then `Esc`; `t`, `e`, `E`; `O`, `Q`, `I` | `d` opens the review view (`main…<branch>`, the files, the diff, `Esc` back); `m` asks to bring main in; `t` `e` `E` open the terminal, the editor and the file manager on its folder; `O` opens its pull request page, `Q` the pull request form, `I` the issue; the main row shows `Pull` and `Show in the graph` instead of the review, merge and `Remove` buttons (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 10.9 | Click `Read again` | The toast `Reading the worktrees again…`, and the table follows a change made outside (a new commit, a new worktree) |
 | 10.10 | Narrow the window below 960 wide | Each worktree becomes a card: the branch and folder, then the Claude, `From main`, `Uncommitted`, `Unseen` and `Conflicts ahead` lines, then the buttons, which wrap; still readable at the smallest width |
 | 10.11 | Look at the foot, and switch to the light theme | Only when the Claude column shows, a line on how often it reads tsumugi; colours stay readable in both themes |
 | 10.12 | With a Claude running in a worktree, select its row and press `o`; on a row without a Claude; press `o` in the graph | tsumugi goes to that Claude's tab (waiting or done one first) and a toast `Went to the Claude tab N in tsumugi`; without one a toast `No Claude is running in <worktree>` | [ ] |
 | 10.13 | Select a linked worktree with uncommitted files and a Claude, press `g x` (or click `Remove`); Esc; once more and `y`; on the main worktree and on this window's own | A band `Remove the worktree …? The folder goes; the branch … stays.` naming the Claude tab(s), the uncommitted files and the unpushed commits; Esc removes nothing; yes closes the tabs, keeps the change under `refs/michi/backup/` and removes the folder (the branch stays; a toast names the backup); main and the window's own say they stay | [~] |
 | 10.14 | In the graph or the worktree table press `N`; type a branch, pick the base with Up/Down, type an instruction, raise the count to 2; Ctrl+Enter. Once with an empty branch; once with Esc | A form with the branch (default `tsumugi/MMDD-HHMM`), the base chips, the instruction, the count, the folder and the `tsumugi new …` line as it will run; Ctrl+Enter opens a tsumugi tab with a new worktree and Claude per count (`-1`, `-2` on the branch) and a toast `Started N`; an empty branch says so and stays; Esc closes it and starts nothing | [~] |
-| 10.15 | In the worktree table select a worktree on a branch pushed to GitHub, press `O`; on a detached one; on a branch whose remote is not GitHub | The browser opens `https://github.com/<owner>/<repo>/pull/new/<branch>` and a toast says so; the detached one says it is not on a branch; the other says the remote is not on GitHub | [x] |
+| 10.15 | In the worktree table select a worktree on a branch pushed to GitHub, press `O`; on a detached one; on a branch whose remote is not GitHub | The browser opens `https://github.com/<owner>/<repo>/pull/new/<branch>` and a toast says so; the detached one says it is not on a branch; the other says the remote is not on GitHub | [x] (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 10.16 | In the worktree table select a worktree with 3+ commits since main, press `r`; move one with `J`/`K`, fold one with `s` and another with `f`, reword one with `r` (edit, Ctrl+Enter), drop one with `d`; Enter, then yes. Once with nothing changed; once with the first commit folded; once with a clash (two commits touching the same lines, swapped); once with uncommitted changes in the worktree | The commits are listed oldest first with pick/squash/fixup/reword/drop, a dropped one struck through; Enter with nothing changed or the first commit folded says so; the band names the counts and refs/michi/backup/; after yes the log is as the list said and a toast names the backup; a clash stops, the 4 view shows it and a toast says so; uncommitted changes refuse with a toast | [x] |
 | 10.17 | In the worktree table select a branch behind main, press `m`, `y`; then `m` on main, on a detached row and during a merge or rebase | The band reads `Merge main into <branch> in <folder>?` (and warns when a Claude is working there); after `y` a toast `Merged main into <folder>: …`; main says there is nothing to merge, the others refuse with their reason |
 
@@ -193,7 +193,7 @@ Set up: two worktrees that change the same lines of a file, each committed; a th
 | 11.4 | Look at the box under the table | `Conflicts ahead (uncommitted changes counted)`, a table of the worktrees' short names both ways: `—` against itself, `·` for a clean pair, the number of places in red, or in yellow with a dashed frame for the uncommitted one; the hint under it and the foot about `git merge-tree` |
 | 11.5 | Hover a number, then click it, then click it again | The tip lists each file with its places; the click frames the cell and the note reads `<a> × <b>: <file> N places. ` with what to expect when they go into main (or, for the yellow one, that committing turns the frame solid); the second click puts the hint back |
 | 11.6 | Commit the third worktree's change; then undo the conflicting edit in one of the first two and commit | Within about a second with michi in front, the yellow pill and cell turn red; then the red ones go, and the column says `None` |
-| 11.7 | Narrow the window below 960 wide, then to 1000 wide; switch to the light theme | As cards, each has a `Conflicts ahead` line and the box takes the full width; at 1000 wide the table's columns shrink but nothing overlaps; red and yellow stay readable in light |
+| 11.7 | Narrow the window below 960 wide, then to 1000 wide; switch to the light theme | As cards, each has a `Conflicts ahead` line and the box takes the full width; at 1000 wide the table's columns shrink but nothing overlaps; red and yellow stay readable in light (skipped: needs a narrower window, which the harness lacks) |
 | 11.8 | Open a repository with only one worktree, and look at `git status`, the branches and `git count-objects -vH` after a minute | The box still shows its table when the trunk branch is there too (main as a thin row and column, `—` and `·`); `Only one worktree: nothing to pair yet.` shows only when fewer than two sides are left (a repository with no other branch); nothing was staged, no branch moved, and the objects do not grow by more than the temporary trees; no `git.exe` keeps running after michi is closed |
 | 11.9 | Make a local branch no worktree is on that changes the same lines as main (in the main worktree: `git switch -c topic main~1`, edit and commit, `git switch main`); press `1` | The branch's head has the red `⚠ Conflict ahead` pill; hovering says `Would conflict with main in N places (<files>)`; main's head gets no pill for it, and the branch is not in the table of pairs under `3`. A branch already merged into main has no pill |
 
@@ -209,10 +209,10 @@ Set up: the repository of section 10, with michi in front on the graph; commit f
 | 12.4 | Commit twice more; in the graph, move onto one of them with `j` / `k`, and click the other | Each loses its dot once selected; the commit selected when the graph first opens, or that the selection follows when rows come in, does not count as seen |
 | 12.5 | Make 13 commits in the worktree and press `3` | The box shows 12, newest first, and `… 1 more`; a long subject is cut with `…` before the branch and time |
 | 12.6 | Quit michi with commits unseen, commit once more, and start michi again | The commits still unseen keep their dot, and the one made while michi was closed has one too; the file above lists the branch with the commits seen |
-| 12.7 | Narrow the window below 960 wide | The `Unseen changes` box goes under the conflicts box at the full width; the cards have an `Unseen` line |
+| 12.7 | Narrow the window below 960 wide | The `Unseen changes` box goes under the conflicts box at the full width; the cards have an `Unseen` line (skipped: needs a narrower window, which the harness lacks) |
 | 12.8 | Put another window in front, commit in a worktree, wait, then bring michi back | Nothing is read while michi is behind (no `git.exe` in Task Manager); when it comes back the history and the table follow at once |
 | 12.9 | Run `cargo build` (or write many files) in an ignored folder of a worktree, and run `git status` there, with michi in front | michi reads nothing for them: no `git.exe` keeps coming up in Task Manager, and the table does not change; a `git status` does not start a read that starts another |
-| 12.10 | Open a repository on a network share (`\\server\share` or a mapped drive) | Changes there show within about 5 s while michi is in front; nothing is read while it is behind |
+| 12.10 | Open a repository on a network share (`\\server\share` or a mapped drive) | Changes there show within about 5 s while michi is in front; nothing is read while it is behind (skipped: needs OS or machine features the harness lacks) |
 | 12.11 | Switch to the light theme | The blue dots and bold subjects in the graph, the column and the box stay readable |
 
 ## 13. Branch review
@@ -228,10 +228,10 @@ Set up: a worktree on a branch with two commits from main (a renamed file, a cha
 | 13.5 | Press `u`, then `u` again | The switch goes dark and the file changed only in the worktree leaves the list, `Seen n / m` with it; the second `u` brings it back |
 | 13.6 | On a branch never looked over, press `s`; then Esc, commit once more in the worktree, press `d` and `s` | First the toast `Not looked over before: all of it is new`; then the switch is lit, the title reads `since the last look (<short hash>)` and only the files changed since show (and the uncommitted ones); with nothing new, `No file changed since the last look` |
 | 13.7 | Press Enter, then Esc twice | Enter widens the diff side by side (the switch reads `Back to one column Esc`), the first Esc puts it back, the second closes the review on the worktree table |
-| 13.8 | Select a file with a long diff; roll the wheel over it, press PageDown and PageUp; select another file | The diff scrolls (no scrollbar); the other file starts at its top |
+| 13.8 | Select a file with a long diff; roll the wheel over it, press PageDown and PageUp; select another file | The diff scrolls (no scrollbar); the other file starts at its top (skipped: needs drag or wheel, which the harness lacks) |
 | 13.9 | Press `d` on a worktree with a detached HEAD; on a branch with nothing from main | The toast `This worktree is on no branch`; the review reads `No file changed from main` |
 | 13.10 | Commit in the worktree while the review is open; switch the worktree to another branch from a terminal | The list follows the new commit within about a second, keeping the ticks; on another branch the list stays as it was and nothing is read |
-| 13.11 | Narrow the window to its smallest; switch to the light theme | The branch name is cut with `…`, the files keep their counts and the key bar folds what does not fit; the colours stay readable in both themes |
+| 13.11 | Narrow the window to its smallest; switch to the light theme | The branch name is cut with `…`, the files keep their counts and the key bar folds what does not fit; the colours stay readable in both themes (skipped: needs a narrower window, which the harness lacks) |
 | 13.12 | In the review of a branch behind main press `m`; Esc; once more and `y`; on `main`'s own review | A band `Merge main into <branch> in <worktree>?`; Esc merges nothing; yes merges (a toast; a clash opens the `4` view); on main a toast says it is main itself | [x] |
 | 13.13 | In the review of a branch with a Claude in its worktree: `J` `K` over a diff, click a line, `n`, type a note, Ctrl+Enter; on a second line another; Esc and `d` again; `g` | The cursor line is tinted blue and scrolls into sight; a line with a note has an amber bar on its left and the note shows under the diff; the top bar reads `Notes 2`; the notes are still there after closing the review; `g` toasts that 2 notes were sent, the Claude gets one line naming a file in the temp folder (`michi-notes`) and does not commit, and the notes are gone from the review | [ ] |
 | 13.14 | `n` on a line that has a note, empty it, Ctrl+Enter; `g` with no notes; Esc while writing | The note is taken away; a toast says there are no notes yet; Esc leaves the note as it was |
@@ -257,8 +257,8 @@ michi writes only through `git add`, `git reset`, `git apply --cached` and `git 
 | 14.12 | With `2` open, save a file in the worktree from an editor; let a Claude commit there | The list follows within about a second and keeps the selection on the same file; staged lines stay staged |
 | 14.13 | Leave `2` for `1`; then make the worktree clean | The `2` tab still counts the uncommitted files of the worktree last shown; with none, no number |
 | 14.14 | Add a pre-commit hook that prints a line and exits 1, then commit | The toast `Could not write: …` with the hook's words for 8 seconds; the staged list and the message stay |
-| 14.15 | Narrow the window to its smallest; switch to the light theme | The list keeps at least 240 px, the chips end in `…`, the key bar folds what does not fit; the tints, the band and the letters stay readable in both themes |
-| 14.16 | Add a pre-commit hook that prints five lines (some in colour, `printf '\033[31m…\033[0m'`) to stdout and stderr and exits 1; commit; Esc, Esc; commit again, then `j`; commit again, unstage and stage a file | The toast `Could not write: <the first line>`; in place of the diff the red title `Could not commit: all git and the hooks said` with `Close Esc` at the right and all five lines below in a fixed-width font, without colour codes; the wheel and PageDown scroll a long one (no scrollbar); the first Esc only leaves the message box, the second closes it and the diff is back; `j` (another file) and a write that goes through close it too; a write that fails with one line only shows the toast |
+| 14.15 | Narrow the window to its smallest; switch to the light theme | The list keeps at least 240 px, the chips end in `…`, the key bar folds what does not fit; the tints, the band and the letters stay readable in both themes (skipped: needs a narrower window, which the harness lacks) |
+| 14.16 | Add a pre-commit hook that prints five lines (some in colour, `printf '\033[31m…\033[0m'`) to stdout and stderr and exits 1; commit; Esc, Esc; commit again, then `j`; commit again, unstage and stage a file | The toast `Could not write: <the first line>`; in place of the diff the red title `Could not commit: all git and the hooks said` with `Close Esc` at the right and all five lines below in a fixed-width font, without colour codes; the wheel and PageDown scroll a long one (no scrollbar); the first Esc only leaves the message box, the second closes it and the diff is back; `j` (another file) and a write that goes through close it too; a write that fails with one line only shows the toast (skipped: needs drag or wheel, which the harness lacks) |
 | 14.17 | On a hunk with two changes a few lines apart press `s`; `j`, `a`; Space; save the file from an editor; `s` again; on a file whose hunks each have one change press `s` | `s` goes into the lines and each hunk is cut into one piece per run of changes, a `` line before each; `a` picks the piece under the cursor and Space stages only it (`git diff --cached` shows that change alone); after the save the file stays cut; `s` again joins the hunks back; on the other file the toast `Nothing to split: each hunk has one run of changes` |
 
 ## 15. Fetch, pull and push
@@ -278,7 +278,7 @@ michi runs `git fetch --prune --progress`, `git pull --ff-only`, `git push` (and
 | 15.8 | In `1` press `p` / `P`; in `3` select another worktree's row and press `P`; click `pull p` on a card; in `2` show another worktree and press `p` | `1` works on the worktree michi was opened in; `3` on the selected worktree; `2` on the worktree shown; a band (15.5) shows over `2` and `3` too |
 | 15.9 | Start a Claude in a worktree from tsumugi; press `p` for that worktree; Esc; `p` and `y` | The band `A Claude is working in <worktree>. Pull there anyway?`; Esc pulls nothing; `y` pulls |
 | 15.10 | Fetch from an https remote that needs a sign-in; fetch from an ssh remote whose key has a passphrase and no ssh-agent | The Git Credential Manager window comes up as it does in a terminal and the fetch goes on after it; the ssh one fails at once (no prompt hangs) with `fetch failed: … — start ssh-agent and ssh-add your key` |
-| 15.11 | Narrow the window to its smallest with a band shown and a fetch running; switch to the light theme | The band wraps its text and grows, its keys stay whole; the key bar folds its keys before the fetch progress or age; both stay readable in both themes |
+| 15.11 | Narrow the window to its smallest with a band shown and a fetch running; switch to the light theme | The band wraps its text and grows, its keys stay whole; the key bar folds its keys before the fetch progress or age; both stay readable in both themes (skipped: needs a narrower window, which the harness lacks) |
 | 15.12 | In a clone with two remotes and no `origin` (`git remote rename origin up`, `git remote add mine <path>`), press `P` on a branch with unpushed commits; type `mi`, Enter, `y` on the band (112.1); then `P` again on another branch; Esc | The box `Push to: pick a remote` (`pushing <worktree>`) lists `mine` and `up`; the keys read `Enter pushes to it (and sets the upstream) · Esc closes`; `mi` leaves `mine`; Enter closes it and pushes there (`Pushed … to mine`, upstream becomes `mine/<branch>`); Esc pushes nothing. With `origin` or a `pushRemote` set no box shows | [ ] |
 
 ## 16. Branches, tags and revert
@@ -429,7 +429,7 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 23.1 | With the window behind another, let a handed Claude stop; then make a fetch fail (a remote that is not there); open settings, the Notifications page, turn each column on and off, press the test buttons | The system's notification with michi's icon, and a sound if on, come for each event only while the window is not in front; a webhook set on the page gets the event; the test buttons send at once; edits are written to `config.toml`'s `[notify]` and a hand edit is read back | [ ] |
+| 23.1 | With the window behind another, let a handed Claude stop; then make a fetch fail (a remote that is not there); open settings, the Notifications page, turn each column on and off, press the test buttons | The system's notification with michi's icon, and a sound if on, come for each event only while the window is not in front; a webhook set on the page gets the event; the test buttons send at once; edits are written to `config.toml`'s `[notify]` and a hand edit is read back | [ ] (skipped: needs OS or machine features the harness lacks) |
 | 23.2 | Press `F12` in any view; read the form that opens; then add `{ on = "<F9>", run = "bugreport" }` to `prepend_keymap` in `keymap.toml` and press `F9` | The browser opens michi's issue form with `version` (`michi 0.41.0 (x86_64)`), `os` and `context` filled (Scale, Config named like `uchmk\michi\config.toml`, the last failure if there was one) and no user name in any of it; a toast says nothing is sent until you submit; `F9` does the same | [ ] |
 | 23.3 | Move and resize the window, wait a second, close it, start michi again; maximise, close, start again; start with `--keys` and move the window | The window opens where and as big as it was (on the same screen, maximized if it was, with the size it had before when you restore it); `window.toml` sits in the state folder (row 1.30); a start with `--keys` neither reads nor writes it | [x] |
 
@@ -449,9 +449,9 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 26.1 | In the graph view, drag the two lines between the side column, the graph and the detail (a line shows when the pointer is near); double-click a line; with a wide diff drag the line after the graph; close and open michi | The pointer turns to a left-right arrow over a line; the columns follow the pointer and no column goes under its least width; a double click halves that split; the widths come back at the next start; a double click on an edge brings the default width back | [~] |
-| 26.2 | Drag the left edge of Author, Date and Commit in the graph's header | The column gets wider as the edge goes left, narrower to the right (40–300); the rows follow; a double click on an edge brings the default width back | [x] |
-| 26.3 | In the worktree table drag the left edge of each header (Claude, from main, uncommitted, unseen, clash, buttons) and the edge between the name and Claude | Each column follows the pointer; the name and Claude share what is left; the widths come back at the next start; a double click on an edge brings the default width back | [~] |
+| 26.1 | In the graph view, drag the two lines between the side column, the graph and the detail (a line shows when the pointer is near); double-click a line; with a wide diff drag the line after the graph; close and open michi | The pointer turns to a left-right arrow over a line; the columns follow the pointer and no column goes under its least width; a double click halves that split; the widths come back at the next start; a double click on an edge brings the default width back | [~] (skipped: needs drag or wheel, which the harness lacks) |
+| 26.2 | Drag the left edge of Author, Date and Commit in the graph's header | The column gets wider as the edge goes left, narrower to the right (40–300); the rows follow; a double click on an edge brings the default width back | [x] (skipped: needs drag or wheel, which the harness lacks) |
+| 26.3 | In the worktree table drag the left edge of each header (Claude, from main, uncommitted, unseen, clash, buttons) and the edge between the name and Claude | Each column follows the pointer; the name and Claude share what is left; the widths come back at the next start; a double click on an edge brings the default width back | [~] (skipped: needs drag or wheel, which the harness lacks) |
 
 ## 27. The branch / tag / stash / remote palette on ito-palette
 
@@ -482,8 +482,8 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 30.1 | Select a commit; drag the mouse over some diff lines, the subject and the body | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) | | [x] |
-| 30.2 | Double-click a word, then triple-click a line; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [x] |
+| 30.1 | Select a commit; drag the mouse over some diff lines, the subject and the body | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) | | [x] (skipped: needs drag or wheel, which the harness lacks) |
+| 30.2 | Double-click a word, then triple-click a line; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [x] (skipped: needs drag or wheel, which the harness lacks) |
 | 30.3 | Put a web address in a commit message; double-click it; Ctrl+click it | The whole address is picked up; Ctrl+click shows the pointing hand and opens it in the browser | | [~] |
 | 30.4 | Click a parent hash, a file row and a merged commit; click an empty place | The click still does what it did (go to the commit, scroll to the file); an empty click lets the selection go | | [x] |
 | 30.5 | Select a diff line and move to another commit | The selection is gone | | [x] |
@@ -501,8 +501,8 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 32.1 | In the `2` view pick a file; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) | | [ ] |
-| 32.2 | Double-click a word, then triple-click a line; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] |
+| 32.1 | In the `2` view pick a file; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
+| 32.2 | Double-click a word, then triple-click a line; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 32.3 | Click a file row, a worktree chip, the amend switch and Commit | Each still does what it did; an empty click in the diff lets the selection go | | [ ] |
 | 32.4 | Select a diff line and pick another file or switch the worktree | The selection is gone; the commit view's selection is not drawn here | | [ ] |
 
@@ -510,19 +510,19 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 33.1 | Open a conflict (`4`); drag the mouse over some lines of the ours and theirs columns, and the result | The text under the drag is lit in the selection colour; letting go copies it (paste it in a terminal); line numbers are not picked up | | [ ] |
-| 33.2 | Double-click a word, then triple-click a line in a side, in the context lines and in the result; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] |
-| 33.3 | In a rebase, drag over the ours / theirs commit lines of the intent | The subject and author are picked up | | [ ] |
+| 33.1 | Open a conflict (`4`); drag the mouse over some lines of the ours and theirs columns, and the result | The text under the drag is lit in the selection colour; letting go copies it (paste it in a terminal); line numbers are not picked up | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
+| 33.2 | Double-click a word, then triple-click a line in a side, in the context lines and in the result; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
+| 33.3 | In a rebase, drag over the ours / theirs commit lines of the intent | The subject and author are picked up | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 33.4 | Click a place, a side's pick button, `base` and the buttons of the result; click an empty place | Each click still does what it did (select the place, choose a side, show the base); an empty click lets the selection go | | [ ] |
-| 33.5 | Start writing a result by hand; drag and double-click inside the text box | The text box selects its own text as before; nothing outside it is lit | | [ ] |
+| 33.5 | Start writing a result by hand; drag and double-click inside the text box | The text box selects its own text as before; nothing outside it is lit | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 33.6 | Select some lines, then scroll the places or solve a place | The selection is gone (no wrong text stays lit) | | [ ] |
 
 ## 34. Selecting text in the review (ito-select)
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 34.1 | Press `d` over a worktree; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal); no comment opens | | [ ] |
-| 34.2 | Double-click a word in the diff, triple-click a line, press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] |
+| 34.1 | Press `d` over a worktree; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal); no comment opens | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
+| 34.2 | Double-click a word in the diff, triple-click a line, press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 34.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] |
 | 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] |
 | 34.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] |
@@ -531,7 +531,7 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 35.1 | With tsumugi running, let a Claude in a worktree reach a question (a permission prompt) while michi is open | A toast `The Claude in <wt> is waiting: <question> (W: answer)` shows for about 15 s; with the window behind another, the system notification `michi: a Claude is waiting` shows too (it follows the `done` settings of Notifications) | | [ ] |
+| 35.1 | With tsumugi running, let a Claude in a worktree reach a question (a permission prompt) while michi is open | A toast `The Claude in <wt> is waiting: <question> (W: answer)` shows for about 15 s; with the window behind another, the system notification `michi: a Claude is waiting` shows too (it follows the `done` settings of Notifications) | | [ ] (skipped: needs OS or machine features the harness lacks) |
 | 35.2 | Press `W` from any view | The window goes to the worktree view with that worktree selected, its branch review (the diff) open, and the question with an answer line over the bottom of the window | | [ ] |
 | 35.3 | Type `y` (or any text) and press Enter | The text is typed into that Claude's tsumugi tab and submitted; the line closes and the toast says `Sent the answer to tab N`; the Claude goes back to running | | [ ] |
 | 35.4 | Type the answer with a Japanese IME and confirm the conversion with Enter | The conversion is confirmed without sending; the next Enter sends | | [ ] |
@@ -556,7 +556,7 @@ files under `refs/michi/backup/<time>` first.
 | # | Do | Expect |
 | --- | --- | --- |
 | 37.1 | In the worktree tab select a row; press `t` | A tsumugi tab opens in that worktree's folder; a toast says it was opened | | [ ] |
-| 37.2 | Press `e`, then `E` | VS Code opens on the folder; the file manager shows the folder (Explorer on Windows) | | [ ] |
+| 37.2 | Press `e`, then `E` | VS Code opens on the folder; the file manager shows the folder (Explorer on Windows) | | [ ] (skipped: needs OS or machine features the harness lacks) |
 | 37.3 | Click the Terminal, Editor and Explorer buttons on a row (also on the main worktree's row) | Same as the keys, for the clicked row | | [ ] |
 | 37.4 | Open the palette (Ctrl+Shift+P) and type "worktree in" | Three entries (terminal, editor, file manager); picking one opens the window's worktree (the selected row when the worktree tab is in front) | | [ ] |
 | 37.5 | Write `[open]` `editor = "notepad {path}"` into config.toml, wait 2 s, press `e` | Notepad is started with the folder as its argument; Settings > General shows the line | | [ ] |
@@ -723,7 +723,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 94.3 | In the review check some files (Space) but not all; then check the last one | `In review` with `k / N`; once every file is checked the row reads `Approved` (green) with `N / N` | [ ] |
 | 94.4 | Write a note (`n`) on a line and hand it with `g` | The row reads `Flagged` (yellow) even though all files are checked; the Claude commits again and the row goes back to `In review` or `Approved` by what is checked | [ ] |
 | 94.5 | Commit in an approved worktree a change to a file already checked | The row leaves `Approved` (the changed file lost its check) without opening the review | [ ] |
-| 94.6 | Drag the Review column's left edge in the header; restart michi | The width follows the drag and is kept; the other columns still resize | [ ] |
+| 94.6 | Drag the Review column's left edge in the header; restart michi | The width follows the drag and is kept; the other columns still resize | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 94.7 | Switch the language EN and JA, and a theme with a light background | The stage words read `Not looked at` / `In review` / `Flagged` / `Approved` and JA `未確認` / `確認中` / `指摘済み` / `承認`; every colour is readable | [ ] |
 
 ## 95. From a commit to the Claude session of its worktree (#95)
@@ -754,8 +754,8 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | # | Do | Expect |
 | --- | --- | --- |
 | 87.1 | In `2`, select a file with changes far apart (a long file) | A thin strip at the right edge of the diff shows a tick per run of changes (green added, red deleted, amber changed in side by side) and a lit box over the part in sight; the diff text does not run under it |
-| 87.2 | Scroll with the wheel and PageDown | The lit box follows; it fills the strip (or goes) when the whole diff fits |
-| 87.3 | Click a tick, then drag along the strip | The diff scrolls to that part, centred on the point; it stays inside the file at both ends |
+| 87.2 | Scroll with the wheel and PageDown | The lit box follows; it fills the strip (or goes) when the whole diff fits (skipped: needs drag or wheel, which the harness lacks) |
+| 87.3 | Click a tick, then drag along the strip | The diff scrolls to that part, centred on the point; it stays inside the file at both ends (skipped: needs drag or wheel, which the harness lacks) |
 | 87.4 | With the focus on the files press `n` repeatedly, then `N` | Each `n` brings the next change to just under the top of the diff, the last one stops there (and does not stick on the one before it); `N` goes back the same way |
 | 87.5 | Press `Enter` (side by side) then `n` / `N` | The ticks and the jumps follow the other layout; no change is skipped or repeated |
 | 87.6 | Press `l` (pick lines) then `n` / `N` | The cursor moves to the first line of the next / previous run of changed lines and the diff follows it; `N` in the middle of a run goes to that run's start |
@@ -826,14 +826,14 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 67.1 | In the graph (`1`) press on a commit row, drag it a little and watch | The pointer turns to a grabbing hand and the hash and subject follow it; a click without moving still only selects the row |
-| 67.2 | Drag that commit over a worktree row in the side column | The worktree's row gets an outline in the run colour while the pointer is on it |
+| 67.1 | In the graph (`1`) press on a commit row, drag it a little and watch | The pointer turns to a grabbing hand and the hash and subject follow it; a click without moving still only selects the row (skipped: needs drag or wheel, which the harness lacks) |
+| 67.2 | Drag that commit over a worktree row in the side column | The worktree's row gets an outline in the run colour while the pointer is on it (skipped: needs drag or wheel, which the harness lacks) |
 | 67.3 | Let go over the worktree row | A small menu at the pointer reads `<hash> onto <branch>` and offers Merge into it and Cherry-pick onto it; nothing has run yet |
 | 67.4 | Pick Merge into it; then do the same and pick Cherry-pick onto it | The same band as `m` and `C` (plan lines, the backup note, the Claude warning) asks first, for that worktree and not for the one the window is on; y runs it |
-| 67.5 | Drag a branch row of the side column onto another worktree's row | The menu offers Merge into it and Rebase it onto the dropped branch; Rebase asks the band of the palette's Ctrl+R for that worktree |
-| 67.6 | Drag a branch onto the worktree that has it checked out; drop a commit outside the side column | The first says nothing can be done and opens no menu; the second does nothing |
+| 67.5 | Drag a branch row of the side column onto another worktree's row | The menu offers Merge into it and Rebase it onto the dropped branch; Rebase asks the band of the palette's Ctrl+R for that worktree (skipped: needs drag or wheel, which the harness lacks) |
+| 67.6 | Drag a branch onto the worktree that has it checked out; drop a commit outside the side column | The first says nothing can be done and opens no menu; the second does nothing (skipped: needs drag or wheel, which the harness lacks) |
 | 67.7 | Open the menu, press Esc; open it again and click outside it | Both close it without doing anything |
-| 67.8 | Drag onto a worktree in the middle of a merge, and onto one where a Claude works; switch EN and JA | The band says the worktree is busy / warns about the Claude, as the keys do; both languages read well |
+| 67.8 | Drag onto a worktree in the middle of a merge, and onto one where a Claude works; switch EN and JA | The band says the worktree is busy / warns about the Claude, as the keys do; both languages read well (skipped: needs drag or wheel, which the harness lacks) |
 
 ## 68. Syntax colours in diffs
 
@@ -873,7 +873,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | # | Do | Expect |
 | --- | --- | --- |
 | 99.1 | In a worktree with a Claude and a merge conflict, press `4` then `g` | A row appears under the bar: "Asked the Claude in ...; waiting for it to stop..."; no buttons yet; `a` and `r` say the Claude is still working | | [ ] |
-| 99.2 | Let the Claude solve everything (git add) and stop | The toast and notification say it stopped; the row turns green: "... stopped and solved everything", with "Look at the diff" `d`, "Adopt" `a`, "Send back" `r` | | [ ] |
+| 99.2 | Let the Claude solve everything (git add) and stop | The toast and notification say it stopped; the row turns green: "... stopped and solved everything", with "Look at the diff" `d`, "Adopt" `a`, "Send back" `r` | | [ ] (skipped: needs OS or machine features the harness lacks) |
 | 99.3 | Press `d` (or click the button) | The Changes view opens on that worktree and shows what the Claude did | | [ ] |
 | 99.4 | Back in `4`, press `a` | The usual commit flow runs (message check, Claude-working check); the merge is committed and the row goes away with the conflict | | [ ] |
 | 99.5 | Hand over again, let the Claude leave one place marked, stop it | The row is red with "N places still have markers"; only "Look at the diff" and "Send back" show; `a` says places are left | | [ ] |
@@ -899,7 +899,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | # | Do | Expect |
 | --- | --- | --- |
 | 83.1 | In `1` the keybar lists `t` as Revert; go to `3` then to `4` (a conflict) | The keybar's `t` reads Open in the terminal in `3`, Theirs in `4`; each does exactly what the keybar says | | [ ] |
-| 83.2 | In `3` press `?` | Both `3` and `1` list Fetch, Push and `p` Pull (the pull request is `O` in `3`) | | [ ] |
+| 83.2 | In `3` press `?` | Both `3` and `1` list Fetch, Push and `p` Pull (the pull request is `O` in `3`) | | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 83.3 | In `2` press `?` | Everywhere does not list `N` for new work (here `n N` jumps between changes); `N` still opens New work in `1` and `3` | | [ ] |
 | 83.4 | Press `L` (reflog list), then look at the keybar and press `?` | The keybar shows only `j k` Move, Enter Bring the row back, Esc Back; `?` lists those under "Reflog" and no "Everywhere" keys | | [ ] |
 | 83.5 | Repeat 83.4 with `c` in `3` (clean-up), `T` in `3` (trial merge) and `r` in `3` (rebase) | Each screen's own keys are in the keybar (Space picks, `a` picks all, `u` clears, `s f d p r`...), and typing `f` or `p` there does nothing to git | | [ ] |
@@ -910,10 +910,10 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 84.1 | In the graph view (a repository with GitHub commits), look at the author column | Each author has a 16 px round avatar before their name: the GitHub picture for an author whose commit e-mail is a `...@users.noreply.github.com` address (it appears a moment after the rows), else a circle with their initials on a steady colour | | [ ] |
-| 84.2 | Look at a commit by `github-actions[bot]` or `dependabot[bot]` | The bot shows its GitHub picture and the short `⚙ name` text | | [ ] |
-| 84.3 | Drag the author column narrower than about 100 px | The avatar goes and the name keeps the whole column; widen it and the avatar comes back | | [ ] |
-| 84.4 | Open Settings, General, and untick `Fetch pictures from GitHub` | Every picture turns into initials at once, `config.toml` gets `[view]` `avatars = false`, and no `curl` process starts when scrolling (check the task manager) | | [ ] |
+| 84.1 | In the graph view (a repository with GitHub commits), look at the author column | Each author has a 16 px round avatar before their name: the GitHub picture for an author whose commit e-mail is a `...@users.noreply.github.com` address (it appears a moment after the rows), else a circle with their initials on a steady colour | | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) |
+| 84.2 | Look at a commit by `github-actions[bot]` or `dependabot[bot]` | The bot shows its GitHub picture and the short `⚙ name` text | | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) |
+| 84.3 | Drag the author column narrower than about 100 px | The avatar goes and the name keeps the whole column; widen it and the avatar comes back | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
+| 84.4 | Open Settings, General, and untick `Fetch pictures from GitHub` | Every picture turns into initials at once, `config.toml` gets `[view]` `avatars = false`, and no `curl` process starts when scrolling (check the task manager) | | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 84.5 | Tick it again; or write `avatars = true` in config.toml by hand | Pictures come back without a restart; a non-boolean value shows a warning and counts as on | | [ ] |
 | 84.6 | Disconnect the network, restart michi and scroll the graph | The window stays responsive (no stall on the UI thread); initials show and the pictures are not retried in a loop | | [ ] |
 | 84.7 | Switch the theme dark/light and EN/JA in Settings | The initials stay readable on their colours; the Settings text reads in both languages | | [ ] |
@@ -935,13 +935,13 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 70.1 | Open a repository with a remote, leave the window in front for 5+ minutes without pressing `f` | The keybar's `fetch N min` goes back to `fetch now` by itself (a fetch ran), with no toast and no notification, even when nothing moved | | [ ] |
+| 70.1 | Open a repository with a remote, leave the window in front for 5+ minutes without pressing `f` | The keybar's `fetch N min` goes back to `fetch now` by itself (a fetch ran), with no toast and no notification, even when nothing moved | | [ ] (skipped: needs OS or machine features the harness lacks) |
 | 70.2 | Put the window behind another and wait over 5 minutes, then bring it forward | No fetch runs while behind; within a moment of coming forward the fetch runs and the time resets | | [ ] |
 | 70.3 | Write `[net]` `auto_fetch = 1` in config.toml (no restart), stay in front | A fetch runs about every minute; `auto_fetch = 0` stops them | | [ ] |
 | 70.4 | Write `auto_fetch = "soon"` | A warning toast about config.toml; the 5-minute default stays | | [ ] |
-| 70.5 | Cut the network (or point `origin` at a bad address) and wait for a fetch | No toast and no system notification; the keybar's right reads `fetch N min · failed` (or `fetch failed`) in the waiting colour; the gaps between tries grow (up to 8 times the interval) | | [ ] |
+| 70.5 | Cut the network (or point `origin` at a bad address) and wait for a fetch | No toast and no system notification; the keybar's right reads `fetch N min · failed` (or `fetch failed`) in the waiting colour; the gaps between tries grow (up to 8 times the interval) | | [ ] (skipped: needs OS or machine features the harness lacks) |
 | 70.6 | Restore the network and press `f` (or wait) | The failed mark goes as soon as a fetch works | | [ ] |
-| 70.7 | With the network cut, press `f` yourself | The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` | | [ ] |
+| 70.7 | With the network cut, press `f` yourself | The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` | | [ ] (skipped: needs OS or machine features the harness lacks) |
 | 70.8 | Start a pull or push while the timer is due | The timer waits; it never interrupts a job | | [ ] |
 | 70.9 | Switch EN and JA | The keybar's `· failed` / `· 失敗` reads well and fits | | [ ] |
 
@@ -1048,10 +1048,10 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | # | Do | Expect |
 | --- | --- | --- |
 | 101.1 | On a worktree whose remote is a gitlab.com one (group/sub/proj) and branch `feat/x`, press `p` | The browser opens GitLab's new merge request page with the source branch `feat/x` already chosen | | [ ] |
-| 101.2 | Same with a Bitbucket remote (`https://bitbucket.org/ann/repo.git`) | Bitbucket's new pull request page opens with `feat/x` as the source | | [ ] |
-| 101.3 | Same with an Azure DevOps remote (`https://dev.azure.com/org/proj/_git/repo`, and the ssh form on `ssh.dev.azure.com` with `v3/org/proj/repo`) | Azure's create pull request page opens with `feat/x` as the source | | [ ] |
-| 101.4 | Same with a GitHub remote | The GitHub compare page opens as before | | [ ] |
-| 101.5 | Same with a self-hosted or unknown host (`https://git.example.com/a/b.git`) | An error toast says the remote is not on GitHub, GitLab, Bitbucket or Azure DevOps; nothing opens | | [ ] |
+| 101.2 | Same with a Bitbucket remote (`https://bitbucket.org/ann/repo.git`) | Bitbucket's new pull request page opens with `feat/x` as the source | | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) |
+| 101.3 | Same with an Azure DevOps remote (`https://dev.azure.com/org/proj/_git/repo`, and the ssh form on `ssh.dev.azure.com` with `v3/org/proj/repo`) | Azure's create pull request page opens with `feat/x` as the source | | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) |
+| 101.4 | Same with a GitHub remote | The GitHub compare page opens as before | | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) |
+| 101.5 | Same with a self-hosted or unknown host (`https://git.example.com/a/b.git`) | An error toast says the remote is not on GitHub, GitLab, Bitbucket or Azure DevOps; nothing opens | | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) |
 
 ## 37. Blame and per-file history (`B`, `H`)
 
@@ -1097,8 +1097,8 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 259.1 | Open a repository with 100,000+ commits that has a commit-graph (e.g. a Linux kernel clone after `git gc`) with `michi <folder>` | The first graph screen is drawn within 1 second of the window appearing; the window never stops answering while the rest of the history is read |
-| 259.2 | Hold the Down key or drag the scrollbar from the top to the bottom and back | The scrolling follows the pointer with no stutter; the graph lanes and the dots stay in place as more rows are read |
+| 259.1 | Open a repository with 100,000+ commits that has a commit-graph (e.g. a Linux kernel clone after `git gc`) with `michi <folder>` | The first graph screen is drawn within 1 second of the window appearing; the window never stops answering while the rest of the history is read (skipped: needs OS or machine features the harness lacks) |
+| 259.2 | Hold the Down key or drag the scrollbar from the top to the bottom and back | The scrolling follows the pointer with no stutter; the graph lanes and the dots stay in place as more rows are read (skipped: needs drag or wheel, which the harness lacks) |
 | 259.3 | Open the same repository after deleting `.git/objects/info/commit-graph*` | A bar offers to write the commit-graph (it is the slow case); after it is written the first screen is within 1 second again |
 | 259.4 | Press `/` and type a word while the history is still being read, then clear it | The filter answers as you type; the window does not freeze |
 | 259.5 | Run `cargo run --release -p michi --example bench-large` | Three lines `ok` (first screen, all rows, all layout) and exit code 0; over the budget in `scale.rs` prints `OVER` and exits 1 |
@@ -1176,7 +1176,7 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 251.1 | Press `/`, type `p:readme` and Enter | The commits that changed a path containing `readme` (any case) stay bright, the rest dim; the scrollbar shows the hits | [ ] |
+| 251.1 | Press `/`, type `p:readme` and Enter | The commits that changed a path containing `readme` (any case) stay bright, the rest dim; the scrollbar shows the hits | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 251.2 | Type `fix p:src/` | Only commits with `fix` in the subject that also touched `src/` hit | [ ] |
 | 251.3 | Type `d:2026-10-01..2026-10-15` and Enter | Only commits made in that range hit | [ ] |
 | 251.4 | Try `d:2.weeks.ago`, `d:..yesterday` and `d:2026-10-01..` | Each hits the commits in the range git reads from it (since, until, since) | [ ] |
@@ -1253,7 +1253,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 244.1 | In a repo with a GitHub remote, select a commit whose message says `#123` | The detail shows an "Issues" line with `#123` in blue; hovering underlines it with a hand cursor |
+| 244.1 | In a repo with a GitHub remote, select a commit whose message says `#123` | The detail shows an "Issues" line with `#123` in blue; hovering underlines it with a hand cursor (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 244.2 | Click that link | The browser opens `https://github.com/<owner>/<repo>/issues/123` |
 | 244.3 | Press `I` over the graph | The same page opens; a toast names the issue and, if the message has more, how many more |
 | 244.4 | Select a commit with no issue reference and press `I` | A toast says there is no issue |
@@ -1263,7 +1263,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 244.8 | Add `prefixes = ["ABC"]` and name `XYZ-9` and `ABC-1` in one message | Only `ABC-1` links |
 | 244.9 | Set `github = false` | `#123` no longer links |
 | 244.10 | Give `keys` a template without `{key}` or a non-http address | A warning toast names the setting; keys are not linked |
-| 244.11 | Open a repo with no GitHub remote, with `#123` in a message | No link for `#123`; `owner/repo#123` still links |
+| 244.11 | Open a repo with no GitHub remote, with `#123` in a message | No link for `#123`; `owner/repo#123` still links (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 244.12 | Check the keybar and `?` in the graph and the worktree table; switch EN and JA | `I` is listed with its words in both languages |
 
 ## 247. Statistics: contributors and activity (`Z`)
@@ -1291,7 +1291,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 257.4 | Make the branch clash with the trunk (same lines changed) and press `g` | The clash row is !! and names the files; a clean branch says the trunk merges in without a conflict | [ ] |
 | 257.5 | Press `g` on a branch with an unpushed commit, then on one with no upstream | The Pushed row is !! with the count, then with `no upstream` | [ ] |
 | 257.6 | Land the branch with `l` (verify runs) or run a failing verify, then press `g` on the same commit | The verify row says passed (OK) or failed with the exit code (!!); a new commit goes back to `no result recorded` (??) | [ ] |
-| 257.7 | With a GitHub remote and gh signed in, push the branch and press `g` | The GitHub checks row counts passed, failed or pending; with the network off it says it could not be read (??) and the list still opens | [ ] |
+| 257.7 | With a GitHub remote and gh signed in, push the branch and press `g` | The GitHub checks row counts passed, failed or pending; with the network off it says it could not be read (??) and the list still opens | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 257.8 | Press any key, then Esc; click outside the list | Other keys do nothing; Esc and an outside click close it | [ ] |
 | 257.9 | Check the keybar, `?` and the palette in both languages | `g` is listed as `Check before merging` / `マージ前の確認` | [ ] |
 
@@ -1302,7 +1302,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 241.1 | Point `origin` at an ssh address you have no key for (or stop ssh-agent) and press `f` | The failure toast ends with the cause ("the ssh key was refused") and "(K for the fix)" |
 | 241.2 | Press `K` after 241.1 | A panel names the cause, shows the remote, scheme, host, credential helper and ssh agent state, and lists numbered commands (`ssh-add`, `ssh -T git@<host>` ...) with a line on what each does |
 | 241.3 | Press `1`, then paste into a terminal | The toast says the command was copied and the clipboard holds exactly that command; michi ran nothing and nothing in `~/.ssh` or the agent changed |
-| 241.4 | Set `origin` to an https address with a wrong host or no helper (`git config --unset-all credential.helper`) and press `f` | The toast names the https sign-in failure; `K` lists `git config --global credential.helper ...`, `gh auth login`, `gh auth setup-git`; no terminal prompt appears and no password is asked |
+| 241.4 | Set `origin` to an https address with a wrong host or no helper (`git config --unset-all credential.helper`) and press `f` | The toast names the https sign-in failure; `K` lists `git config --global credential.helper ...`, `gh auth login`, `gh auth setup-git`; no terminal prompt appears and no password is asked (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 241.5 | Fetch from a host that does not resolve (`https://nohost.invalid/x.git`) and press `K` | The cause is "the host could not be reached"; the panel offers `git ls-remote --heads origin` and the proxy check |
 | 241.6 | With no failure since the start, press `K` (and use the palette entry "Sign-in help") | The panel opens with "No sign-in failure yet" and the checks for the remote's scheme |
 | 241.7 | Clone from the repository screen with an address that needs a login you lack, then press `K` | The failure toast has the cause and the hint; the panel shows the facts for the clone's address (not an existing repository) |
@@ -1316,15 +1316,15 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | --- | --- | --- |
 | 234.1 | In the `3` view select a worktree whose branch has commits trunk lacks and press `Q` | A form opens at the top: the title is the last commit subject, the body lists the commit subjects, the base is the trunk, the draft box is off; the title box has focus |
 | 234.2 | Select a branch with no upstream | The form says the branch will be pushed to `<remote>` first; Ctrl+Enter shows a second line asking to confirm and the button turns to `Push and create`; `Cancel` goes back; nothing was pushed yet |
-| 234.3 | Confirm with a second Ctrl+Enter (or the button) on a throwaway branch of a repository you own | The window stays responsive while it works; the branch is pushed with `-u`, a pull request is made, and the form shows its address with Open, Copy and Close; a toast names the address and it is on the clipboard |
-| 234.4 | Click Open, then Copy, then Close | The browser opens the pull request; a toast says copied; the form closes |
-| 234.5 | Tick draft, make a pull request on a branch that already has an upstream | No push line; the pull request on GitHub is a draft |
+| 234.3 | Confirm with a second Ctrl+Enter (or the button) on a throwaway branch of a repository you own | The window stays responsive while it works; the branch is pushed with `-u`, a pull request is made, and the form shows its address with Open, Copy and Close; a toast names the address and it is on the clipboard (skipped: needs gh / GitHub / minato, which tests must not touch) |
+| 234.4 | Click Open, then Copy, then Close | The browser opens the pull request; a toast says copied; the form closes (skipped: needs gh / GitHub / minato, which tests must not touch) |
+| 234.5 | Tick draft, make a pull request on a branch that already has an upstream | No push line; the pull request on GitHub is a draft (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 234.6 | Empty the title or the base and press Ctrl+Enter | A toast says one is needed; nothing runs |
-| 234.7 | Run with `gh` off the PATH | A toast says gh was not found and where to get it; the form stays open and editable |
-| 234.8 | Run after `gh auth logout` | A toast points to `gh auth login`; the form stays open |
-| 234.9 | Make a pull request for a branch that already has one | A toast carries gh's first line; the form stays open |
+| 234.7 | Run with `gh` off the PATH | A toast says gh was not found and where to get it; the form stays open and editable (skipped: needs gh / GitHub / minato, which tests must not touch) |
+| 234.8 | Run after `gh auth logout` | A toast points to `gh auth login`; the form stays open (skipped: needs gh / GitHub / minato, which tests must not touch) |
+| 234.9 | Make a pull request for a branch that already has one | A toast carries gh's first line; the form stays open (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 234.10 | Press Esc, or click outside, while the form is open and idle; press `Q` on a row without a branch | The form closes; the toast says the row has no branch |
-| 234.11 | Check the keybar and `?` in the `3` view; switch EN and JA | `Q` Create a pull request is listed; the form reads well in both |
+| 234.11 | Check the keybar and `?` in the `3` view; switch EN and JA | `Q` Create a pull request is listed; the form reads well in both (skipped: needs gh / GitHub / minato, which tests must not touch) |
 
 ## 260. Image diff (#48)
 
@@ -1449,7 +1449,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 262.2 | Click `?` in the keybar, then `Esc` in the keybar | The help opens and closes; the same for the settings (gear in the top bar) |
 | 262.3 | Click the entries that are several keys (`j k`) | Nothing happens (they are not buttons) |
 | 262.4 | Press `Space` in the palette list | `Space` is listed and runs the view's Space action |
-| 262.5 | Go through every view and overlay with the mouse only | Known gaps (moving by row, text selection by drag in the diff) are the ones listed in TODO.md; any other gap is a new finding |
+| 262.5 | Go through every view and overlay with the mouse only | Known gaps (moving by row, text selection by drag in the diff) are the ones listed in TODO.md; any other gap is a new finding (skipped: needs drag or wheel, which the harness lacks) |
 
 ## 263. Commit message guide (#124)
 
@@ -1508,7 +1508,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 107.2 | Edit a file, then watch the line | It gains "N files have uncommitted changes. Press 2 to commit them." within a couple of seconds | [ ] |
 | 107.3 | Commit, then push | The line moves to "not pushed ... Press P", then to "It matches origin/X" | [ ] |
 | 107.4 | Switch branches; start a merge that conflicts | The line follows the branch; during the merge it says so and points to `4` | [ ] |
-| 107.5 | Narrow the window | The line stays on one row and ends with an ellipsis; resting the pointer on it shows the whole sentence | [ ] |
+| 107.5 | Narrow the window | The line stays on one row and ends with an ellipsis; resting the pointer on it shows the whole sentence | [ ] (skipped: needs a narrower window, which the harness lacks) |
 | 107.6 | Check a detached HEAD | The strip is shown as before and the line is not doubled up under it | [ ] |
 | 107.7 | Open settings; switch EN and JA | The line is hidden in settings; in both languages it reads well and the colours follow the theme | [ ] |
 
@@ -1545,7 +1545,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 262.6 | Dismiss the conflict card, restart, open a conflict again; then click its link | Stays dismissed across the restart; the link brings the cards back |
 | 262.7 | Open the `3` view | A four-line card says what a worktree is and how it relates to Claude working in parallel; the table sits below it with nothing hidden |
 | 262.8 | Dismiss it, then run "Show the explanations again" from the command palette | A toast says they are back; all three explanations show again |
-| 262.9 | Narrow the window; switch EN and JA | The cards wrap without overlapping the cross or pager; both languages read well |
+| 262.9 | Narrow the window; switch EN and JA | The cards wrap without overlapping the cross or pager; both languages read well (skipped: needs a narrower window, which the harness lacks) |
 
 ## 89. HiDPI and the Windows 11 window frame (#89)
 
@@ -1558,7 +1558,7 @@ Run each row at 100, 150 and 200 % display scale (Settings > System > Display), 
 | 89.3 | Snap the window to the left, right and a corner (Win+arrows, the snap layouts on the maximise button); maximise and restore | The window fills the snapped area exactly; the title bar buttons stay clickable; no gap at the edges; the size is restored | | [ ] |
 | 89.4 | Switch Windows between dark and light mode while michi runs | The window edge and the title bar keep michi's theme; no white flash or light border in dark mode | | [ ] |
 | 89.5 | Look at the window corners on Windows 11 (maximised and not) | The corners are rounded when not maximised and square when maximised; no dark triangle or stripe at a corner | | [ ] |
-| 89.6 | Drag the window by the title bar and resize from each edge and corner | The resize cursors show on the edges; the frame follows the mouse without a lag or a flicker | | [ ] |
+| 89.6 | Drag the window by the title bar and resize from each edge and corner | The resize cursors show on the edges; the frame follows the mouse without a lag or a flicker | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 89.7 | Open the palette, the branch box, a confirm window and a toast at 200 % | They are placed inside the window, sharp, and not larger than the window | | [ ] |
 
 ## 265. Undo and Redo of a branch's move (#64)
@@ -1590,7 +1590,7 @@ Every row of this file is meant to be pressed on macOS and Linux too, unless it 
 | # | Do | Expect |
 | --- | --- | --- |
 | 267.1 | Start michi on macOS and on Linux in a repository | The window opens with the tabs, the chip and the graph; the title reads `<repo> — michi` |
-| 267.2 | Resize, maximise and drag the window by its bar | The same as 1.4 to 1.7 |
+| 267.2 | Resize, maximise and drag the window by its bar | The same as 1.4 to 1.7 (skipped: needs drag or wheel, which the harness lacks) |
 | 267.3 | Run `michi --version` and `michi --help` from a terminal | Text on the terminal, no window |
 | 267.4 | Open a folder or a worktree with a Japanese name | The Japanese draws, not boxes |
 
@@ -1631,8 +1631,8 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | --- | --- | --- |
 | 272.1 | In the graph select a commit with a long diff, press Enter, then Down, PageDown, End, Home | The detail scrolls by line, page, to the end and to the top; the graph selection stays; Enter narrows it and the arrows move the graph again |
 | 272.2 | Select a commit and press `#`, then paste elsewhere; also Ctrl+C with no text picked | The full 40-character hash is pasted; a toast names its first 10 characters |
-| 272.3 | In the Worktrees view press `E` on a worktree | Explorer opens that worktree's folder, not the user folder |
-| 272.4 | Press F1 in a wide window, then in a narrow one; scroll with the wheel and the arrow keys | Two columns when wide, one when narrow; both scroll when the list is taller than the card |
+| 272.3 | In the Worktrees view press `E` on a worktree | Explorer opens that worktree's folder, not the user folder (skipped: needs OS or machine features the harness lacks) |
+| 272.4 | Press F1 in a wide window, then in a narrow one; scroll with the wheel and the arrow keys | Two columns when wide, one when narrow; both scroll when the list is taller than the card (skipped: needs drag or wheel, which the harness lacks) |
 | 272.5 | In the graph, the Changes view and the F1 list press Ctrl+D, Ctrl+U, Alt+J, Alt+K | They move or scroll a page down and up like PageDown / PageUp; the key lists show them |
 
 ## 273. Keys: gg / G, Alt+digit, toast
@@ -1644,7 +1644,7 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 273.3 | In the graph trigger a message (`#`) | The toast sits at the top right (see 274) |
 | 273.4 | Press `U` in the graph and in the Worktrees table; `R` in the table; `x` then `y` in the graph | Gitflow list; the pre-merge check; the bisect marks bad then good |
 | 273.5 | In the graph select a merge commit, press `]`, then `[` | `]` selects the commit the merge brought in, `[` the first parent; on a plain commit `]` says there is no second parent |
-| 273.6 | Select a worktree's uncommitted change and drag over its header in the detail | The text is picked up and copied |
+| 273.6 | Select a worktree's uncommitted change and drag over its header in the detail | The text is picked up and copied (skipped: needs drag or wheel, which the harness lacks) |
 
 ## 274. Toast: top right, gone after a few seconds
 
@@ -1653,14 +1653,14 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 274.1 | Trigger a message (`#` in the graph) and wait | It appears at the top right, not at the centre, and is gone after about 4 seconds without touching anything |
 | 274.2 | In Changes click a file, then Shift+click another on the same side; then Space | Every file between is shaded alike and staged together; a Shift+click on the other side only selects |
 | 274.3 | Click a file, Ctrl+click two others (not neighbours), then Ctrl+click one of them again | The Ctrl+clicked files are shaded; the one clicked twice leaves; Space stages the rest; a plain click or Esc drops the marks |
-| 274.4 | In the graph detail pane drag across a line with full-width (Japanese) text | Whole characters are picked, never half of one |
+| 274.4 | In the graph detail pane drag across a line with full-width (Japanese) text | Whole characters are picked, never half of one (skipped: needs drag or wheel, which the harness lacks) |
 
 ## 275. Keys and layout: Alt+Left/Right, O, Ctrl+, , dates, message box
 
 | # | Do | Expect |
 |---|---|---|
 | 275.1 | In `2` select a file and press Alt+Right, then Alt+Left | The keys go to the diff's lines, then back to the files |
-| 275.2 | In `3` press `O` on a worktree whose branch is on GitHub; press `p` | `O` opens the pull request page; `p` pulls |
+| 275.2 | In `3` press `O` on a worktree whose branch is on GitHub; press `p` | `O` opens the pull request page; `p` pulls (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 275.3 | Press `,` anywhere in the main screen; press Ctrl+, | The comma does nothing; Ctrl+, opens and closes the settings |
 | 275.4 | With `[view] dates` unwritten, look at the graph's date column | `YYYY/MM/DD hh:mm`, as the settings' clock format at the bottom right; `dates = "relative"` brings the short form back |
 | 275.5 | Open `2` | The commit message box is under the diff on the right, not under the file list; the file list runs to the bottom on the left |
@@ -1707,7 +1707,7 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 278.4 | Open two tabs, start a fetch in the first, switch to the second | The first tab's result and toast arrive while it is parked |
 | 278.5 | Put `density = 3` (a number) in `[view]` of config.toml and start michi | Theme, language and the other `[view]` keys keep their values; only density falls back to the default |
 | 278.6 | In a conflict with text places, look at a file head | An "Open in a tool" button sits left of "Restart"; clicking it opens the merge tool (the same as `w`), WinMerge with three panes when `merge` is set as in the settings screen |
-| 278.7 | Set `diff_tool = "winmerge"` in `[open]`, start michi, and press `w` in a conflict without opening the settings screen first | WinMerge opens with three panes (not Explorer) |
+| 278.7 | Set `diff_tool = "winmerge"` in `[open]`, start michi, and press `w` in a conflict without opening the settings screen first | WinMerge opens with three panes (not Explorer) (skipped: needs OS or machine features the harness lacks) |
 | 278.8 | Double-click a local branch in the graph's left column (clean tree; then with uncommitted files; then mid-merge) | The worktree switches to it as `b` does; with uncommitted files a confirmation band comes first; mid-merge it is refused with the usual message. A branch checked out elsewhere is only said. A single click still selects its commit |
 
 ## 279. Hide / solo branches, stop a clone
