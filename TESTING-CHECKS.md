@@ -541,35 +541,35 @@
 - [~] **74.2** With the box focused press Alt+Up → The box takes the latest commit's message (all lines); again: the one before; at the oldest nothing happens → | [ ] 〔未訳〕
 - [~] **74.3** Type "wip", press Alt+Up twice, then Alt+Down twice → You are back at "wip" (the draft is kept); the same message is never listed twice → | [ ] 〔未訳〕
 - [ ] **74.4** Step to an old message, edit a word, press Alt+Up → The edited text is kept as the draft (Alt+Down from the next message comes back to it) → | [ ] 〔未訳〕
-- [ ] **74.5** Run `git config commit.template tpl.txt` (a file with `# help` lines and a `feat: ` line), then press `c` on an empty box → The box is filled with `feat:` without the `#` lines; committing it as it is leaves no `#` line in the message → | [ ] 〔未訳〕
+- [~] **74.5** Run `git config commit.template tpl.txt` (a file with `# help` lines and a `feat: ` line), then press `c` on an empty box → The box is filled with `feat:` without the `#` lines; committing it as it is leaves no `#` line in the message → | [ ] 〔未訳〕
 - [ ] **74.6** Type a message first, then press `c` → The template does not replace what was typed; with `A` (amend) the head's message fills, not the template → | [ ] 〔未訳〕
-- [ ] **74.7** Commit, then press `c` again → The history has the new message at the top; the template fills the empty box again → | [ ] 〔未訳〕
-- [ ] **74.8** In a repository with no commits press `c` and Alt+Up → Nothing breaks; Alt+Up does nothing → | [ ] 〔未訳〕
-- [ ] **74.9** Click the box with the mouse (not `c`), then press Alt+Up → The history works the same → | [ ] 〔未訳〕
+- [~] **74.7** Commit, then press `c` again → The history has the new message at the top; the template fills the empty box again → | [ ] 〔未訳〕
+- [~] **74.8** In a repository with no commits press `c` and Alt+Up → Nothing breaks; Alt+Up does nothing → | [ ] 〔未訳〕
+- [~] **74.9** Click the box with the mouse (not `c`), then press Alt+Up → The history works the same → | [ ] 〔未訳〕
 
 ## 86. Row density (compact / standard / cozy)
 
-- [ ] **86.1** Open the settings (`,`), General: look for "Row density" → Three choices, Compact / Standard / Cozy; Standard is lit by default → | [ ] 〔未訳〕
-- [ ] **86.2** Pick Compact → The graph rows, the side column's rows and the reflog / tidy / reorder lists shrink at once (about 20% shorter); text stays readable and nothing is clipped; config.toml has `[view]` `density = "compact"` → | [ ] 〔未訳〕
-- [ ] **86.3** Pick Cozy → The same rows grow (about 20% taller); the graph dots and lines stay joined across rows; the scrollbar marks still sit at their rows → | [ ] 〔未訳〕
-- [ ] **86.4** Click a row, scroll with the wheel and drag the scrollbar in each density → Clicks land on the row under the pointer; the selected row stays in view → | [ ] 〔未訳〕
-- [ ] **86.5** Edit `density` in config.toml by hand (also a wrong word) → The rows change within a few seconds without restart; a wrong word gives a toast warning and the standard rows → | [ ] 〔未訳〕
+- [~] **86.1** Open the settings (`,`), General: look for "Row density" → Three choices, Compact / Standard / Cozy; Standard is lit by default → | [ ] 〔未訳〕
+- [~] **86.2** Pick Compact → The graph rows, the side column's rows and the reflog / tidy / reorder lists shrink at once (about 20% shorter); text stays readable and nothing is clipped; config.toml has `[view]` `density = "compact"` → | [ ] 〔未訳〕
+- [~] **86.3** Pick Cozy → The same rows grow (about 20% taller); the graph dots and lines stay joined across rows; the scrollbar marks still sit at their rows → | [ ] 〔未訳〕
+- [ ] **86.4** Click a row, scroll with the wheel and drag the scrollbar in each density → Clicks land on the row under the pointer; the selected row stays in view (skipped: needs the wheel and a scrollbar drag, which the harness lacks) → | [ ] 〔未訳〕
+- [~] **86.5** Edit `density` in config.toml by hand (also a wrong word) → The rows change within a few seconds without restart; a wrong word gives a toast warning and the standard rows → | [ ] 〔未訳〕
 - [ ] **86.6** Switch EN and JA in the settings → The section and its three choices read well in both → | [ ] 〔未訳〕
 
 ## 88. Short animations (fade and slide, can be turned off)
 
-- [ ] **88.1** Press `1`, `2`, `3` in turn (and `4` while something clashes) → Each view fades in and slides up a few px in about 130 ms; it feels soft, not slow, and the keys work at once during the move → | [ ] 〔未訳〕
-- [ ] **88.2** Open the new-work window, the reflog, the tidy list, reorder, the trial merge, and a Claude reply box → Each window fades in and slides a few px (down from above; the reply box up from below); closing them is at once → | [ ] 〔未訳〕
-- [ ] **88.3** Open a confirmation band, `?` and the settings → They fade in without a jump; no flicker on the first frame → | [ ] 〔未訳〕
-- [ ] **88.4** Open the settings (`,`), General: look for "Motion" and pick Off → `config.toml` has `[view]` `motion = "off"`; from now on views and windows appear at once, with no fade or slide, and the hover blends are gone → | [ ] 〔未訳〕
-- [ ] **88.5** Pick On again; edit `motion` in config.toml by hand (also a wrong word) → Animations come back within a few seconds without restart; a wrong word gives a toast warning and keeps them on → | [ ] 〔未訳〕
-- [ ] **88.6** Leave the window idle on a view for a while (Task Manager) → CPU stays near 0: nothing keeps repainting after the animation ends → | [ ] 〔未訳〕
+- [ ] **88.1** Press `1`, `2`, `3` in turn (and `4` while something clashes) → Each view fades in and slides up a few px in about 130 ms; it feels soft, not slow, and the keys work at once during the move (skipped: a 130 ms fade cannot be judged from still screenshots) → | [ ] 〔未訳〕
+- [ ] **88.2** Open the new-work window, the reflog, the tidy list, reorder, the trial merge, and a Claude reply box → Each window fades in and slides a few px (down from above; the reply box up from below); closing them is at once (skipped: a 130 ms fade cannot be judged from still screenshots) → | [ ] 〔未訳〕
+- [ ] **88.3** Open a confirmation band, `?` and the settings → They fade in without a jump; no flicker on the first frame (skipped: a 130 ms fade cannot be judged from still screenshots) → | [ ] 〔未訳〕
+- [ ] **88.4** Open the settings (`,`), General: look for "Motion" and pick Off → `config.toml` has `[view]` `motion = "off"`; from now on views and windows appear at once, with no fade or slide, and the hover blends are gone (skipped: the config.toml part reads right, but the fade itself cannot be judged from stills) → | [ ] 〔未訳〕
+- [ ] **88.5** Pick On again; edit `motion` in config.toml by hand (also a wrong word) → Animations come back within a few seconds without restart; a wrong word gives a toast warning and keeps them on (skipped: the fade itself cannot be judged from stills) → | [ ] 〔未訳〕
+- [ ] **88.6** Leave the window idle on a view for a while (Task Manager) → CPU stays near 0: nothing keeps repainting after the animation ends (fails: an idle window keeps one thread at ~100% of a core (#140)) → | [ ] 〔未訳〕
 - [ ] **88.7** Switch EN and JA in the settings → The Motion section and its two choices read well in both → | [ ] 〔未訳〕
 
 ## 94. Review queue of finished Claude work (Review column)
 
-- [ ] **94.1** Open the worktree table (`3`) with two or more branch worktrees that differ from main → A Review column sits between Unseen and Clash; a worktree never opened in the review (`d`) reads `Not looked at` (dim) with `0 / N files checked`; the main worktree reads `—`; in the narrow card layout it is a `Review` line 〔未訳〕
-- [ ] **94.2** Open a branch's review with `d`, then close it (Esc) and look at the table → That row reads `In review` (blue) within a moment of closing, with the count of files checked 〔未訳〕
+- [~] **94.1** Open the worktree table (`3`) with two or more branch worktrees that differ from main → A Review column sits between Unseen and Clash; a worktree never opened in the review (`d`) reads `Not looked at` (dim) with `0 / N files checked`; the main worktree reads `—`; in the narrow card layout it is a `Review` line 〔未訳〕
+- [~] **94.2** Open a branch's review with `d`, then close it (Esc) and look at the table → That row reads `In review` (blue) within a moment of closing, with the count of files checked 〔未訳〕
 - [ ] **94.3** In the review check some files (Space) but not all; then check the last one → `In review` with `k / N`; once every file is checked the row reads `Approved` (green) with `N / N` 〔未訳〕
 - [ ] **94.4** Write a note (`n`) on a line and hand it with `g` → The row reads `Flagged` (yellow) even though all files are checked; the Claude commits again and the row goes back to `In review` or `Approved` by what is checked 〔未訳〕
 - [ ] **94.5** Commit in an approved worktree a change to a file already checked → The row leaves `Approved` (the changed file lost its check) without opening the review 〔未訳〕

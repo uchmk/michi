@@ -698,7 +698,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 86.1 | Open the settings (`,`), General: look for "Row density" | Three choices, Compact / Standard / Cozy; Standard is lit by default | | [ ] |
 | 86.2 | Pick Compact | The graph rows, the side column's rows and the reflog / tidy / reorder lists shrink at once (about 20% shorter); text stays readable and nothing is clipped; config.toml has `[view]` `density = "compact"` | | [ ] |
 | 86.3 | Pick Cozy | The same rows grow (about 20% taller); the graph dots and lines stay joined across rows; the scrollbar marks still sit at their rows | | [ ] |
-| 86.4 | Click a row, scroll with the wheel and drag the scrollbar in each density | Clicks land on the row under the pointer; the selected row stays in view | | [ ] |
+| 86.4 | Click a row, scroll with the wheel and drag the scrollbar in each density | Clicks land on the row under the pointer; the selected row stays in view (skipped: needs the wheel and a scrollbar drag, which the harness lacks) | | [ ] |
 | 86.5 | Edit `density` in config.toml by hand (also a wrong word) | The rows change within a few seconds without restart; a wrong word gives a toast warning and the standard rows | | [ ] |
 | 86.6 | Switch EN and JA in the settings | The section and its three choices read well in both | | [ ] |
 
@@ -706,12 +706,12 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 88.1 | Press `1`, `2`, `3` in turn (and `4` while something clashes) | Each view fades in and slides up a few px in about 130 ms; it feels soft, not slow, and the keys work at once during the move | | [ ] |
-| 88.2 | Open the new-work window, the reflog, the tidy list, reorder, the trial merge, and a Claude reply box | Each window fades in and slides a few px (down from above; the reply box up from below); closing them is at once | | [ ] |
-| 88.3 | Open a confirmation band, `?` and the settings | They fade in without a jump; no flicker on the first frame | | [ ] |
-| 88.4 | Open the settings (`,`), General: look for "Motion" and pick Off | `config.toml` has `[view]` `motion = "off"`; from now on views and windows appear at once, with no fade or slide, and the hover blends are gone | | [ ] |
-| 88.5 | Pick On again; edit `motion` in config.toml by hand (also a wrong word) | Animations come back within a few seconds without restart; a wrong word gives a toast warning and keeps them on | | [ ] |
-| 88.6 | Leave the window idle on a view for a while (Task Manager) | CPU stays near 0: nothing keeps repainting after the animation ends | | [ ] |
+| 88.1 | Press `1`, `2`, `3` in turn (and `4` while something clashes) | Each view fades in and slides up a few px in about 130 ms; it feels soft, not slow, and the keys work at once during the move (skipped: a 130 ms fade cannot be judged from still screenshots) | | [ ] |
+| 88.2 | Open the new-work window, the reflog, the tidy list, reorder, the trial merge, and a Claude reply box | Each window fades in and slides a few px (down from above; the reply box up from below); closing them is at once (skipped: a 130 ms fade cannot be judged from still screenshots) | | [ ] |
+| 88.3 | Open a confirmation band, `?` and the settings | They fade in without a jump; no flicker on the first frame (skipped: a 130 ms fade cannot be judged from still screenshots) | | [ ] |
+| 88.4 | Open the settings (`,`), General: look for "Motion" and pick Off | `config.toml` has `[view]` `motion = "off"`; from now on views and windows appear at once, with no fade or slide, and the hover blends are gone (skipped: the config.toml part reads right, but the fade itself cannot be judged from stills) | | [ ] |
+| 88.5 | Pick On again; edit `motion` in config.toml by hand (also a wrong word) | Animations come back within a few seconds without restart; a wrong word gives a toast warning and keeps them on (skipped: the fade itself cannot be judged from stills) | | [ ] |
+| 88.6 | Leave the window idle on a view for a while (Task Manager) | CPU stays near 0: nothing keeps repainting after the animation ends (fails: an idle window keeps one thread at ~100% of a core (#140)) | | [ ] |
 | 88.7 | Switch EN and JA in the settings | The Motion section and its two choices read well in both | | [ ] |
 
 ## 94. Review queue of finished Claude work (Review column)
