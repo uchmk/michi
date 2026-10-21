@@ -6,12 +6,10 @@
 //! `refs/michi/backup/`.
 
 use std::fs;
-use std::io::Read;
 use std::path::Path;
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, RecvTimeoutError};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::SystemTime;
 
 use crate::autostash::{self, Stashed};
 use crate::backup;
@@ -538,137 +536,21 @@ impl Said {
     }
 }
 
-enum Piece {
-    Line(String),
-    ErrEnd,
-    Out(Vec<u8>),
-    OutEnd,
-}
-
 /// Runs `c`, telling its progress as it comes; `None` when `stop` stopped it.
-/// Stopping git stops what it started too: on Windows the `git.exe` on the
-/// PATH is mostly Git for Windows' launcher, and the git doing the work,
-/// with its `git-remote-https` or ssh, outlives the launcher killed alone.
-#[cfg(windows)]
-fn kill_tree(child: &mut Child) {
-    let mut c = Command::new("taskkill");
-    c.args(["/T", "/F", "/PID", &child.id().to_string()]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
-    git::hide_window(&mut c);
-    let _ = c.status();
-    let _ = child.kill();
-    let _ = child.wait();
-}
-
-#[cfg(windows)]
-fn own_group(_: &mut Command) {}
-
-/// The group [`own_group`] gave git, all of it.
-#[cfg(unix)]
-fn kill_tree(child: &mut Child) {
-    let group = format!("-{}", child.id());
-    let _ = Command::new("kill").args(["-TERM", "--", &group]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status();
-    let _ = child.kill();
-    let _ = child.wait();
-}
-
-/// git and what it starts in a process group of their own, to stop together.
-#[cfg(unix)]
-fn own_group(c: &mut Command) {
-    use std::os::unix::process::CommandExt;
-    c.process_group(0);
-}
-
-#[cfg(not(any(windows, unix)))]
-fn kill_tree(child: &mut Child) {
-    let _ = child.kill();
-    let _ = child.wait();
-}
-
-#[cfg(not(any(windows, unix)))]
-fn own_group(_: &mut Command) {}
-
-pub(crate) fn run(mut c: Command, stop: &AtomicBool, tell: &mut dyn FnMut(Progress)) -> Result<Option<Said>, git::Error> {
-    c.stdout(Stdio::piped()).stderr(Stdio::piped());
-    own_group(&mut c);
-    let mut child = c.spawn().map_err(git::started)?;
-    let (tx, rx) = mpsc::channel();
-    // The readers outlive a stopped git when a helper it started (ssh, a
-    // credential helper) still holds the pipes; they end with it.
-    let mut stderr = child.stderr.take().expect("piped");
-    let err_tx = tx.clone();
-    let err = std::thread::Builder::new().name("git-net-stderr".into()).spawn(move || {
-        let (mut buf, mut line) = ([0u8; 4096], Vec::new());
-        let send = |line: &mut Vec<u8>| {
-            if !line.is_empty() {
-                let _ = err_tx.send(Piece::Line(String::from_utf8_lossy(line).into_owned()));
-                line.clear();
-            }
-        };
-        // Progress ends its lines with `\r`, to write over them.
-        while let Ok(n @ 1..) = stderr.read(&mut buf) {
-            for &b in &buf[..n] {
-                if b == b'\r' || b == b'\n' {
-                    send(&mut line);
-                } else {
-                    line.push(b);
-                }
-            }
+/// Stopping git stops what it started too (`ito-proc` kills the whole tree).
+pub(crate) fn run(c: Command, stop: &AtomicBool, tell: &mut dyn FnMut(Progress)) -> Result<Option<Said>, git::Error> {
+    let outcome = ito_proc::run(c, stop, &mut |l| match Progress::parse(l) {
+        Some(p) => {
+            tell(p);
+            false
         }
-        send(&mut line);
-        let _ = err_tx.send(Piece::ErrEnd);
-    });
-    let mut stdout = child.stdout.take().expect("piped");
-    let out_tx = tx.clone();
-    let out = std::thread::Builder::new().name("git-net-stdout".into()).spawn(move || {
-        let mut buf = [0u8; 4096];
-        while let Ok(n @ 1..) = stdout.read(&mut buf) {
-            let _ = out_tx.send(Piece::Out(buf[..n].to_vec()));
-        }
-        let _ = out_tx.send(Piece::OutEnd);
-    });
-    if let Err(e) = err.and(out) {
-        kill_tree(&mut child);
-        return Err(git::Error::Io(format!("git: {e}")));
-    }
-    let (mut out, mut lines) = (Vec::new(), Vec::new());
-    let (mut err_end, mut out_end) = (false, false);
-    let mut exited: Option<(ExitStatus, Instant)> = None;
-    loop {
-        if stop.load(Ordering::Relaxed) {
-            kill_tree(&mut child);
-            return Ok(None);
-        }
-        // `tx` is still here, so this waits rather than seeing the readers gone.
-        match rx.recv_timeout(Duration::from_millis(100)) {
-            Ok(Piece::Line(l)) => match Progress::parse(&l) {
-                Some(p) => tell(p),
-                None => lines.push(l),
-            },
-            Ok(Piece::ErrEnd) => err_end = true,
-            Ok(Piece::Out(b)) => out.extend(b),
-            Ok(Piece::OutEnd) => out_end = true,
-            Err(RecvTimeoutError::Timeout | RecvTimeoutError::Disconnected) => {}
-        }
-        if exited.is_none() {
-            match child.try_wait() {
-                Ok(Some(status)) => exited = Some((status, Instant::now())),
-                Ok(None) => {}
-                Err(e) => return Err(git::Error::Io(format!("git: {e}"))),
-            }
-        }
-        // A helper can hold the pipes after git is gone: a second for them.
-        let Some((status, at)) = exited else { continue };
-        if (err_end && out_end) || at.elapsed() > Duration::from_secs(1) {
-            while let Ok(p) = rx.try_recv() {
-                match p {
-                    Piece::Line(l) if Progress::parse(&l).is_none() => lines.push(l),
-                    Piece::Out(b) => out.extend(b),
-                    _ => {}
-                }
-            }
-            return Ok(Some(Said { ok: status.success(), out: String::from_utf8_lossy(&out).into_owned(), lines }));
-        }
-    }
+        None => true,
+    })
+    .map_err(git::started)?;
+    Ok(match outcome {
+        ito_proc::Outcome::Stopped => None,
+        ito_proc::Outcome::Done(d) => Some(Said { ok: d.ok(), out: d.stdout_text(), lines: d.lines }),
+    })
 }
 
 #[cfg(test)]
