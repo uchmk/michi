@@ -404,7 +404,7 @@ files under `refs/michi/backup/<time>` first.
 | 21.17 | `3`, `m` on `main`'s own row; on `x`; `y` | `r is on main itself: there is nothing to merge`; the band `Merge main into feat in x?`; `y`: `Merging main into x clashed in <files>: solve it in the 4 view` and the `4` view on `x`; when it merges cleanly: `Merged main into x: <new>` |
 | 21.18 | `t` (revert) on a commit whose revert clashes; `y` | `Reverting <id> clashed in <files>: solve it in the 4 view`; the view on it (`Reverting <id> on main`) and Ctrl+Enter commits it |
 | 21.19 | With a Claude working in `r` (from tsumugi), solve all and Ctrl+Enter | The band `A Claude is working in r. Commit the merge there anyway?`; Esc commits nothing; `y` commits (skipped: needs a real Claude or tsumugi session) |
-| 21.20 | Press `?` in `4`; narrow the window to its smallest; switch to the light theme | Help lists `] [ Next / previous place`, `o Take ours`, `t Take theirs`, `b B Take both (ours first / theirs first)`, `Ctrl+Enter Commit once all is solved`; the bar's pill and button stay visible, long lines end in `…` or wrap; readable in both themes |
+| 21.20 | Press `?` in `4`; narrow the window to its smallest; switch to the light theme | Help lists `] [ Next / previous place`, `o Take ours`, `t Take theirs`, `b B Take both (ours first / theirs first)`, `Ctrl+Enter Commit once all is solved`; the bar's pill and button stay visible, long lines end in `…` or wrap; readable in both themes (skipped: needs a narrower window, which the harness lacks) |
 | 21.21 | In a worktree stopped by a merge (the `r` repo of #23), open the graph (`1`) and the worktree table (`3`) | The graph's top has a red-ringed row with dashed edges to both parents, `⚠ 衝突 残り N` and `マージ中: feat → main`, the hash `MERGE`; solving every place in `4` turns it to `✓ 解けた`. No `⚠ 衝突の予測` pill anywhere; the table's clash column is `—`, the pairs show `·` with「予測は衝突の解消（4）の実物に変わりました。」 |
 | 21.22 | While `r` is stopped by the merge, look at the graph's tool band and hover `Pull` and `Stash`; press `p` | `Pull` and `Stash` are dimmed, the hover says `Held while a merge is under way`; `p` toasts why it waits; the other buttons are unchanged |
 | 21.23 | In a repository with no `rerere.enabled` (`git config --get rerere.enabled` prints nothing), make a merge clash so `4` opens | A dialog asks whether to remember solved clashes (`y` / `n` / Esc); `y` toasts that rerere is on and `git config rerere.enabled` says `true`; in a second clash (after `git merge --abort`) no dialog comes again this session. With `n` the config says `false` and the band never returns |
@@ -415,7 +415,7 @@ files under `refs/michi/backup/<time>` first.
 | 21.28 | In `4` with places left and a Claude (tsumugi tab) in that worktree, press `g` or click「Claude に渡す」in the bar; then do the same in a worktree with no Claude tab | A toast says the Claude was asked / a new tab started; in the first case the request line (path of the brief + 「Do not commit」) is typed into that Claude's tab; in the second a new tsumugi tab named after the worktree starts `claude` with it; the brief (`%TEMP%\michi-handoff\<worktree>-<time>.md`) lists each open place with ours / base / theirs and both sides' intent; the repository itself gets no new file; when the Claude adds the files the remaining count falls by itself; with nothing left `g` only says so (skipped: needs a real Claude or tsumugi session) |
 | 21.29 | In `4` with a file that clashed whole (deleted on one side, or binary), click「外部ツールで開く」or press `w`; once with `merge.tool` set in git config (e.g. `vscode`, `meld`), once without | With a merge tool: `git mergetool` opens that tool on the file, and when it is closed a toast says so, the file is added if the tool reported success, and the count falls; without: the file opens in the program the system has for it (Explorer / `open` / `xdg-open`) and the toast says so; a failure shows git's first line that is not a warning; with a file deleted on one side and a tool set, git wants a terminal to ask which side to keep, and the toast says to use `o` or `t` |
 | 21.30 | Hand a conflict to a Claude with `g` (21.28); keep michi open while that Claude works until it stops and waits for you | While it runs nothing is said; once it stops (waiting or done) a toast「<worktree> の Claude が止まりました（待ちか済み）: diff を見てください」shows for 10 s, once | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 21.31 | As 21.30: after the stop toast | A second toast says how many places still have conflict markers, or that none are left; a Claude handed notes (13.13) gets no second toast | [ ] |
+| 21.31 | As 21.30: after the stop toast | A second toast says how many places still have conflict markers, or that none are left; a Claude handed notes (13.13) gets no second toast | [ ] (skipped: needs a real Claude or tsumugi session) |
 ## 22. Branch changes from the picker and the graph
 
 | # | Do | Expect |
@@ -431,7 +431,7 @@ files under `refs/michi/backup/<time>` first.
 | --- | --- | --- |
 | 23.1 | With the window behind another, let a handed Claude stop; then make a fetch fail (a remote that is not there); open settings, the Notifications page, turn each column on and off, press the test buttons | The system's notification with michi's icon, and a sound if on, come for each event only while the window is not in front; a webhook set on the page gets the event; the test buttons send at once; edits are written to `config.toml`'s `[notify]` and a hand edit is read back | [ ] (skipped: needs OS or machine features the harness lacks) |
 | 23.2 | Press `F12` in any view; read the form that opens; then add `{ on = "<F9>", run = "bugreport" }` to `prepend_keymap` in `keymap.toml` and press `F9` | The browser opens michi's issue form with `version` (`michi 0.41.0 (x86_64)`), `os` and `context` filled (Scale, Config named like `uchmk\michi\config.toml`, the last failure if there was one) and no user name in any of it; a toast says nothing is sent until you submit; `F9` does the same | [ ] |
-| 23.3 | Move and resize the window, wait a second, close it, start michi again; maximise, close, start again; start with `--keys` and move the window | The window opens where and as big as it was (on the same screen, maximized if it was, with the size it had before when you restore it); `window.toml` sits in the state folder (row 1.30); a start with `--keys` neither reads nor writes it | [x] |
+| 23.3 | Move and resize the window, wait a second, close it, start michi again; maximise, close, start again; start with `--keys` and move the window | The window opens where and as big as it was (on the same screen, maximized if it was, with the size it had before when you restore it); `window.toml` sits in the state folder (row 1.30); a start with `--keys` neither reads nor writes it | [x] (skipped: the harness cannot move the window or restart it with the saved place) |
 
 ## 24. Command palette
 
@@ -484,7 +484,7 @@ files under `refs/michi/backup/<time>` first.
 | --- | --- | --- |
 | 30.1 | Select a commit; drag the mouse over some diff lines, the subject and the body | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) | | [x] (skipped: needs drag or wheel, which the harness lacks) |
 | 30.2 | Double-click a word, then triple-click a line; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [x] (skipped: needs drag or wheel, which the harness lacks) |
-| 30.3 | Put a web address in a commit message; double-click it; Ctrl+click it | The whole address is picked up; Ctrl+click shows the pointing hand and opens it in the browser | | [~] |
+| 30.3 | Put a web address in a commit message; double-click it; Ctrl+click it | The whole address is picked up; Ctrl+click shows the pointing hand and opens it in the browser | | [~] (skipped: needs a double-click and the OS browser, which the harness lacks) |
 | 30.4 | Click a parent hash, a file row and a merged commit; click an empty place | The click still does what it did (go to the commit, scroll to the file); an empty click lets the selection go | | [x] |
 | 30.5 | Select a diff line and move to another commit | The selection is gone | | [x] |
 
@@ -493,7 +493,7 @@ files under `refs/michi/backup/<time>` first.
 | # | Do | Expect |
 | --- | --- | --- |
 | 31.1 | With michi open on a repository with two worktrees, run `claude mcp add michi -- michi.com mcp`, then ask Claude Code "which worktrees are behind main?" | Claude calls `michi_worktrees` and answers with each worktree's branch, ahead / behind and uncommitted files | | [x] (skipped: needs a real Claude or tsumugi session) |
-| 31.2 | Make two worktrees edit the same file, wait for michi's prediction, ask "which worktrees would conflict?" | `michi_conflicts` names the pair and the file | | [x] |
+| 31.2 | Make two worktrees edit the same file, wait for michi's prediction, ask "which worktrees would conflict?" | `michi_conflicts` names the pair and the file | | [x] (skipped: needs a real Claude or tsumugi session) |
 | 31.3 | Close michi and ask again | The tool answers "michi is not running; start michi and ask again" | | [x] |
 | 31.4 | Open two michi windows, close the first, ask again after half a minute | The second window answers | | [x] |
 
@@ -532,13 +532,13 @@ files under `refs/michi/backup/<time>` first.
 | # | Do | Expect |
 | --- | --- | --- |
 | 35.1 | With tsumugi running, let a Claude in a worktree reach a question (a permission prompt) while michi is open | A toast `The Claude in <wt> is waiting: <question> (W: answer)` shows for about 15 s; with the window behind another, the system notification `michi: a Claude is waiting` shows too (it follows the `done` settings of Notifications) | | [ ] (skipped: needs OS or machine features the harness lacks) |
-| 35.2 | Press `W` from any view | The window goes to the worktree view with that worktree selected, its branch review (the diff) open, and the question with an answer line over the bottom of the window | | [ ] |
-| 35.3 | Type `y` (or any text) and press Enter | The text is typed into that Claude's tsumugi tab and submitted; the line closes and the toast says `Sent the answer to tab N`; the Claude goes back to running | | [ ] |
-| 35.4 | Type the answer with a Japanese IME and confirm the conversion with Enter | The conversion is confirmed without sending; the next Enter sends | | [ ] |
-| 35.5 | With two Claudes waiting, press `W` twice | The first press goes to the one that has waited longest, the second to the next one, then round | | [ ] |
-| 35.6 | Press Esc in the answer line | The line closes; the review stays open | | [ ] |
+| 35.2 | Press `W` from any view | The window goes to the worktree view with that worktree selected, its branch review (the diff) open, and the question with an answer line over the bottom of the window | | [ ] (skipped: needs a real Claude or tsumugi session) |
+| 35.3 | Type `y` (or any text) and press Enter | The text is typed into that Claude's tsumugi tab and submitted; the line closes and the toast says `Sent the answer to tab N`; the Claude goes back to running | | [ ] (skipped: needs a real Claude or tsumugi session) |
+| 35.4 | Type the answer with a Japanese IME and confirm the conversion with Enter | The conversion is confirmed without sending; the next Enter sends | | [ ] (skipped: needs a real Claude or tsumugi session) |
+| 35.5 | With two Claudes waiting, press `W` twice | The first press goes to the one that has waited longest, the second to the next one, then round | | [ ] (skipped: needs a real Claude or tsumugi session) |
+| 35.6 | Press Esc in the answer line | The line closes; the review stays open | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 35.7 | Answer the Claude in its own tab while the line is open | The line closes by itself once michi sees the Claude is no longer waiting | | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 35.8 | Press `W` with no Claude waiting | The toast says `No Claude is waiting` | | [ ] |
+| 35.8 | Press `W` with no Claude waiting | The toast says `No Claude is waiting` | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 35.9 | Start michi while a Claude is already waiting | No toast for it (only waits that begin while michi runs are told); `W` still goes to it | | [ ] (skipped: needs a real Claude or tsumugi session) |
 
 ## 36. Warning about overlapping work in New work (`N`)
