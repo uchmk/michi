@@ -45,11 +45,11 @@
 
 ## 2. Views and keys
 
-- [x] **2.1** Press `1`, `2`, `3` → The tab in force moves and opens into the view; the graph shows the history (section 6), the worktrees show their table (section 10), the changes show the files to stage (section 14) 〔未訳〕
+- [x] **2.1** Press `1`, `2`, `3`, `4` → The tab in force moves and opens into the view; the graph shows the history (section 6), the worktrees show their table (section 10), the changes show the files to stage (section 14) 〔未訳〕
 - [x] **2.2** Click each tab → Same as the digit 〔未訳〕
 - [~] **2.3** Press `?` in `1`, `2` and `3`; narrow the window below 460 wide and press `?` → A card with the keys: "Everywhere" first, then the view's, two to a line with the word at the left and the keys at the right, every key there down to `Esc`; the tab stays lit under it; `?` or Esc closes it; the narrow window has one to a line 〔未訳〕
-- [ ] **2.4** Press `N` in any view (Enter spreads the diff: 8.5; `f` `p` `P`: 15; `b` `T` `t`: 16; `s`: 17) → A toast at the foot names the key's work and says it comes in a later stage; it goes after 4 seconds 〔未訳〕
-- [~] **2.5** Press Ctrl+Shift+P, or click the palette field → The same toast for the command search; the field lights under the pointer with a text cursor 〔未訳〕
+- [~] **2.4** Press `N` in any view → The New work box opens over the view (branch, base, instruction, count, folder, the `tsumugi new` command); Esc closes it 〔未訳〕
+- [~] **2.5** Press Ctrl+Shift+P, or click the palette field → The command palette opens with its field focused and the commands listed with their keys; Esc closes it 〔未訳〕
 - [x] **2.6** Press a key with no work (`q`) → Nothing happens 〔未訳〕
 - [~] **2.7** Press `?` (or `F1`), in a window short enough that the list does not fit; then `Down`, `PageDown`, `End`, `Home`; then bind another key to Quit on the Keys page and press `?` again → The list has the global keys and the keymap's keys (`Ctrl+Q`, `Ctrl+Shift+P`, ...), then the keys of the view in front; the keys move the list and a thin bar shows where it is; the new Quit key shows in the list; `?` or Esc closes it 〔未訳〕
 
@@ -90,7 +90,7 @@
 - [~] **6.8** Press `j` `k`, ↓ ↑, PageDown PageUp, Home End → The selected row (lit across) moves and the list scrolls to keep it in sight; End goes to the oldest row read so far 〔未訳〕
 - [~] **6.9** Click a row; scroll with the wheel → The row is selected; the wheel scrolls the list without moving the selection 〔未訳〕
 - [~] **6.10** Press `/` and type part of a subject, a hash or an author's name → The field at the right of the tool band takes the keys, with the count (`3 hits`) at its right; the text sits in the middle of the field; the other rows dim; the hits get marks on the scrollbar 〔未訳〕
-- [ ] **6.11** In the field, press Enter, Shift+Enter, ↓, ↑ → Enter selects the next hit (round to the first after the last), Shift+Enter the one before; the arrows move the selection; the field keeps the keys 〔未訳〕
+- [~] **6.11** In the field, press Enter, Shift+Enter, ↓, ↑ → Enter selects the next hit (round to the first after the last), Shift+Enter the one before; the arrows move the selection; the field keeps the keys 〔未訳〕
 - [~] **6.12** Press Esc in the field → The filter clears and every row is bright again 〔未訳〕
 - [~] **6.13** Look at the scrollbar → Marks for the worktrees' heads (in their lanes' colours), the tags (amber) and the selected row (the accent); hovering a mark tells what it is 〔未訳〕
 - [ ] **6.14** Drag the thumb; click the track; click a mark → The thumb stays under the pointer to the release; a click on the track brings that part into the middle; a click on a mark selects its row 〔未訳〕
@@ -127,7 +127,7 @@
 ## 9. Uncommitted changes
 
 - [~] **9.1** Look at the top of the graph → A row `Uncommitted: N files (+a −d)` in italics above the newest commit, with a dashed dot on the lane of the worktree's branch, author `—`, the time the change was last written and the hash `WIP`; the main worktree's change is on top when it was written last 〔未訳〕
-- [ ] **9.2** Edit a file in the worktree with michi in front → Within about a second the row's counts and time follow without a key; the selection stays on the row it was on 〔未訳〕
+- [~] **9.2** Edit a file in the worktree with michi in front → Within about a second the row's counts and time follow without a key; the selection stays on the row it was on 〔未訳〕
 - [~] **9.3** Select the WIP row → The detail says `Uncommitted changes on <branch>`, the worktree's folder in mono, when it was last written, `Read only here. Stage and commit in Changes (2).`, then the files and the diff from the worktree's `HEAD`; the new file is listed as added 〔未訳〕
 - [ ] **9.4** With the WIP row selected, have the Claude there run, then stop or ask → A box under the hint: `Claude is writing.` or `Claude has stopped.` with its state (glyph and word), the tab, its title and since when; a question in amber 〔未訳〕
 - [~] **9.5** Put a file over 10 MB (or a folder over 2000 files or 50 MB) in the worktree, not ignored → The WIP row and its counts leave it out; the detail says `Untracked, too big to count: <path>` (three at most, then `and N more`); `git count-objects -vH` in the repository does not grow by its size; no `git.exe` keeps running after michi is closed 〔未訳〕
@@ -141,7 +141,7 @@
 - [~] **10.3** Look at the `From main` column → `↑a ↓b` against main, and under it the branch against its upstream: `Same as origin/x`, `N not pushed to origin/x`, `origin/x is N ahead`, `Diverged from origin/x (↑a ↓b)`, `Not pushed yet`; the main row reads against `origin/main` 〔未訳〕
 - [ ] **10.4** Look at the `Uncommitted` column; then put a folder over 2000 files in a worktree, not ignored → `N files`, `+a −d` in green and red and `written at <time>`, or `None`; the big folder adds `Too big to count: <path>` and is not counted 〔未訳〕
 - [ ] **10.5** Look at the locked worktree with no branch → `No branch, at <hash>` and a `Locked` mark; a worktree whose folder was deleted says `Its folder is gone (git can prune it)` 〔未訳〕
-- [ ] **10.6** Press `j` / `k`, the arrows, PageDown / PageUp, Home / End, and click a row → The selection moves (10 rows a page) and the table scrolls to keep it in view; the wheel scrolls the table with no scrollbar 〔未訳〕
+- [~] **10.6** Press `j` / `k`, the arrows, PageDown / PageUp, Home / End, and click a row → The selection moves (10 rows a page) and the table scrolls to keep it in view; the wheel scrolls the table with no scrollbar 〔未訳〕
 - [ ] **10.7** Press Enter on a row with changes, and double-click a clean row → The graph opens with the row's `Uncommitted` row selected, or its branch's commit 〔未訳〕
 - [ ] **10.8** Select a linked worktree and press `d`, then `Esc`; `m`, then `Esc`; `t`, `e`, `E`; `O`, `Q`, `I` → `d` opens the review view (`main…<branch>`, the files, the diff, `Esc` back); `m` asks to bring main in; `t` `e` `E` open the terminal, the editor and the file manager on its folder; `O` opens its pull request page, `Q` the pull request form, `I` the issue; the main row shows `Pull` and `Show in the graph` instead of the review, merge and `Remove` buttons 〔未訳〕
 - [~] **10.9** Click `Read again` → The toast `Reading the worktrees again…`, and the table follows a change made outside (a new commit, a new worktree) 〔未訳〕
@@ -169,11 +169,11 @@
 ## 12. Watching and unseen commits
 
 - [~] **12.1** Commit in the worktree on a branch → Within about a second the history is read again without going blank: the new commit shows on its branch with a blue dot before its subject, which is bold; the selection stays on the commit it was on 〔未訳〕
-- [ ] **12.2** Press `3` → The worktree's `Unseen` column says `● 1 new` (the blue dot); the main worktree says `—` and the others `None`; beside the conflicts box, `Unseen changes (1)` lists the commit: short hash, blue dot, the subject in bold, `<short branch> · <time>` at the right, and the foot `The commits the worktrees have gained since you last looked. Selecting one in the graph marks it seen.` 〔未訳〕
-- [ ] **12.3** Hover the commit in the list, then click it → The line lights and the pointer becomes a hand; the click opens the graph with that commit selected and its dot and bold go; back in `3`, the column says `None` and the box `All seen.` 〔未訳〕
-- [ ] **12.4** Commit twice more; in the graph, move onto one of them with `j` / `k`, and click the other → Each loses its dot once selected; the commit selected when the graph first opens, or that the selection follows when rows come in, does not count as seen 〔未訳〕
+- [~] **12.2** Press `3` → The worktree's `Unseen` column says `● 1 new` (the blue dot); the main worktree says `—` and the others `None`; beside the conflicts box, `Unseen changes (1)` lists the commit: short hash, blue dot, the subject in bold, `<short branch> · <time>` at the right, and the foot `The commits the worktrees have gained since you last looked. Selecting one in the graph marks it seen.` 〔未訳〕
+- [~] **12.3** Hover the commit in the list, then click it → The line lights and the pointer becomes a hand; the click opens the graph with that commit selected and its dot and bold go; back in `3`, the column says `None` and the box `All seen.` 〔未訳〕
+- [~] **12.4** Commit twice more; in the graph, move onto one of them with `j` / `k`, and click the other → Each loses its dot once selected; the commit selected when the graph first opens, or that the selection follows when rows come in, does not count as seen 〔未訳〕
 - [ ] **12.5** Make 13 commits in the worktree and press `3` → The box shows 12, newest first, and `… 1 more`; a long subject is cut with `…` before the branch and time 〔未訳〕
-- [ ] **12.6** Quit michi with commits unseen, commit once more, and start michi again → The commits still unseen keep their dot, and the one made while michi was closed has one too; the file above lists the branch with the commits seen 〔未訳〕
+- [~] **12.6** Quit michi with commits unseen, commit once more, and start michi again → The commits still unseen keep their dot, and the one made while michi was closed has one too; the file above lists the branch with the commits seen 〔未訳〕
 - [ ] **12.7** Narrow the window below 960 wide → The `Unseen changes` box goes under the conflicts box at the full width; the cards have an `Unseen` line 〔未訳〕
 - [ ] **12.8** Put another window in front, commit in a worktree, wait, then bring michi back → Nothing is read while michi is behind (no `git.exe` in Task Manager); when it comes back the history and the table follow at once 〔未訳〕
 - [ ] **12.9** Run `cargo build` (or write many files) in an ignored folder of a worktree, and run `git status` there, with michi in front → michi reads nothing for them: no `git.exe` keeps coming up in Task Manager, and the table does not change; a `git status` does not start a read that starts another 〔未訳〕
@@ -451,7 +451,7 @@
 - [~] **38.3** Hover each view tab (Graph, Changes, Worktrees) → The tooltip names the view and its digit, for example `Graph (1)` → | [ ] → | 〔未訳〕
 - [~] **38.4** In the graph view hover Fetch, Pull, Push and Sync → Each tooltip shows its key, for example `pull (p)`, `Sync (S)` → | [ ] → | 〔未訳〕
 - [~] **38.5** During a merge hover Pull and Stash → The tooltip still says they are held, not the key → | [ ] → | 〔未訳〕
-- [~] **38.6** In the worktree view hover New work and the re-read button → `New work (N)`; the re-read button shows just its name → | [ ] → | 〔未訳〕
+- [~] **38.6** In the worktree view hover New work and the re-read button → `New work (N)`; the re-read button shows just its name (skipped: undecidable in the harness, hover tooltips do not show) → | [ ] → | 〔未訳〕
 
 ## 39. Graph filter with fuzzy matching (ito-match)
 
@@ -852,7 +852,7 @@
 - [~] **37.1** In the graph, select a commit and press `B` → A screen opens over the graph: `Blame: <first file of the commit>`, `As of <id>`, one row per line with the commit, who, how long ago, the line number and the line; it reads at once and the window stays responsive on a long file 〔未訳〕
 - [ ] **37.2** Click a file in the detail (so it is the one scrolled to), select another commit that has it, press `B` → The screen is of the file the detail was on 〔未訳〕
 - [~] **37.3** Press `j` `k`, PageDown, PageUp, Home, End → The selection moves and stops at the ends; the screen follows it (22 rows) and shows `n / total` 〔未訳〕
-- [ ] **37.4** Press `Tab` (or `H`, then `B`) → The list switches between blame and the file's history (commit, who, ago, subject, newest first); each tab keeps its own selection 〔未訳〕
+- [ ] **37.4** Press `Tab` (or `H`, then `B`) → The list switches between blame and the file's history (commit, who, ago, subject, newest first); each tab keeps its own selection (skipped: undecidable in the harness, the screen is the same before and after Tab) 〔未訳〕
 - [ ] **37.5** Open the history of a file that was renamed in the past → The commits from before the rename are listed too; the blame rows of old lines name the commit that wrote them 〔未訳〕
 - [~] **37.6** Press Enter on a row → The screen closes, the graph is in front and that row's commit is selected (reading on to it when it is far down) 〔未訳〕
 - [ ] **37.7** Click a row once, then again → The first click selects, the second goes to the commit; a click outside closes the screen; Esc closes it 〔未訳〕
