@@ -591,7 +591,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 40.1 | On `feat` (not on `origin` yet) press `P`; Esc; `P` again and `y` | A band under the top bar: `Push 3 commit(s) to origin/feat, which is not there yet? It becomes this branch's upstream.` with one row per commit (short hash, subject, newest first); Esc pushes nothing (`git ls-remote origin feat` is empty); `y` pushes and says `Pushed to origin/feat, now its upstream` | [ ] |
+| 40.1 | On `feat` (not on `origin` yet) press `P`; Esc; `P` again and `y` | A dialog (Esc cancels, Ctrl+Enter or `y` goes on): `Push 3 commit(s) to origin/feat, which is not there yet? It becomes this branch's upstream.` with one row per commit (short hash, subject, newest first); Esc pushes nothing (`git ls-remote origin feat` is empty); `y` pushes and says `Pushed to origin/feat, now its upstream` | [ ] |
 | 40.2 | Commit once more on `feat` and press `P` | `Push 1 commit(s) to origin/feat?` with just that commit; make 15 commits and `P`: the newest 12 are listed and a last row reads `… and 3 more` | [ ] |
 | 40.3 | Let `b` push a commit to `origin/feat`, press `f` here, commit and press `F` | A red band (red outline and note): the commits that go, and the note `origin/feat has 1 commits this branch does not. Push over them? …`; `P` instead only says `F pushes over them, asking first`; `y` pushes with the lease and names the backup | [ ] |
 | 40.4 | Press `P` on a branch that origin already has, on one only behind, and in a repository with no remote | `origin/feat has it already`, `Nothing to push: origin/feat is n ahead (p pulls)` and `No remote …`; no band in any of them | [ ] |

@@ -463,12 +463,12 @@
 
 ## 40. What a push sends
 
-- [ ] **40.1** On `feat` (not on `origin` yet) press `P`; Esc; `P` again and `y` → A band under the top bar: `Push 3 commit(s) to origin/feat, which is not there yet? It becomes this branch's upstream.` with one row per commit (short hash, subject, newest first); Esc pushes nothing (`git ls-remote origin feat` is empty); `y` pushes and says `Pushed to origin/feat, now its upstream` 〔未訳〕
+- [~] **40.1** On `feat` (not on `origin` yet) press `P`; Esc; `P` again and `y` → A dialog (Esc cancels, Ctrl+Enter or `y` goes on): `Push 3 commit(s) to origin/feat, which is not there yet? It becomes this branch's upstream.` with one row per commit (short hash, subject, newest first); Esc pushes nothing (`git ls-remote origin feat` is empty); `y` pushes and says `Pushed to origin/feat, now its upstream` 〔未訳〕
 - [ ] **40.2** Commit once more on `feat` and press `P` → `Push 1 commit(s) to origin/feat?` with just that commit; make 15 commits and `P`: the newest 12 are listed and a last row reads `… and 3 more` 〔未訳〕
 - [ ] **40.3** Let `b` push a commit to `origin/feat`, press `f` here, commit and press `F` → A red band (red outline and note): the commits that go, and the note `origin/feat has 1 commits this branch does not. Push over them? …`; `P` instead only says `F pushes over them, asking first`; `y` pushes with the lease and names the backup 〔未訳〕
 - [ ] **40.4** Press `P` on a branch that origin already has, on one only behind, and in a repository with no remote → `origin/feat has it already`, `Nothing to push: origin/feat is n ahead (p pulls)` and `No remote …`; no band in any of them 〔未訳〕
 - [ ] **40.5** With two remotes and no `origin`, press `P`, pick one → The list of remotes first, then the band for the picked remote 〔未訳〕
-- [ ] **40.6** Switch the language to Japanese and press `P` → The band reads `n 個のコミットを … に push しますか？`; the commit rows do not run off the box 〔未訳〕
+- [~] **40.6** Switch the language to Japanese and press `P` → The band reads `n 個のコミットを … に push しますか？`; the commit rows do not run off the box 〔未訳〕
 
 ## 41. Autostash on pull and switch
 
@@ -493,7 +493,7 @@
 - [~] **43.1** In the graph, select an older commit and press `g r` → A dialog asks how far to reset, tells what each of 1 soft / 2 mixed / 3 hard loses, and has the three buttons and No → | [ ] 〔未訳〕
 - [ ] **43.2** With a staged change, press `g r` on the previous commit, then `1` → The branch moves; the change shows as staged; the toast names the `michi/backup/…` ref of the old tip → | [ ] 〔未訳〕
 - [~] **43.3** Same, with `2` → The branch moves; the change is unstaged but its text is in the file → | [ ] 〔未訳〕
-- [ ] **43.4** With an edited tracked file and an untracked file, press `g r` and `3` → The edit is gone, the untracked file stays; the toast names two backup refs (the tip, the changes); `git show <changes>:file` has the edit → | [ ] 〔未訳〕
+- [~] **43.4** With an edited tracked file and an untracked file, press `g r` and `3` → The edit is gone, the untracked file stays; the toast names two backup refs (the tip, the changes); `git show <changes>:file` has the edit → | [ ] 〔未訳〕
 - [ ] **43.5** Press `R`, then Esc (or `n`, or `y`) → Nothing changes (y does nothing: only 1 2 3 choose) → | [ ] 〔未訳〕
 - [ ] **43.6** Press `R` in a worktree in the middle of a merge or rebase; with no commit selected → A toast says to finish it first / to pick a commit; no band → | [ ] 〔未訳〕
 - [ ] **43.7** Press `R` where a Claude is working → The band ends with the note that a Claude is working there → | [ ] 〔未訳〕
@@ -810,12 +810,12 @@
 
 ## 40. Remotes: list, add, remove (`M`)
 
-- [ ] **40.1** In the graph press `M` in a repository with a remote → A list titled `Remotes` opens: each remote's name with its address; `M Remotes` is in the graph's keys (`?`) 〔未訳〕
+- [~] **40.1** In the graph press `M` in a repository with a remote → A list titled `Remotes` opens: each remote's name with its address; `M Remotes` is in the graph's keys (`?`) 〔未訳〕
 - [ ] **40.2** Type `mine https://example.com/x.git` → One row `mine`, lit, reads `add it at https://example.com/x.git`; Enter adds it, a toast says nothing was fetched; `M` lists it 〔未訳〕
 - [ ] **40.3** Type only `mine` and press Enter → A toast asks for the address after the name; the list stays open 〔未訳〕
 - [ ] **40.4** Type `a/b https://x` and press Enter → A toast says `'a/b' is not a valid remote name`; the list stays open and nothing is added 〔未訳〕
 - [ ] **40.5** Select a remote and press Delete → The red question names the remote and its address and says its remote-tracking branches go; `y` removes it, the graph drops its `origin/...` pills, the toast says where it was 〔未訳〕
-- [ ] **40.6** Press `Esc` on that question → Nothing is removed 〔未訳〕
+- [~] **40.6** Press `Esc` on that question → Nothing is removed 〔未訳〕
 - [ ] **40.7** Press `M` in a repository with no remote → The list opens empty; typing a name and address still adds one 〔未訳〕
 - [ ] **40.8** Switch EN and JA → The hint, the keys line, the question and the toasts read well and fit 〔未訳〕
 
