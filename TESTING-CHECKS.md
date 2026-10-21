@@ -511,7 +511,7 @@
 - [~] **45.1** In `2` over a worktree with changes in nested folders, press `t` (or click Tree in the top bar) → Both lists become folders (a lone chain such as `a/b/c/` is one row) with files under them, folders first; press `t` again for the flat list 〔未訳〕
 - [~] **45.2** Click a folder row → It folds (▸) and its files vanish from the list; click again to open it (▾). Staged and unstaged fold apart 〔未訳〕
 - [~] **45.3** Click the `+` at the right of an unstaged folder; then the `−` of a staged one → Every file below it goes into the index, then every one (a rename's old path too) comes out; the count at the right matches 〔未訳〕
-- [ ] **45.4** With a folder folded, press `j` / `k` and the arrow keys → The selection walks the files in the order shown and skips the folded ones; a selection folded away moves to the nearest shown file 〔未訳〕
+- [~] **45.4** With a folder folded, press `j` / `k` and the arrow keys → The selection walks the files in the order shown and skips the folded ones; a selection folded away moves to the nearest shown file 〔未訳〕
 - [ ] **45.5** Stage a folder while a Claude is writing in the worktree → The same question for a yes as for a file 〔未訳〕
 
 ## 46. Comparing two commits or branches
