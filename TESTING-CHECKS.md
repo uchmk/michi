@@ -537,8 +537,8 @@
 
 ## 74. Commit message help (history and template)
 
-- [~] **74.1** In the `2` view press `c` and look at the empty box → The hint reads "What changed, and why (Alt+Up / Alt+Down: earlier messages)"; EN and JA both read well and are not cut off → | [ ] 〔未訳〕
-- [~] **74.2** With the box focused press Alt+Up → The box takes the latest commit's message (all lines); again: the one before; at the oldest nothing happens → | [ ] 〔未訳〕
+- [~] **74.1** In the `2` view press `c` and look at the empty box → The hint reads "What changed, and why (Alt+Up / Alt+Down: earlier messages)"; EN and JA both read well and are not cut off → | [ ] (looked at 2026-10-22: JA hint reads as expected; EN not seen) 〔未訳〕
+- [~] **74.2** With the box focused press Alt+Up → The box takes the latest commit's message (all lines); again: the one before; at the oldest nothing happens → | [ ] (looked at 2026-10-22: first Alt+Up fills the latest message; the second step was not told apart) 〔未訳〕
 - [~] **74.3** Type "wip", press Alt+Up twice, then Alt+Down twice → You are back at "wip" (the draft is kept); the same message is never listed twice → | [ ] 〔未訳〕
 - [ ] **74.4** Step to an old message, edit a word, press Alt+Up → The edited text is kept as the draft (Alt+Down from the next message comes back to it) → | [ ] 〔未訳〕
 - [~] **74.5** Run `git config commit.template tpl.txt` (a file with `# help` lines and a `feat: ` line), then press `c` on an empty box → The box is filled with `feat:` without the `#` lines; committing it as it is leaves no `#` line in the message → | [ ] 〔未訳〕
@@ -592,7 +592,7 @@
 - [ ] **66.3** While a menu is open, type `d` or `j` → Nothing happens to the view (the keys do not reach the window until the menu is closed) 〔未訳〕
 - [ ] **66.4** In the worktree table (`3`) right-click a worktree row → The row is selected and a menu lists Pull request, Open in the terminal / editor / file manager, Branch diff, Rebase onto trunk, Take main, Reorder, Reflog, Remove, with keys; picking Open in the editor opens that row's folder 〔未訳〕
 - [ ] **66.5** Pick Remove for a worktree row → The same question as pressing `x` asks first; nothing is lost without a yes 〔未訳〕
-- [ ] **66.6** In the changes view (`2`) right-click an unstaged file (flat list and tree) → The file is selected and a menu lists Stage (Space), Split, Ignore, Discard, Amend; Stage moves the clicked file, Discard asks first 〔未訳〕
+- [~] **66.6** In the changes view (`2`) right-click an unstaged file (flat list and tree) → The file is selected and a menu lists Stage (Space), Split, Ignore, Discard, Amend; Stage moves the clicked file, Discard asks first (looked at 2026-10-22: right click on a flat-list unstaged file opens the menu with Space, s, g i, g d, g a; tree list not seen) 〔未訳〕
 - [ ] **66.7** Press `?` and open the palette; switch EN and JA and look at the menus → No operation exists only in a menu (each is a key in the help and the palette); the menu words read well in both languages 〔未訳〕
 
 ## 87. Diff minimap and next / previous change (`n` / `N`, #87)
