@@ -660,7 +660,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 46.3 | Press `D` with no mark; press Esc in the graph with a mark | A toast asks to Ctrl+click a second commit; Esc takes the mark off |
 | 46.4 | In the comparison press `u` `s` Space `n` `m`; click a file's check box | Nothing happens (no uncommitted, last look, checks, notes or merge); no "seen" count or switches are shown |
 | 46.5 | Compare two branch tips, then swap which one you Ctrl+click first | The list is each side's own changes since they parted; `j` `k` `J` `K` `Enter` and PageUp/PageDown work as in the branch review; Esc closes it |
-| 46.6 | Open the comparison, then press `d` on a worktree | The branch review of the worktree replaces it with its own list, checks and notes |
+| 46.6 | Open the comparison, press Esc, then press `d` on a worktree | `d` does nothing while the comparison is open; after Esc the branch review of the worktree opens with its own list, checks and notes |
 
 ## 47. A worktree on no branch (the strip under the title bar)
 
@@ -1004,18 +1004,18 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 129.8 | Open `?` in the worktree table; switch EN and JA | `u` reads "Submodules: state and update" / "submodule の状態と更新"; the question and toasts read well and fit | [ ] |
 | 129.9 | Open the command palette (`Ctrl+Shift+P`) in the worktree table | A "Submodules: state and update" entry with `u` is listed and works | [ ] |
 
-## 40. Remotes: list, add, remove (`M`)
+## 280. Remotes: list, add, remove (`M`)
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 40.1 | In the graph press `M` in a repository with a remote | A list titled `Remotes` opens: each remote's name with its address; `M Remotes` is in the graph's keys (`?`) | [ ] |
-| 40.2 | Type `mine https://example.com/x.git` | One row `mine`, lit, reads `add it at https://example.com/x.git`; Enter adds it, a toast says nothing was fetched; `M` lists it | [ ] |
-| 40.3 | Type only `mine` and press Enter | A toast asks for the address after the name; the list stays open | [ ] |
-| 40.4 | Type `a/b https://x` and press Enter | A toast says `'a/b' is not a valid remote name`; the list stays open and nothing is added | [ ] |
-| 40.5 | Select a remote and press Delete | The red question names the remote and its address and says its remote-tracking branches go; `y` removes it, the graph drops its `origin/...` pills, the toast says where it was | [ ] |
-| 40.6 | Press `Esc` on that question | Nothing is removed | [ ] |
-| 40.7 | Press `M` in a repository with no remote | The list opens empty; typing a name and address still adds one | [ ] |
-| 40.8 | Switch EN and JA | The hint, the keys line, the question and the toasts read well and fit | [ ] |
+| 280.1 | In the graph press `M` in a repository with a remote | A list titled `Remotes` opens: each remote's name with its address; `M Remotes` is in the graph's keys (`?`) | [ ] |
+| 280.2 | Type `mine https://example.com/x.git` | One row `mine`, lit, reads `add it at https://example.com/x.git`; Enter adds it, a toast says nothing was fetched; `M` lists it | [ ] |
+| 280.3 | Type only `mine` and press Enter | A toast asks for the address after the name; the list stays open | [ ] |
+| 280.4 | Type `a/b https://x` and press Enter | A toast says `'a/b' is not a valid remote name`; the list stays open and nothing is added | [ ] |
+| 280.5 | Select a remote and press Delete | The red question names the remote and its address and says its remote-tracking branches go; `y` removes it, the graph drops its `origin/...` pills, the toast says where it was | [ ] |
+| 280.6 | Press `Esc` on that question | Nothing is removed | [ ] |
+| 280.7 | Press `M` in a repository with no remote | The list opens empty; typing a name and address still adds one | [ ] |
+| 280.8 | Switch EN and JA | The hint, the keys line, the question and the toasts read well and fit | [ ] |
 
 ## 52. Restore a file's version from a commit
 

@@ -515,12 +515,12 @@
 
 ## 46. Comparing two commits or branches
 
-- [ ] **46.1** In the graph select a commit, then Ctrl+click (Cmd+click on macOS) another → The first row keeps a tint with an outline (the mark), the clicked one is selected; Ctrl+click the marked row again takes the mark off 〔未訳〕
-- [ ] **46.2** With a mark and a selection press `D` → The review opens over the worktree table with "Comparison" and `a...b`, listing the files that changed from where the two parted (or plain a to b when one is the other's ancestor); the diff on the right is the usual one 〔未訳〕
-- [ ] **46.3** Press `D` with no mark; press Esc in the graph with a mark → A toast asks to Ctrl+click a second commit; Esc takes the mark off 〔未訳〕
-- [ ] **46.4** In the comparison press `u` `s` Space `n` `m`; click a file's check box → Nothing happens (no uncommitted, last look, checks, notes or merge); no "seen" count or switches are shown 〔未訳〕
+- [~] **46.1** In the graph select a commit, then Ctrl+click (Cmd+click on macOS) another → The first row keeps a tint with an outline (the mark), the clicked one is selected; Ctrl+click the marked row again takes the mark off 〔未訳〕
+- [~] **46.2** With a mark and a selection press `D` → The review opens over the worktree table with "Comparison" and `a...b`, listing the files that changed from where the two parted (or plain a to b when one is the other's ancestor); the diff on the right is the usual one 〔未訳〕
+- [~] **46.3** Press `D` with no mark; press Esc in the graph with a mark → A toast asks to Ctrl+click a second commit; Esc takes the mark off 〔未訳〕
+- [~] **46.4** In the comparison press `u` `s` Space `n` `m`; click a file's check box → Nothing happens (no uncommitted, last look, checks, notes or merge); no "seen" count or switches are shown 〔未訳〕
 - [ ] **46.5** Compare two branch tips, then swap which one you Ctrl+click first → The list is each side's own changes since they parted; `j` `k` `J` `K` `Enter` and PageUp/PageDown work as in the branch review; Esc closes it 〔未訳〕
-- [ ] **46.6** Open the comparison, then press `d` on a worktree → The branch review of the worktree replaces it with its own list, checks and notes 〔未訳〕
+- [~] **46.6** Open the comparison, press Esc, then press `d` on a worktree → `d` does nothing while the comparison is open; after Esc the branch review of the worktree opens with its own list, checks and notes 〔未訳〕
 
 ## 47. A worktree on no branch (the strip under the title bar)
 
@@ -530,7 +530,7 @@
 - [~] **47.4** Press `R` (or click `Back to …`) with such a commit → The worktree is on the branch again, the toast names the backup (`michi/backup/…`) that keeps the commit, the strip goes → | [ ] 〔未訳〕
 - [~] **47.5** Press `B`, type a name, press Shift+Enter → The branch is made at HEAD, the worktree is on it, the strip goes; the commit is on the new branch → | [ ] 〔未訳〕
 - [~] **47.6** Detach, then delete the branch it came from, then look at the strip → `R` is not offered for a branch that is gone (an earlier existing one, or only `B`) → | [ ] 〔未訳〕
-- [ ] **47.7** Start `git rebase -i` and stop it at an edit → The strip says it is a rebase, with no buttons; it goes when the rebase ends → | [ ] 〔未訳〕
+- [~] **47.7** Start `git rebase -i` and stop it at an edit → The strip says it is a rebase, with no buttons; it goes when the rebase ends → | [ ] 〔未訳〕
 - [ ] **47.8** With a Claude working in the worktree press `R` → A yes is asked first, as for a switch → | [ ] 〔未訳〕
 - [ ] **47.9** Open the settings (`,`) or the key list (`?`) while the strip is up; switch EN and JA → The strip stays tidy at a narrow width (the text is cut with an ellipsis, the buttons stay); both languages read well → | [ ] 〔未訳〕
 
@@ -808,16 +808,16 @@
 - [ ] **129.8** Open `?` in the worktree table; switch EN and JA → `u` reads "Submodules: state and update" / "submodule の状態と更新"; the question and toasts read well and fit 〔未訳〕
 - [ ] **129.9** Open the command palette (`Ctrl+Shift+P`) in the worktree table → A "Submodules: state and update" entry with `u` is listed and works 〔未訳〕
 
-## 40. Remotes: list, add, remove (`M`)
+## 280. Remotes: list, add, remove (`M`)
 
-- [ ] **40.1** In the graph press `M` in a repository with a remote → A list titled `Remotes` opens: each remote's name with its address; `M Remotes` is in the graph's keys (`?`) 〔未訳〕
-- [ ] **40.2** Type `mine https://example.com/x.git` → One row `mine`, lit, reads `add it at https://example.com/x.git`; Enter adds it, a toast says nothing was fetched; `M` lists it 〔未訳〕
-- [ ] **40.3** Type only `mine` and press Enter → A toast asks for the address after the name; the list stays open 〔未訳〕
-- [ ] **40.4** Type `a/b https://x` and press Enter → A toast says `'a/b' is not a valid remote name`; the list stays open and nothing is added 〔未訳〕
-- [ ] **40.5** Select a remote and press Delete → The red question names the remote and its address and says its remote-tracking branches go; `y` removes it, the graph drops its `origin/...` pills, the toast says where it was 〔未訳〕
-- [ ] **40.6** Press `Esc` on that question → Nothing is removed 〔未訳〕
-- [ ] **40.7** Press `M` in a repository with no remote → The list opens empty; typing a name and address still adds one 〔未訳〕
-- [ ] **40.8** Switch EN and JA → The hint, the keys line, the question and the toasts read well and fit 〔未訳〕
+- [ ] **280.1** In the graph press `M` in a repository with a remote → A list titled `Remotes` opens: each remote's name with its address; `M Remotes` is in the graph's keys (`?`) 〔未訳〕
+- [ ] **280.2** Type `mine https://example.com/x.git` → One row `mine`, lit, reads `add it at https://example.com/x.git`; Enter adds it, a toast says nothing was fetched; `M` lists it 〔未訳〕
+- [ ] **280.3** Type only `mine` and press Enter → A toast asks for the address after the name; the list stays open 〔未訳〕
+- [ ] **280.4** Type `a/b https://x` and press Enter → A toast says `'a/b' is not a valid remote name`; the list stays open and nothing is added 〔未訳〕
+- [ ] **280.5** Select a remote and press Delete → The red question names the remote and its address and says its remote-tracking branches go; `y` removes it, the graph drops its `origin/...` pills, the toast says where it was 〔未訳〕
+- [ ] **280.6** Press `Esc` on that question → Nothing is removed 〔未訳〕
+- [ ] **280.7** Press `M` in a repository with no remote → The list opens empty; typing a name and address still adds one 〔未訳〕
+- [ ] **280.8** Switch EN and JA → The hint, the keys line, the question and the toasts read well and fit 〔未訳〕
 
 ## 52. Restore a file's version from a commit
 
