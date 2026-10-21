@@ -539,21 +539,21 @@
 
 - [~] **74.1** In the `2` view press `c` and look at the empty box → The hint reads "What changed, and why (Alt+Up / Alt+Down: earlier messages)"; EN and JA both read well and are not cut off → | [ ] (looked at 2026-10-22: JA hint reads as expected; EN not seen) 〔未訳〕
 - [~] **74.2** With the box focused press Alt+Up → The box takes the latest commit's message (all lines); again: the one before; at the oldest nothing happens → | [ ] (looked at 2026-10-22: first Alt+Up fills the latest message; the second step was not told apart) 〔未訳〕
-- [~] **74.3** Type "wip", press Alt+Up twice, then Alt+Down twice → You are back at "wip" (the draft is kept); the same message is never listed twice → | [ ] 〔未訳〕
-- [ ] **74.4** Step to an old message, edit a word, press Alt+Up → The edited text is kept as the draft (Alt+Down from the next message comes back to it) → | [ ] 〔未訳〕
-- [~] **74.5** Run `git config commit.template tpl.txt` (a file with `# help` lines and a `feat: ` line), then press `c` on an empty box → The box is filled with `feat:` without the `#` lines; committing it as it is leaves no `#` line in the message → | [ ] 〔未訳〕
-- [ ] **74.6** Type a message first, then press `c` → The template does not replace what was typed; with `A` (amend) the head's message fills, not the template → | [ ] 〔未訳〕
-- [~] **74.7** Commit, then press `c` again → The history has the new message at the top; the template fills the empty box again → | [ ] 〔未訳〕
-- [~] **74.8** In a repository with no commits press `c` and Alt+Up → Nothing breaks; Alt+Up does nothing → | [ ] 〔未訳〕
-- [~] **74.9** Click the box with the mouse (not `c`), then press Alt+Up → The history works the same → | [ ] 〔未訳〕
+- [~] **74.3** Type "wip", press Alt+Up twice, then Alt+Down twice → You are back at "wip" (the draft is kept); the same message is never listed twice → | [ ] (seen in hist1: wip then Alt+Up steps to the older messages and Alt+Down comes back to wip) 〔未訳〕
+- [ ] **74.4** Step to an old message, edit a word, press Alt+Up → The edited text is kept as the draft (Alt+Down from the next message comes back to it) → | [ ] (skipped: the frames show the edited word but not the Alt+Down return; frame lag made it undecidable) 〔未訳〕
+- [~] **74.5** Run `git config commit.template tpl.txt` (a file with `# help` lines and a `feat: ` line), then press `c` on an empty box → The box is filled with `feat:` without the `#` lines; committing it as it is leaves no `#` line in the message → | [ ] (seen in tpl1: c on an empty box fills feat: without the # lines; committing it was not driven) 〔未訳〕
+- [ ] **74.6** Type a message first, then press `c` → The template does not replace what was typed; with `A` (amend) the head's message fills, not the template → | [ ] (skipped: needs a template repo and an amend drive in one run; not driven this pass) 〔未訳〕
+- [~] **74.7** Commit, then press `c` again → The history has the new message at the top; the template fills the empty box again → | [ ] (skipped: needs a real commit in tpl1; not driven this pass) 〔未訳〕
+- [~] **74.8** In a repository with no commits press `c` and Alt+Up → Nothing breaks; Alt+Up does nothing → | [ ] (seen in empty1: c then Alt+Up leaves the box empty with the placeholder, nothing breaks) 〔未訳〕
+- [~] **74.9** Click the box with the mouse (not `c`), then press Alt+Up → The history works the same → | [ ] (seen in hist1: after a click in the box, Alt+Up recalls first msg as with c) 〔未訳〕
 
 ## 86. Row density (compact / standard / cozy)
 
-- [~] **86.1** Open the settings (`,`), General: look for "Row density" → Three choices, Compact / Standard / Cozy; Standard is lit by default → | [ ] 〔未訳〕
-- [~] **86.2** Pick Compact → The graph rows, the side column's rows and the reflog / tidy / reorder lists shrink at once (about 20% shorter); text stays readable and nothing is clipped; config.toml has `[view]` `density = "compact"` → | [ ] 〔未訳〕
-- [~] **86.3** Pick Cozy → The same rows grow (about 20% taller); the graph dots and lines stay joined across rows; the scrollbar marks still sit at their rows → | [ ] 〔未訳〕
+- [~] **86.1** Open the settings (`,`), General: look for "Row density" → Three choices, Compact / Standard / Cozy; Standard is lit by default → | [ ] (seen: the settings General page has a Row density section with three choices; the standard one is lit) 〔未訳〕
+- [~] **86.2** Pick Compact → The graph rows, the side column's rows and the reflog / tidy / reorder lists shrink at once (about 20% shorter); text stays readable and nothing is clipped; config.toml has `[view]` `density = "compact"` → | [ ] (seen in m1: Compact makes the graph and side rows about 20% shorter, nothing clipped, lines joined, config.toml has density = compact; the reflog, tidy and reorder lists were not looked at) 〔未訳〕
+- [~] **86.3** Pick Cozy → The same rows grow (about 20% taller); the graph dots and lines stay joined across rows; the scrollbar marks still sit at their rows → | [ ] (seen in m1: Cozy makes the rows about 20% taller, dots and lines stay joined, config.toml has density = cozy; the scrollbar marks were not compared) 〔未訳〕
 - [ ] **86.4** Click a row, scroll with the wheel and drag the scrollbar in each density → Clicks land on the row under the pointer; the selected row stays in view (skipped: needs the wheel and a scrollbar drag, which the harness lacks) → | [ ] 〔未訳〕
-- [~] **86.5** Edit `density` in config.toml by hand (also a wrong word) → The rows change within a few seconds without restart; a wrong word gives a toast warning and the standard rows → | [ ] 〔未訳〕
+- [~] **86.5** Edit `density` in config.toml by hand (also a wrong word) → The rows change within a few seconds without restart; a wrong word gives a toast warning and the standard rows → | [ ] (skipped: editing config.toml while the window runs is not in the harness) 〔未訳〕
 - [~] **86.6** Switch EN and JA in the settings → The section and its three choices read well in both → | [ ] (skipped: EN/JA switch not drivable here) 〔未訳〕
 
 ## 88. Short animations (fade and slide, can be turned off)
