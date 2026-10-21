@@ -781,18 +781,18 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 93.1 | In the `3` view select a worktree that is ahead of main and press `l` | A band asks "Land <branch> on main?" with four rows (take main in, run the check, move main forward, remove the worktree) and buttons `1` to `4`; `y` does nothing, Esc closes it |
-| 93.2 | Press `l` on the main worktree, on a detached one, on one with uncommitted changes, on one mid-rebase and on one with nothing ahead | Each answers with a toast saying why and no band opens |
-| 93.3 | Press `l`, then `4`, on a clean branch whose main is already in it | The toast reads "Landed <branch> on main: …"; main now points at the branch tip (`git log main`), the worktree folder and the branch are gone, a Claude tab of that worktree is closed |
-| 93.4 | Let main move on (commit on it), press `l`, then `4` | main is taken into the branch first (a merge commit), the check runs, then main moves forward to that merge; no `git push` happens |
-| 93.5 | Press `l`, then `1` | Only main is taken in; the toast says so ("Land it again to go on") and nothing else moved |
-| 93.6 | Press `l`, then `2`, in a repository with `scripts/verify.sh` that fails | The toast says "Stopped at the check: it failed (exit N)" with the last lines of its output; main did not move and the worktree is still there |
-| 93.7 | Press `l`, then `4`, when main clashes with the branch | The `4` view opens on the clash and the toast says "Stopped at taking main in"; after solving and committing there, `l` `4` goes on from there |
-| 93.8 | Press `l`, then `3`, then `l`, then `4` on the same branch | The second run skips what was done ("main was in … already") and only cleans up |
+| 93.1 | In the `3` view select a worktree that is ahead of main and press `g l` | A band asks "Land <branch> on main?" with four rows (take main in, run the check, move main forward, remove the worktree) and buttons `1` to `4`; `y` does nothing, Esc closes it (looked: now g l (not l); four rows 1-4 and Esc, with an unapproved-review warning, on a worktree ahead of main) |
+| 93.2 | Press `g l` on the main worktree, on a detached one, on one with uncommitted changes, on one mid-rebase and on one with nothing ahead | Each answers with a toast saying why and no band opens |
+| 93.3 | Press `g l`, then `4`, on a clean branch whose main is already in it | The toast reads "Landed <branch> on main: …"; main now points at the branch tip (`git log main`), the worktree folder and the branch are gone, a Claude tab of that worktree is closed (skipped: runs a real land that moves main and removes the worktree; covered by land.rs unit tests) |
+| 93.4 | Let main move on (commit on it), press `g l`, then `4` | main is taken into the branch first (a merge commit), the check runs, then main moves forward to that merge; no `git push` happens (skipped: runs a real land that moves main and removes the worktree; covered by land.rs unit tests) |
+| 93.5 | Press `g l`, then `1` | Only main is taken in; the toast says so ("Land it again to go on") and nothing else moved (skipped: runs a real land that moves main and removes the worktree; covered by land.rs unit tests) |
+| 93.6 | Press `g l`, then `2`, in a repository with `scripts/verify.sh` that fails | The toast says "Stopped at the check: it failed (exit N)" with the last lines of its output; main did not move and the worktree is still there (skipped: runs a real land that moves main and removes the worktree; covered by land.rs unit tests) |
+| 93.7 | Press `g l`, then `4`, when main clashes with the branch | The `4` view opens on the clash and the toast says "Stopped at taking main in"; after solving and committing there, `l` `4` goes on from there (skipped: runs a real land that moves main and removes the worktree; covered by land.rs unit tests) |
+| 93.8 | Press `g l`, then `3`, then `l`, then `4` on the same branch | The second run skips what was done ("main was in … already") and only cleans up (skipped: runs a real land that moves main and removes the worktree; covered by land.rs unit tests) |
 | 93.9 | Use a repository without a verify script | The toast says "no check found (skipped)" and the landing goes on |
-| 93.10 | Select the window's own worktree and press `l` | Only `1` to `3` are offered and a note says it cannot be removed from here |
+| 93.10 | Select the window's own worktree and press `g l` | Only `1` to `3` are offered and a note says it cannot be removed from here |
 | 93.11 | Land with a Claude working in the worktree | The band notes a Claude is working there and that its tabs close at the last stage (skipped: needs a real Claude or tsumugi session) |
-| 93.12 | Switch to JA and press `l` | The band, the buttons and every toast read in Japanese; `?` lists `l` among the worktree keys (skipped: EN/JA switch not drivable here) |
+| 93.12 | Switch to JA and press `g l` | The band, the buttons and every toast read in Japanese; `?` lists `g l` among the worktree keys (skipped: EN/JA switch not drivable here) |
 
 ## 91. A snapshot and diff per Claude turn (`y`)
 
@@ -812,9 +812,9 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | # | Do | Expect |
 | --- | --- | --- |
 | 78.1 | In the graph view look at the tool band | A `Sync S` button sits after `Push P`, before the line; its icon is a down and an up arrow; hover says `Sync (S)` | | [ ] |
-| 78.2 | Behind origin by 2 commits, ahead by none: press `S` | One job named `sync` runs (the title bar shows its progress, Esc stops it); the toast says `Synced with origin/<b>: pulled 2 commits` | | [ ] |
-| 78.3 | Ahead by 1, not behind: press `S` | The commit is pushed at once (no band); the toast says `Synced with origin/<b>: pushed`; `git log origin/<b>` has it | | [ ] |
-| 78.4 | Behind by 1 and ahead by 1 (diverged): press `S` | Nothing is merged or pushed; the toast says `Sync stopped at the pull, nothing was pushed: origin/<b> went its own way (↑1 ↓1) …` | | [ ] |
+| 78.2 | Behind origin by 2 commits, ahead by none: press `S` | One job named `sync` runs (the title bar shows its progress, Esc stops it); the toast says `Synced with origin/<b>: pulled 2 commits` | | [ ] (skipped: needs a remote set up behind or ahead; not driven here) |
+| 78.3 | Ahead by 1, not behind: press `S` | The commit is pushed at once (no band); the toast says `Synced with origin/<b>: pushed`; `git log origin/<b>` has it | | [ ] (skipped: needs a remote set up behind or ahead; not driven here) |
+| 78.4 | Behind by 1 and ahead by 1 (diverged): press `S` | Nothing is merged or pushed; the toast says `Sync stopped at the pull, nothing was pushed: origin/<b> went its own way (↑1 ↓1) …` | | [ ] (skipped: needs a remote set up behind or ahead; not driven here) |
 | 78.5 | Behind by 1, ahead by 1 on a pull that works (the other side already pulled), but the remote hook refuses the push | The toast says `Sync stopped at the push (pulled N commits first): … refused the push: …` and the pulled commits stay | | [ ] |
 | 78.6 | A new branch with no upstream: press `S` | It is pushed and gets the upstream; the toast says `Synced: pushed to origin/<b>, now its upstream` | | [ ] |
 | 78.7 | With two remotes and no `origin`: press `S` | The remote chooser opens; choosing one runs the sync to it | | [ ] |
