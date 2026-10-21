@@ -545,11 +545,11 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 36.1 | Change a file (say `crates/michi/src/app.rs`) in one worktree and leave it uncommitted; press `N` and type `fix app.rs` in the instruction | A line `⚠ Heads up: <branch> is changing crates/michi/src/app.rs …` shows under the instruction as you type; nothing else in the form is blocked | | [ ] |
-| 36.2 | Type a folder instead (`tidy crates/michi/src/`) | The same worktree is named with the files under that folder (the first three, then `+N`) | | [ ] |
-| 36.3 | Type an instruction with no file or folder name, or names no worktree is changing | No warning shows | | [ ] |
+| 36.1 | Change a file (say `crates/michi/src/app.rs`) in one worktree and leave it uncommitted; press `N` and type `fix app.rs` in the instruction | A line `⚠ Heads up: <branch> is changing crates/michi/src/app.rs …` shows under the instruction as you type; nothing else in the form is blocked | | [ ] (skipped: needs uncommitted edits in a worktree plus the N form over them, not set up) |
+| 36.2 | Type a folder instead (`tidy crates/michi/src/`) | The same worktree is named with the files under that folder (the first three, then `+N`) | | [ ] (skipped: same setup as 36.1) |
+| 36.3 | Type an instruction with no file or folder name, or names no worktree is changing | No warning shows | | [ ] (skipped: same setup as 36.1) |
 | 36.4 | With the warning showing, press Ctrl+Enter | The work starts as usual (the warning does not stop it) | | [ ] (skipped 2026-10-22: needs the warning band of a started task; not set up) |
-| 36.5 | Two worktrees change the same file | Both are named in the warning | | [ ] |
+| 36.5 | Two worktrees change the same file | Both are named in the warning | | [ ] (skipped: needs two worktrees changing one file, not set up) |
 
 ## 37. Open a worktree's folder in a terminal, editor or file manager (#75)
 
@@ -602,11 +602,11 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 41.1 | In a worktree with an uncommitted edit to a file the upstream also changed (different lines), press `p` | The pull goes through instead of stopping; the toast says the changes were stashed and put back, with the `michi/backup/...` name; the edit is still there; `git stash list` is empty | | [ ] |
-| 41.2 | Same, but the edit touches the same lines the upstream changed | The pull goes through; the toast says the stash clashed in the file; the file has `<<<<<<<` marks and the stash stays in the list and under `michi/backup/` | | [ ] |
+| 41.1 | In a worktree with an uncommitted edit to a file the upstream also changed (different lines), press `p` | The pull goes through instead of stopping; the toast says the changes were stashed and put back, with the `michi/backup/...` name; the edit is still there; `git stash list` is empty | | [ ] (skipped: needs a diverged upstream plus a dirty edit, not set up) |
+| 41.2 | Same, but the edit touches the same lines the upstream changed | The pull goes through; the toast says the stash clashed in the file; the file has `<<<<<<<` marks and the stash stays in the list and under `michi/backup/` | | [ ] (skipped: same setup as 41.1) |
 | 41.3 | Switch a worktree with changes to a branch that would overwrite them (branch picker) | The switch happens, the toast says the changes were stashed and put back (or clashed) | | [ ] |
 | 41.4 | Pull or switch with no changes, or with changes that do not stand in the way | Behaves as before; no stash, no backup, no extra text in the toast | | [ ] |
-| 41.5 | Switch to a branch that does not exist, with changes in the worktree | The error is shown as before and the changes are still in the worktree (nothing left in the stash list) | | [ ] |
+| 41.5 | Switch to a branch that does not exist, with changes in the worktree | The error is shown as before and the changes are still in the worktree (nothing left in the stash list) | | [ ] (skipped: same setup as 41.1) |
 
 ## 42. Reflog screen (`L`, #50)
 
@@ -667,13 +667,13 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 47.1 | In the window's worktree run `git checkout --detach` on a commit | Within a moment a strip appears under the title bar: "Not on a branch: the commit … is checked out. Commits made here belong to no branch." with `R Back to <branch>` and `B Branch from here` at the right | | [ ] |
+| 47.1 | In the window's worktree run `git checkout --detach` on a commit | Within a moment a strip appears under the title bar: "Not on a branch: the commit … is checked out. Commits made here belong to no branch." with `R Back to <branch>` and `B Branch from here` at the right | | [ ] (seen: strip shows the not-on-a-branch text with R and B at the right) |
 | 47.2 | Check out a tag (`git checkout v1`) | The strip names the tag; the body below moves down by the strip's height, nothing is cut off | | [ ] (seen: tag checkout shows the detached strip with R and B) |
-| 47.3 | Commit something on the detached HEAD | The strip adds "Commits on no branch yet: 1"; the number follows each new commit | | [ ] |
+| 47.3 | Commit something on the detached HEAD | The strip adds "Commits on no branch yet: 1"; the number follows each new commit | | [ ] (seen: strip adds the count of commits on no branch (1 after one commit)) |
 | 47.4 | Press `R` (or click `Back to …`) with such a commit | The worktree is on the branch again, the toast names the backup (`michi/backup/…`) that keeps the commit, the strip goes | | [ ] (seen: R returns to master) |
 | 47.5 | Press `B`, type a name, press Shift+Enter | The branch is made at HEAD, the worktree is on it, the strip goes; the commit is on the new branch | | [ ] (B ran blame instead of branch-from-here; fixed so B wins while detached) |
-| 47.6 | Detach, then delete the branch it came from, then look at the strip | `R` is not offered for a branch that is gone (an earlier existing one, or only `B`) | | [ ] |
-| 47.7 | Start `git rebase -i` and stop it at an edit | The strip says it is a rebase, with no buttons; it goes when the rebase ends | | [ ] |
+| 47.6 | Detach, then delete the branch it came from, then look at the strip | `R` is not offered for a branch that is gone (an earlier existing one, or only `B`) | | [ ] (seen: after the source branch is deleted the strip offers an earlier existing branch (master)) |
+| 47.7 | Start `git rebase -i` and stop it at an edit | The strip says it is a rebase, with no buttons; it goes when the rebase ends | | [ ] (skipped: needs an interactive rebase stopped at edit, not set up) |
 | 47.8 | With a Claude working in the worktree press `R` | A yes is asked first, as for a switch | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 47.9 | Open the settings (`,`) or the key list (`?`) while the strip is up; switch EN and JA | The strip stays tidy at a narrow width (the text is cut with an ellipsis, the buttons stay); both languages read well | | [ ] (skipped: narrow window and EN/JA switch not drivable) |
 
@@ -719,8 +719,8 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | # | Do | Expect |
 | --- | --- | --- |
 | 94.1 | Open the worktree table (`3`) with two or more branch worktrees that differ from main | A Review column sits between Unseen and Clash; a worktree never opened in the review (`d`) reads `Not looked at` (dim) with `0 / N files checked`; the main worktree reads `—`; in the narrow card layout it is a `Review` line | [ ] (seen: Review column between Unseen and Clash, wt3 0/1 unseen, wt2 in review, main none) |
-| 94.2 | Open a branch's review with `d`, then close it (Esc) and look at the table | That row reads `In review` (blue) within a moment of closing, with the count of files checked | [ ] |
-| 94.3 | In the review check some files (Space) but not all; then check the last one | `In review` with `k / N`; once every file is checked the row reads `Approved` (green) with `N / N` | [ ] |
+| 94.2 | Open a branch's review with `d`, then close it (Esc) and look at the table | That row reads `In review` (blue) within a moment of closing, with the count of files checked | [ ] (seen: wt2 reads blue 確認中 with 0 / 18 files checked) |
+| 94.3 | In the review check some files (Space) but not all; then check the last one | `In review` with `k / N`; once every file is checked the row reads `Approved` (green) with `N / N` | [ ] (seen: wt3 reads green 承認 with 1 / 1 once all files are checked) |
 | 94.4 | Write a note (`n`) on a line and hand it with `g` | The row reads `Flagged` (yellow) even though all files are checked; the Claude commits again and the row goes back to `In review` or `Approved` by what is checked | [ ] |
 | 94.5 | Commit in an approved worktree a change to a file already checked | The row leaves `Approved` (the changed file lost its check) without opening the review | [ ] |
 | 94.6 | Drag the Review column's left edge in the header; restart michi | The width follows the drag and is kept; the other columns still resize | [ ] (skipped: needs drag or wheel, which the harness lacks) |
