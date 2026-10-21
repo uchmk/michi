@@ -111,17 +111,17 @@
 
 ## 8. Detail and diff
 
-- [ ] **8.1** Select a commit → Below the graph within a moment: the subject in bold, the full hash, the author, the local time and the parents (blue links), the body, the hint `Enter spreads the diff side by side`; `Reading the commit…` shows while it is read 〔未訳〕
-- [ ] **8.2** Look at the file list → Each file with its status letter in colour (A green, M, D red, R), its path cut from the left with `…` when long, `+a −d` and a bar; a renamed file says where it came from; more than 12 files list 10 and `N more files — click for all` 〔未訳〕
-- [ ] **8.3** Click a file row → The detail scrolls to that file's diff 〔未訳〕
-- [ ] **8.4** Look at the diff → One column: the `` rows in blue, added rows green and deleted rows red, the changed words marked a shade deeper, the line numbers at the left; only the detail's wheel scrolls it, with no scrollbar 〔未訳〕
+- [~] **8.1** Select a commit → Below the graph within a moment: the subject in bold, the full hash, the author, the local time and the parents (blue links), the body, the hint `Enter spreads the diff side by side`; `Reading the commit…` shows while it is read 〔未訳〕
+- [~] **8.2** Look at the file list → Each file with its status letter in colour (A green, M, D red, R), its path cut from the left with `…` when long, `+a −d` and a bar; every file is listed (the detail scrolls); a renamed file says where it came from over its diff (`元: old`) 〔未訳〕
+- [~] **8.3** Click a file row → The detail scrolls to that file's diff 〔未訳〕
+- [~] **8.4** Look at the diff → One column: the `` rows in blue, added rows green and deleted rows red, the changed words marked a shade deeper, the line numbers at the left; only the detail's wheel scrolls it, with no scrollbar 〔未訳〕
 - [ ] **8.5** Press Enter, then Esc → Enter narrows the graph and spreads the diff side by side (old left, new right, the empty side hatched); the title's toggle follows; Esc brings the graph back, and a second Esc clears the filter 〔未訳〕
 - [ ] **8.6** Click a parent link → The graph selects the parent and the detail shows it 〔未訳〕
 - [ ] **8.7** Select a merge into main → `N commits came into main by this merge` with their hashes, subjects and times, and whether they are folded or open in the graph; the note that a merge's diff comes in the next stage; no diff 〔未訳〕
 - [ ] **8.8** Select a commit with a binary file, and a big one → The binary file says it has no diff to show; a very long diff ends with `… the rest is left out` 〔未訳〕
 - [ ] **8.9** Narrow the window below 900 wide → The side column goes and the detail stacks under the graph, still readable; Enter still spreads the diff 〔未訳〕
-- [ ] **8.10** Switch to the light theme → The diff's greens, reds and blues and the hatching stay readable 〔未訳〕
-- [ ] **8.11** Look at a commit adding a file that is not UTF-8 (Latin-1 `café`) → Under the file's name: `Not UTF-8: bytes that are not are shown as �`; the bytes show as that mark (a box in this font) in the diff 〔未訳〕
+- [~] **8.10** Switch to the light theme → The diff's greens, reds and blues and the hatching stay readable 〔未訳〕
+- [~] **8.11** Look at a commit adding a file that is not UTF-8 (Latin-1 `café`) → Under the file's name: `Not UTF-8: bad bytes show as �` (one line, not cut at the pane's edge); the bytes show as that mark (a box in this font) in the diff 〔未訳〕
 - [ ] **8.12** Look at the diff of a long line, in one column and side by side (`Enter`), in a narrow and a wide window; also a long Japanese line → It wraps at the pane's edge with the next part under it, the line number only on the first line; the row is as tall as its text, with no empty lines under a Japanese one and nothing cut off with `…` 〔未訳〕
 
 ## 9. Uncommitted changes
