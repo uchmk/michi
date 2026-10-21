@@ -447,11 +447,11 @@
 ## 38. Key hints on hover
 
 - [~] **38.1** Hover the gear at the top right and the search field beside it → The gear tooltip reads `Settings (Ctrl+,)`; the search field shows its key (`Ctrl+Shift+P`) inside the field, and its tooltip names the command palette → | [ ] → | 〔未訳〕
-- [ ] **38.2** Bind another key to `palette` in keymap.toml (prepend), restart, hover the search field → The field shows the new key → | [ ] → | 〔未訳〕
+- [~] **38.2** Bind another key to `palette` in keymap.toml (prepend), restart, hover the search field → The field shows the new key → | [ ] → | 〔未訳〕
 - [~] **38.3** Hover each view tab (Graph, Changes, Worktrees) → The tooltip names the view and its digit, for example `Graph (1)` → | [ ] → | 〔未訳〕
 - [~] **38.4** In the graph view hover Fetch, Pull, Push and Sync → Each tooltip shows its key, for example `pull (p)`, `Sync (S)` → | [ ] → | 〔未訳〕
-- [ ] **38.5** During a merge hover Pull and Stash → The tooltip still says they are held, not the key → | [ ] → | 〔未訳〕
-- [ ] **38.6** In the worktree view hover New work and the re-read button → `New work (N)`; the re-read button shows just its name → | [ ] → | 〔未訳〕
+- [~] **38.5** During a merge hover Pull and Stash → The tooltip still says they are held, not the key → | [ ] → | 〔未訳〕
+- [~] **38.6** In the worktree view hover New work and the re-read button → `New work (N)`; the re-read button shows just its name → | [ ] → | 〔未訳〕
 
 ## 39. Graph filter with fuzzy matching (ito-match)
 
@@ -787,11 +787,11 @@
 ## 38. Content search in the `/` filter (`s:` pickaxe, `g:` regex)
 
 - [~] **38.1** Press `/`, type `s:` followed by a string you know a commit added (e.g. a function name) → The right of the field reads `Enter: search the changes`; no row is a hit yet → | [ ] 〔未訳〕
-- [ ] **38.2** Press Enter → After a moment the count reads `N hits`; the commits that added or removed the string are bright, the rest faint; marks appear on the scrollbar → | [ ] 〔未訳〕
+- [~] **38.2** Press Enter → After a moment the count reads `N hits`; the commits that added or removed the string are bright, the rest faint; marks appear on the scrollbar → | [ ] 〔未訳〕
 - [~] **38.3** Press Enter again, and Shift+Enter → The selection moves to the next and previous hit (it does not search again) → | [ ] 〔未訳〕
 - [~] **38.4** Type `g:` and a regex (e.g. `g:fn +main`), press Enter → Commits whose diff has a changed line matching it (any case) are the hits → | [ ] 〔未訳〕
-- [ ] **38.5** Type a word before it: `fix s:foo` → Only commits that match both the word and the content search stay bright → | [ ] 〔未訳〕
-- [ ] **38.6** Edit the text after `s:` → The hits go and `Enter: search the changes` comes back; the old answer is never shown for the new text → | [ ] 〔未訳〕
+- [~] **38.5** Type a word before it: `fix s:foo` → Only commits that match both the word and the content search stay bright → | [ ] 〔未訳〕
+- [~] **38.6** Edit the text after `s:` → The hits go and `Enter: search the changes` comes back; the old answer is never shown for the new text → | [ ] 〔未訳〕
 - [ ] **38.7** Type `g:(` and press Enter → A toast says the search failed, with the reason; the window stays usable → | [ ] 〔未訳〕
 - [ ] **38.8** Press Esc → The filter clears and every row is bright again → | [ ] 〔未訳〕
 - [ ] **38.9** In a large repository press Enter on a search → The window stays responsive while the search runs; the hits come in when it is done → | [ ] 〔未訳〕
