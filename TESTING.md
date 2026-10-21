@@ -524,8 +524,8 @@ files under `refs/michi/backup/<time>` first.
 | 34.1 | Press `d` over a worktree; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal); no comment opens | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 34.2 | Double-click a word in the diff, triple-click a line, press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 34.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
-| 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] |
-| 34.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] |
+| 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] (skipped: needs a mouse drag to select diff text) |
+| 34.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] (skipped: needs a mouse drag to select diff text) |
 
 ## 35. Answering a waiting Claude from the notification (W)
 
@@ -613,8 +613,8 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | # | Do | Expect |
 | --- | --- | --- |
 | 42.1 | In the graph or the worktree table press `L` | A list opens at the top: HEAD's reflog (`HEAD@{n}`, what happened, the commit's subject) and the backups under `refs/michi/backup/` (tinted), newest first; the window does not freeze on a big repository | | [ ] (looked at 2026-10-22: L opens the list with 14 rows, newest first; backup tint not judged) |
-| 42.2 | Reset a branch (`git reset --hard HEAD~1`) in a worktree, then press `L` | The reset is the top `HEAD@{0}` row and the commit it dropped is the row under it | | [ ] |
-| 42.3 | Move with `j k`, the arrow keys, PageUp/PageDown, Home/End and the mouse; click a row | The selection follows; a click on the selected row asks as Enter does; a click outside the list closes it | | [ ] |
+| 42.2 | Reset a branch (`git reset --hard HEAD~1`) in a worktree, then press `L` | The reset is the top `HEAD@{0}` row and the commit it dropped is the row under it | | [ ] (seen: after reset --hard HEAD~1 the reflog top row moves the branch to HEAD~1 and the dropped c3 is the row under it) |
+| 42.3 | Move with `j k`, the arrow keys, PageUp/PageDown, Home/End and the mouse; click a row | The selection follows; a click on the selected row asks as Enter does; a click outside the list closes it | | [ ] (partly seen: j k move the selection; arrows, paging, Home/End and the mouse not tried) |
 | 42.4 | Select a row and press Enter | The band asks to bring the commit back as a new branch and says nothing moves; `y` makes `recovered/<id>` at that commit (`-2` after it if taken), the list closes and a toast names the branch; HEAD and the worktree are untouched | | [ ] (looked at 2026-10-22: Enter shows the band for HEAD@{3}; y not pressed) |
 | 42.5 | After a force push or a branch delete (which keep a backup), press `L` | The backup is listed with the reason michi wrote; bringing it back gives a branch at its commit | | [ ] |
 | 42.6 | Press `R` in a repository with no commits and nothing kept | A toast says the reflog and backups are empty; no list opens | | [ ] (seen in empty1: R gives a notification that the reflog and the michi backups are empty; no list opens) |
@@ -638,8 +638,8 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | # | Do | Expect |
 | --- | --- | --- |
 | 44.1 | In the `2` view make an untracked file `x.log` in the worktree, select it in the unstaged list and press `g i` | No question; a toast says `Added /x.log to .gitignore`; the file leaves the list after the next read and `.gitignore` in the worktree's root has the line (made if there was none) | [ ] (looked at 2026-10-22: g i on an untracked file asks nothing; toast says it added /sub/f4.txt to .gitignore, the row leaves the list and a new untracked .gitignore shows) |
-| 44.2 | Press `g i` on a tracked (modified) file, on a staged file; then on an untracked file with `[` `]` and `*` in its name | The first two toast that only an untracked file can be ignored and change nothing; the brackets and star are escaped in the line (`/a\[1\]\*.log`) and git ignores only that file | [ ] |
-| 44.3 | Press `g i` on a file whose line is already in `.gitignore` (an exact line, e.g. after a hand edit) | A toast says the line is in `.gitignore` already; the file is not changed; with a CRLF `.gitignore` the new line gets CRLF | [ ] |
+| 44.2 | Press `g i` on a tracked (modified) file, on a staged file; then on an untracked file with `[` `]` and `*` in its name | The first two toast that only an untracked file can be ignored and change nothing; the brackets and star are escaped in the line (`/a\[1\]\*.log`) and git ignores only that file | [ ] (seen: g i on a tracked file toasts that only untracked files can be added; a[1].log became /a\[1\].log and only it is ignored; a star cannot be in a Windows file name so that part is not tried) |
+| 44.3 | Press `g i` on a file whose line is already in `.gitignore` (an exact line, e.g. after a hand edit) | A toast says the line is in `.gitignore` already; the file is not changed; with a CRLF `.gitignore` the new line gets CRLF | [ ] (skipped: a file whose line is already in .gitignore is ignored, so it never shows in the changes list to press g i on) |
 | 44.4 | Open the help (`?`) in the `2` view | `g i` is listed: Add the untracked file to .gitignore (JA: 追っていないファイルを .gitignore に足す) | [ ] (skipped: the help screen did not open behind the repository list in the run) |
 
 ## 45. Changes as a tree of folders
@@ -698,7 +698,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 86.1 | Open the settings (`,`), General: look for "Row density" | Three choices, Compact / Standard / Cozy; Standard is lit by default | | [ ] (seen: the settings General page has a Row density section with three choices; the standard one is lit) |
 | 86.2 | Pick Compact | The graph rows, the side column's rows and the reflog / tidy / reorder lists shrink at once (about 20% shorter); text stays readable and nothing is clipped; config.toml has `[view]` `density = "compact"` | | [ ] (seen in m1: Compact makes the graph and side rows about 20% shorter, nothing clipped, lines joined, config.toml has density = compact; the reflog, tidy and reorder lists were not looked at) |
 | 86.3 | Pick Cozy | The same rows grow (about 20% taller); the graph dots and lines stay joined across rows; the scrollbar marks still sit at their rows | | [ ] (seen in m1: Cozy makes the rows about 20% taller, dots and lines stay joined, config.toml has density = cozy; the scrollbar marks were not compared) |
-| 86.4 | Click a row, scroll with the wheel and drag the scrollbar in each density | Clicks land on the row under the pointer; the selected row stays in view (skipped: needs the wheel and a scrollbar drag, which the harness lacks) | | [ ] |
+| 86.4 | Click a row, scroll with the wheel and drag the scrollbar in each density | Clicks land on the row under the pointer; the selected row stays in view (skipped: needs the wheel and a scrollbar drag, which the harness lacks) | | [ ] (skipped: needs wheel and scrollbar drag, which the harness lacks) |
 | 86.5 | Edit `density` in config.toml by hand (also a wrong word) | The rows change within a few seconds without restart; a wrong word gives a toast warning and the standard rows | | [ ] (skipped: editing config.toml while the window runs is not in the harness) |
 | 86.6 | Switch EN and JA in the settings | The section and its three choices read well in both | | [ ] (skipped: EN/JA switch not drivable here) |
 
@@ -706,11 +706,11 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 88.1 | Press `1`, `2`, `3` in turn (and `4` while something clashes) | Each view fades in and slides up a few px in about 130 ms; it feels soft, not slow, and the keys work at once during the move (skipped: a 130 ms fade cannot be judged from still screenshots) | | [ ] |
-| 88.2 | Open the new-work window, the reflog, the tidy list, reorder, the trial merge, and a Claude reply box | Each window fades in and slides a few px (down from above; the reply box up from below); closing them is at once (skipped: a 130 ms fade cannot be judged from still screenshots) | | [ ] |
+| 88.1 | Press `1`, `2`, `3` in turn (and `4` while something clashes) | Each view fades in and slides up a few px in about 130 ms; it feels soft, not slow, and the keys work at once during the move (skipped: a 130 ms fade cannot be judged from still screenshots) | | [ ] (skipped: a 130 ms fade cannot be judged from screenshots) |
+| 88.2 | Open the new-work window, the reflog, the tidy list, reorder, the trial merge, and a Claude reply box | Each window fades in and slides a few px (down from above; the reply box up from below); closing them is at once (skipped: a 130 ms fade cannot be judged from still screenshots) | | [ ] (skipped: a 130 ms fade cannot be judged from screenshots) |
 | 88.3 | Open a confirmation band, `?` and the settings | They fade in without a jump; no flicker on the first frame (skipped: a 130 ms fade cannot be judged from still screenshots) | | [ ] |
 | 88.4 | Open the settings (`,`), General: look for "Motion" and pick Off | `config.toml` has `[view]` `motion = "off"`; from now on views and windows appear at once, with no fade or slide, and the hover blends are gone (skipped: the config.toml part reads right, but the fade itself cannot be judged from stills) | | [ ] |
-| 88.5 | Pick On again; edit `motion` in config.toml by hand (also a wrong word) | Animations come back within a few seconds without restart; a wrong word gives a toast warning and keeps them on (skipped: the fade itself cannot be judged from stills) | | [ ] |
+| 88.5 | Pick On again; edit `motion` in config.toml by hand (also a wrong word) | Animations come back within a few seconds without restart; a wrong word gives a toast warning and keeps them on (skipped: the fade itself cannot be judged from stills) | | [ ] (skipped: needs the animation seen live and a hand-edited config over time) |
 | 88.6 | Leave the window idle on a view for a while (Task Manager) | CPU stays near 0: nothing keeps repainting after the animation ends (fails: an idle window keeps one thread at ~100% of a core (#140)) | | [ ] (skipped: needs Task Manager CPU reading, see #140) |
 | 88.7 | Switch EN and JA in the settings | The Motion section and its two choices read well in both | | [ ] (skipped: EN/JA switch not drivable here) |
 
@@ -721,10 +721,10 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 94.1 | Open the worktree table (`3`) with two or more branch worktrees that differ from main | A Review column sits between Unseen and Clash; a worktree never opened in the review (`d`) reads `Not looked at` (dim) with `0 / N files checked`; the main worktree reads `—`; in the narrow card layout it is a `Review` line | [ ] (seen: Review column between Unseen and Clash, wt3 0/1 unseen, wt2 in review, main none) |
 | 94.2 | Open a branch's review with `d`, then close it (Esc) and look at the table | That row reads `In review` (blue) within a moment of closing, with the count of files checked | [ ] (seen: wt2 reads blue 確認中 with 0 / 18 files checked) |
 | 94.3 | In the review check some files (Space) but not all; then check the last one | `In review` with `k / N`; once every file is checked the row reads `Approved` (green) with `N / N` | [ ] (seen: wt3 reads green 承認 with 1 / 1 once all files are checked) |
-| 94.4 | Write a note (`n`) on a line and hand it with `g` | The row reads `Flagged` (yellow) even though all files are checked; the Claude commits again and the row goes back to `In review` or `Approved` by what is checked | [ ] |
-| 94.5 | Commit in an approved worktree a change to a file already checked | The row leaves `Approved` (the changed file lost its check) without opening the review | [ ] |
+| 94.4 | Write a note (`n`) on a line and hand it with `g` | The row reads `Flagged` (yellow) even though all files are checked; the Claude commits again and the row goes back to `In review` or `Approved` by what is checked | [ ] (skipped: needs a real Claude to receive the handed note) |
+| 94.5 | Commit in an approved worktree a change to a file already checked | The row leaves `Approved` (the changed file lost its check) without opening the review | [ ] (skipped: needs a Claude commit in an approved worktree, not set up) |
 | 94.6 | Drag the Review column's left edge in the header; restart michi | The width follows the drag and is kept; the other columns still resize | [ ] (skipped: needs drag or wheel, which the harness lacks) |
-| 94.7 | Switch the language EN and JA, and a theme with a light background | The stage words read `Not looked at` / `In review` / `Flagged` / `Approved` and JA `未確認` / `確認中` / `指摘済み` / `承認`; every colour is readable | [ ] |
+| 94.7 | Switch the language EN and JA, and a theme with a light background | The stage words read `Not looked at` / `In review` / `Flagged` / `Approved` and JA `未確認` / `確認中` / `指摘済み` / `承認`; every colour is readable | [ ] (skipped: needs the EN/JA switch and a light theme, which the harness cannot do) |
 
 ## 95. From a commit to the Claude session of its worktree (#95)
 
@@ -768,13 +768,13 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | --- | --- | --- |
 | 100.1 | In the worktree table press `T` with two or more worktrees on branches other than the trunk | A list opens at the top with those worktrees (branch and folder), each with a `·` mark | | [ ] |
 | 100.2 | Press `T` with fewer than two such worktrees | A toast says a trial merge needs at least two worktrees; no list opens | | [ ] (seen: T with one worktree toasts that 2 or more are needed) |
-| 100.3 | Press `j` `k` and Space on three rows in the order c, a, b; click a row | The picked rows show 1, 2, 3 in the order picked; Space or a click on a picked row takes it back and later marks shift; `u` clears all (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) | | [ ] |
+| 100.3 | Press `j` `k` and Space on three rows in the order c, a, b; click a row | The picked rows show 1, 2, 3 in the order picked; Space or a click on a picked row takes it back and later marks shift; `u` clears all (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) | | [ ] (skipped: the harness loses window focus after the trial-merge list opens) |
 | 100.4 | Press Enter with nothing picked | A toast asks to pick with Space first (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) | | [ ] |
-| 100.5 | Pick two branches that touch different files and press Enter | "Merging in memory…" shows briefly, then each step reads "clean" and the summary counts the changed files with +/- lines (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) | | [ ] |
-| 100.6 | Pick two branches that edit the same lines, run, then pick them in the other order and run again | The clashing step is named with its files and tinted; which step clashes depends on the order (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) | | [ ] |
+| 100.5 | Pick two branches that touch different files and press Enter | "Merging in memory…" shows briefly, then each step reads "clean" and the summary counts the changed files with +/- lines (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) | | [ ] (skipped: same focus loss as 100.3) |
+| 100.6 | Pick two branches that edit the same lines, run, then pick them in the other order and run again | The clashing step is named with its files and tinted; which step clashes depends on the order (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) | | [ ] (skipped: same focus loss as 100.3) |
 | 100.7 | Pick a branch that is already merged into the trunk | Its step reads "already in" (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) | | [ ] |
-| 100.8 | After a run, check `git status`, `git branch -v` and the worktree folders in a terminal | Nothing moved: no branch, index, HEAD or file changed (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) | | [ ] |
-| 100.9 | Change the picks after a run; press Esc; try Ctrl+Shift+P over the list | The old result goes when the picks change; Esc closes the list; the palette does not open over it (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) | | [ ] |
+| 100.8 | After a run, check `git status`, `git branch -v` and the worktree folders in a terminal | Nothing moved: no branch, index, HEAD or file changed (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) | | [ ] (skipped: same focus loss as 100.3) |
+| 100.9 | Change the picks after a run; press Esc; try Ctrl+Shift+P over the list | The old result goes when the picks change; Esc closes the list; the palette does not open over it (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) | | [ ] (skipped: same focus loss as 100.3) |
 | 100.10 | Switch EN and JA; use a narrow window | Both languages read well; long paths are cut with an ellipsis (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) | | [ ] |
 
 ## 93. Landing a worktree (merge in, check, fast-forward, clean up)
@@ -844,7 +844,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 68.3 | Switch the theme in settings between a dark and a light one | The colours follow the theme and stay readable on the added and deleted tints | | [ ] (skipped: theme switch not drivable here) |
 | 68.4 | Open the diff side by side and unified (narrow the window) | Both layouts show the same colours; wrapped long lines keep them | | [ ] (skipped: narrow window not drivable here) |
 | 68.5 | Open a big commit (hundreds of files, a huge generated file) | The window does not stall while it loads; a file of over 6000 diff lines, or a line of over 1500 characters, is left plain | | [ ] |
-| 68.6 | Select diff text with the mouse and copy it | The copied text is the plain text (no colour effects) | | [ ] |
+| 68.6 | Select diff text with the mouse and copy it | The copied text is the plain text (no colour effects) | | [ ] (skipped: needs mouse text selection and the clipboard) |
 
 ## 92. Suggested order to land the worktrees
 
