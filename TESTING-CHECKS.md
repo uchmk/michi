@@ -449,7 +449,7 @@
 - [~] **38.1** Hover the gear at the top right and the search field beside it → The gear tooltip reads `Settings (Ctrl+,)`; the search field shows its key (`Ctrl+Shift+P`) inside the field, and its tooltip names the command palette → | [ ] → | → [ ] (skipped: hover tooltips cannot be driven by the harness) 〔未訳〕
 - [~] **38.2** Bind another key to `palette` in keymap.toml (prepend), restart, hover the search field → The field shows the new key → | [ ] → | → [ ] (skipped: hover tooltips cannot be driven by the harness) 〔未訳〕
 - [~] **38.3** Hover each view tab (Graph, Changes, Worktrees) → The tooltip names the view and its digit, for example `Graph (1)` → | [ ] → | → [ ] (skipped: hover tooltips cannot be driven by the harness) 〔未訳〕
-- [~] **38.4** In the graph view hover Fetch, Pull, Push and Sync → Each tooltip shows its key, for example `pull (p)`, `Sync (S)` → | [ ] → | → [ ] (skipped: hover tooltips cannot be driven by the harness) (判断不能: ハーネスで g: の後ろに空白を打てず (+ は Shift になる) 正規表現を作れない) 〔未訳〕
+- [~] **38.4** In the graph view hover Fetch, Pull, Push and Sync → Each tooltip shows its key, for example `pull (p)`, `Sync (S)` → | [ ] → | → [ ] (skipped: hover tooltips cannot be driven by the harness) 〔未訳〕
 - [~] **38.5** During a merge hover Pull and Stash → The tooltip still says they are held, not the key → | [ ] → | → [ ] (skipped: hover tooltips cannot be driven by the harness) 〔未訳〕
 - [~] **38.6** In the worktree view hover New work and the re-read button → `New work (N)`; the re-read button shows just its name (skipped: undecidable in the harness, hover tooltips do not show) → | [ ] → | → [ ] (skipped: hover tooltips cannot be driven by the harness) 〔未訳〕
 
@@ -484,7 +484,7 @@
 - [~] **42.2** Reset a branch (`git reset --hard HEAD~1`) in a worktree, then press `L` → The reset is the top `HEAD@{0}` row and the commit it dropped is the row under it → | [ ] (seen: after reset --hard HEAD~1 the reflog top row moves the branch to HEAD~1 and the dropped c3 is the row under it) 〔未訳〕
 - [ ] **42.3** Move with `j k`, the arrow keys, PageUp/PageDown, Home/End and the mouse; click a row → The selection follows; a click on the selected row asks as Enter does; a click outside the list closes it → | [ ] (partly seen: j k move the selection; arrows, paging, Home/End and the mouse not tried) 〔未訳〕
 - [~] **42.4** Select a row and press Enter → The band asks to bring the commit back as a new branch and says nothing moves; `y` makes `recovered/<id>` at that commit (`-2` after it if taken), the list closes and a toast names the branch; HEAD and the worktree are untouched → | [ ] (looked at 2026-10-22: Enter shows the band for HEAD@{3}; y not pressed) 〔未訳〕
-- [ ] **42.5** After a force push or a branch delete (which keep a backup), press `L` → The backup is listed with the reason michi wrote; bringing it back gives a branch at its commit → | [ ] 〔未訳〕
+- [ ] **42.5** After a force push or a branch delete (which keep a backup), press `L` → The backup is listed with the reason michi wrote; bringing it back gives a branch at its commit → | [ ] (飛ばし: force push か branch の削除で backup を作る手順が要る) 〔未訳〕
 - [~] **42.6** Press `R` in a repository with no commits and nothing kept → A toast says the reflog and backups are empty; no list opens → | [ ] (seen in empty1: R gives a notification that the reflog and the michi backups are empty; no list opens) 〔未訳〕
 - [~] **42.7** Switch the language to Japanese and open the list → The title, hints, band and toast are in Japanese → | [ ] (skipped: switching the language is not in the harness) 〔未訳〕
 
@@ -789,7 +789,7 @@
 - [~] **38.1** Press `/`, type `s:` followed by a string you know a commit added (e.g. a function name) → The right of the field reads `Enter: search the changes`; no row is a hit yet → | [ ]  (seen: s:f2 shows the hint Enter: search the changes with every row faint before Enter) 〔未訳〕
 - [~] **38.2** Press Enter → After a moment the count reads `N hits`; the commits that added or removed the string are bright, the rest faint; marks appear on the scrollbar → | [ ]  (seen: after Enter the count reads 1 hit, only first msg is bright; scrollbar marks not visible in a 4-row graph) 〔未訳〕
 - [~] **38.3** Press Enter again, and Shift+Enter → The selection moves to the next and previous hit (it does not search again) → | [ ]  (undecidable: hist1 has a single hit so the selection cannot be seen to move) 〔未訳〕
-- [~] **38.4** Type `g:` and a regex (e.g. `g:fn +main`), press Enter → Commits whose diff has a changed line matching it (any case) are the hits → | [ ] 〔未訳〕
+- [~] **38.4** Type `g:` and a regex (e.g. `g:fn +main`), press Enter → Commits whose diff has a changed line matching it (any case) are the hits → | [ ] (判断不能: ハーネスで g: の後ろに空白を打てず (+ は Shift になる) 正規表現を作れない) 〔未訳〕
 - [~] **38.5** Type a word before it: `fix s:foo` → Only commits that match both the word and the content search stay bright → | [ ]  (undecidable: the combined word plus s: search was not distinguishable in the frames) 〔未訳〕
 - [~] **38.6** Edit the text after `s:` → The hits go and `Enter: search the changes` comes back; the old answer is never shown for the new text → | [ ]  (undecidable: the frames lag and the hint after editing was not caught) 〔未訳〕
 - [ ] **38.7** Type `g:(` and press Enter → A toast says the search failed, with the reason; the window stays usable → | [ ]  (undecidable: no toast was caught in the frames for g:() 〔未訳〕
@@ -849,12 +849,12 @@
 
 ## 37. Blame and per-file history (`B`, `H`)
 
-- [~] **37.1** In the graph, select a commit and press `B` → A screen opens over the graph: `Blame: <first file of the commit>`, `As of <id>`, one row per line with the commit, who, how long ago, the line number and the line; it reads at once and the window stays responsive on a long file 〔未訳〕
-- [ ] **37.2** Click a file in the detail (so it is the one scrolled to), select another commit that has it, press `B` → The screen is of the file the detail was on 〔未訳〕
-- [~] **37.3** Press `j` `k`, PageDown, PageUp, Home, End → The selection moves and stops at the ends; the screen follows it (22 rows) and shows `n / total` 〔未訳〕
-- [ ] **37.4** Press `Tab` (or `H`, then `B`) → The list switches between blame and the file's history (commit, who, ago, subject, newest first); each tab keeps its own selection (skipped: undecidable in the harness, the screen is the same before and after Tab) 〔未訳〕
-- [ ] **37.5** Open the history of a file that was renamed in the past → The commits from before the rename are listed too; the blame rows of old lines name the commit that wrote them 〔未訳〕
-- [~] **37.6** Press Enter on a row → The screen closes, the graph is in front and that row's commit is selected (reading on to it when it is far down) 〔未訳〕
+- [~] **37.1** In the graph, select a commit and press `B` → A screen opens over the graph: `Blame: <first file of the commit>`, `As of <id>`, one row per line with the commit, who, how long ago, the line number and the line; it reads at once and the window stays responsive on a long file → [ ] (見た: B で「blame: f / 859bc84 時点。各行を最後に変えたコミット」の画面が開く (1 行のファイル)) 〔未訳〕
+- [ ] **37.2** Click a file in the detail (so it is the one scrolled to), select another commit that has it, press `B` → The screen is of the file the detail was on → [ ] (飛ばし: 詳細で選ぶファイルを変えて比べる手順が、1 ファイルのリポジトリでは作れない) 〔未訳〕
+- [~] **37.3** Press `j` `k`, PageDown, PageUp, Home, End → The selection moves and stops at the ends; the screen follows it (22 rows) and shows `n / total` → [ ] (飛ばし: 行が 1 つしか無く、端で止まるかが見えない) 〔未訳〕
+- [ ] **37.4** Press `Tab` (or `H`, then `B`) → The list switches between blame and the file's history (commit, who, ago, subject, newest first); each tab keeps its own selection (skipped: undecidable in the harness, the screen is the same before and after Tab) → [ ] (判断不能: Tab の前後で画面が同じだった (blame のまま)) 〔未訳〕
+- [ ] **37.5** Open the history of a file that was renamed in the past → The commits from before the rename are listed too; the blame rows of old lines name the commit that wrote them → [ ] (飛ばし: rename 履歴のあるファイルの用意が要る) 〔未訳〕
+- [~] **37.6** Press Enter on a row → The screen closes, the graph is in front and that row's commit is selected (reading on to it when it is far down) → [ ] (判断不能: Enter の前後で画面が同じだった (blame の画面が残った)) 〔未訳〕
 - [~] **37.7** Click a row once, then again → The first click selects, the second goes to the commit; a click outside closes the screen; Esc closes it → [ ] (partly seen 2026-10-22: a click on a blame row closes the screen and selects that commit in the graph; one-click-selects and click-outside were not told apart) 〔未訳〕
 - [ ] **37.8** In the `2` view, change a file on disk (add a line, do not commit), select it and press `B` → The new line reads `-------` / `not committed` in the waiting colour; Enter on it says `This line is not committed yet` and stays → [ ] (undecidable: B in the 2 view opened nothing from the harness (focus on the list)) 〔未訳〕
 - [ ] **37.9** Press `B` on a file deleted by the commit, then with nothing selected → A toast says there is nothing to blame (`... was deleted here`) or that no file is selected; no screen opens → [ ] (skipped: needs a commit that deletes a file, not in the lab) 〔未訳〕
@@ -930,10 +930,10 @@
 
 ## 258. Run a refused commit again (#58)
 
-- [ ] **258.1** Add a pre-commit hook that prints five lines and exits 1; stage a file, write a message, commit; in the panel of what git said press `r` → The panel shows `Run again` with an `r` key cap left of `Close`; `r` runs the commit again (the hook runs again, a new panel or toast follows) with the same message and staged files 〔未訳〕
-- [ ] **258.2** Click `Run again` in the same panel → The same as `r` 〔未訳〕
-- [ ] **258.3** Fix the hook so it passes (or remove it), then press `r` over the panel → The commit goes through, the panel closes and the message box is cleared 〔未訳〕
-- [ ] **258.4** Make a write other than a commit fail with several lines → The panel has `Close` only, no `Run again`; `r` does nothing 〔未訳〕
+- [ ] **258.1** Add a pre-commit hook that prints five lines and exits 1; stage a file, write a message, commit; in the panel of what git said press `r` → The panel shows `Run again` with an `r` key cap left of `Close`; `r` runs the commit again (the hook runs again, a new panel or toast follows) with the same message and staged files → [ ] (飛ばし: 空白を含むコミットメッセージがハーネスで打てず、hook も用意できない) 〔未訳〕
+- [ ] **258.2** Click `Run again` in the same panel → The same as `r` → [ ] (飛ばし: 空白を含むコミットメッセージがハーネスで打てず、hook も用意できない) 〔未訳〕
+- [ ] **258.3** Fix the hook so it passes (or remove it), then press `r` over the panel → The commit goes through, the panel closes and the message box is cleared → [ ] (飛ばし: 空白を含むコミットメッセージがハーネスで打てず、hook も用意できない) 〔未訳〕
+- [ ] **258.4** Make a write other than a commit fail with several lines → The panel has `Close` only, no `Run again`; `r` does nothing → [ ] (飛ばし: 空白を含むコミットメッセージがハーネスで打てず、hook も用意できない) 〔未訳〕
 - [ ] **258.5** Switch EN and JA → `Run again` and `もう一度回す` → [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
 
 ## 248. Diffs ignoring whitespace (`w`)
@@ -952,7 +952,7 @@
 - [ ] **251.2** Type `fix p:src/` → Only commits with `fix` in the subject that also touched `src/` hit → [ ] (判断不能: 空白を打てず、fix と p:src/ を並べられない) 〔未訳〕
 - [ ] **251.3** Type `d:2026-10-01..2026-10-15` and Enter → Only commits made in that range hit → [ ] (飛ばし: d: の範囲に空白が要り、ハーネスで打てない) 〔未訳〕
 - [ ] **251.4** Try `d:2.weeks.ago`, `d:..yesterday` and `d:2026-10-01..` → Each hits the commits in the range git reads from it (since, until, since) → [ ] (飛ばし: d: の範囲に空白が要り、ハーネスで打てない) 〔未訳〕
-- [ ] **251.5** Type `ann` (an author), then look at the hint of the empty box in EN and JA → The author still filters; the hint names `p:` and `d:` and reads well in both languages 〔未訳〕
+- [ ] **251.5** Type `ann` (an author), then look at the hint of the empty box in EN and JA → The author still filters; the hint names `p:` and `d:` and reads well in both languages → [ ] (飛ばし: 作者名を打つ検索と EN/JA の切り替えがハーネスで確かめきれない) 〔未訳〕
 
 ## 236. Conflicts a 3-way view cannot show (#36)
 
@@ -1107,7 +1107,7 @@
 - [ ] **114.1** Commit, switch branch, reset to `HEAD~1`, then press `L` → Rows read in plain words with the time at the left ("Committed: ...", "Switched from a to b", "Moved the branch to HEAD~1"), the commit id at the right; michi's backups read "michi kept this before: ..." → [ ] (seen: L lists plain-word rows (moved the branch to HEAD~1, committed c3) with the time at the left and the id at the right; no michi backup row since none was made in ig1) 〔未訳〕
 - [ ] **114.2** Press `r` in the list, then `r` again → The rows switch to git's own wording (`HEAD@{n}`, `checkout: moving from ...`) and back → [ ] (seen: r switches to HEAD@{n} and reset: moving to ... wording; r back not tried) 〔未訳〕
 - [ ] **114.3** Select a row and press `g` → The list closes and the graph shows that commit selected; for a commit not in the graph a toast says so → [ ] (seen: g on c3 (not in the graph) closes the list and toasts that it is not in the history) 〔未訳〕
-- [ ] **114.4** Select a row and press Enter → The band asks to bring it back as a new branch (the undo path); nothing moves until `y` 〔未訳〕
+- [ ] **114.4** Select a row and press Enter → The band asks to bring it back as a new branch (the undo path); nothing moves until `y` → [ ] (飛ばし: バックアップを作る操作 (force push や branch の削除) が先に要る) 〔未訳〕
 - [ ] **114.5** Check the keybar and `?` with the list open; switch EN and JA → `g` and `r` are listed; both languages read well → [ ] (partly seen: the keybar lists g and r in Japanese; EN not tried) 〔未訳〕
 
 ## 108. Git errors as a cause and a next step (#108)
