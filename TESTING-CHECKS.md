@@ -734,10 +734,10 @@
 - [ ] **84.2** Look at a commit by `github-actions[bot]` or `dependabot[bot]` → The bot shows its GitHub picture and the short `⚙ name` text → | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) 〔未訳〕
 - [ ] **84.3** Drag the author column narrower than about 100 px → The avatar goes and the name keeps the whole column; widen it and the avatar comes back → | [ ] (skipped: needs drag or wheel, which the harness lacks) 〔未訳〕
 - [ ] **84.4** Open Settings, General, and untick `Fetch pictures from GitHub` → Every picture turns into initials at once, `config.toml` gets `[view]` `avatars = false`, and no `curl` process starts when scrolling (check the task manager) → | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) 〔未訳〕
-- [ ] **84.5** Tick it again; or write `avatars = true` in config.toml by hand → Pictures come back without a restart; a non-boolean value shows a warning and counts as on → | [ ] 〔未訳〕
-- [ ] **84.6** Disconnect the network, restart michi and scroll the graph → The window stays responsive (no stall on the UI thread); initials show and the pictures are not retried in a loop → | [ ] 〔未訳〕
-- [ ] **84.7** Switch the theme dark/light and EN/JA in Settings → The initials stay readable on their colours; the Settings text reads in both languages → | [ ] 〔未訳〕
-- [ ] **84.8** Scroll a long history fast → Scrolling stays smooth while pictures arrive; the same author's picture is not fetched twice → | [ ] 〔未訳〕
+- [ ] **84.5** Tick it again; or write `avatars = true` in config.toml by hand → Pictures come back without a restart; a non-boolean value shows a warning and counts as on → | [ ] (飛ばし: settings の操作と手編集後の再読込が要る (typing 不可)) 〔未訳〕
+- [ ] **84.6** Disconnect the network, restart michi and scroll the graph → The window stays responsive (no stall on the UI thread); initials show and the pictures are not retried in a loop → | [ ] (飛ばし: ネットワーク断が要る) 〔未訳〕
+- [ ] **84.7** Switch the theme dark/light and EN/JA in Settings → The initials stay readable on their colours; the Settings text reads in both languages → | [ ] (飛ばし: テーマと EN/JA の切り替えがハーネスに無い) 〔未訳〕
+- [ ] **84.8** Scroll a long history fast → Scrolling stays smooth while pictures arrive; the same author's picture is not fetched twice → | [ ] (飛ばし: 速いスクロール (wheel) がハーネスに無い) 〔未訳〕
 
 ## 81. Empty-state guidance (one next step, no tour)
 
@@ -752,29 +752,29 @@
 ## 70. Auto fetch (every 5 minutes, quiet)
 
 - [ ] **70.1** Open a repository with a remote, leave the window in front for 5+ minutes without pressing `f` → The keybar's `fetch N min` goes back to `fetch now` by itself (a fetch ran), with no toast and no notification, even when nothing moved → | [ ] (skipped: needs OS or machine features the harness lacks) 〔未訳〕
-- [ ] **70.2** Put the window behind another and wait over 5 minutes, then bring it forward → No fetch runs while behind; within a moment of coming forward the fetch runs and the time resets → | [ ] 〔未訳〕
-- [ ] **70.3** Write `[net]` `auto_fetch = 1` in config.toml (no restart), stay in front → A fetch runs about every minute; `auto_fetch = 0` stops them → | [ ] 〔未訳〕
-- [ ] **70.4** Write `auto_fetch = "soon"` → A warning toast about config.toml; the 5-minute default stays → | [ ] 〔未訳〕
+- [ ] **70.2** Put the window behind another and wait over 5 minutes, then bring it forward → No fetch runs while behind; within a moment of coming forward the fetch runs and the time resets → | [ ] (飛ばし: 5 分以上の待ちと窓の前後入れ替えが要る) 〔未訳〕
+- [ ] **70.3** Write `[net]` `auto_fetch = 1` in config.toml (no restart), stay in front → A fetch runs about every minute; `auto_fetch = 0` stops them → | [ ] (飛ばし: 1 分周期の自動 fetch を見るにはリモートと待ちが要る) 〔未訳〕
+- [ ] **70.4** Write `auto_fetch = "soon"` → A warning toast about config.toml; the 5-minute default stays → | [ ] (判断不能: toast が写らない (前の行と同じ)) 〔未訳〕
 - [ ] **70.5** Cut the network (or point `origin` at a bad address) and wait for a fetch → No toast and no system notification; the keybar's right reads `fetch N min · failed` (or `fetch failed`) in the waiting colour; the gaps between tries grow (up to 8 times the interval) → | [ ] (skipped: needs OS or machine features the harness lacks) 〔未訳〕
-- [ ] **70.6** Restore the network and press `f` (or wait) → The failed mark goes as soon as a fetch works → | [ ] 〔未訳〕
+- [ ] **70.6** Restore the network and press `f` (or wait) → The failed mark goes as soon as a fetch works → | [ ] (飛ばし: ネットワーク断が要る) 〔未訳〕
 - [ ] **70.7** With the network cut, press `f` yourself → The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` → | [ ] (skipped: needs OS or machine features the harness lacks) 〔未訳〕
-- [ ] **70.8** Start a pull or push while the timer is due → The timer waits; it never interrupts a job → | [ ] 〔未訳〕
-- [ ] **70.9** Switch EN and JA → The keybar's `· failed` / `· 失敗` reads well and fits → | [ ] 〔未訳〕
+- [ ] **70.8** Start a pull or push while the timer is due → The timer waits; it never interrupts a job → | [ ] (飛ばし: pull/push 中にタイマーが来る瞬間を作れない) 〔未訳〕
+- [ ] **70.9** Switch EN and JA → The keybar's `· failed` / `· 失敗` reads well and fits → | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
 
 ## 71. Git LFS pointers (#30)
 
-- [ ] **71.1** In a repository with LFS files, select a commit that changed one → Above its diff (the three pointer lines) a note: `A Git LFS pointer, not the file: the content is not fetched here (git lfs pull)`; other files have no note → | [ ] 〔未訳〕
-- [ ] **71.2** Change an LFS file in a worktree and open it in the Changes view, and in a review → The same note shows above the pointer diff → | [ ] 〔未訳〕
-- [ ] **71.3** Switch EN and JA → The note reads well in both and fits the width → | [ ] 〔未訳〕
+- [ ] **71.1** In a repository with LFS files, select a commit that changed one → Above its diff (the three pointer lines) a note: `A Git LFS pointer, not the file: the content is not fetched here (git lfs pull)`; other files have no note → | [ ] (飛ばし: git-lfs の実物が要る) 〔未訳〕
+- [ ] **71.2** Change an LFS file in a worktree and open it in the Changes view, and in a review → The same note shows above the pointer diff → | [ ] (飛ばし: git-lfs の実物が要る) 〔未訳〕
+- [ ] **71.3** Switch EN and JA → The note reads well in both and fits the width → | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
 
 ## 72. Signature mark in the detail (#35; numbered 71 because `## 35.` is taken)
 
-- [ ] **72.1** Select a commit that is signed and whose key git trusts (`git log --show-signature` says Good) → The detail's meta line shows a green `✓ Signed` after the date, before the parents → | [ ] 〔未訳〕
-- [ ] **72.2** Select an unsigned commit → No mark at all; the meta line is as before → | [ ] 〔未訳〕
-- [ ] **72.3** Select a commit signed with a key git cannot find (or with gpg missing from PATH) → A `? Signature not checked` mark in the waiting colour; no toast, no error → | [ ] 〔未訳〕
-- [ ] **72.4** Select a commit whose signature is bad (a commit object edited after signing) or whose key expired → A red `✗ Bad signature` mark → | [ ] 〔未訳〕
-- [ ] **72.5** Click through many commits quickly in a repository where most are signed → The detail still follows the selection; the mark may arrive with the diff but never blocks the UI → | [ ] 〔未訳〕
-- [ ] **72.6** Switch EN and JA → `✓ 署名あり` / `✗ 署名が不正` / `? 署名は未確認` read well and wrap with the meta line → | [ ] 〔未訳〕
+- [ ] **72.1** Select a commit that is signed and whose key git trusts (`git log --show-signature` says Good) → The detail's meta line shows a green `✓ Signed` after the date, before the parents → | [ ] (飛ばし: gpg の署名鍵が要る) 〔未訳〕
+- [ ] **72.2** Select an unsigned commit → No mark at all; the meta line is as before → | [ ] (飛ばし: 署名の有無で比べる行で、署名鍵が要る) 〔未訳〕
+- [ ] **72.3** Select a commit signed with a key git cannot find (or with gpg missing from PATH) → A `? Signature not checked` mark in the waiting colour; no toast, no error → | [ ] (飛ばし: gpg の署名鍵が要る) 〔未訳〕
+- [ ] **72.4** Select a commit whose signature is bad (a commit object edited after signing) or whose key expired → A red `✗ Bad signature` mark → | [ ] (飛ばし: gpg の署名鍵が要る) 〔未訳〕
+- [ ] **72.5** Click through many commits quickly in a repository where most are signed → The detail still follows the selection; the mark may arrive with the diff but never blocks the UI → | [ ] (飛ばし: gpg の署名鍵が要る) 〔未訳〕
+- [ ] **72.6** Switch EN and JA → `✓ 署名あり` / `✗ 署名が不正` / `? 署名は未確認` read well and wrap with the meta line → | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
 
 ## 31. Sparse checkout notice (#31; the mcp section above uses the same number from #101)
 
@@ -864,20 +864,20 @@
 
 ## 253. Per-worktree author and email (#53)
 
-- [ ] **253.1** With every worktree committing as the same `user.name` / `user.email`, look at the worktree table → No "Commits as" line under any name 〔未訳〕
-- [ ] **253.2** In one worktree run `git config extensions.worktreeConfig true` then `git config --worktree user.name Other` and `user.email other@example.com`; wait for the next reread → Every worktree row gets a `Commits as Name <email>` line (JA `作者: …`) under its folder; the changed one shows `Other <other@example.com>` 〔未訳〕
-- [ ] **253.3** Set the name back in that worktree (`git config --worktree --unset user.name`) so it matches the others again → The lines disappear again without restarting michi 〔未訳〕
-- [ ] **253.4** Switch EN and JA → The line reads well in both; long values do not overflow the card 〔未訳〕
+- [ ] **253.1** With every worktree committing as the same `user.name` / `user.email`, look at the worktree table → No "Commits as" line under any name → [ ] (見た: 同じ作者の 3 worktree で「Commits as」の行はどこにも出ない) 〔未訳〕
+- [ ] **253.2** In one worktree run `git config extensions.worktreeConfig true` then `git config --worktree user.name Other` and `user.email other@example.com`; wait for the next reread → Every worktree row gets a `Commits as Name <email>` line (JA `作者: …`) under its folder; the changed one shows `Other <other@example.com>` → [ ] (飛ばし: 作者の違う worktree の設定を作り直す手順で、読み直しの待ちも要る) 〔未訳〕
+- [ ] **253.3** Set the name back in that worktree (`git config --worktree --unset user.name`) so it matches the others again → The lines disappear again without restarting michi → [ ] (飛ばし: 253.2 が前提) 〔未訳〕
+- [ ] **253.4** Switch EN and JA → The line reads well in both; long values do not overflow the card → [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
 
 ## 239. Clone from the repository screen (#39)
 
-- [ ] **239.1** Press `Ctrl+O`, paste `https://github.com/<owner>/<small repo>.git` → The first row reads `Clone <address> into <folder beside the open repository>/<repo>`, in the accent colour; the hint and footer read well in EN and JA 〔未訳〕
-- [ ] **239.2** Press Enter on that row → A toast `Cloning <address> …` shows and the window stays responsive; when git is done a toast `Cloned <folder>` shows and the window switches to the new repository 〔未訳〕
-- [ ] **239.3** Type an address, a space and a folder (`git@github.com:<owner>/<repo>.git ~/tmp/x`), Enter → It clones into that folder (`~` is the home folder) and switches to it 〔未訳〕
-- [ ] **239.4** Clone the same address again into the same folder → A toast `Clone failed: destination path ... already exists and is not an empty directory`; the window stays on the repository it was on 〔未訳〕
-- [ ] **239.5** Clone an address that does not exist, or with the network off → A toast `Clone failed: ...` with git's first line; no half-made folder is left 〔未訳〕
-- [ ] **239.6** Start a clone of a large repository and press Enter on another clone row → A toast `A clone is still running`; nothing starts twice 〔未訳〕
-- [ ] **239.7** Type a path or a word (not an address) → No clone row appears; the list and the typed-path row work as before 〔未訳〕
+- [ ] **239.1** Press `Ctrl+O`, paste `https://github.com/<owner>/<small repo>.git` → The first row reads `Clone <address> into <folder beside the open repository>/<repo>`, in the accent colour; the hint and footer read well in EN and JA → [ ] (飛ばし: 実際の GitHub のアドレスの clone で、テストは触れない) 〔未訳〕
+- [ ] **239.2** Press Enter on that row → A toast `Cloning <address> …` shows and the window stays responsive; when git is done a toast `Cloned <folder>` shows and the window switches to the new repository → [ ] (飛ばし: 実際の clone でネットワークが要る) 〔未訳〕
+- [ ] **239.3** Type an address, a space and a folder (`git@github.com:<owner>/<repo>.git ~/tmp/x`), Enter → It clones into that folder (`~` is the home folder) and switches to it → [ ] (飛ばし: 空白入りの入力をハーネスで打てない) 〔未訳〕
+- [ ] **239.4** Clone the same address again into the same folder → A toast `Clone failed: destination path ... already exists and is not an empty directory`; the window stays on the repository it was on → [ ] (飛ばし: 実際の clone でネットワークが要る) 〔未訳〕
+- [ ] **239.5** Clone an address that does not exist, or with the network off → A toast `Clone failed: ...` with git's first line; no half-made folder is left → [ ] (飛ばし: 実際の clone でネットワークが要る) 〔未訳〕
+- [ ] **239.6** Start a clone of a large repository and press Enter on another clone row → A toast `A clone is still running`; nothing starts twice → [ ] (飛ばし: 大きな clone を走らせる必要がある) 〔未訳〕
+- [ ] **239.7** Type a path or a word (not an address) → No clone row appears; the list and the typed-path row work as before → [ ] (見た: Ctrl+O に hello を打つと「合うリポジトリがありません」だけで clone の行は出ない) 〔未訳〕
 
 ## 259. Speed on a very large repository (#59)
 
@@ -894,10 +894,10 @@
 - [ ] **255.3** Answer `y` → The source is clean, the target has the edit and the untracked file, a toast names the backup; refs/michi/backup/ has the changes; the stash list is empty → [ ] (skipped: would move real changes between lab worktrees; the move itself is unit-tested) 〔未訳〕
 - [ ] **255.4** Edit the same file differently in both worktrees and move → The move is refused with the reason, and the changes are back in the source as they were → [ ] (skipped: needs a second divergent edit and a move; not driven this run) 〔未訳〕
 - [ ] **255.5** Make the target change that file in a commit so the changes clash, move → The target has conflict marks, a toast says where, and the stash stays in the list → [ ] (skipped: needs a commit clash setup; not driven this run) 〔未訳〕
-- [ ] **255.6** Press `v` on a worktree with no changes, then in a repository with one worktree → A toast says there is nothing to move / no other worktree; no palette opens 〔未訳〕
+- [ ] **255.6** Press `v` on a worktree with no changes, then in a repository with one worktree → A toast says there is nothing to move / no other worktree; no palette opens → [ ] (見た: worktree が 1 本の 3 で v を押すと toast 「変更を移せるほかの worktree がありません」、palette は開かない (変更の無い worktree は未確認)) 〔未訳〕
 - [ ] **255.7** Start a merge in either worktree and move → A toast says it is in the middle of a merge; the palette stays → [ ] (skipped: needs a stopped merge in a worktree) 〔未訳〕
 - [ ] **255.8** With a Claude working in either worktree, move → The question also says a Claude is working there → [ ] (skipped: needs a real Claude or tsumugi session) 〔未訳〕
-- [ ] **255.9** Switch EN and JA; check the keybar and `?` in the `3` view → `v` Move changes appears; text reads well in both languages 〔未訳〕
+- [ ] **255.9** Switch EN and JA; check the keybar and `?` in the `3` view → `v` Move changes appears; text reads well in both languages → [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
 
 ## 245. Repository tabs (#45)
 
@@ -934,7 +934,7 @@
 - [ ] **258.2** Click `Run again` in the same panel → The same as `r` 〔未訳〕
 - [ ] **258.3** Fix the hook so it passes (or remove it), then press `r` over the panel → The commit goes through, the panel closes and the message box is cleared 〔未訳〕
 - [ ] **258.4** Make a write other than a commit fail with several lines → The panel has `Close` only, no `Run again`; `r` does nothing 〔未訳〕
-- [ ] **258.5** Switch EN and JA → `Run again` and `もう一度回す` 〔未訳〕
+- [ ] **258.5** Switch EN and JA → `Run again` and `もう一度回す` → [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
 
 ## 248. Diffs ignoring whitespace (`w`)
 
