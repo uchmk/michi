@@ -141,7 +141,7 @@ The same repository as section 6.
 | 8.9 | Narrow the window below 900 wide | The side column goes and the detail stacks under the graph, still readable; Enter still spreads the diff (skipped: needs a narrower window, which the harness lacks) |
 | 8.10 | Switch to the light theme | The diff's greens, reds and blues and the hatching stay readable |
 | 8.11 | Look at a commit adding a file that is not UTF-8 (Latin-1 `café`) | Under the file's name: `Not UTF-8: bad bytes show as �` (one line, not cut at the pane's edge); the bytes show as that mark (a box in this font) in the diff |
-| 8.12 | Look at the diff of a long line, in one column and side by side (`Enter`), in a narrow and a wide window; also a long Japanese line | It wraps at the pane's edge with the next part under it, the line number only on the first line; the row is as tall as its text, with no empty lines under a Japanese one and nothing cut off with `…` |
+| 8.12 | Look at the diff of a long line, in one column and side by side (`Enter`), in a narrow and a wide window; also a long Japanese line | It wraps at the pane's edge with the next part under it, the line number only on the first line; the row is as tall as its text, with no empty lines under a Japanese one and nothing cut off with `…` (wrapping and numbers seen; blank space under wrapped rows: #141) |
 
 ## 9. Uncommitted changes
 

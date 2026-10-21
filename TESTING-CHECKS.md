@@ -64,7 +64,7 @@
 - [~] **4.1** Press `Ctrl+,` → The settings open between the title bar and the keybar; the title bar stays, the settings button is lit and no tab is lit; the keybar shows `Esc Back` and `Ctrl+Tab Next page` 〔未訳〕
 - [x] **4.2** Press Ctrl+Tab → The page moves from General to Theme, with a small michi preview (the three tabs, two branches) 〔未訳〕
 - [~] **4.3** Change the language to 日本語 → Every word of michi turns Japanese at once (the tabs 樹形図・変更・worktree, the keybar, the empty views), and other uchmk apps follow 〔未訳〕
-- [ ] **4.4** Change the theme, and the size → The whole window follows at once; the logo and the chip stay readable in light and dark 〔未訳〕
+- [~] **4.4** Change the theme, and the size → The whole window follows at once; the logo and the chip stay readable in light and dark 〔未訳〕
 - [~] **4.5** Press Esc, click the settings button, or click a tab → Each leaves the settings; a tab opens its view 〔未訳〕
 - [~] **4.6** Edit common.toml by hand while michi is open → michi follows within a second 〔未訳〕
 - [ ] **4.7** In the settings open the Keys page; press `+ Add` on a row, press `Ctrl+Shift+K`, Enter; then `Ctrl+=`, `Ctrl+-`, `Ctrl+0` in the graph; edit keymap.toml (beside common.toml) by hand → The page lists the keys by layer (names in the language chosen); the new key is written to keymap.toml under `prepend_keymap` and a toast says `keymap.toml: 1 changed`; the keys zoom the window and say the size; a hand edit shows in the page within a second; Esc while a key is being pressed ends that, not the settings 〔未訳〕
@@ -122,7 +122,7 @@
 - [ ] **8.9** Narrow the window below 900 wide → The side column goes and the detail stacks under the graph, still readable; Enter still spreads the diff (skipped: needs a narrower window, which the harness lacks) 〔未訳〕
 - [~] **8.10** Switch to the light theme → The diff's greens, reds and blues and the hatching stay readable 〔未訳〕
 - [~] **8.11** Look at a commit adding a file that is not UTF-8 (Latin-1 `café`) → Under the file's name: `Not UTF-8: bad bytes show as �` (one line, not cut at the pane's edge); the bytes show as that mark (a box in this font) in the diff 〔未訳〕
-- [ ] **8.12** Look at the diff of a long line, in one column and side by side (`Enter`), in a narrow and a wide window; also a long Japanese line → It wraps at the pane's edge with the next part under it, the line number only on the first line; the row is as tall as its text, with no empty lines under a Japanese one and nothing cut off with `…` 〔未訳〕
+- [ ] **8.12** Look at the diff of a long line, in one column and side by side (`Enter`), in a narrow and a wide window; also a long Japanese line → It wraps at the pane's edge with the next part under it, the line number only on the first line; the row is as tall as its text, with no empty lines under a Japanese one and nothing cut off with `…` (wrapping and numbers seen; blank space under wrapped rows: #141) 〔未訳〕
 
 ## 9. Uncommitted changes
 
