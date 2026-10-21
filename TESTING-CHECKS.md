@@ -537,9 +537,9 @@
 
 ## 74. Commit message help (history and template)
 
-- [ ] **74.1** In the `2` view press `c` and look at the empty box → The hint reads "What changed, and why (Alt+Up / Alt+Down: earlier messages)"; EN and JA both read well and are not cut off → | [ ] 〔未訳〕
-- [ ] **74.2** With the box focused press Alt+Up → The box takes the latest commit's message (all lines); again: the one before; at the oldest nothing happens → | [ ] 〔未訳〕
-- [ ] **74.3** Type "wip", press Alt+Up twice, then Alt+Down twice → You are back at "wip" (the draft is kept); the same message is never listed twice → | [ ] 〔未訳〕
+- [~] **74.1** In the `2` view press `c` and look at the empty box → The hint reads "What changed, and why (Alt+Up / Alt+Down: earlier messages)"; EN and JA both read well and are not cut off → | [ ] 〔未訳〕
+- [~] **74.2** With the box focused press Alt+Up → The box takes the latest commit's message (all lines); again: the one before; at the oldest nothing happens → | [ ] 〔未訳〕
+- [~] **74.3** Type "wip", press Alt+Up twice, then Alt+Down twice → You are back at "wip" (the draft is kept); the same message is never listed twice → | [ ] 〔未訳〕
 - [ ] **74.4** Step to an old message, edit a word, press Alt+Up → The edited text is kept as the draft (Alt+Down from the next message comes back to it) → | [ ] 〔未訳〕
 - [ ] **74.5** Run `git config commit.template tpl.txt` (a file with `# help` lines and a `feat: ` line), then press `c` on an empty box → The box is filled with `feat:` without the `#` lines; committing it as it is leaves no `#` line in the message → | [ ] 〔未訳〕
 - [ ] **74.6** Type a message first, then press `c` → The template does not replace what was typed; with `A` (amend) the head's message fills, not the template → | [ ] 〔未訳〕
