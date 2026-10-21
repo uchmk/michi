@@ -19,7 +19,7 @@
 - [ ] **1.6** Drag each edge and corner → The window resizes with the matching pointer; nothing resizes while maximised (skipped: edge drag not in the harness) 〔未訳〕
 - [~] **1.7** Shrink the window to its smallest → It stops at 720x420; the palette field shortens, then the chip drops the branch, then the chip goes; the tabs never overlap the buttons 〔未訳〕
 - [ ] **1.8** Look at michi.exe in Explorer, the taskbar and Alt+Tab → The same logo as in the title bar (the forked path on the tile), sharp at each size (skipped: needs Explorer/taskbar/Alt+Tab, OS shell) 〔未訳〕
-- [ ] **1.9** Start michi in a folder with a Japanese name, or on a branch with one → The Japanese draws (after a frame or two), not boxes 〔未訳〕
+- [~] **1.9** Start michi in a folder with a Japanese name, or on a branch with one → The Japanese draws (after a frame or two), not boxes 〔未訳〕
 - [~] **1.10** Look at the title bar (height, the palette box, the bell with unread notices, the three window buttons); hover each; drag the empty part, double-click it; drag the window edges; click the bell → The same bar as tsumugi (40 high, box corner 6, buttons 46 wide, the badge in the `wait` colour); hovers say Minimize / Maximize or Restore / Close and the key of the palette; drag and double-click move and maximise; the edges resize (not while maximised); the notice list opens right under the bell 〔未訳〕
 - [ ] **1.11** Commit in the `2` view, then open the bell; let a merge stop at a conflict; make a git task fail; click a row; press Up/Down/Enter/Esc in the list → Each notice has a colour by kind (done, info, warning, failed), the time ("3m ago") and a mark when unread; clicking the commit row selects that commit in the graph, the conflict row opens the `4` view; a click marks only that row read, "Mark all read" marks the rest; the badge turns to the error colour while a failure is unread 〔未訳〕
 - [ ] **1.12** Hand a conflict to a Claude (or let one ask a question) with the michi window behind another; click the system's notification, or its Open button → The window comes to the front and the worktree table selects that worktree; the notice is read in the bell (Windows; macOS only shows it) (skipped: needs the OS notification centre) 〔未訳〕
@@ -73,7 +73,7 @@
 
 - [~] **5.1** Start `michi C:\dev` (not a repository) → The middle of the window reads `Not a Git repository` in red with the folder under it, and a toast says so with the folder; the title stays `michi` 〔未訳〕
 - [x] **5.2** Start `michi C:\no\such` from a terminal → The message `michi: not a folder: C:\no\such` in the terminal, exit code 2, no window 〔未訳〕
-- [ ] **5.3** Start `michi --version` and `michi --help` from cmd and from PowerShell → The version or the usage prints in that terminal, exit code 0, no window 〔未訳〕
+- [~] **5.3** Start `michi --version` and `michi --help` from cmd and from PowerShell → The version or the usage prints in that terminal, exit code 0, no window 〔未訳〕
 - [x] **5.4** Start michi with no git on the PATH → The chip shows `✗ git was not found`; the keybar shows `⚠ git` in red 〔未訳〕
 - [ ] **5.5** Start michi with a git older than 2.38 on the PATH → A toast for 10 seconds names the version and asks to update; the keybar keeps `⚠ git 2.x.y` in amber (skipped: needs OS or machine features the harness lacks) 〔未訳〕
 - [x] **5.6** Start `michi` in a worktree other than the main one → The chip names the repository (not the worktree's folder) and its branch; the count is the whole repository's 〔未訳〕
