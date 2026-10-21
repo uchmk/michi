@@ -474,8 +474,8 @@
 
 - [~] **41.1** In a worktree with an uncommitted edit to a file the upstream also changed (different lines), press `p` → The pull goes through instead of stopping; the toast says the changes were stashed and put back, with the `michi/backup/...` name; the edit is still there; `git stash list` is empty → | [ ] (skipped: needs a diverged upstream plus a dirty edit, not set up) 〔未訳〕
 - [~] **41.2** Same, but the edit touches the same lines the upstream changed → The pull goes through; the toast says the stash clashed in the file; the file has `<<<<<<<` marks and the stash stays in the list and under `michi/backup/` → | [ ] (skipped: same setup as 41.1) 〔未訳〕
-- [~] **41.3** Switch a worktree with changes to a branch that would overwrite them (branch picker) → The switch happens, the toast says the changes were stashed and put back (or clashed) → | [ ] 〔未訳〕
-- [~] **41.4** Pull or switch with no changes, or with changes that do not stand in the way → Behaves as before; no stash, no backup, no extra text in the toast → | [ ] 〔未訳〕
+- [~] **41.3** Switch a worktree with changes to a branch that would overwrite them (branch picker) → The switch happens, the toast says the changes were stashed and put back (or clashed) → | [ ] (飛ばし: 変更を上書きするブランチ切替の用意と toast の確認が要る (toast は 3 秒で消える)) 〔未訳〕
+- [~] **41.4** Pull or switch with no changes, or with changes that do not stand in the way → Behaves as before; no stash, no backup, no extra text in the toast → | [ ] (飛ばし: toast に余計な文が無いことは 3 秒で消えて撮れない) 〔未訳〕
 - [ ] **41.5** Switch to a branch that does not exist, with changes in the worktree → The error is shown as before and the changes are still in the worktree (nothing left in the stash list) → | [ ] (skipped: same setup as 41.1) 〔未訳〕
 
 ## 42. Reflog screen (`L`, #50)
@@ -608,7 +608,7 @@
 
 ## 100. Trial merge of several worktrees into the trunk
 
-- [~] **100.1** In the worktree table press `T` with two or more worktrees on branches other than the trunk → A list opens at the top with those worktrees (branch and folder), each with a `·` mark → | [ ] 〔未訳〕
+- [~] **100.1** In the worktree table press `T` with two or more worktrees on branches other than the trunk → A list opens at the top with those worktrees (branch and folder), each with a `·` mark → | [ ] (飛ばし: trial-merge の直後にハーネスが窓の焦点を失い、結果の画面が撮れない) 〔未訳〕
 - [~] **100.2** Press `T` with fewer than two such worktrees → A toast says a trial merge needs at least two worktrees; no list opens → | [ ] (seen: T with one worktree toasts that 2 or more are needed) 〔未訳〕
 - [ ] **100.3** Press `j` `k` and Space on three rows in the order c, a, b; click a row → The picked rows show 1, 2, 3 in the order picked; Space or a click on a picked row takes it back and later marks shift; `u` clears all (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) → | [ ] (skipped: the harness loses window focus after the trial-merge list opens) 〔未訳〕
 - [ ] **100.4** Press Enter with nothing picked → A toast asks to pick with Space first (skipped: the harness loses window focus right after the trial-merge run, so the result frame is not captured) → | [ ] 〔未訳〕
@@ -802,12 +802,12 @@
 - [ ] **129.1** In the worktree table of a repository with no submodule press `u` → A toast says the worktree has no submodules → [ ] (判断不能: u の toast が写らなかった) 〔未訳〕
 - [ ] **129.2** In a repository whose submodules are all on the recorded commit press `u` → A toast says all N submodules are on their recorded commits; no question → [ ] (飛ばし: submodule の実物と toast が要る) 〔未訳〕
 - [ ] **129.3** `cd` into a submodule and `git checkout HEAD~1`, then press `u` on its worktree → The band lists the submodule as off its commit and asks about `submodule update --init --recursive`; `n`/Esc leaves it as it is → [ ] (飛ばし: submodule の実物と toast が要る) 〔未訳〕
-- [ ] **129.4** Answer yes to 129.3 → A toast says the submodules were put on their recorded commits; `git submodule status` shows no `+` 〔未訳〕
-- [ ] **129.5** Clone a repository with submodules without `--recurse-submodules`, press `u`, then yes → The missing (`-`) submodules are listed, then cloned and checked out 〔未訳〕
-- [ ] **129.6** Leave an uncommitted change in a submodule file the update would overwrite, then `u` and yes → git refuses, michi shows `submodule update failed: ...` and the change is still there 〔未訳〕
-- [ ] **129.7** Press `u` on a worktree in the middle of a merge, with a stale submodule, then yes → The update is refused with a message naming the merge 〔未訳〕
-- [ ] **129.8** Open `?` in the worktree table; switch EN and JA → `u` reads "Submodules: state and update" / "submodule の状態と更新"; the question and toasts read well and fit 〔未訳〕
-- [ ] **129.9** Open the command palette (`Ctrl+Shift+P`) in the worktree table → A "Submodules: state and update" entry with `u` is listed and works 〔未訳〕
+- [ ] **129.4** Answer yes to 129.3 → A toast says the submodules were put on their recorded commits; `git submodule status` shows no `+` → [ ] (飛ばし: submodule 付きのクローンと u の確認・EN/JA 切替の用意が要る) 〔未訳〕
+- [ ] **129.5** Clone a repository with submodules without `--recurse-submodules`, press `u`, then yes → The missing (`-`) submodules are listed, then cloned and checked out → [ ] (飛ばし: submodule 付きのクローンと u の確認・EN/JA 切替の用意が要る) 〔未訳〕
+- [ ] **129.6** Leave an uncommitted change in a submodule file the update would overwrite, then `u` and yes → git refuses, michi shows `submodule update failed: ...` and the change is still there → [ ] (飛ばし: submodule 付きのクローンと u の確認・EN/JA 切替の用意が要る) 〔未訳〕
+- [ ] **129.7** Press `u` on a worktree in the middle of a merge, with a stale submodule, then yes → The update is refused with a message naming the merge → [ ] (飛ばし: submodule 付きのクローンと u の確認・EN/JA 切替の用意が要る) 〔未訳〕
+- [ ] **129.8** Open `?` in the worktree table; switch EN and JA → `u` reads "Submodules: state and update" / "submodule の状態と更新"; the question and toasts read well and fit → [ ] (飛ばし: submodule 付きのクローンと u の確認・EN/JA 切替の用意が要る) 〔未訳〕
+- [ ] **129.9** Open the command palette (`Ctrl+Shift+P`) in the worktree table → A "Submodules: state and update" entry with `u` is listed and works → [ ] (飛ばし: submodule 付きのクローンと u の確認・EN/JA 切替の用意が要る) 〔未訳〕
 
 ## 280. Remotes: list, add, remove (`M`)
 
@@ -841,7 +841,7 @@
 
 ## 101. Pull request pages on GitLab, Bitbucket and Azure DevOps (#33)
 
-- [ ] **101.1** On a worktree whose remote is a gitlab.com one (group/sub/proj) and branch `feat/x`, press `p` → The browser opens GitLab's new merge request page with the source branch `feat/x` already chosen → | [ ] 〔未訳〕
+- [ ] **101.1** On a worktree whose remote is a gitlab.com one (group/sub/proj) and branch `feat/x`, press `p` → The browser opens GitLab's new merge request page with the source branch `feat/x` already chosen → | [ ] (飛ばし: GitLab のリモートとブラウザの起動が要る (本物の GitLab に触らない)) 〔未訳〕
 - [ ] **101.2** Same with a Bitbucket remote (`https://bitbucket.org/ann/repo.git`) → Bitbucket's new pull request page opens with `feat/x` as the source → | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) 〔未訳〕
 - [ ] **101.3** Same with an Azure DevOps remote (`https://dev.azure.com/org/proj/_git/repo`, and the ssh form on `ssh.dev.azure.com` with `v3/org/proj/repo`) → Azure's create pull request page opens with `feat/x` as the source → | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) 〔未訳〕
 - [ ] **101.4** Same with a GitHub remote → The GitHub compare page opens as before → | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) 〔未訳〕
@@ -1151,8 +1151,8 @@
 - [ ] **116.5** Click outside the panel → It closes → [ ] (飛ばし: 116.1 が前提) 〔未訳〕
 - [ ] **116.6** Start michi with git off the PATH → The panel says git is not installed and offers the install command for the OS (winget / brew / apt) and the download page → [ ] (飛ばし: git を PATH から外すと drive.ps1 も動かない) 〔未訳〕
 - [ ] **116.7** Start michi with git 2.38 or newer and a name and email set → No panel opens and the palette has no "Getting ready" entry → [ ] (見た: 名前とメールのある普通の環境では panel は出ない (palette の項目は未確認)) 〔未訳〕
-- [ ] **116.8** Read the panel's last lines → It points to `K` for the sign-in check; `K` still opens the sign-in help 〔未訳〕
-- [ ] **116.9** Switch EN and JA → The panel reads well in both 〔未訳〕
+- [ ] **116.8** Read the panel's last lines → It points to `K` for the sign-in check; `K` still opens the sign-in help → [ ] (飛ばし: パネルが通常の環境では出ない (116.7 参照)) 〔未訳〕
+- [ ] **116.9** Switch EN and JA → The panel reads well in both → [ ] (飛ばし: パネルが出ない上、EN/JA の切り替えがハーネスに無い) 〔未訳〕
 
 ## 117. Practice repository
 
