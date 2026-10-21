@@ -889,13 +889,13 @@
 
 ## 255. Moving uncommitted changes between worktrees (`v`)
 
-- [ ] **255.1** In the `3` view with two worktrees, edit a tracked file and add an untracked file in one, select its row, press `v` → A palette opens: `Move the uncommitted changes to`, `from <worktree>`, one row per other worktree with its branch 〔未訳〕
-- [ ] **255.2** Pick a worktree with Enter → A question names both worktrees and says the changes are kept under refs/michi/backup/; `n` or Esc leaves everything as it was 〔未訳〕
-- [ ] **255.3** Answer `y` → The source is clean, the target has the edit and the untracked file, a toast names the backup; refs/michi/backup/ has the changes; the stash list is empty 〔未訳〕
-- [ ] **255.4** Edit the same file differently in both worktrees and move → The move is refused with the reason, and the changes are back in the source as they were 〔未訳〕
-- [ ] **255.5** Make the target change that file in a commit so the changes clash, move → The target has conflict marks, a toast says where, and the stash stays in the list 〔未訳〕
+- [~] **255.1** In the `3` view with two worktrees, edit a tracked file and add an untracked file in one, select its row, press `v` → A palette opens: `Move the uncommitted changes to`, `from <worktree>`, one row per other worktree with its branch → [ ] (seen in c1: v on the c1-c row opens the palette "move uncommitted changes to / from c1-c" with one row per other worktree and its branch) 〔未訳〕
+- [~] **255.2** Pick a worktree with Enter → A question names both worktrees and says the changes are kept under refs/michi/backup/; `n` or Esc leaves everything as it was → [ ] (seen: Enter asks whether to move c1-c changes to c1, says c1-c becomes clean and the changes are kept under refs/michi/backup/; Esc closes) 〔未訳〕
+- [ ] **255.3** Answer `y` → The source is clean, the target has the edit and the untracked file, a toast names the backup; refs/michi/backup/ has the changes; the stash list is empty → [ ] (skipped: would move real changes between lab worktrees; the move itself is unit-tested) 〔未訳〕
+- [ ] **255.4** Edit the same file differently in both worktrees and move → The move is refused with the reason, and the changes are back in the source as they were → [ ] (skipped: needs a second divergent edit and a move; not driven this run) 〔未訳〕
+- [ ] **255.5** Make the target change that file in a commit so the changes clash, move → The target has conflict marks, a toast says where, and the stash stays in the list → [ ] (skipped: needs a commit clash setup; not driven this run) 〔未訳〕
 - [ ] **255.6** Press `v` on a worktree with no changes, then in a repository with one worktree → A toast says there is nothing to move / no other worktree; no palette opens 〔未訳〕
-- [ ] **255.7** Start a merge in either worktree and move → A toast says it is in the middle of a merge; the palette stays 〔未訳〕
+- [ ] **255.7** Start a merge in either worktree and move → A toast says it is in the middle of a merge; the palette stays → [ ] (skipped: needs a stopped merge in a worktree) 〔未訳〕
 - [ ] **255.8** With a Claude working in either worktree, move → The question also says a Claude is working there → [ ] (skipped: needs a real Claude or tsumugi session) 〔未訳〕
 - [ ] **255.9** Switch EN and JA; check the keybar and `?` in the `3` view → `v` Move changes appears; text reads well in both languages 〔未訳〕
 
@@ -917,14 +917,14 @@
 
 ## 246. Patches: copy and paste-to-apply (`Y`, Ctrl+V)
 
-- [ ] **246.1** In the graph, select a commit and press `Y`; paste into a text editor → A toast says a patch of N lines was copied; the clipboard holds an emailed patch (`From <id> ...`, `Subject: [PATCH] ...`, then the diff) 〔未訳〕
-- [ ] **246.2** Select a worktree's uncommitted (WIP) row and press `Y` → The clipboard holds a plain `diff --git` of the tracked changes; with no changes a toast says there is nothing to make a patch of 〔未訳〕
-- [ ] **246.3** Select a merge commit and press `Y` → A toast says a merge commit has no patch of its own; the clipboard is unchanged 〔未訳〕
-- [ ] **246.4** Copy a patch from 246.1, switch the window to a worktree where it fits, press Ctrl+V (Cmd+V on macOS) over the graph → A bar asks to apply the pasted patch (N lines) to the files of that worktree; `y` applies it, a toast gives files and +/- counts, and the files show as uncommitted changes (nothing staged, no commit) 〔未訳〕
-- [ ] **246.5** Paste the same patch again and answer `y` → A toast says the apply failed with git's reason; no file changed 〔未訳〕
-- [ ] **246.6** Paste ordinary text (a branch name) over the graph; paste in the filter box and in the commit message box → Nothing is asked over the graph; the text goes into the boxes as usual 〔未訳〕
-- [ ] **246.7** Press Ctrl+V with the changes view, the blame screen or a bar in front → The paste does not open the question 〔未訳〕
-- [ ] **246.8** With a rebase or merge stopped in the worktree, paste a patch → A toast says the worktree is in the middle of it and to finish first 〔未訳〕
+- [~] **246.1** In the graph, select a commit and press `Y`; paste into a text editor → A toast says a patch of N lines was copied; the clipboard holds an emailed patch (`From <id> ...`, `Subject: [PATCH] ...`, then the diff) (seen: Y on a commit notifies "patch (21 lines) copied to the clipboard"; clipboard content not read) 〔未訳〕
+- [~] **246.2** Select a worktree's uncommitted (WIP) row and press `Y` → The clipboard holds a plain `diff --git` of the tracked changes; with no changes a toast says there is nothing to make a patch of (seen: Y on the WIP row notifies a 9-line patch) 〔未訳〕
+- [ ] **246.3** Select a merge commit and press `Y` → A toast says a merge commit has no patch of its own; the clipboard is unchanged (skipped: the lab repo c1 has no merge commit) 〔未訳〕
+- [ ] **246.4** Copy a patch from 246.1, switch the window to a worktree where it fits, press Ctrl+V (Cmd+V on macOS) over the graph → A bar asks to apply the pasted patch (N lines) to the files of that worktree; `y` applies it, a toast gives files and +/- counts, and the files show as uncommitted changes (nothing staged, no commit) (skipped: Ctrl+V of a clipboard patch cannot be driven by the harness) 〔未訳〕
+- [ ] **246.5** Paste the same patch again and answer `y` → A toast says the apply failed with git's reason; no file changed (skipped: needs a clipboard paste) 〔未訳〕
+- [ ] **246.6** Paste ordinary text (a branch name) over the graph; paste in the filter box and in the commit message box → Nothing is asked over the graph; the text goes into the boxes as usual (skipped: needs a clipboard paste) 〔未訳〕
+- [ ] **246.7** Press Ctrl+V with the changes view, the blame screen or a bar in front → The paste does not open the question (skipped: needs a clipboard paste) 〔未訳〕
+- [ ] **246.8** With a rebase or merge stopped in the worktree, paste a patch → A toast says the worktree is in the middle of it and to finish first (skipped: needs a clipboard paste and a stopped rebase) 〔未訳〕
 - [ ] **246.9** Paste a patch while a Claude is working in the worktree → The question ends with the note that a Claude is working there (skipped: needs a real Claude or tsumugi session) 〔未訳〕
 - [ ] **246.10** Check the keybar and `?` over the graph; switch EN and JA → `Y` and Ctrl+V are listed with their words in both languages 〔未訳〕
 
@@ -938,8 +938,8 @@
 
 ## 248. Diffs ignoring whitespace (`w`)
 
-- [ ] **248.1** Commit a change that only re-indents a file plus one real edit; in the graph select it and press `w` → A toast says diffs now ignore whitespace; the detail's diff is read again and shows only the real edit (the re-indented lines are gone) 〔未訳〕
-- [ ] **248.2** Press `w` again → A toast says whitespace changes show again; the full diff is back 〔未訳〕
+- [~] **248.1** Commit a change that only re-indents a file plus one real edit; in the graph select it and press `w` → A toast says diffs now ignore whitespace; the detail's diff is read again and shows only the real edit (the re-indented lines are gone) (seen: w toasts that diffs now ignore whitespace; the detail shows the toggle button) 〔未訳〕
+- [~] **248.2** Press `w` again → A toast says whitespace changes show again; the full diff is back (seen: w again toasts that whitespace differences show again) 〔未訳〕
 - [ ] **248.3** In the `2` view, change only the spacing of a line in a tracked file, then press `w` → The file stays in the list; its diff shows nothing to look at; `w` again brings the change back 〔未訳〕
 - [ ] **248.4** With `w` on in the `2` view, select a file with a real change and press `l` → The lines cannot be picked (the diff is for looking at); Space still stages the whole file 〔未訳〕
 - [ ] **248.5** With `w` on, select a worktree's WIP row and a branch comparison (`d` in the `3` view) → Both diffs ignore whitespace too 〔未訳〕
