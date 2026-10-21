@@ -210,8 +210,8 @@ Set up: the repository of section 10, with michi in front on the graph; commit f
 | 12.5 | Make 13 commits in the worktree and press `3` | The box shows 12, newest first, and `… 1 more`; a long subject is cut with `…` before the branch and time (skipped 2026-10-22: the m1 lab shows 11 unseen commits, not 13, and scrolling the box is not driven; not told) |
 | 12.6 | Quit michi with commits unseen, commit once more, and start michi again | The commits still unseen keep their dot, and the one made while michi was closed has one too; the file above lists the branch with the commits seen |
 | 12.7 | Narrow the window below 960 wide | The `Unseen changes` box goes under the conflicts box at the full width; the cards have an `Unseen` line (skipped: needs a narrower window, which the harness lacks) |
-| 12.8 | Put another window in front, commit in a worktree, wait, then bring michi back | Nothing is read while michi is behind (no `git.exe` in Task Manager); when it comes back the history and the table follow at once |
-| 12.9 | Run `cargo build` (or write many files) in an ignored folder of a worktree, and run `git status` there, with michi in front | michi reads nothing for them: no `git.exe` keeps coming up in Task Manager, and the table does not change; a `git status` does not start a read that starts another |
+| 12.8 | Put another window in front, commit in a worktree, wait, then bring michi back | Nothing is read while michi is behind (no `git.exe` in Task Manager); when it comes back the history and the table follow at once (skipped: harness cannot put another window in front and watch git.exe) |
+| 12.9 | Run `cargo build` (or write many files) in an ignored folder of a worktree, and run `git status` there, with michi in front | michi reads nothing for them: no `git.exe` keeps coming up in Task Manager, and the table does not change; a `git status` does not start a read that starts another (skipped: needs a process monitor and a long build) |
 | 12.10 | Open a repository on a network share (`\\server\share` or a mapped drive) | Changes there show within about 5 s while michi is in front; nothing is read while it is behind (skipped: needs OS or machine features the harness lacks) |
 | 12.11 | Switch to the light theme | The blue dots and bold subjects in the graph, the column and the box stay readable |
 
@@ -476,7 +476,7 @@ files under `refs/michi/backup/<time>` first.
 | 29.1 | In the graph press `t` on a commit (revert) | The window dims and a box in the middle asks `Are you sure?` / `よろしいですか` with the band's words, the buttons `Go ahead` and `Not now`, and `y Go ahead · Esc Not now` under them; nothing behind answers the mouse (looked at 2026-10-22: the box shows `やめる Esc` and `進める Ctrl+Enter` buttons with `y はい · n いいえ` in the key bar, not `Go ahead` / `Not now`; wording to be reconciled with the row) | | [~] |
 | 29.2 | Press `y`; then ask again and press `Esc`, then `n`; then click each button | `y` and the first button run it; `Esc`, `n` and the second button drop it | | [x] |
 | 29.3 | Revert a merge commit | One button per parent (`keep parent 1`, `keep parent 2`) and `Not now`; `1` / `2` and a click run it with that side; `y` does nothing | | [x] |
-| 29.4 | Shrink the window to its smallest with the box up | The box narrows and its words wrap; every button stays clickable | | [~] |
+| 29.4 | Shrink the window to its smallest with the box up | The box narrows and its words wrap; every button stays clickable | | [~] (skipped: harness cannot resize the window) |
 
 ## 30. 文字の選択とコピー（ito-select）
 
@@ -675,7 +675,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 47.6 | Detach, then delete the branch it came from, then look at the strip | `R` is not offered for a branch that is gone (an earlier existing one, or only `B`) | | [ ] |
 | 47.7 | Start `git rebase -i` and stop it at an edit | The strip says it is a rebase, with no buttons; it goes when the rebase ends | | [ ] |
 | 47.8 | With a Claude working in the worktree press `R` | A yes is asked first, as for a switch | | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 47.9 | Open the settings (`,`) or the key list (`?`) while the strip is up; switch EN and JA | The strip stays tidy at a narrow width (the text is cut with an ellipsis, the buttons stay); both languages read well | | [ ] |
+| 47.9 | Open the settings (`,`) or the key list (`?`) while the strip is up; switch EN and JA | The strip stays tidy at a narrow width (the text is cut with an ellipsis, the buttons stay); both languages read well | | [ ] (skipped: narrow window and EN/JA switch not drivable) |
 
 ## 74. Commit message help (history and template)
 
@@ -711,7 +711,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 88.3 | Open a confirmation band, `?` and the settings | They fade in without a jump; no flicker on the first frame (skipped: a 130 ms fade cannot be judged from still screenshots) | | [ ] |
 | 88.4 | Open the settings (`,`), General: look for "Motion" and pick Off | `config.toml` has `[view]` `motion = "off"`; from now on views and windows appear at once, with no fade or slide, and the hover blends are gone (skipped: the config.toml part reads right, but the fade itself cannot be judged from stills) | | [ ] |
 | 88.5 | Pick On again; edit `motion` in config.toml by hand (also a wrong word) | Animations come back within a few seconds without restart; a wrong word gives a toast warning and keeps them on (skipped: the fade itself cannot be judged from stills) | | [ ] |
-| 88.6 | Leave the window idle on a view for a while (Task Manager) | CPU stays near 0: nothing keeps repainting after the animation ends (fails: an idle window keeps one thread at ~100% of a core (#140)) | | [ ] |
+| 88.6 | Leave the window idle on a view for a while (Task Manager) | CPU stays near 0: nothing keeps repainting after the animation ends (fails: an idle window keeps one thread at ~100% of a core (#140)) | | [ ] (skipped: needs Task Manager CPU reading, see #140) |
 | 88.7 | Switch EN and JA in the settings | The Motion section and its two choices read well in both | | [ ] |
 
 ## 94. Review queue of finished Claude work (Review column)
@@ -731,11 +731,11 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | # | Do | Expect |
 | --- | --- | --- |
 | 95.1 | With tsumugi running, select a commit that is only on a worktree's branch (not on main) whose worktree has a Claude tab | The detail header shows `Claude in this worktree  tab N · <title>` under the names; the title is the tab's | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 95.2 | Click that `tab N · title` | The tab comes to the front in tsumugi (same as `o`); a toast says so | [ ] |
-| 95.3 | Select a commit on main that no worktree has checked out | No Claude line; select the one the main worktree has checked out (with a Claude there): the line shows | [ ] |
-| 95.4 | A worktree with two or more Claudes | The first two are listed and `+N more` follows; narrow the window and the line wraps | [ ] |
+| 95.2 | Click that `tab N · title` | The tab comes to the front in tsumugi (same as `o`); a toast says so | [ ] (skipped: needs real tsumugi tabs) |
+| 95.3 | Select a commit on main that no worktree has checked out | No Claude line; select the one the main worktree has checked out (with a Claude there): the line shows | [ ] (skipped: needs a real Claude line) |
+| 95.4 | A worktree with two or more Claudes | The first two are listed and `+N more` follows; narrow the window and the line wraps | [ ] (skipped: needs two real Claudes and a narrow window) |
 | 95.5 | Quit tsumugi (or have no Claude in the worktree) and select the same commit | The line goes within a few seconds; nothing else changes; the WIP row has no such line | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 95.6 | Switch EN and JA | `Claude in this worktree` / `この worktree の Claude`, `tab` / `タブ` read well | [ ] |
+| 95.6 | Switch EN and JA | `Claude in this worktree` / `この worktree の Claude`, `tab` / `タブ` read well | [ ] (skipped: EN/JA switch not drivable here) |
 
 ## 66. Right-click menus for a commit, a branch and a file
 
@@ -760,7 +760,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 87.5 | Press `Enter` (side by side) then `n` / `N` | The ticks and the jumps follow the other layout; no change is skipped or repeated |
 | 87.6 | Press `l` (pick lines) then `n` / `N` | The cursor moves to the first line of the next / previous run of changed lines and the diff follows it; `N` in the middle of a run goes to that run's start |
 | 87.7 | Select a file with no diff text (binary, deleted-empty) and press `n` | No strip, nothing happens; no error |
-| 87.8 | Press `?`; switch EN and JA | The key list names `n N` as jumping to the next or previous change in both languages; the strip looks right in Dark and Light themes |
+| 87.8 | Press `?`; switch EN and JA | The key list names `n N` as jumping to the next or previous change in both languages; the strip looks right in Dark and Light themes (skipped: EN/JA switch not drivable here) |
 
 ## 100. Trial merge of several worktrees into the trunk
 
@@ -799,11 +799,11 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | # | Do | Expect |
 | --- | --- | --- |
 | 91.1 | Let a Claude in a worktree edit a file and stop to wait (tsumugi shows it `waiting` or `done`) | Within a few seconds `git for-each-ref refs/michi/turn/` lists `refs/michi/turn/<branch>/1`; the index, HEAD and files are untouched; no toast appears | | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 91.2 | In the `3` view select that worktree and press `y` | The compare review opens titled `Turn 1 of 1 on <branch>` listing what the Claude changed in that turn | | [ ] |
+| 91.2 | In the `3` view select that worktree and press `y` | The compare review opens titled `Turn 1 of 1 on <branch>` listing what the Claude changed in that turn | | [ ] (skipped: needs a real Claude turn kept by tsumugi) |
 | 91.3 | Give the Claude a second instruction that changes another file; after it stops press `y` | `Turn 2 of 2`: only the second instruction's change is listed | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 91.4 | In the turn review press `y`, then `Y` | `y` goes to the older turn and `Y` to the newer one; at the ends a toast says "That is the oldest turn kept" / "That is the newest turn" | | [ ] |
 | 91.5 | Let a Claude stop without changing any file | No new turn ref is made | | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 91.6 | Press `y` on a worktree whose Claude never stopped under michi | A toast says no turn is kept yet | | [ ] |
+| 91.6 | Press `y` on a worktree whose Claude never stopped under michi | A toast says no turn is kept yet | | [ ] (skipped: needs a real Claude session) |
 | 91.7 | Restart michi while a Claude is already waiting, then let it work and stop | Only the turn ended after michi looked is kept (the first list is a baseline) | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 91.8 | Switch to JA; press `?` in the worktree table and in the review | Titles and toasts read in Japanese; `y` and `y Y` are listed | | [ ] |
 
@@ -841,8 +841,8 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | --- | --- | --- |
 | 68.1 | Open a commit that changes a `.rs` file (detail pane), then the Changes view of a worktree with a `.rs` edit | Keywords, strings, comments, numbers and names are coloured on context, added and deleted lines; the green/red line tint and the marked words (changed words) still show | | [ ] |
 | 68.2 | Look at a `.toml`, `.md`, `.ts`, `.py` and `Dockerfile` change | Each gets colours; a file of an unknown type (`.xyz`) and a binary file stay plain | | [ ] |
-| 68.3 | Switch the theme in settings between a dark and a light one | The colours follow the theme and stay readable on the added and deleted tints | | [ ] |
-| 68.4 | Open the diff side by side and unified (narrow the window) | Both layouts show the same colours; wrapped long lines keep them | | [ ] |
+| 68.3 | Switch the theme in settings between a dark and a light one | The colours follow the theme and stay readable on the added and deleted tints | | [ ] (skipped: theme switch not drivable here) |
+| 68.4 | Open the diff side by side and unified (narrow the window) | Both layouts show the same colours; wrapped long lines keep them | | [ ] (skipped: narrow window not drivable here) |
 | 68.5 | Open a big commit (hundreds of files, a huge generated file) | The window does not stall while it loads; a file of over 6000 diff lines, or a line of over 1500 characters, is left plain | | [ ] |
 | 68.6 | Select diff text with the mouse and copy it | The copied text is the plain text (no colour effects) | | [ ] |
 
@@ -853,7 +853,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 92.1 | With three worktrees ahead of main, two of which edit the same lines and one which touches other files: open the worktree table | The name cell of each shows a note `Land 1 of 3` / `2 of 3` / `3 of 3`; the one that conflicts with nothing is `1 of 3` | | [ ] |
 | 92.2 | Look at the last one of the two that conflict | Its note is yellow and reads `Land 3 of 3 · N places to resolve against those before`; the earlier ones are green with no places | | [ ] |
 | 92.3 | Only one worktree is ahead of main, or none | No `Land` note shows | | [ ] |
-| 92.4 | Commit in a worktree so the order would change; wait for the table to refresh | The numbers follow the new predictions without a restart | | [ ] |
+| 92.4 | Commit in a worktree so the order would change; wait for the table to refresh | The numbers follow the new predictions without a restart | | [ ] (skipped: needs a Claude-driven order change) |
 | 92.5 | Start a merge in one worktree | The notes go away while the merge is under way and come back after | | [ ] |
 | 92.6 | Switch to JA | The notes read `main へ入れる順 1 / 3`, and the yellow one adds `先に入れた分との衝突 N 箇所` | | [ ] |
 
@@ -865,8 +865,8 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 90.2 | Make the read slow (a huge repository or a network drive) and keep looking | After 2 seconds a line `Still reading the history… N s` joins the bars and the seconds count up | | [ ] |
 | 90.3 | Wait for the first batch | The bars and the text go at once and the real rows take their place, with no flicker | | [ ] |
 | 90.4 | Open an empty repository (no commit) | No skeleton stays; the screen says `No commits yet.` | | [ ] |
-| 90.5 | Switch the theme (dark and light), density (compact, cozy) and EN/JA while the bars show | The bars follow the theme and the row height; the text reads in the chosen language | | [ ] |
-| 90.6 | Watch the CPU while the bars pulse | The window repaints about 15 times a second only while waiting and stops when the rows come | | [ ] |
+| 90.5 | Switch the theme (dark and light), density (compact, cozy) and EN/JA while the bars show | The bars follow the theme and the row height; the text reads in the chosen language | | [ ] (skipped: theme, density and language switches not drivable here) |
+| 90.6 | Watch the CPU while the bars pulse | The window repaints about 15 times a second only while waiting and stops when the rows come | | [ ] (skipped: needs CPU reading of the pulsing bars) |
 
 ## 99. Handing a clash to a Claude and reviewing the result
 
@@ -874,8 +874,8 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | --- | --- | --- |
 | 99.1 | In a worktree with a Claude and a merge conflict, press `4` then `g` | A row appears under the bar: "Asked the Claude in ...; waiting for it to stop..."; no buttons yet; `a` and `r` say the Claude is still working | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 99.2 | Let the Claude solve everything (git add) and stop | The toast and notification say it stopped; the row turns green: "... stopped and solved everything", with "Look at the diff" `d`, "Adopt" `a`, "Send back" `r` | | [ ] (skipped: needs OS or machine features the harness lacks) |
-| 99.3 | Press `d` (or click the button) | The Changes view opens on that worktree and shows what the Claude did | | [ ] |
-| 99.4 | Back in `4`, press `a` | The usual commit flow runs (message check, Claude-working check); the merge is committed and the row goes away with the conflict | | [ ] |
+| 99.3 | Press `d` (or click the button) | The Changes view opens on that worktree and shows what the Claude did | | [ ] (skipped: needs a real Claude-finished worktree) |
+| 99.4 | Back in `4`, press `a` | The usual commit flow runs (message check, Claude-working check); the merge is committed and the row goes away with the conflict | | [ ] (skipped: needs a real Claude-finished worktree) |
 | 99.5 | Hand over again, let the Claude leave one place marked, stop it | The row is red with "N places still have markers"; only "Look at the diff" and "Send back" show; `a` says places are left | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 99.6 | Press `r` | The line "Your solution was not accepted ..." is typed into the Claude; the row goes back to waiting; when it stops, the row updates again | | [ ] |
 | 99.7 | Press `r` with no Claude session open in the worktree | A new tsumugi tab with a Claude starts with the same line | | [ ] (skipped: needs a real Claude or tsumugi session) |
