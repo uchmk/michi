@@ -449,7 +449,7 @@
 - [~] **38.1** Hover the gear at the top right and the search field beside it → The gear tooltip reads `Settings (Ctrl+,)`; the search field shows its key (`Ctrl+Shift+P`) inside the field, and its tooltip names the command palette → | [ ] → | → [ ] (skipped: hover tooltips cannot be driven by the harness) 〔未訳〕
 - [~] **38.2** Bind another key to `palette` in keymap.toml (prepend), restart, hover the search field → The field shows the new key → | [ ] → | → [ ] (skipped: hover tooltips cannot be driven by the harness) 〔未訳〕
 - [~] **38.3** Hover each view tab (Graph, Changes, Worktrees) → The tooltip names the view and its digit, for example `Graph (1)` → | [ ] → | → [ ] (skipped: hover tooltips cannot be driven by the harness) 〔未訳〕
-- [~] **38.4** In the graph view hover Fetch, Pull, Push and Sync → Each tooltip shows its key, for example `pull (p)`, `Sync (S)` → | [ ] → | → [ ] (skipped: hover tooltips cannot be driven by the harness) 〔未訳〕
+- [~] **38.4** In the graph view hover Fetch, Pull, Push and Sync → Each tooltip shows its key, for example `pull (p)`, `Sync (S)` → | [ ] → | → [ ] (skipped: hover tooltips cannot be driven by the harness) (判断不能: ハーネスで g: の後ろに空白を打てず (+ は Shift になる) 正規表現を作れない) 〔未訳〕
 - [~] **38.5** During a merge hover Pull and Stash → The tooltip still says they are held, not the key → | [ ] → | → [ ] (skipped: hover tooltips cannot be driven by the harness) 〔未訳〕
 - [~] **38.6** In the worktree view hover New work and the re-read button → `New work (N)`; the re-read button shows just its name (skipped: undecidable in the harness, hover tooltips do not show) → | [ ] → | → [ ] (skipped: hover tooltips cannot be driven by the harness) 〔未訳〕
 
@@ -778,11 +778,11 @@
 
 ## 31. Sparse checkout notice (#31; the mcp section above uses the same number from #101)
 
-- [ ] **31.5** In a repository run `git sparse-checkout set --cone <one folder>`, open it in michi → A strip under the title bar says `Sparse checkout: N tracked files are left out of this folder...` with N the files not on disk; there are no buttons → | [ ] 〔未訳〕
-- [ ] **31.6** Run `git sparse-checkout disable` while michi is open → The strip goes away on the next refresh (no restart) → | [ ] 〔未訳〕
-- [ ] **31.7** Run `git sparse-checkout set --no-cone '/*' '!/some-folder'` → The strip says `Sparse checkout (patterns): ...` → | [ ] 〔未訳〕
-- [ ] **31.8** Sparse checkout on and a detached HEAD together → One strip: the detached HEAD's words first, then the sparse sentence; the `R` / `B` buttons stay → | [ ] 〔未訳〕
-- [ ] **31.9** Switch EN and JA; narrow the window → The sentence reads well in both and is cut with an ellipsis rather than overflowing → | [ ] 〔未訳〕
+- [ ] **31.5** In a repository run `git sparse-checkout set --cone <one folder>`, open it in michi → A strip under the title bar says `Sparse checkout: N tracked files are left out of this folder...` with N the files not on disk; there are no buttons → | [ ] (見た: sparse checkout の帯 (追跡しているファイル 1 件がこのフォルダにありません) が 1 画面の上に出た) 〔未訳〕
+- [ ] **31.6** Run `git sparse-checkout disable` while michi is open → The strip goes away on the next refresh (no restart) → | [ ] (飛ばし: michi を開いたまま sparse-checkout を変えられない) 〔未訳〕
+- [ ] **31.7** Run `git sparse-checkout set --no-cone '/*' '!/some-folder'` → The strip says `Sparse checkout (patterns): ...` → | [ ] (飛ばし: michi を開いたまま sparse-checkout を変えられない) 〔未訳〕
+- [ ] **31.8** Sparse checkout on and a detached HEAD together → One strip: the detached HEAD's words first, then the sparse sentence; the `R` / `B` buttons stay → | [ ] (飛ばし: michi を開いたまま sparse-checkout を変えられない) 〔未訳〕
+- [ ] **31.9** Switch EN and JA; narrow the window → The sentence reads well in both and is cut with an ellipsis rather than overflowing → | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
 
 ## 38. Content search in the `/` filter (`s:` pickaxe, `g:` regex)
 
@@ -799,9 +799,9 @@
 
 ## 129. Submodules: state and update (#29)
 
-- [ ] **129.1** In the worktree table of a repository with no submodule press `u` → A toast says the worktree has no submodules 〔未訳〕
-- [ ] **129.2** In a repository whose submodules are all on the recorded commit press `u` → A toast says all N submodules are on their recorded commits; no question 〔未訳〕
-- [ ] **129.3** `cd` into a submodule and `git checkout HEAD~1`, then press `u` on its worktree → The band lists the submodule as off its commit and asks about `submodule update --init --recursive`; `n`/Esc leaves it as it is 〔未訳〕
+- [ ] **129.1** In the worktree table of a repository with no submodule press `u` → A toast says the worktree has no submodules → [ ] (判断不能: u の toast が写らなかった) 〔未訳〕
+- [ ] **129.2** In a repository whose submodules are all on the recorded commit press `u` → A toast says all N submodules are on their recorded commits; no question → [ ] (飛ばし: submodule の実物と toast が要る) 〔未訳〕
+- [ ] **129.3** `cd` into a submodule and `git checkout HEAD~1`, then press `u` on its worktree → The band lists the submodule as off its commit and asks about `submodule update --init --recursive`; `n`/Esc leaves it as it is → [ ] (飛ばし: submodule の実物と toast が要る) 〔未訳〕
 - [ ] **129.4** Answer yes to 129.3 → A toast says the submodules were put on their recorded commits; `git submodule status` shows no `+` 〔未訳〕
 - [ ] **129.5** Clone a repository with submodules without `--recurse-submodules`, press `u`, then yes → The missing (`-`) submodules are listed, then cloned and checked out 〔未訳〕
 - [ ] **129.6** Leave an uncommitted change in a submodule file the update would overwrite, then `u` and yes → git refuses, michi shows `submodule update failed: ...` and the change is still there 〔未訳〕
@@ -949,9 +949,9 @@
 ## 251. Commit search scope in the `/` filter (#51)
 
 - [ ] **251.1** Press `/`, type `p:readme` and Enter → The commits that changed a path containing `readme` (any case) stay bright, the rest dim; the scrollbar shows the hits → [ ] (skipped: needs drag or wheel, which the harness lacks) 〔未訳〕
-- [ ] **251.2** Type `fix p:src/` → Only commits with `fix` in the subject that also touched `src/` hit 〔未訳〕
-- [ ] **251.3** Type `d:2026-10-01..2026-10-15` and Enter → Only commits made in that range hit 〔未訳〕
-- [ ] **251.4** Try `d:2.weeks.ago`, `d:..yesterday` and `d:2026-10-01..` → Each hits the commits in the range git reads from it (since, until, since) 〔未訳〕
+- [ ] **251.2** Type `fix p:src/` → Only commits with `fix` in the subject that also touched `src/` hit → [ ] (判断不能: 空白を打てず、fix と p:src/ を並べられない) 〔未訳〕
+- [ ] **251.3** Type `d:2026-10-01..2026-10-15` and Enter → Only commits made in that range hit → [ ] (飛ばし: d: の範囲に空白が要り、ハーネスで打てない) 〔未訳〕
+- [ ] **251.4** Try `d:2.weeks.ago`, `d:..yesterday` and `d:2026-10-01..` → Each hits the commits in the range git reads from it (since, until, since) → [ ] (飛ばし: d: の範囲に空白が要り、ハーネスで打てない) 〔未訳〕
 - [ ] **251.5** Type `ann` (an author), then look at the hint of the empty box in EN and JA → The author still filters; the hint names `p:` and `d:` and reads well in both languages 〔未訳〕
 
 ## 236. Conflicts a 3-way view cannot show (#36)
