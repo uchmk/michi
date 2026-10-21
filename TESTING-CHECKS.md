@@ -504,13 +504,13 @@
 - [~] **44.1** In the `2` view make an untracked file `x.log` in the worktree, select it in the unstaged list and press `g i` → No question; a toast says `Added /x.log to .gitignore`; the file leaves the list after the next read and `.gitignore` in the worktree's root has the line (made if there was none) 〔未訳〕
 - [~] **44.2** Press `g i` on a tracked (modified) file, on a staged file; then on an untracked file with `[` `]` and `*` in its name → The first two toast that only an untracked file can be ignored and change nothing; the brackets and star are escaped in the line (`/a\[1\]\*.log`) and git ignores only that file 〔未訳〕
 - [ ] **44.3** Press `g i` on a file whose line is already in `.gitignore` (an exact line, e.g. after a hand edit) → A toast says the line is in `.gitignore` already; the file is not changed; with a CRLF `.gitignore` the new line gets CRLF 〔未訳〕
-- [ ] **44.4** Open the help (`?`) in the `2` view → `g i` is listed: Add the untracked file to .gitignore (JA: 追っていないファイルを .gitignore に足す) 〔未訳〕
+- [~] **44.4** Open the help (`?`) in the `2` view → `g i` is listed: Add the untracked file to .gitignore (JA: 追っていないファイルを .gitignore に足す) 〔未訳〕
 
 ## 45. Changes as a tree of folders
 
 - [~] **45.1** In `2` over a worktree with changes in nested folders, press `t` (or click Tree in the top bar) → Both lists become folders (a lone chain such as `a/b/c/` is one row) with files under them, folders first; press `t` again for the flat list 〔未訳〕
 - [~] **45.2** Click a folder row → It folds (▸) and its files vanish from the list; click again to open it (▾). Staged and unstaged fold apart 〔未訳〕
-- [ ] **45.3** Click the `+` at the right of an unstaged folder; then the `−` of a staged one → Every file below it goes into the index, then every one (a rename's old path too) comes out; the count at the right matches 〔未訳〕
+- [~] **45.3** Click the `+` at the right of an unstaged folder; then the `−` of a staged one → Every file below it goes into the index, then every one (a rename's old path too) comes out; the count at the right matches 〔未訳〕
 - [ ] **45.4** With a folder folded, press `j` / `k` and the arrow keys → The selection walks the files in the order shown and skips the folded ones; a selection folded away moves to the nearest shown file 〔未訳〕
 - [ ] **45.5** Stage a folder while a Claude is writing in the worktree → The same question for a yes as for a file 〔未訳〕
 

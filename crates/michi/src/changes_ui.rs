@@ -623,8 +623,9 @@ fn list(ui: &Ui, app: &App, lr: Rect, live: bool, pointer: Option<Pos2>, act: &m
                 let count = p.text(pos2(btn.left() - 4.0, mid), Align2::RIGHT_CENTER, files.to_string(), FontId::proportional(11.5), c.dim);
                 let text = left_cut(ui, &format!("{name}/"), FontId::proportional(12.5), count.left() - 8.0 - (x + 14.0));
                 p.text(pos2(x + 14.0, mid), Align2::LEFT_CENTER, text, FontId::proportional(12.5), c.fg);
-                let bid = ui.interact(btn.intersect(lr), Id::new(("changes-dir-stage", side == Side::Staged, &path)), Sense::CLICK);
+                // The row first and the button after it: the one registered last is on top, and it is the button that must win.
                 let rid = ui.interact(rr.intersect(lr), Id::new(("changes-dir", side == Side::Staged, &path)), Sense::CLICK);
+                let bid = ui.interact(btn.intersect(lr), Id::new(("changes-dir-stage", side == Side::Staged, &path)), Sense::CLICK);
                 if live && (hot || bid.hovered()) {
                     ctx.set_cursor_icon(CursorIcon::PointingHand);
                 }
