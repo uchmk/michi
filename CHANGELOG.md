@@ -2,6 +2,12 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.106.5] - 2026-10-21
+
+### 変更
+
+- ito を v0.99.0 に上げた。reset（soft / mixed / hard）・着地の段・マージの revert と cherry-pick の親の選びを、ボタンではなく ito-confirm のカード（題・説明・戻し方・キー）で出す。おすすめ（reset は mixed）は緑。「やめる」だけがボタンのまま。
+
 ## [0.106.4] - 2026-10-21
 
 ### 修正

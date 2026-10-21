@@ -755,45 +755,67 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
         button_bg: c.border,
         button_text: c.fg,
     };
-    let mut buttons = Vec::new();
     let keys = b.keys();
-    // The keys are on the buttons; only the typed step, with no button for
-    // yes, has a line of its own.
-    let mut hint = Vec::new();
-    // The strongest step has no button to click: the name is typed.
-    let mut notes = b.notes.clone();
-    if b.typing() {
-        notes.push(format!("> {}_", b.typed));
-        hint.push(format!("Enter {}", app.tr("changes.yes")));
-    } else if b.parents == 0 {
-        buttons.push(format!("{}  Ctrl+Enter", app.tr("changes.yes")));
-    }
-    for n in 1..=u32::from(b.parents) {
-        let word = app.tr(b.parent_key(n)).replace("{}", &n.to_string());
-        buttons.push(format!("{word}  {n}"));
-    }
-    buttons.push(format!("{}  Esc", app.tr("changes.no")));
-    debug_assert_eq!(buttons.len(), keys.len(), "the buttons and their keys are drawn in one order");
-    // ito-confirm sits the last button at the right: No on the left, yes at the right.
-    buttons.reverse();
-    let last = buttons.len() - 1;
     let body: Vec<String> = std::iter::once(b.text.clone()).chain(b.plan.iter().cloned()).collect();
-    let q = ito_confirm::Question {
-        title: app.tr(match b.strength {
-            Strength::Easy => "band.title",
-            Strength::Loud => "band.title_loud",
-            Strength::Typed => "band.title_typed",
-        }),
-        rows: &b.rows,
-        body: &body,
-        notes: &notes,
-        buttons: &buttons,
-        hint: &hint.join(" · "),
-        focus: b.focus.map(|f| last - f),
-        // The yes button is the one on the right.
-        primary: (!b.typing() && b.parents == 0).then_some(last),
+    let title = app.tr(match b.strength {
+        Strength::Easy => "band.title",
+        Strength::Loud => "band.title_loud",
+        Strength::Typed => "band.title_typed",
+    });
+    let clicked = if b.parents > 0 {
+        // Three or more ways to go on: a card each, and only No as a button.
+        let cards: Vec<ito_confirm::Card> = (1..=u32::from(b.parents)).map(|n| card(app, b, n)).collect();
+        let land = matches!(b.then, crate::work::Then::Act(crate::act::Task::Land { .. }));
+        let buttons = vec![app.tr("changes.no").to_owned()];
+        let btn_keys = vec!["Esc".to_owned()];
+        let reset = matches!(b.then, crate::work::Then::Act(crate::act::Task::Reset { .. }));
+        let q = ito_confirm::Question {
+            title,
+            rows: if land { &[] } else { &b.rows },
+            body: &body,
+            notes: &b.notes,
+            cards: &cards,
+            buttons: &buttons,
+            keys: &btn_keys,
+            focus: b.focus,
+            // The mixed reset is git's own default.
+            recommended: reset.then_some(1),
+            recommended_label: app.tr("band.recommended"),
+            ..Default::default()
+        };
+        ito_confirm::show(ui.ctx(), &q, &style)
+    } else {
+        let mut buttons = Vec::new();
+        // The keys are on the buttons; only the typed step, with no button for
+        // yes, has a line of its own.
+        let mut hint = Vec::new();
+        // The strongest step has no button to click: the name is typed.
+        let mut notes = b.notes.clone();
+        if b.typing() {
+            notes.push(format!("> {}_", b.typed));
+            hint.push(format!("Enter {}", app.tr("changes.yes")));
+        } else {
+            buttons.push(format!("{}  Ctrl+Enter", app.tr("changes.yes")));
+        }
+        buttons.push(format!("{}  Esc", app.tr("changes.no")));
+        debug_assert_eq!(buttons.len(), keys.len(), "the buttons and their keys are drawn in one order");
+        // ito-confirm sits the last button at the right: No on the left, yes at the right.
+        buttons.reverse();
+        let last = buttons.len() - 1;
+        let q = ito_confirm::Question {
+            title,
+            rows: &b.rows,
+            body: &body,
+            notes: &notes,
+            buttons: &buttons,
+            hint: &hint.join(" · "),
+            focus: b.focus.map(|f| last - f),
+            // The yes button is the one on the right.
+            primary: (!b.typing()).then_some(last),
+            ..Default::default()
+        };
+        ito_confirm::show(ui.ctx(), &q, &style).map(|i| last - i)
     };
-    let clicked = ito_confirm::show(ui.ctx(), &q, &style).map(|i| last - i);
     if let (true, Some(i)) = (live, clicked) {
         if app.band.as_ref().is_some_and(|b| b.typing()) {
             // The only button left is No; `n` would be a letter of the name.
@@ -801,6 +823,37 @@ fn band(ui: &mut Ui, app: &mut App, live: bool) {
         } else {
             app.band_key(keys[i]);
         }
+    }
+}
+
+/// The card of the band's choice `n` (1-based): a reset's mode, a landing's
+/// last stage, or a merge's parent.
+fn card(app: &App, b: &crate::work::Band, n: u32) -> ito_confirm::Card {
+    let word = app.tr(b.parent_key(n));
+    let key = n.to_string();
+    match &b.then {
+        crate::work::Then::Act(crate::act::Task::Reset { .. }) => {
+            let (title, desc, en) = match n {
+                1 => ("band.card_soft", "band.card_soft_desc", "soft"),
+                2 => ("band.card_mixed", "band.card_mixed_desc", "mixed"),
+                _ => ("band.card_hard", "band.card_hard_desc", "hard"),
+            };
+            ito_confirm::Card {
+                title: app.tr(title).to_owned(),
+                en: en.to_owned(),
+                description: app.tr(desc).to_owned(),
+                undo: ito_confirm::Undo::Yes(app.tr("band.undo_backup").to_owned()),
+                key,
+                ..Default::default()
+            }
+        }
+        crate::work::Then::Act(crate::act::Task::Land { .. }) => ito_confirm::Card {
+            title: word.to_owned(),
+            description: b.rows.get(n as usize - 1).map(|r| r.1.clone()).unwrap_or_default(),
+            key,
+            ..Default::default()
+        },
+        _ => ito_confirm::Card { title: word.replace("{}", &key), key, ..Default::default() },
     }
 }
 
