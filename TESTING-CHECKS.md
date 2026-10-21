@@ -934,7 +934,7 @@
 - [ ] **258.2** Click `Run again` in the same panel → The same as `r` 〔未訳〕
 - [ ] **258.3** Fix the hook so it passes (or remove it), then press `r` over the panel → The commit goes through, the panel closes and the message box is cleared 〔未訳〕
 - [ ] **258.4** Make a write other than a commit fail with several lines → The panel has `Close` only, no `Run again`; `r` does nothing 〔未訳〕
-- [ ] **258.5** Switch EN and JA → `Run again` and `もう一度回す` → [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
+- [ ] **258.5** Switch EN and JA → `Run again` and `もう一度回す` → [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
 
 ## 248. Diffs ignoring whitespace (`w`)
 
@@ -1041,15 +1041,15 @@
 
 ## 257. Pre-merge checklist (`g`)
 
-- [ ] **257.1** In the `3` view select a worktree on a feature branch and press `g` → A toast says it is checking, then a list opens: `Before merging <branch> into <trunk>` with six rows, each marked OK, !! or ?? and a reason 〔未訳〕
-- [ ] **257.2** Press `g` on the trunk's own row, and on a detached worktree → No list; a toast says why (the trunk itself, or on no branch) 〔未訳〕
-- [ ] **257.3** Edit a file in the worktree and press `g` again → The Working tree row is !! and counts the changed files 〔未訳〕
-- [ ] **257.4** Make the branch clash with the trunk (same lines changed) and press `g` → The clash row is !! and names the files; a clean branch says the trunk merges in without a conflict 〔未訳〕
-- [ ] **257.5** Press `g` on a branch with an unpushed commit, then on one with no upstream → The Pushed row is !! with the count, then with `no upstream` 〔未訳〕
-- [ ] **257.6** Land the branch with `l` (verify runs) or run a failing verify, then press `g` on the same commit → The verify row says passed (OK) or failed with the exit code (!!); a new commit goes back to `no result recorded` (??) 〔未訳〕
+- [ ] **257.1** In the `3` view select a worktree on a feature branch and press `g` → A toast says it is checking, then a list opens: `Before merging <branch> into <trunk>` with six rows, each marked OK, !! or ?? and a reason → [ ] (判断不能: 3 の wt2 行で g を押しても、一覧も toast も写らなかった (キーが変わったか toast が消えた)) 〔未訳〕
+- [ ] **257.2** Press `g` on the trunk's own row, and on a detached worktree → No list; a toast says why (the trunk itself, or on no branch) → [ ] (飛ばし: 257.1 が前提) 〔未訳〕
+- [ ] **257.3** Edit a file in the worktree and press `g` again → The Working tree row is !! and counts the changed files → [ ] (飛ばし: 257.1 が前提) 〔未訳〕
+- [ ] **257.4** Make the branch clash with the trunk (same lines changed) and press `g` → The clash row is !! and names the files; a clean branch says the trunk merges in without a conflict → [ ] (飛ばし: 257.1 が前提) 〔未訳〕
+- [ ] **257.5** Press `g` on a branch with an unpushed commit, then on one with no upstream → The Pushed row is !! with the count, then with `no upstream` → [ ] (飛ばし: 257.1 が前提) 〔未訳〕
+- [ ] **257.6** Land the branch with `l` (verify runs) or run a failing verify, then press `g` on the same commit → The verify row says passed (OK) or failed with the exit code (!!); a new commit goes back to `no result recorded` (??) → [ ] (飛ばし: 257.1 が前提) 〔未訳〕
 - [ ] **257.7** With a GitHub remote and gh signed in, push the branch and press `g` → The GitHub checks row counts passed, failed or pending; with the network off it says it could not be read (??) and the list still opens → [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) 〔未訳〕
-- [ ] **257.8** Press any key, then Esc; click outside the list → Other keys do nothing; Esc and an outside click close it 〔未訳〕
-- [ ] **257.9** Check the keybar, `?` and the palette in both languages → `g` is listed as `Check before merging` / `マージ前の確認` 〔未訳〕
+- [ ] **257.8** Press any key, then Esc; click outside the list → Other keys do nothing; Esc and an outside click close it → [ ] (飛ばし: 257.1 が前提) 〔未訳〕
+- [ ] **257.9** Check the keybar, `?` and the palette in both languages → `g` is listed as `Check before merging` / `マージ前の確認` → [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
 
 ## 241. Sign-in help (#41)
 
@@ -1080,19 +1080,19 @@
 
 ## 260. Image diff (#48)
 
-- [ ] **260.1** Commit a changed `.png` (a different picture, same name); in the graph select the commit → The file shows a "Before" and an "After" picture side by side, with the size in pixels and the bytes of each (`1.5 KB`), not "A binary file" 〔未訳〕
-- [ ] **260.2** Press `O` three times with the pointer over the pictures → The mode name at the right of the line changes: swipe (the new picture shows right of a blue divider that follows the pointer), onion skin (the new one fades in as the pointer moves right), difference (red where the pixels differ, with a count of differing pixels, or "Identical") 〔未訳〕
-- [ ] **260.3** Press `O` once more → Back to side by side; the mode stays when you select another commit 〔未訳〕
-- [ ] **260.4** Select a commit that adds a picture, then one that deletes a picture → Added: "Before: none" and only the after; deleted: only the before; the modes other than side by side fall back to it 〔未訳〕
-- [ ] **260.5** Select a commit that renames a picture and changes it → The before is the old name's picture 〔未訳〕
-- [ ] **260.6** Try `.jpg`, `.gif`, `.webp`, `.bmp` and `.ico` changes → Each shows (a gif shows its first frame); a transparent picture sits on a checkerboard 〔未訳〕
-- [ ] **260.7** Commit a picture over 16 MB, or one with more than 16 million pixels → That side says it is too big (with its size) or has too many pixels; nothing freezes and memory stays low 〔未訳〕
-- [ ] **260.8** Commit a `.png` that is not a picture (a text file renamed) → That side says it cannot be decoded; the rest of the detail is fine 〔未訳〕
-- [ ] **260.9** In the `2` view, replace a tracked picture on disk with another → The unstaged entry shows the index picture against the worktree one; `Space` to stage it and the staged entry shows HEAD against the index 〔未訳〕
-- [ ] **260.10** In the `2` view, add a new untracked picture, then delete a tracked one → New: only the after; deleted: only the before 〔未訳〕
-- [ ] **260.11** While in the `2` view with a picture shown, overwrite it again on disk → The picture updates without the view flickering back to "Reading the pictures..." 〔未訳〕
-- [ ] **260.12** Scroll a commit that changes many pictures → The scroll stays smooth; pictures load as they come into sight, the layout shifts at most a little 〔未訳〕
-- [ ] **260.13** Open `?` in the graph and the `2` view; switch EN and JA → `O` is listed with its words in both languages; the line over the pictures reads well in both 〔未訳〕
+- [ ] **260.1** Commit a changed `.png` (a different picture, same name); in the graph select the commit → The file shows a "Before" and an "After" picture side by side, with the size in pixels and the bytes of each (`1.5 KB`), not "A binary file" → [ ] (飛ばし: 画像の差分の確認で、png の用意と 2 つの画像の見た目の判断が要る) 〔未訳〕
+- [ ] **260.2** Press `O` three times with the pointer over the pictures → The mode name at the right of the line changes: swipe (the new picture shows right of a blue divider that follows the pointer), onion skin (the new one fades in as the pointer moves right), difference (red where the pixels differ, with a count of differing pixels, or "Identical") → [ ] (飛ばし: 260.1 が前提) 〔未訳〕
+- [ ] **260.3** Press `O` once more → Back to side by side; the mode stays when you select another commit → [ ] (飛ばし: 260.1 が前提) 〔未訳〕
+- [ ] **260.4** Select a commit that adds a picture, then one that deletes a picture → Added: "Before: none" and only the after; deleted: only the before; the modes other than side by side fall back to it → [ ] (飛ばし: 260.1 が前提) 〔未訳〕
+- [ ] **260.5** Select a commit that renames a picture and changes it → The before is the old name's picture → [ ] (飛ばし: 260.1 が前提) 〔未訳〕
+- [ ] **260.6** Try `.jpg`, `.gif`, `.webp`, `.bmp` and `.ico` changes → Each shows (a gif shows its first frame); a transparent picture sits on a checkerboard → [ ] (飛ばし: 画像形式ごとの実物が要る) 〔未訳〕
+- [ ] **260.7** Commit a picture over 16 MB, or one with more than 16 million pixels → That side says it is too big (with its size) or has too many pixels; nothing freezes and memory stays low → [ ] (飛ばし: 16 MB の画像が要る) 〔未訳〕
+- [ ] **260.8** Commit a `.png` that is not a picture (a text file renamed) → That side says it cannot be decoded; the rest of the detail is fine → [ ] (飛ばし: 260.1 が前提) 〔未訳〕
+- [ ] **260.9** In the `2` view, replace a tracked picture on disk with another → The unstaged entry shows the index picture against the worktree one; `Space` to stage it and the staged entry shows HEAD against the index → [ ] (飛ばし: 260.1 が前提) 〔未訳〕
+- [ ] **260.10** In the `2` view, add a new untracked picture, then delete a tracked one → New: only the after; deleted: only the before → [ ] (飛ばし: 260.1 が前提) 〔未訳〕
+- [ ] **260.11** While in the `2` view with a picture shown, overwrite it again on disk → The picture updates without the view flickering back to "Reading the pictures..." → [ ] (飛ばし: 画像を上書きして更新を見る必要がある) 〔未訳〕
+- [ ] **260.12** Scroll a commit that changes many pictures → The scroll stays smooth; pictures load as they come into sight, the layout shifts at most a little → [ ] (飛ばし: wheel がハーネスに無い) 〔未訳〕
+- [ ] **260.13** Open `?` in the graph and the `2` view; switch EN and JA → `O` is listed with its words in both languages; the line over the pictures reads well in both → [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
 
 ## 261. Settings backup (Advanced page)
 
@@ -1144,13 +1144,13 @@
 
 ## 116. First-run guide
 
-- [ ] **116.1** Run michi with an empty home (no `user.name`, no `user.email`; e.g. `GIT_CONFIG_GLOBAL` pointing at an empty file) → A "Getting ready" panel opens at the top naming the missing name and email, with the `git config --global` commands to copy 〔未訳〕
-- [ ] **116.2** Click a command in the panel → It is copied (a toast says so) and the panel stays 〔未訳〕
-- [ ] **116.3** With the panel open, move around (`j`, `k`, `3`) → Keys still work under the panel; it does not take them 〔未訳〕
-- [ ] **116.4** Press `Esc`, then open the command palette and pick "Getting ready" → Esc closes the panel; the palette entry brings it back 〔未訳〕
-- [ ] **116.5** Click outside the panel → It closes 〔未訳〕
-- [ ] **116.6** Start michi with git off the PATH → The panel says git is not installed and offers the install command for the OS (winget / brew / apt) and the download page 〔未訳〕
-- [ ] **116.7** Start michi with git 2.38 or newer and a name and email set → No panel opens and the palette has no "Getting ready" entry 〔未訳〕
+- [ ] **116.1** Run michi with an empty home (no `user.name`, no `user.email`; e.g. `GIT_CONFIG_GLOBAL` pointing at an empty file) → A "Getting ready" panel opens at the top naming the missing name and email, with the `git config --global` commands to copy → [ ] (判断不能: GIT_CONFIG_GLOBAL を空のファイルにして開いたが「Getting ready」の panel は写らなかった (環境の渡し方が効いたか未確認)) 〔未訳〕
+- [ ] **116.2** Click a command in the panel → It is copied (a toast says so) and the panel stays → [ ] (飛ばし: 116.1 が前提) 〔未訳〕
+- [ ] **116.3** With the panel open, move around (`j`, `k`, `3`) → Keys still work under the panel; it does not take them → [ ] (飛ばし: 116.1 が前提) 〔未訳〕
+- [ ] **116.4** Press `Esc`, then open the command palette and pick "Getting ready" → Esc closes the panel; the palette entry brings it back → [ ] (飛ばし: 116.1 が前提) 〔未訳〕
+- [ ] **116.5** Click outside the panel → It closes → [ ] (飛ばし: 116.1 が前提) 〔未訳〕
+- [ ] **116.6** Start michi with git off the PATH → The panel says git is not installed and offers the install command for the OS (winget / brew / apt) and the download page → [ ] (飛ばし: git を PATH から外すと drive.ps1 も動かない) 〔未訳〕
+- [ ] **116.7** Start michi with git 2.38 or newer and a name and email set → No panel opens and the palette has no "Getting ready" entry → [ ] (見た: 名前とメールのある普通の環境では panel は出ない (palette の項目は未確認)) 〔未訳〕
 - [ ] **116.8** Read the panel's last lines → It points to `K` for the sign-in check; `K` still opens the sign-in help 〔未訳〕
 - [ ] **116.9** Switch EN and JA → The panel reads well in both 〔未訳〕
 
