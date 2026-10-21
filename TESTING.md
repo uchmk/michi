@@ -1434,12 +1434,12 @@ michi has no editor of its own; it opens an external one at a line and an extern
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 118.1 | In the graph (`1`), look at the header | A "Legend" button sits left of "Fold PRs"; it hides on a very narrow window instead of overlapping | [ ] |
-| 118.2 | Click it | A panel lists lane colours, commit, merge, uncommitted, conflict, faded or dashed ends, branch, worktree, remote, tag, "+ origin", both warning pills and the new-commit dot | [ ] |
-| 118.3 | Compare each drawing with the real one in the graph | Each looks the same as in the graph (dot, ring, dashes, pill styles and colours) | [ ] |
-| 118.4 | Press any key, Esc, or click outside | It closes | [ ] |
-| 118.5 | Palette: "Show the legend of the graph" | The graph view opens with the legend on top | [ ] |
-| 118.6 | Switch EN and JA, and the themes | Words read well in both; the drawings stay readable on light and dark themes | [ ] |
+| 118.1 | In the graph (`1`), look at the header | A "Legend" button sits left of "Fold PRs"; it hides on a very narrow window instead of overlapping | [ ] (見た: 凡例ボタンが「PR を畳む」の左にある (狭い窓は未確認)) |
+| 118.2 | Click it | A panel lists lane colours, commit, merge, uncommitted, conflict, faded or dashed ends, branch, worktree, remote, tag, "+ origin", both warning pills and the new-commit dot | [ ] (見た: クリックで凡例の panel が開き、線の色・コミット・マージ・未コミット・衝突・薄れ・ブランチ・worktree・リモート・タグ・+origin・件名の点が並ぶ) |
+| 118.3 | Compare each drawing with the real one in the graph | Each looks the same as in the graph (dot, ring, dashes, pill styles and colours) | [ ] (判断不能: 描き方が本物と同じかは画面の画像だけでは比べきれない) |
+| 118.4 | Press any key, Esc, or click outside | It closes | [ ] (見た: Esc で閉じた (他のキー・外のクリックは未確認)) |
+| 118.5 | Palette: "Show the legend of the graph" | The graph view opens with the legend on top | [ ] (飛ばし: palette への入力がハーネスで届かない) |
+| 118.6 | Switch EN and JA, and the themes | Words read well in both; the drawings stay readable on light and dark themes | [ ] (飛ばし: EN/JA とテーマの切り替えがハーネスに無い) |
 
 ## 262. Everything by mouse (#123)
 
@@ -1498,19 +1498,19 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 106.5 | In the graph, select a commit and press `m`, then `C` | Both bands carry a forecast line; the cherry-pick one says a copy is added and the original stays | [ ] |
 | 106.6 | Switch branch from the palette with uncommitted files | A band says the files change from A to B and that the uncommitted files are carried over; `y` switches, Esc leaves things as they are | [ ] |
 | 106.7 | Switch with no uncommitted files and no Claude | No band, as before | [ ] |
-| 106.8 | Do 106.1 to 106.6 in EN and in JA | The sentences read well in both and fit the band without being cut | [ ] |
+| 106.8 | Do 106.1 to 106.6 in EN and in JA | The sentences read well in both and fit the band without being cut | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) |
 
 ## 107. Where you are now (#107)
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 107.1 | Open a repository on a branch | A quiet line under the title bar reads "You are on X." with the uncommitted and remote state, and the key to press next | [ ] |
-| 107.2 | Edit a file, then watch the line | It gains "N files have uncommitted changes. Press 2 to commit them." within a couple of seconds | [ ] |
-| 107.3 | Commit, then push | The line moves to "not pushed ... Press P", then to "It matches origin/X" | [ ] |
-| 107.4 | Switch branches; start a merge that conflicts | The line follows the branch; during the merge it says so and points to `4` | [ ] |
+| 107.1 | Open a repository on a branch | A quiet line under the title bar reads "You are on X." with the uncommitted and remote state, and the key to press next | [ ] (見た: タイトルバーの下に「いまは master にいます。コミットしていない変更はありません。このブランチはまだリモートにありません。P で push できます。」) |
+| 107.2 | Edit a file, then watch the line | It gains "N files have uncommitted changes. Press 2 to commit them." within a couple of seconds | [ ] (飛ばし: 作業中に変更を足して数秒後の画面を撮る手順がハーネスに無い) |
+| 107.3 | Commit, then push | The line moves to "not pushed ... Press P", then to "It matches origin/X" | [ ] (飛ばし: コミットと push の連続操作が要る) |
+| 107.4 | Switch branches; start a merge that conflicts | The line follows the branch; during the merge it says so and points to `4` | [ ] (飛ばし: 衝突するマージの用意が要る) |
 | 107.5 | Narrow the window | The line stays on one row and ends with an ellipsis; resting the pointer on it shows the whole sentence | [ ] (skipped: needs a narrower window, which the harness lacks) |
-| 107.6 | Check a detached HEAD | The strip is shown as before and the line is not doubled up under it | [ ] |
-| 107.7 | Open settings; switch EN and JA | The line is hidden in settings; in both languages it reads well and the colours follow the theme | [ ] |
+| 107.6 | Check a detached HEAD | The strip is shown as before and the line is not doubled up under it | [ ] (飛ばし: detached HEAD の用意が要る) |
+| 107.7 | Open settings; switch EN and JA | The line is hidden in settings; in both languages it reads well and the colours follow the theme | [ ] (飛ばし: EN/JA とテーマの切り替えがハーネスに無い) |
 
 ## 113. Calm save (#113)
 
@@ -1518,9 +1518,9 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | --- | --- | --- |
 | 113.1 | In a worktree with a staged change, an unstaged change and a new file, press "Save state" in the keybar (or "Calm down" in the palette) | A toast names `michi/backup/<time>` and a `git restore --source=… --worktree -- .` line; the status, the index and HEAD are exactly as before | [ ] |
 | 113.2 | Run the `git restore` line from the toast after editing a file | The file is back as it was when saved | [ ] |
-| 113.3 | Press it in a clean worktree | A toast says there are no changes and HEAD is kept | [ ] |
+| 113.3 | Press it in a clean worktree | A toast says there are no changes and HEAD is kept | [ ] (判断不能: 「状態を保存」を押したが toast が撮れなかった (3 秒で消える)) |
 | 113.4 | Press it in the middle of a merge with a clash | It saves, and the merge is still under way with the same places to solve | [ ] |
-| 113.5 | Hover the button; switch EN and JA | The tooltip says nothing is changed; both languages read well and the button fits the keybar at a narrow window | [ ] |
+| 113.5 | Hover the button; switch EN and JA | The tooltip says nothing is changed; both languages read well and the button fits the keybar at a narrow window | [ ] (飛ばし: hover の tooltip と EN/JA の切り替えがハーネスに無い) |
 
 ## 119. Next thing to do (#119)
 
@@ -1529,7 +1529,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 119.1 | Edit a file | A "Next: commit" button appears in the keybar; pressing it goes to the `2` view | [ ] |
 | 119.2 | Commit it, with an upstream | "Next: push" appears; pressing it pushes | [ ] |
 | 119.3 | Make the upstream have a commit you lack | "Next: pull" appears (before push); pressing it pulls | [ ] |
-| 119.4 | On a new branch with commits and no upstream | "Next: push the branch" appears; the trunk never shows it | [ ] |
+| 119.4 | On a new branch with commits and no upstream | "Next: push the branch" appears; the trunk never shows it | [ ] (飛ばし: 新しいブランチとコミットの用意が要る) |
 | 119.5 | Start a merge with a clash, then solve all places | "Next: solve the clashes" opens the `4` view; after solving it reads "Next: finish the merge" | [ ] |
 | 119.6 | Clean and in step | No suggestion button is shown; the palette has no "next step" entry | [ ] |
 
