@@ -294,7 +294,7 @@ and `git update-ref refs/michi/backup/<time>` before it deletes.
 | 16.3 | Type a new name and Enter; `b` again, another new name and Shift+Enter | The last row reads `<name>  make it at <commit>`; Enter: `Made branch <name> at <commit>`, the graph shows its chip and the worktree stays on its branch; Shift+Enter: `Made branch <name>; <worktree> is on it` and `git branch --show-current` there gives it |
 | 16.4 | Pick a branch no worktree has and Enter; type the name of a remote branch with no local one (`origin/x`) and Enter; type it without `origin/` | `<worktree> is on <name> now`; `Made <name> following origin/<name>; <worktree> is on it` and `git status -sb` shows `<name>...origin/<name>`; the name without `origin/` lists `origin/<name>` and no `make it` row |
 | 16.5 | Pick the branch this worktree is on; pick one checked out in another worktree; in a worktree in the middle of a merge (`git merge` that clashes) pick a branch and Enter, then type a new name and Enter | `<worktree> is on <name> already`; `<name> is checked out in <worktree>: a branch is in one worktree at a time`; `Branches can be made. Switching is stopped in <worktree>: it is in the middle of a merge.` for 8 seconds; the palette stays open each time; the new name is made; `git merge --abort` after |
-| 16.6 | Select another worktree's uncommitted row in `1` and press `b`, pick a branch and Enter; select a commit and press `b` | With the uncommitted row the palette reads `<that worktree> · at <its HEAD>` and switches that worktree; with a commit, the window's own worktree and that commit |
+| 16.6 | Select another worktree's uncommitted row in `1` and press `b`, pick a branch and Enter; select a commit and press `b` | With the uncommitted row the palette reads `<that worktree> · at <its HEAD>` and switches that worktree; with a commit, the window's own worktree and that commit (looked at 2026-10-22 in R:/lab/m1: on wt3 uncommitted row b reads m1-wt3 from 5d5f444 (its own HEAD, branch list marks wt3 as here); on a commit row it reads m1 from 5eba0f4; Enter was not pressed) |
 | 16.7 | Start a Claude in a worktree from tsumugi; select its uncommitted row, `b`, pick a branch and Enter; Esc; again and `y` | The band `A Claude is working in <worktree>. Switch it to <name> anyway?`; Esc switches nothing; `y` switches (skipped: needs a real Claude or tsumugi session) |
 | 16.8 | Select a branch no worktree has, whose commits no other branch or tag has, and press Delete; Esc; again and `y`; delete a branch merged into main the same way | A dialog (`Go ahead Ctrl+Enter` / `Not now Esc`, `y` and `n` too) `Delete branch <name>? When no other branch or tag has its commits, they are kept under refs/michi/backup/ first.`; Esc deletes nothing; `y`: `Deleted branch <name>; its commits are kept in michi/backup/<time>` and `git log refs/michi/backup/<time>` shows them; the merged one: `Deleted branch <name>` and no new backup |
 | 16.9 | Press Delete on the branch checked out here, on one checked out in another worktree, on a remote branch | `<name> is checked out in <worktree>: switch it away first`; `Remote branches are not deleted here: git push origin --delete <name> does it` for 8 seconds; nothing is deleted |
@@ -304,7 +304,7 @@ and `git update-ref refs/michi/backup/<time>` before it deletes.
 | 16.13 | Select a commit on the current branch and press `t`; Esc; `t` and `y` | The band `Revert <id> “<subject>” with a new commit on <branch> in <worktree>?` (`A Claude is working there.` added when one is); Esc does nothing; `y`: `Reverted <id> on <worktree>: <new>` and the graph shows `Revert "<subject>"` on top |
 | 16.14 | Select a merge commit and press `t`; press `1` | The band `<id> “<subject>” is a merge. Revert it with a new commit on <branch> in <worktree>, keeping which parent's side?` with `keep parent 1 1`, `keep parent 2 2` and `Not now Esc`; `1` reverts it keeping the first parent's side: `Reverted <id> on <worktree>: <new>` |
 | 16.15 | Revert a commit whose lines a later commit changed; revert a commit already reverted; in a worktree in the middle of a merge press `t` | `Reverting <id> clashed in <files>, so it was called off: git revert <id> in a terminal lets you resolve it` and `git status` is clean; `Nothing to revert: <id> is undone already`; `<worktree> is in the middle of a merge: finish it first` |
-| 16.16 | Look at the tool band of `1`; press `?`; narrow the window to its smallest with the palette open; switch to the light theme | The tool band reads `Branch b` (`ブランチ b` in Japanese); help lists `b Make or switch a branch`, `T Tag the commit`, `t Revert the commit (asks first)`; the palette narrows with the window, long names end in `…` and the commits stay at the right; readable in both themes |
+| 16.16 | Look at the tool band of `1`; press `?`; narrow the window to its smallest with the palette open; switch to the light theme | The tool band reads `Branch b` (`ブランチ b` in Japanese); help lists `b Make or switch a branch`, `T Tag the commit`, `t Revert the commit (asks first)`; the palette narrows with the window, long names end in `…` and the commits stay at the right; readable in both themes (skipped 2026-10-22: needs the narrow window and the light theme, which the harness cannot set) |
 
 ## 17. Stash
 
@@ -323,7 +323,7 @@ and `git update-ref refs/michi/backup/<time>` before it drops one.
 | 17.7 | In a worktree in the middle of a merge, `s` and Enter on the first row, then on a stash; with a Claude working in the worktree (from tsumugi), `s` and Enter; Esc; again and `y`; the same on a stash | `Stashes are stopped in <worktree>: it is in the middle of a merge.` for 8 seconds and the palette stays; with the Claude the band `A Claude is working in <worktree>. Put its changes away anyway?` (`Put the stash back there anyway?` on a stash); Esc does nothing; `y` does it (skipped: needs a real Claude or tsumugi session) |
 | 17.8 | Select another worktree's uncommitted row in `1` and press `s`, Enter; with no changes anywhere press `s` and Enter | The palette reads `in <that worktree>` and puts that worktree's changes away; with none: `<worktree> has no changes to put away` |
 | 17.9 | Click a stash in the side column; Esc; click it again and press `j` | The detail shows the stash as in 17.3 and its row is lit in blue; Esc brings back the selected commit and the row goes dark; `j` does too |
-| 17.10 | Press `?`; narrow the window to its smallest with the palette open; switch to the light theme | Help lists `s Stash`; the palette narrows with the window, long messages end in `…` and the hashes stay at the right; readable in both themes |
+| 17.10 | Press `?`; narrow the window to its smallest with the palette open; switch to the light theme | Help lists `s Stash`; the palette narrows with the window, long messages end in `…` and the hashes stay at the right; readable in both themes (skipped 2026-10-22: needs the narrow window and the light theme, which the harness cannot set) |
 
 ## 18. Discard
 
@@ -338,7 +338,7 @@ or `git apply --reverse` with the picked lines; an untracked file is kept in a c
 | 18.3 | `h`, on `u/new.txt` press `d`, `y` | The band `u/new.txt を消しますか？Git が追っていないファイルです。…`; `y`: `u/new.txt を消しました。…`, the file and the empty folder `u` are gone and `git show refs/michi/backup/<time>:u/new.txt` has it |
 | 18.4 | Stage a file (Space) and press `d` on it in Staged | `ステージした変更は捨てません。先に外してください（Space）` and nothing changes |
 | 18.5 | With a Claude working in the worktree (from tsumugi), `d` on a file | The band carries both the question for the file and `この worktree では Claude が書いている途中です。横から書き込みますか？`; Esc does nothing; `y` throws the changes away (skipped: needs a real Claude or tsumugi session) |
-| 18.6 | Press `?`; narrow the window to its smallest with the band up; switch to the light theme | Help lists `d 変更を捨てる（先に確かめる）`; the band's text wraps or ends in `…` with `y` and `Esc` still visible; readable in both themes |
+| 18.6 | Press `?`; narrow the window to its smallest with the band up; switch to the light theme | Help lists `d 変更を捨てる（先に確かめる）`; the band's text wraps or ends in `…` with `y` and `Esc` still visible; readable in both themes (skipped 2026-10-22: needs the narrow window and the light theme, which the harness cannot set) |
 
 ## 19. Clean up
 
@@ -358,7 +358,7 @@ michi lists with `git for-each-ref --merged` and the upstream's `[gone]`; for ea
 | 19.6 | Open a tsumugi tab in a merged branch's worktree; press `g` then `c` | That worktree's row is grey with `a tsumugi tab is open there`; closing the tab and pressing `g c` again lists it with a box (skipped: needs a real Claude or tsumugi session) |
 | 19.7 | Commit to a ticked branch from a terminal while its dialog is up, then `y` | It stays: `… Stayed: <branch> (it moved after it was listed)`; the others go |
 | 19.8 | With nothing left to clean up press `g` then `c` | The toast `Nothing to clean up: no branch is merged into main or gone from its remote, and no worktree's folder is gone`; no list opens |
-| 19.9 | Press `?` in `3`; narrow the window to its smallest with the list open; switch to the light theme | Help lists `g c Clean up`; long rows end in `…` with the boxes and hashes still visible; readable in both themes |
+| 19.9 | Press `?` in `3`; narrow the window to its smallest with the list open; switch to the light theme | Help lists `g c Clean up`; long rows end in `…` with the boxes and hashes still visible; readable in both themes (skipped 2026-10-22: needs the narrow window and the light theme, which the harness cannot set) |
 
 ## 20. The command line and `michi.com` (Windows)
 
@@ -457,7 +457,7 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 27.1 | Open `b`, `T`, `s` and the remote choice of a push; type, move with the arrows and `Ctrl+N` / `Ctrl+P`, click a row, press Esc, click outside | The same box as before: the matched letters lit, the make / save rows in the accent colour, the `for <worktree> at <commit>` line above and the keys below; a click on a row is Enter on it; Esc and a click outside close it | [~] |
+| 27.1 | Open `b`, `T`, `s` and the remote choice of a push; type, move with the arrows and `Ctrl+N` / `Ctrl+P`, click a row, press Esc, click outside | The same box as before: the matched letters lit, the make / save rows in the accent colour, the `for <worktree> at <commit>` line above and the keys below; a click on a row is Enter on it; Esc and a click outside close it | [~] (partly seen 2026-10-22: b box with fe typed shows the matched letters lit, feat first, a make row for the commit and the key line below; arrows, Ctrl+N, Ctrl+P and clicks were not told apart) |
 | 27.2 | In `b`: `Shift+Enter`, `Delete`, `F2` (type a name, Enter; Esc cancels), `Ctrl+U`, `Ctrl+R` on a row | Each does what it did in v0.48.0; during a rename only the box shows | [ ] (partly seen 2026-10-22: F2 shows only the rename box (`b の新しい名前: zzb`) and Esc cancels; Shift+Enter, Delete, Ctrl+U, Ctrl+R not tried here) |
 
 ## 28. The repository screen
@@ -503,8 +503,8 @@ files under `refs/michi/backup/<time>` first.
 | --- | --- | --- |
 | 32.1 | In the `2` view pick a file; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 32.2 | Double-click a word, then triple-click a line; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
-| 32.3 | Click a file row, a worktree chip, the amend switch and Commit | Each still does what it did; an empty click in the diff lets the selection go | | [ ] |
-| 32.4 | Select a diff line and pick another file or switch the worktree | The selection is gone; the commit view's selection is not drawn here | | [ ] |
+| 32.3 | Click a file row, a worktree chip, the amend switch and Commit | Each still does what it did; an empty click in the diff lets the selection go | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
+| 32.4 | Select a diff line and pick another file or switch the worktree | The selection is gone; the commit view's selection is not drawn here | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
 
 ## 33. 衝突の画面の文字の選択とコピー（ito-select、`4`）
 
@@ -513,9 +513,9 @@ files under `refs/michi/backup/<time>` first.
 | 33.1 | Open a conflict (`4`); drag the mouse over some lines of the ours and theirs columns, and the result | The text under the drag is lit in the selection colour; letting go copies it (paste it in a terminal); line numbers are not picked up | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 33.2 | Double-click a word, then triple-click a line in a side, in the context lines and in the result; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 33.3 | In a rebase, drag over the ours / theirs commit lines of the intent | The subject and author are picked up | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
-| 33.4 | Click a place, a side's pick button, `base` and the buttons of the result; click an empty place | Each click still does what it did (select the place, choose a side, show the base); an empty click lets the selection go | | [ ] |
+| 33.4 | Click a place, a side's pick button, `base` and the buttons of the result; click an empty place | Each click still does what it did (select the place, choose a side, show the base); an empty click lets the selection go | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
 | 33.5 | Start writing a result by hand; drag and double-click inside the text box | The text box selects its own text as before; nothing outside it is lit | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
-| 33.6 | Select some lines, then scroll the places or solve a place | The selection is gone (no wrong text stays lit) | | [ ] |
+| 33.6 | Select some lines, then scroll the places or solve a place | The selection is gone (no wrong text stays lit) | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
 
 ## 34. Selecting text in the review (ito-select)
 
@@ -523,7 +523,7 @@ files under `refs/michi/backup/<time>` first.
 | --- | --- | --- |
 | 34.1 | Press `d` over a worktree; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal); no comment opens | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 34.2 | Double-click a word in the diff, triple-click a line, press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
-| 34.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] |
+| 34.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
 | 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] |
 | 34.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] |
 
@@ -548,7 +548,7 @@ files under `refs/michi/backup/<time>` first.
 | 36.1 | Change a file (say `crates/michi/src/app.rs`) in one worktree and leave it uncommitted; press `N` and type `fix app.rs` in the instruction | A line `⚠ Heads up: <branch> is changing crates/michi/src/app.rs …` shows under the instruction as you type; nothing else in the form is blocked | | [ ] |
 | 36.2 | Type a folder instead (`tidy crates/michi/src/`) | The same worktree is named with the files under that folder (the first three, then `+N`) | | [ ] |
 | 36.3 | Type an instruction with no file or folder name, or names no worktree is changing | No warning shows | | [ ] |
-| 36.4 | With the warning showing, press Ctrl+Enter | The work starts as usual (the warning does not stop it) | | [ ] |
+| 36.4 | With the warning showing, press Ctrl+Enter | The work starts as usual (the warning does not stop it) | | [ ] (skipped 2026-10-22: needs the warning band of a started task; not set up) |
 | 36.5 | Two worktrees change the same file | Both are named in the warning | | [ ] |
 
 ## 37. Open a worktree's folder in a terminal, editor or file manager (#75)
