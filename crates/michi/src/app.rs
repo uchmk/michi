@@ -224,6 +224,8 @@ pub const REVIEW_KEYS: [(&str, &str); 13] = [
 
 /// The keys of the question band (`y` / `n` / `Esc`), over any view.
 pub const BAND_KEYS: [(&str, &str); 4] = [("y", "key.yes"), ("n", "key.no"), ("Tab", "key.move"), ("Esc", "key.back")];
+/// The keys of a question band that offers cards (a reset's mode, a landing's stage): no `y`.
+pub const CHOICE_KEYS: [(&str, &str); 4] = [("1-9", "key.pick"), ("n", "key.no"), ("Tab", "key.move"), ("Esc", "key.back")];
 /// The keys of the clean-up list (`c` over the worktree table).
 pub const TIDY_KEYS: [(&str, &str); 5] =
     [("j k", "key.move"), ("Space", "key.pick"), ("a", "key.pick_all"), ("Enter", "key.run"), ("Esc", "key.back")];
@@ -1532,8 +1534,8 @@ impl App {
     /// (the view, or the screen over it). The order is the one `feed` takes
     /// the screens in, so the keybar and `?` name the keys that really work.
     pub fn keys_of(&self) -> (&'static [(&'static str, &'static str)], &'static str) {
-        if self.band.is_some() {
-            (&BAND_KEYS, "key.asking")
+        if let Some(b) = &self.band {
+            (if b.parents > 0 { &CHOICE_KEYS } else { &BAND_KEYS }, "key.asking")
         } else if self.tidy.is_some() {
             (&TIDY_KEYS, "key.tidy")
         } else if self.ready.is_some() {
@@ -2633,6 +2635,7 @@ pub(crate) mod tests {
         v.extend([
             ("key.branch_diff", &REVIEW_KEYS[..]),
             ("key.asking", &BAND_KEYS[..]),
+            ("key.asking", &CHOICE_KEYS[..]),
             ("key.tidy", &TIDY_KEYS[..]),
             ("key.ready", &READY_KEYS[..]),
             ("key.auth", &AUTH_KEYS[..]),
@@ -2742,6 +2745,11 @@ pub(crate) mod tests {
         a.reflog = None;
         a.band = Some(Band::new("ask".into(), crate::work::Then::Act(crate::act::Task::Rerere { wt: PathBuf::from("C:/r"), on: false })));
         assert_eq!(a.keys(), &BAND_KEYS[..]);
+        a.band = Some(Band {
+            parents: 3,
+            ..Band::new("ask".into(), crate::work::Then::Act(crate::act::Task::Rerere { wt: PathBuf::from("C:/r"), on: false }))
+        });
+        assert_eq!(a.keys(), &CHOICE_KEYS[..], "cards have no y");
         a.band = None;
         assert_eq!(a.keys(), View::Worktree.keys());
     }

@@ -491,6 +491,7 @@
 ## 43. Reset: soft, mixed or hard (#77)
 
 - [~] **43.1** In the graph, select an older commit and press `g r` → A dialog asks how far to reset and shows a card for each of 1 soft / 2 mixed / 3 hard (what it loses, how to undo); mixed is green and marked Recommended; only No is a button → | [ ] 〔未訳〕
+- [~] **43.1b** With the reset cards showing, look at the key bar at the bottom → It reads `1-9 pick · n No · Tab · Esc`; there is no `y` → | [ ] 〔未訳〕
 - [~] **43.2** With a staged change, press `g r` on the previous commit, then `1` → The branch moves; the change shows as staged; the toast names the `michi/backup/…` ref of the old tip → | [ ] 〔未訳〕
 - [~] **43.3** Same, with `2` → The branch moves; the change is unstaged but its text is in the file → | [ ] 〔未訳〕
 - [~] **43.4** With an edited tracked file and an untracked file, press `g r` and `3` → The edit is gone, the untracked file stays; the toast names two backup refs (the tip, the changes); `git show <changes>:file` has the edit → | [ ] 〔未訳〕
