@@ -464,7 +464,7 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 28.1 | Press `Ctrl+O` (also: `Ctrl+Shift+P`, type "repo", Enter); Esc; `Ctrl+O` twice | The repositories michi was opened on, newest first, the folder name with its parent beside it and "here" on the one in the window; Esc and the second `Ctrl+O` close it; no other key reaches the views while it is open | | [ ] |
+| 28.1 | Press `Ctrl+O` (also: `Ctrl+Shift+P`, type "repo", Enter); Esc; `Ctrl+O` twice | The repositories michi was opened on, newest first, the folder name with its parent beside it and "here" on the one in the window; Esc and the second `Ctrl+O` close it; no other key reaches the views while it is open | | [ ] (seen in c1: Ctrl+O opens the repository list with here marked on the open one, and typed keys go to its filter; closing by Esc or a second Ctrl+O not seen) |
 | 28.2 | Type part of a name, two words, then clear; move with the arrows; press Enter on another repository | The list narrows to the paths holding every word; Enter switches this window: the title, the graph, the worktree table and the Claude column are the other repository's, the old one is no longer read | | [x] |
 | 28.3 | Type `C:\dev\some-repo` (or `~/...`, `./...`), Enter; then a folder that is not a repository | A first row "Open <path>" in the accent colour; a repository opens and joins the list; a folder that is not one leaves the window as it was and says so in a toast | | [x] |
 | 28.4 | `Delete` on a row; close michi and open it again | The row is gone, and stays gone; the repositories opened since are at the top (`recent.txt` in michi's folder) | | [x] (skipped: needs closing and reopening michi) |
@@ -578,11 +578,11 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 39.1 | Press `/` over the graph and type the first letters of a long subject, skipping the rest (e.g. `fxflk` for "Fix the flaky test") | The commit is a hit (the others fade) and the hit count shows it | | [ ] |
-| 39.2 | Type two words, one of a subject and one of an author or a branch name | Only commits that hold both words are hits | | [ ] |
+| 39.1 | Press `/` over the graph and type the first letters of a long subject, skipping the rest (e.g. `fxflk` for "Fix the flaky test") | The commit is a hit (the others fade) and the hit count shows it | | [ ] (seen in m1: / then ahon lights the matching rows and fades the rest, the hit count shows 14) |
+| 39.2 | Type two words, one of a subject and one of an author or a branch name | Only commits that hold both words are hits | | [ ] (skipped: the lab has no commit whose author or branch word separates the hit sets (feat main gave 13 hits against 14, rows not told apart)) |
 | 39.3 | Type the first 7 characters of a commit hash, then characters from the middle of one | The first selects that commit; the middle of a hash hits nothing by itself | | [ ] (looked at 2026-10-22: selection did not move on a hash hit; a mid-hash hit gives 0; not marked) |
 | 39.4 | Type a word, then add letters; then take letters off | Adding letters never lights new rows; taking them off lights rows again, with no lag on a long history | | [ ] (skipped 2026-10-22: needs a long history and timing) |
-| 39.5 | Type in capitals (`FIX`) | The same hits as `fix` | | [ ] |
+| 39.5 | Type in capitals (`FIX`) | The same hits as `fix` | | [ ] (seen in m1: FEAT B and feat b both give 14 hits with the same rows lit) |
 
 ## 40. What a push sends
 
@@ -617,8 +617,8 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 42.3 | Move with `j k`, the arrow keys, PageUp/PageDown, Home/End and the mouse; click a row | The selection follows; a click on the selected row asks as Enter does; a click outside the list closes it | | [ ] |
 | 42.4 | Select a row and press Enter | The band asks to bring the commit back as a new branch and says nothing moves; `y` makes `recovered/<id>` at that commit (`-2` after it if taken), the list closes and a toast names the branch; HEAD and the worktree are untouched | | [ ] (looked at 2026-10-22: Enter shows the band for HEAD@{3}; y not pressed) |
 | 42.5 | After a force push or a branch delete (which keep a backup), press `L` | The backup is listed with the reason michi wrote; bringing it back gives a branch at its commit | | [ ] |
-| 42.6 | Press `R` in a repository with no commits and nothing kept | A toast says the reflog and backups are empty; no list opens | | [ ] |
-| 42.7 | Switch the language to Japanese and open the list | The title, hints, band and toast are in Japanese | | [ ] |
+| 42.6 | Press `R` in a repository with no commits and nothing kept | A toast says the reflog and backups are empty; no list opens | | [ ] (seen in empty1: R gives a notification that the reflog and the michi backups are empty; no list opens) |
+| 42.7 | Switch the language to Japanese and open the list | The title, hints, band and toast are in Japanese | | [ ] (skipped: switching the language is not in the harness) |
 
 ## 43. Reset: soft, mixed or hard (#77)
 
@@ -626,11 +626,11 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | --- | --- | --- |
 | 43.1 | In the graph, select an older commit and press `g r` | A dialog asks how far to reset and shows a card for each of 1 soft / 2 mixed / 3 hard (what it loses, how to undo); mixed is green and marked Recommended; only No is a button | | [ ] (looked at 2026-10-22: three cards, mixed green and recommended, Esc button only) |
 | 43.1b | With the reset cards showing, look at the key bar at the bottom | It reads `1-9 pick · n No · Tab · Esc`; there is no `y`. Pressing `y` or Ctrl+Enter does nothing: the cards stay and no reset runs | | [ ] |
-| 43.2 | With a staged change, press `g r` on the previous commit, then `1` | The branch moves; the change shows as staged; the toast names the `michi/backup/…` ref of the old tip | | [ ] |
-| 43.3 | Same, with `2` | The branch moves; the change is unstaged but its text is in the file | | [ ] |
-| 43.4 | With an edited tracked file and an untracked file, press `g r` and `3` | The edit is gone, the untracked file stays; the toast names two backup refs (the tip, the changes); `git show <changes>:file` has the edit | | [ ] |
-| 43.5 | Press `g r`, then Esc (or `n`, or `y`) | Nothing changes (y does nothing: only 1 2 3 choose) | | [ ] |
-| 43.6 | Press `g r` in a worktree in the middle of a merge or rebase; with no commit selected | A toast says to finish it first / to pick a commit; no band | | [ ] |
+| 43.2 | With a staged change, press `g r` on the previous commit, then `1` | The branch moves; the change shows as staged; the toast names the `michi/backup/…` ref of the old tip | | [ ] (skipped: moves a lab branch; the reset modes are unit-tested) |
+| 43.3 | Same, with `2` | The branch moves; the change is unstaged but its text is in the file | | [ ] (skipped: moves a lab branch; the reset modes are unit-tested) |
+| 43.4 | With an edited tracked file and an untracked file, press `g r` and `3` | The edit is gone, the untracked file stays; the toast names two backup refs (the tip, the changes); `git show <changes>:file` has the edit | | [ ] (skipped: moves a lab branch; the reset modes are unit-tested) |
+| 43.5 | Press `g r`, then Esc (or `n`, or `y`) | Nothing changes (y does nothing: only 1 2 3 choose) | | [ ] (skipped: the band was not on screen in the run (frame lag); needs a real-machine look) |
+| 43.6 | Press `g r` in a worktree in the middle of a merge or rebase; with no commit selected | A toast says to finish it first / to pick a commit; no band | | [ ] (seen in empty1: g r with no commit selected gives a notification to pick a commit first; the mid-merge case was not driven) |
 | 43.7 | Press `g r` where a Claude is working | The band ends with the note that a Claude is working there | | [ ] (skipped: needs a real Claude or tsumugi session) |
 
 ## 44. Ignoring an untracked file (`i`, #49)
@@ -640,7 +640,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 44.1 | In the `2` view make an untracked file `x.log` in the worktree, select it in the unstaged list and press `g i` | No question; a toast says `Added /x.log to .gitignore`; the file leaves the list after the next read and `.gitignore` in the worktree's root has the line (made if there was none) | [ ] (looked at 2026-10-22: g i on an untracked file asks nothing; toast says it added /sub/f4.txt to .gitignore, the row leaves the list and a new untracked .gitignore shows) |
 | 44.2 | Press `g i` on a tracked (modified) file, on a staged file; then on an untracked file with `[` `]` and `*` in its name | The first two toast that only an untracked file can be ignored and change nothing; the brackets and star are escaped in the line (`/a\[1\]\*.log`) and git ignores only that file | [ ] |
 | 44.3 | Press `g i` on a file whose line is already in `.gitignore` (an exact line, e.g. after a hand edit) | A toast says the line is in `.gitignore` already; the file is not changed; with a CRLF `.gitignore` the new line gets CRLF | [ ] |
-| 44.4 | Open the help (`?`) in the `2` view | `g i` is listed: Add the untracked file to .gitignore (JA: 追っていないファイルを .gitignore に足す) | [ ] |
+| 44.4 | Open the help (`?`) in the `2` view | `g i` is listed: Add the untracked file to .gitignore (JA: 追っていないファイルを .gitignore に足す) | [ ] (skipped: the help screen did not open behind the repository list in the run) |
 
 ## 45. Changes as a tree of folders
 
