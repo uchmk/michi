@@ -436,12 +436,12 @@
 
 ## 37. Open a worktree's folder in a terminal, editor or file manager (#75)
 
-- [~] **37.1** In the worktree tab select a row; press `t` → A tsumugi tab opens in that worktree's folder; a toast says it was opened → | [ ] 〔未訳〕
+- [~] **37.1** In the worktree tab select a row; press `t` → A tsumugi tab opens in that worktree's folder; a toast says it was opened → | [ ] (skipped 2026-10-22: needs tsumugi) 〔未訳〕
 - [ ] **37.2** Press `e`, then `E` → VS Code opens on the folder; the file manager shows the folder (Explorer on Windows) → | [ ] (skipped: needs OS or machine features the harness lacks) 〔未訳〕
-- [~] **37.3** Click the Terminal, Editor and Explorer buttons on a row (also on the main worktree's row) → Same as the keys, for the clicked row → | [ ] 〔未訳〕
+- [~] **37.3** Click the Terminal, Editor and Explorer buttons on a row (also on the main worktree's row) → Same as the keys, for the clicked row → | [ ] (skipped 2026-10-22: needs tsumugi) 〔未訳〕
 - [ ] **37.4** Open the palette (Ctrl+Shift+P) and type "worktree in" → Three entries (terminal, editor, file manager); picking one opens the window's worktree (the selected row when the worktree tab is in front) → | [ ] (skipped 2026-10-22: palette entries not told apart in the harness) 〔未訳〕
 - [ ] **37.5** Write `[open]` `editor = "notepad {path}"` into config.toml, wait 2 s, press `e` → Notepad is started with the folder as its argument; Settings > General shows the line → | [ ] (skipped 2026-10-22: needs a config.toml edit and Notepad, an OS app) 〔未訳〕
-- [~] **37.6** Write `editor = "no-such-program"`, press `e` → A toast "open failed: ..." with the program's name; michi keeps running and does not freeze → | [ ] 〔未訳〕
+- [~] **37.6** Write `editor = "no-such-program"`, press `e` → A toast "open failed: ..." with the program's name; michi keeps running and does not freeze → | [ ] (skipped 2026-10-22: needs a config edit) 〔未訳〕
 - [~] **37.7** Write `editor = "a \"b"` (unclosed quote) → A warning about config.toml names the key; `e` still uses the default → | [ ] (skipped 2026-10-22: needs an unclosed-quote config.toml and its warning; not tried) 〔未訳〕
 
 ## 38. Key hints on hover
@@ -457,18 +457,18 @@
 
 - [~] **39.1** Press `/` over the graph and type the first letters of a long subject, skipping the rest (e.g. `fxflk` for "Fix the flaky test") → The commit is a hit (the others fade) and the hit count shows it → | [ ] 〔未訳〕
 - [~] **39.2** Type two words, one of a subject and one of an author or a branch name → Only commits that hold both words are hits → | [ ] 〔未訳〕
-- [~] **39.3** Type the first 7 characters of a commit hash, then characters from the middle of one → The first selects that commit; the middle of a hash hits nothing by itself → | [ ] 〔未訳〕
-- [~] **39.4** Type a word, then add letters; then take letters off → Adding letters never lights new rows; taking them off lights rows again, with no lag on a long history → | [ ] 〔未訳〕
+- [~] **39.3** Type the first 7 characters of a commit hash, then characters from the middle of one → The first selects that commit; the middle of a hash hits nothing by itself → | [ ] (looked at 2026-10-22: selection did not move on a hash hit; a mid-hash hit gives 0; not marked) 〔未訳〕
+- [~] **39.4** Type a word, then add letters; then take letters off → Adding letters never lights new rows; taking them off lights rows again, with no lag on a long history → | [ ] (skipped 2026-10-22: needs a long history and timing) 〔未訳〕
 - [~] **39.5** Type in capitals (`FIX`) → The same hits as `fix` → | [ ] 〔未訳〕
 
 ## 40. What a push sends
 
-- [~] **40.1** On `feat` (not on `origin` yet) press `P`; Esc; `P` again and `y` → A dialog (Esc cancels, Ctrl+Enter or `y` goes on): `Push 3 commit(s) to origin/feat, which is not there yet? It becomes this branch's upstream.` with one row per commit (short hash, subject, newest first); Esc pushes nothing (`git ls-remote origin feat` is empty); `y` pushes and says `Pushed to origin/feat, now its upstream` 〔未訳〕
-- [~] **40.2** Commit once more on `feat` and press `P` → `Push 1 commit(s) to origin/feat?` with just that commit; make 15 commits and `P`: the newest 12 are listed and a last row reads `… and 3 more` 〔未訳〕
+- [~] **40.1** On `feat` (not on `origin` yet) press `P`; Esc; `P` again and `y` → A dialog (Esc cancels, Ctrl+Enter or `y` goes on): `Push 3 commit(s) to origin/feat, which is not there yet? It becomes this branch's upstream.` with one row per commit (short hash, subject, newest first); Esc pushes nothing (`git ls-remote origin feat` is empty); `y` pushes and says `Pushed to origin/feat, now its upstream` → [ ] (skipped 2026-10-22: needs a real push) 〔未訳〕
+- [~] **40.2** Commit once more on `feat` and press `P` → `Push 1 commit(s) to origin/feat?` with just that commit; make 15 commits and `P`: the newest 12 are listed and a last row reads `… and 3 more` → [ ] (skipped 2026-10-22: needs a real push) 〔未訳〕
 - [ ] **40.3** Let `b` push a commit to `origin/feat`, press `f` here, commit and press `F` → A red band (red outline and note): the commits that go, and the note `origin/feat has 1 commits this branch does not. Push over them? …`; `P` instead only says `F pushes over them, asking first`; `y` pushes with the lease and names the backup → [ ] (skipped 2026-10-22: needs a second clone pushing to origin/feat in the same moment; not set up) 〔未訳〕
 - [ ] **40.4** Press `P` on a branch that origin already has, on one only behind, and in a repository with no remote → `origin/feat has it already`, `Nothing to push: origin/feat is n ahead (p pulls)` and `No remote …`; no band in any of them → [ ] (skipped 2026-10-22: needs pushed and behind branches and a no-remote repo in turn; not set up) 〔未訳〕
 - [ ] **40.5** With two remotes and no `origin`, press `P`, pick one → The list of remotes first, then the band for the picked remote → [ ] (skipped 2026-10-22: needs a repo with two remotes and no origin; not set up) 〔未訳〕
-- [~] **40.6** Switch the language to Japanese and press `P` → The band reads `n 個のコミットを … に push しますか？`; the commit rows do not run off the box 〔未訳〕
+- [~] **40.6** Switch the language to Japanese and press `P` → The band reads `n 個のコミットを … に push しますか？`; the commit rows do not run off the box → [ ] (skipped 2026-10-22: needs a real push) 〔未訳〕
 
 ## 41. Autostash on pull and switch
 
@@ -480,17 +480,17 @@
 
 ## 42. Reflog screen (`L`, #50)
 
-- [~] **42.1** In the graph or the worktree table press `L` → A list opens at the top: HEAD's reflog (`HEAD@{n}`, what happened, the commit's subject) and the backups under `refs/michi/backup/` (tinted), newest first; the window does not freeze on a big repository → | [ ] 〔未訳〕
+- [~] **42.1** In the graph or the worktree table press `L` → A list opens at the top: HEAD's reflog (`HEAD@{n}`, what happened, the commit's subject) and the backups under `refs/michi/backup/` (tinted), newest first; the window does not freeze on a big repository → | [ ] (looked at 2026-10-22: L opens the list with 14 rows, newest first; backup tint not judged) 〔未訳〕
 - [~] **42.2** Reset a branch (`git reset --hard HEAD~1`) in a worktree, then press `L` → The reset is the top `HEAD@{0}` row and the commit it dropped is the row under it → | [ ] 〔未訳〕
 - [ ] **42.3** Move with `j k`, the arrow keys, PageUp/PageDown, Home/End and the mouse; click a row → The selection follows; a click on the selected row asks as Enter does; a click outside the list closes it → | [ ] 〔未訳〕
-- [~] **42.4** Select a row and press Enter → The band asks to bring the commit back as a new branch and says nothing moves; `y` makes `recovered/<id>` at that commit (`-2` after it if taken), the list closes and a toast names the branch; HEAD and the worktree are untouched → | [ ] 〔未訳〕
+- [~] **42.4** Select a row and press Enter → The band asks to bring the commit back as a new branch and says nothing moves; `y` makes `recovered/<id>` at that commit (`-2` after it if taken), the list closes and a toast names the branch; HEAD and the worktree are untouched → | [ ] (looked at 2026-10-22: Enter shows the band for HEAD@{3}; y not pressed) 〔未訳〕
 - [ ] **42.5** After a force push or a branch delete (which keep a backup), press `L` → The backup is listed with the reason michi wrote; bringing it back gives a branch at its commit → | [ ] 〔未訳〕
 - [~] **42.6** Press `R` in a repository with no commits and nothing kept → A toast says the reflog and backups are empty; no list opens → | [ ] 〔未訳〕
 - [~] **42.7** Switch the language to Japanese and open the list → The title, hints, band and toast are in Japanese → | [ ] 〔未訳〕
 
 ## 43. Reset: soft, mixed or hard (#77)
 
-- [~] **43.1** In the graph, select an older commit and press `g r` → A dialog asks how far to reset and shows a card for each of 1 soft / 2 mixed / 3 hard (what it loses, how to undo); mixed is green and marked Recommended; only No is a button → | [ ] 〔未訳〕
+- [~] **43.1** In the graph, select an older commit and press `g r` → A dialog asks how far to reset and shows a card for each of 1 soft / 2 mixed / 3 hard (what it loses, how to undo); mixed is green and marked Recommended; only No is a button → | [ ] (looked at 2026-10-22: three cards, mixed green and recommended, Esc button only) 〔未訳〕
 - [~] **43.1b** With the reset cards showing, look at the key bar at the bottom → It reads `1-9 pick · n No · Tab · Esc`; there is no `y`. Pressing `y` or Ctrl+Enter does nothing: the cards stay and no reset runs → | [ ] 〔未訳〕
 - [~] **43.2** With a staged change, press `g r` on the previous commit, then `1` → The branch moves; the change shows as staged; the toast names the `michi/backup/…` ref of the old tip → | [ ] 〔未訳〕
 - [~] **43.3** Same, with `2` → The branch moves; the change is unstaged but its text is in the file → | [ ] 〔未訳〕
