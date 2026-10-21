@@ -753,13 +753,13 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 87.1 | In `2`, select a file with changes far apart (a long file) | A thin strip at the right edge of the diff shows a tick per run of changes (green added, red deleted, amber changed in side by side) and a lit box over the part in sight; the diff text does not run under it |
+| 87.1 | In `2`, select a file with changes far apart (a long file) | A thin strip at the right edge of the diff shows a tick per run of changes (green added, red deleted, amber changed in side by side) and a lit box over the part in sight; the diff text does not run under it (looked: a strip at the right edge shows three yellow ticks (changed runs) for a 300-line file with three edits) |
 | 87.2 | Scroll with the wheel and PageDown | The lit box follows; it fills the strip (or goes) when the whole diff fits (skipped: needs drag or wheel, which the harness lacks) |
 | 87.3 | Click a tick, then drag along the strip | The diff scrolls to that part, centred on the point; it stays inside the file at both ends (skipped: needs drag or wheel, which the harness lacks) |
-| 87.4 | With the focus on the files press `n` repeatedly, then `N` | Each `n` brings the next change to just under the top of the diff, the last one stops there (and does not stick on the one before it); `N` goes back the same way |
+| 87.4 | With the focus on the files press `n` repeatedly, then `N` | Each `n` brings the next change to just under the top of the diff, the last one stops there (and does not stick on the one before it); `N` goes back the same way (looked: after n presses the diff sits on the last change and stays there; the middle steps were not told apart) |
 | 87.5 | Press `Enter` (side by side) then `n` / `N` | The ticks and the jumps follow the other layout; no change is skipped or repeated |
-| 87.6 | Press `l` (pick lines) then `n` / `N` | The cursor moves to the first line of the next / previous run of changed lines and the diff follows it; `N` in the middle of a run goes to that run's start |
-| 87.7 | Select a file with no diff text (binary, deleted-empty) and press `n` | No strip, nothing happens; no error |
+| 87.6 | Press `l` (pick lines) then `n` / `N` | The cursor moves to the first line of the next / previous run of changed lines and the diff follows it; `N` in the middle of a run goes to that run's start (skipped: l then n/N cursor move not told apart in the frames) |
+| 87.7 | Select a file with no diff text (binary, deleted-empty) and press `n` | No strip, nothing happens; no error (skipped: no binary or empty-diff file prepared) |
 | 87.8 | Press `?`; switch EN and JA | The key list names `n N` as jumping to the next or previous change in both languages; the strip looks right in Dark and Light themes (skipped: EN/JA switch not drivable here) |
 
 ## 100. Trial merge of several worktrees into the trunk
