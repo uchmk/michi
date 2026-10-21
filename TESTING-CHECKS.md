@@ -436,12 +436,12 @@
 
 ## 37. Open a worktree's folder in a terminal, editor or file manager (#75)
 
-- [ ] **37.1** In the worktree tab select a row; press `t` → A tsumugi tab opens in that worktree's folder; a toast says it was opened → | [ ] 〔未訳〕
+- [~] **37.1** In the worktree tab select a row; press `t` → A tsumugi tab opens in that worktree's folder; a toast says it was opened → | [ ] 〔未訳〕
 - [ ] **37.2** Press `e`, then `E` → VS Code opens on the folder; the file manager shows the folder (Explorer on Windows) → | [ ] 〔未訳〕
-- [ ] **37.3** Click the Terminal, Editor and Explorer buttons on a row (also on the main worktree's row) → Same as the keys, for the clicked row → | [ ] 〔未訳〕
+- [~] **37.3** Click the Terminal, Editor and Explorer buttons on a row (also on the main worktree's row) → Same as the keys, for the clicked row → | [ ] 〔未訳〕
 - [ ] **37.4** Open the palette (Ctrl+Shift+P) and type "worktree in" → Three entries (terminal, editor, file manager); picking one opens the window's worktree (the selected row when the worktree tab is in front) → | [ ] 〔未訳〕
 - [ ] **37.5** Write `[open]` `editor = "notepad {path}"` into config.toml, wait 2 s, press `e` → Notepad is started with the folder as its argument; Settings > General shows the line → | [ ] 〔未訳〕
-- [ ] **37.6** Write `editor = "no-such-program"`, press `e` → A toast "open failed: ..." with the program's name; michi keeps running and does not freeze → | [ ] 〔未訳〕
+- [~] **37.6** Write `editor = "no-such-program"`, press `e` → A toast "open failed: ..." with the program's name; michi keeps running and does not freeze → | [ ] 〔未訳〕
 - [ ] **37.7** Write `editor = "a \"b"` (unclosed quote) → A warning about config.toml names the key; `e` still uses the default → | [ ] 〔未訳〕
 
 ## 38. Key hints on hover
@@ -848,12 +848,12 @@
 
 ## 37. Blame and per-file history (`B`, `H`)
 
-- [ ] **37.1** In the graph, select a commit and press `B` → A screen opens over the graph: `Blame: <first file of the commit>`, `As of <id>`, one row per line with the commit, who, how long ago, the line number and the line; it reads at once and the window stays responsive on a long file 〔未訳〕
+- [~] **37.1** In the graph, select a commit and press `B` → A screen opens over the graph: `Blame: <first file of the commit>`, `As of <id>`, one row per line with the commit, who, how long ago, the line number and the line; it reads at once and the window stays responsive on a long file 〔未訳〕
 - [ ] **37.2** Click a file in the detail (so it is the one scrolled to), select another commit that has it, press `B` → The screen is of the file the detail was on 〔未訳〕
-- [ ] **37.3** Press `j` `k`, PageDown, PageUp, Home, End → The selection moves and stops at the ends; the screen follows it (22 rows) and shows `n / total` 〔未訳〕
+- [~] **37.3** Press `j` `k`, PageDown, PageUp, Home, End → The selection moves and stops at the ends; the screen follows it (22 rows) and shows `n / total` 〔未訳〕
 - [ ] **37.4** Press `Tab` (or `H`, then `B`) → The list switches between blame and the file's history (commit, who, ago, subject, newest first); each tab keeps its own selection 〔未訳〕
 - [ ] **37.5** Open the history of a file that was renamed in the past → The commits from before the rename are listed too; the blame rows of old lines name the commit that wrote them 〔未訳〕
-- [ ] **37.6** Press Enter on a row → The screen closes, the graph is in front and that row's commit is selected (reading on to it when it is far down) 〔未訳〕
+- [~] **37.6** Press Enter on a row → The screen closes, the graph is in front and that row's commit is selected (reading on to it when it is far down) 〔未訳〕
 - [ ] **37.7** Click a row once, then again → The first click selects, the second goes to the commit; a click outside closes the screen; Esc closes it 〔未訳〕
 - [ ] **37.8** In the `2` view, change a file on disk (add a line, do not commit), select it and press `B` → The new line reads `-------` / `not committed` in the waiting colour; Enter on it says `This line is not committed yet` and stays 〔未訳〕
 - [ ] **37.9** Press `B` on a file deleted by the commit, then with nothing selected → A toast says there is nothing to blame (`... was deleted here`) or that no file is selected; no screen opens 〔未訳〕
