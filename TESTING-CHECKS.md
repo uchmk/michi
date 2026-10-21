@@ -428,11 +428,11 @@
 
 ## 36. Warning about overlapping work in New work (`N`)
 
-- [ ] **36.1** Change a file (say `crates/michi/src/app.rs`) in one worktree and leave it uncommitted; press `N` and type `fix app.rs` in the instruction → A line `⚠ Heads up: <branch> is changing crates/michi/src/app.rs …` shows under the instruction as you type; nothing else in the form is blocked → | [ ] 〔未訳〕
-- [ ] **36.2** Type a folder instead (`tidy crates/michi/src/`) → The same worktree is named with the files under that folder (the first three, then `+N`) → | [ ] 〔未訳〕
-- [ ] **36.3** Type an instruction with no file or folder name, or names no worktree is changing → No warning shows → | [ ] 〔未訳〕
+- [~] **36.1** Change a file (say `crates/michi/src/app.rs`) in one worktree and leave it uncommitted; press `N` and type `fix app.rs` in the instruction → A line `⚠ Heads up: <branch> is changing crates/michi/src/app.rs …` shows under the instruction as you type; nothing else in the form is blocked → | [ ] 〔未訳〕
+- [~] **36.2** Type a folder instead (`tidy crates/michi/src/`) → The same worktree is named with the files under that folder (the first three, then `+N`) → | [ ] 〔未訳〕
+- [~] **36.3** Type an instruction with no file or folder name, or names no worktree is changing → No warning shows → | [ ] 〔未訳〕
 - [ ] **36.4** With the warning showing, press Ctrl+Enter → The work starts as usual (the warning does not stop it) → | [ ] 〔未訳〕
-- [ ] **36.5** Two worktrees change the same file → Both are named in the warning → | [ ] 〔未訳〕
+- [~] **36.5** Two worktrees change the same file → Both are named in the warning → | [ ] 〔未訳〕
 
 ## 37. Open a worktree's folder in a terminal, editor or file manager (#75)
 
