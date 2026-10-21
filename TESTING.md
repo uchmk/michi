@@ -1196,35 +1196,35 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 232.1 | Select a commit, press `x`, select an older one, press `g` | A question names the worktree, says commits are checked out and the old position is kept under refs/michi/backup/; `n` or Esc leaves everything | [ ] |
-| 232.2 | Answer `y` | Bisect starts; the strip shows the commit under test and the steps left; a toast names the backup | [ ] |
-| 232.3 | Start with uncommitted tracked changes | Refused with the reason; nothing changed | [ ] |
-| 232.4 | Start in the middle of a merge or rebase | Refused with the reason; nothing changed | [ ] |
-| 232.5 | Press `g` / `x` / `u` on each tested commit until the end | Strip updates each step; at the end it names the first bad commit | [ ] |
-| 232.6 | Press `X` while bisecting, answer `y` | The worktree returns to where it was; the backup ref stays; the strip goes | [ ] |
-| 232.7 | Press `r` | A `git bisect run` line is on the clipboard and works when `<test-command>` is replaced | [ ] |
-| 232.8 | Run a bisect with a second worktree present | The other worktrees are untouched | [ ] |
+| 232.1 | Select a commit, press `x`, select an older one, press `g` | A question names the worktree, says commits are checked out and the old position is kept under refs/michi/backup/; `n` or Esc leaves everything | [ ] (一部見た: x で bad の印と toast「… を bad にしました。次は good のコミットに印を付けてください (y)」、上の帯に bisect: bad .., good -。行の文言が古い: 印は x(bad)/y(good)で、g は移動の menu (b が bisect…)) |
+| 232.2 | Answer `y` | Bisect starts; the strip shows the commit under test and the steps left; a toast names the backup | [ ] (飛ばし: 印の付け方が行の文言と違う (x/y)。確かめの窓と bisect の進行は画面が 1〜2 枚遅れて追えず判断不能) |
+| 232.3 | Start with uncommitted tracked changes | Refused with the reason; nothing changed | [ ] (飛ばし: 232.2 の手順が前提) |
+| 232.4 | Start in the middle of a merge or rebase | Refused with the reason; nothing changed | [ ] (飛ばし: 途中の merge/rebase を作る手順が要る) |
+| 232.5 | Press `g` / `x` / `u` on each tested commit until the end | Strip updates each step; at the end it names the first bad commit | [ ] (飛ばし: 232.2 の手順が前提) |
+| 232.6 | Press `X` while bisecting, answer `y` | The worktree returns to where it was; the backup ref stays; the strip goes | [ ] (飛ばし: 232.2 の手順が前提) |
+| 232.7 | Press `r` | A `git bisect run` line is on the clipboard and works when `<test-command>` is replaced | [ ] (飛ばし: クリップボードの中身をハーネスで読めない) |
+| 232.8 | Run a bisect with a second worktree present | The other worktrees are untouched | [ ] (飛ばし: 232.2 の手順が前提) |
 | 232.9 | With a Claude working in the worktree, start | The question also says a Claude is working there | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 232.10 | Switch EN and JA; check the keybar and `?` | The bisect keys appear; text reads well in both languages | [ ] |
+| 232.10 | Switch EN and JA; check the keybar and `?` | The bisect keys appear; text reads well in both languages | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) |
 
 ## 242. Gitflow (`G`)
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 242.1 | In a repository with `main` and `develop`, press `G` over the graph (or over the `3` view with a worktree row selected) | A palette opens: `Gitflow`, `in <worktree>`, rows to start a feature, a release and a hotfix, and `Finish <branch>` for the worktree's branch; typing a name does not hide the rows | [ ] |
-| 242.2 | Press Enter on a start row with nothing typed | A toast says to type a name first; the palette stays | [ ] |
-| 242.3 | Type `login`, select the feature row, press Enter (no uncommitted change) | A toast says it started `feature/login`; the worktree is on it, made off `develop` | [ ] |
-| 242.4 | Start a hotfix and a release the same way | The hotfix is off `main`, the release off `develop`; a name already taken is refused with a toast | [ ] |
-| 242.5 | Commit on `feature/login`, press `G`, select the finish row, Enter | A bar asks first and says the tips are kept under `refs/michi/backup/`; `y` merges it into `develop` with a merge commit (`--no-ff`), deletes `feature/login`, leaves the worktree on `develop`; nothing is pushed | [ ] |
-| 242.6 | Finish a `release/1.0` and a `hotfix/1.0.1` | Each is merged into `main`, tagged (annotated), then merged into `develop`, then deleted; the toast names the tag | [ ] |
-| 242.7 | Set `gitflow.branch.master`, `gitflow.branch.develop` and `gitflow.prefix.*` (as `git flow init` writes), start and finish | The configured names and prefixes are used | [ ] |
-| 242.8 | Edit a tracked file or add an untracked file, then start or finish | A toast says the worktree has uncommitted changes; nothing changed | [ ] |
-| 242.9 | Check `develop` out in another worktree, then finish a feature | A toast says `develop` is checked out there; nothing changed, and that worktree is untouched | [ ] |
-| 242.10 | Make `main` and a release branch change the same line, then finish the release | A toast says the merge would clash; no branch moved, no backup was made | [ ] |
-| 242.11 | Finish a release whose tag already exists | A toast says the tag is already there; nothing changed | [ ] |
-| 242.12 | Stop in the middle of a rebase or merge, then use a row | A toast says it is in the middle of it | [ ] |
+| 242.1 | In a repository with `main` and `develop`, press `G` over the graph (or over the `3` view with a worktree row selected) | A palette opens: `Gitflow`, `in <worktree>`, rows to start a feature, a release and a hotfix, and `Finish <branch>` for the worktree's branch; typing a name does not hide the rows | [ ] (判断不能: ハーネスで G を送っても palette が開いたように写らない (キーが変わった可能性。g の menu に「Git フロー早見表 ?」がある)) |
+| 242.2 | Press Enter on a start row with nothing typed | A toast says to type a name first; the palette stays | [ ] (飛ばし: 242.1 が前提) |
+| 242.3 | Type `login`, select the feature row, press Enter (no uncommitted change) | A toast says it started `feature/login`; the worktree is on it, made off `develop` | [ ] (飛ばし: 242.1 が前提) |
+| 242.4 | Start a hotfix and a release the same way | The hotfix is off `main`, the release off `develop`; a name already taken is refused with a toast | [ ] (飛ばし: 242.1 が前提) |
+| 242.5 | Commit on `feature/login`, press `G`, select the finish row, Enter | A bar asks first and says the tips are kept under `refs/michi/backup/`; `y` merges it into `develop` with a merge commit (`--no-ff`), deletes `feature/login`, leaves the worktree on `develop`; nothing is pushed | [ ] (飛ばし: 242.1 が前提) |
+| 242.6 | Finish a `release/1.0` and a `hotfix/1.0.1` | Each is merged into `main`, tagged (annotated), then merged into `develop`, then deleted; the toast names the tag | [ ] (飛ばし: 242.1 が前提) |
+| 242.7 | Set `gitflow.branch.master`, `gitflow.branch.develop` and `gitflow.prefix.*` (as `git flow init` writes), start and finish | The configured names and prefixes are used | [ ] (飛ばし: 242.1 が前提) |
+| 242.8 | Edit a tracked file or add an untracked file, then start or finish | A toast says the worktree has uncommitted changes; nothing changed | [ ] (飛ばし: 242.1 が前提) |
+| 242.9 | Check `develop` out in another worktree, then finish a feature | A toast says `develop` is checked out there; nothing changed, and that worktree is untouched | [ ] (飛ばし: 242.1 が前提) |
+| 242.10 | Make `main` and a release branch change the same line, then finish the release | A toast says the merge would clash; no branch moved, no backup was made | [ ] (飛ばし: 242.1 が前提) |
+| 242.11 | Finish a release whose tag already exists | A toast says the tag is already there; nothing changed | [ ] (飛ばし: 242.1 が前提) |
+| 242.12 | Stop in the middle of a rebase or merge, then use a row | A toast says it is in the middle of it | [ ] (飛ばし: 242.1 が前提) |
 | 242.13 | Finish while a Claude is working in the worktree | The question ends with a note that a Claude is working there | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 242.14 | Check the keybar and `?` over the graph and the `3` view; switch EN and JA | `G` Gitflow is listed; the palette and toasts read well in both languages | [ ] |
+| 242.14 | Check the keybar and `?` over the graph and the `3` view; switch EN and JA | `G` Gitflow is listed; the palette and toasts read well in both languages | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) |
 
 ## 243. External editor, diff and merge tools (#43)
 
