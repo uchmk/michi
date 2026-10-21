@@ -178,7 +178,7 @@
 - [ ] **12.8** Put another window in front, commit in a worktree, wait, then bring michi back → Nothing is read while michi is behind (no `git.exe` in Task Manager); when it comes back the history and the table follow at once 〔未訳〕
 - [ ] **12.9** Run `cargo build` (or write many files) in an ignored folder of a worktree, and run `git status` there, with michi in front → michi reads nothing for them: no `git.exe` keeps coming up in Task Manager, and the table does not change; a `git status` does not start a read that starts another 〔未訳〕
 - [ ] **12.10** Open a repository on a network share (`\\server\share` or a mapped drive) → Changes there show within about 5 s while michi is in front; nothing is read while it is behind (skipped: needs OS or machine features the harness lacks) 〔未訳〕
-- [ ] **12.11** Switch to the light theme → The blue dots and bold subjects in the graph, the column and the box stay readable 〔未訳〕
+- [~] **12.11** Switch to the light theme → The blue dots and bold subjects in the graph, the column and the box stay readable 〔未訳〕
 
 ## 13. Branch review
 
