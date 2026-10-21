@@ -815,12 +815,12 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 78.2 | Behind origin by 2 commits, ahead by none: press `S` | One job named `sync` runs (the title bar shows its progress, Esc stops it); the toast says `Synced with origin/<b>: pulled 2 commits` | | [ ] (skipped: needs a remote set up behind or ahead; not driven here) |
 | 78.3 | Ahead by 1, not behind: press `S` | The commit is pushed at once (no band); the toast says `Synced with origin/<b>: pushed`; `git log origin/<b>` has it | | [ ] (skipped: needs a remote set up behind or ahead; not driven here) |
 | 78.4 | Behind by 1 and ahead by 1 (diverged): press `S` | Nothing is merged or pushed; the toast says `Sync stopped at the pull, nothing was pushed: origin/<b> went its own way (↑1 ↓1) …` | | [ ] (skipped: needs a remote set up behind or ahead; not driven here) |
-| 78.5 | Behind by 1, ahead by 1 on a pull that works (the other side already pulled), but the remote hook refuses the push | The toast says `Sync stopped at the push (pulled N commits first): … refused the push: …` and the pulled commits stay | | [ ] |
-| 78.6 | A new branch with no upstream: press `S` | It is pushed and gets the upstream; the toast says `Synced: pushed to origin/<b>, now its upstream` | | [ ] |
-| 78.7 | With two remotes and no `origin`: press `S` | The remote chooser opens; choosing one runs the sync to it | | [ ] |
-| 78.8 | In sync already: press `S` | The toast says `Already in sync with origin/<b>` | | [ ] |
+| 78.5 | Behind by 1, ahead by 1 on a pull that works (the other side already pulled), but the remote hook refuses the push | The toast says `Sync stopped at the push (pulled N commits first): … refused the push: …` and the pulled commits stay | | [ ] (skipped: needs a remote hook that refuses the push; not set up) |
+| 78.6 | A new branch with no upstream: press `S` | It is pushed and gets the upstream; the toast says `Synced: pushed to origin/<b>, now its upstream` | | [ ] (seen on a lab repo: S on a branch with no upstream left it as feat + origin and the status line says it matches origin/feat; the toast was gone before the frame) |
+| 78.7 | With two remotes and no `origin`: press `S` | The remote chooser opens; choosing one runs the sync to it | | [ ] (skipped: not driven (needs a two-remote lab repo and a chooser click)) |
+| 78.8 | In sync already: press `S` | The toast says `Already in sync with origin/<b>` | | [ ] (undecidable: the toast is gone before the frame (3 s); only the in-sync status line is seen) |
 | 78.9 | Press `S` while a Claude works in the worktree, or in the middle of a merge | The Claude case asks `Sync there anyway?` (y/n); the merge case says sync waits (and the button is greyed) | | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 78.10 | Press `S` in the 2, 3 and 4 views; open `?`; switch EN and JA | `S` works in each; the key list has a `S` line; both languages read well | | [ ] |
+| 78.10 | Press `S` in the 2, 3 and 4 views; open `?`; switch EN and JA | `S` works in each; the key list has a `S` line; both languages read well | | [ ] (skipped: no EN/JA switch in the harness; S in the 3 and 4 views not driven) |
 
 ## 67. Drag and drop onto a worktree
 
@@ -839,23 +839,23 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 68.1 | Open a commit that changes a `.rs` file (detail pane), then the Changes view of a worktree with a `.rs` edit | Keywords, strings, comments, numbers and names are coloured on context, added and deleted lines; the green/red line tint and the marked words (changed words) still show | | [ ] |
-| 68.2 | Look at a `.toml`, `.md`, `.ts`, `.py` and `Dockerfile` change | Each gets colours; a file of an unknown type (`.xyz`) and a binary file stay plain | | [ ] |
+| 68.1 | Open a commit that changes a `.rs` file (detail pane), then the Changes view of a worktree with a `.rs` edit | Keywords, strings, comments, numbers and names are coloured on context, added and deleted lines; the green/red line tint and the marked words (changed words) still show | | [ ] (seen on a.rs in a commit: strings and numbers coloured, changed words marked, green/red tint kept; keywords look plain) |
+| 68.2 | Look at a `.toml`, `.md`, `.ts`, `.py` and `Dockerfile` change | Each gets colours; a file of an unknown type (`.xyz`) and a binary file stay plain | | [ ] (seen: .toml and Dockerfile get colours (FROM/RUN, strings, numbers); .md, .ts, .py and .xyz were below the fold and not judged) |
 | 68.3 | Switch the theme in settings between a dark and a light one | The colours follow the theme and stay readable on the added and deleted tints | | [ ] (skipped: theme switch not drivable here) |
 | 68.4 | Open the diff side by side and unified (narrow the window) | Both layouts show the same colours; wrapped long lines keep them | | [ ] (skipped: narrow window not drivable here) |
-| 68.5 | Open a big commit (hundreds of files, a huge generated file) | The window does not stall while it loads; a file of over 6000 diff lines, or a line of over 1500 characters, is left plain | | [ ] |
+| 68.5 | Open a big commit (hundreds of files, a huge generated file) | The window does not stall while it loads; a file of over 6000 diff lines, or a line of over 1500 characters, is left plain | | [ ] (skipped: needs a commit with hundreds of files; not built) |
 | 68.6 | Select diff text with the mouse and copy it | The copied text is the plain text (no colour effects) | | [ ] (skipped: needs mouse text selection and the clipboard) |
 
 ## 92. Suggested order to land the worktrees
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 92.1 | With three worktrees ahead of main, two of which edit the same lines and one which touches other files: open the worktree table | The name cell of each shows a note `Land 1 of 3` / `2 of 3` / `3 of 3`; the one that conflicts with nothing is `1 of 3` | | [ ] |
-| 92.2 | Look at the last one of the two that conflict | Its note is yellow and reads `Land 3 of 3 · N places to resolve against those before`; the earlier ones are green with no places | | [ ] |
-| 92.3 | Only one worktree is ahead of main, or none | No `Land` note shows | | [ ] |
+| 92.1 | With three worktrees ahead of main, two of which edit the same lines and one which touches other files: open the worktree table | The name cell of each shows a note `Land 1 of 3` / `2 of 3` / `3 of 3`; the one that conflicts with nothing is `1 of 3` | | [ ] (skipped: needs three worktrees with two clashing edits; not built) |
+| 92.2 | Look at the last one of the two that conflict | Its note is yellow and reads `Land 3 of 3 · N places to resolve against those before`; the earlier ones are green with no places | | [ ] (skipped: needs three worktrees with two clashing edits; not built) |
+| 92.3 | Only one worktree is ahead of main, or none | No `Land` note shows | | [ ] (skipped: not driven) |
 | 92.4 | Commit in a worktree so the order would change; wait for the table to refresh | The numbers follow the new predictions without a restart | | [ ] (skipped: needs a Claude-driven order change) |
-| 92.5 | Start a merge in one worktree | The notes go away while the merge is under way and come back after | | [ ] |
-| 92.6 | Switch to JA | The notes read `main へ入れる順 1 / 3`, and the yellow one adds `先に入れた分との衝突 N 箇所` | | [ ] |
+| 92.5 | Start a merge in one worktree | The notes go away while the merge is under way and come back after | | [ ] (skipped: needs a merge under way in a worktree) |
+| 92.6 | Switch to JA | The notes read `main へ入れる順 1 / 3`, and the yellow one adds `先に入れた分との衝突 N 箇所` | | [ ] (skipped: no EN/JA switch in the harness) |
 
 ## 90. Loading skeletons in the graph
 
@@ -877,10 +877,10 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 99.3 | Press `d` (or click the button) | The Changes view opens on that worktree and shows what the Claude did | | [ ] (skipped: needs a real Claude-finished worktree) |
 | 99.4 | Back in `4`, press `a` | The usual commit flow runs (message check, Claude-working check); the merge is committed and the row goes away with the conflict | | [ ] (skipped: needs a real Claude-finished worktree) |
 | 99.5 | Hand over again, let the Claude leave one place marked, stop it | The row is red with "N places still have markers"; only "Look at the diff" and "Send back" show; `a` says places are left | | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 99.6 | Press `r` | The line "Your solution was not accepted ..." is typed into the Claude; the row goes back to waiting; when it stops, the row updates again | | [ ] |
+| 99.6 | Press `r` | The line "Your solution was not accepted ..." is typed into the Claude; the row goes back to waiting; when it stops, the row updates again | | [ ] (skipped: needs a real Claude session waiting on a merge) |
 | 99.7 | Press `r` with no Claude session open in the worktree | A new tsumugi tab with a Claude starts with the same line | | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 99.8 | Abort the merge, or finish it by hand | The row goes away; `d`, `a`, `r` do nothing | | [ ] |
-| 99.9 | Switch EN and JA; narrow the window | The row reads well in both and wraps without hiding the buttons | | [ ] |
+| 99.8 | Abort the merge, or finish it by hand | The row goes away; `d`, `a`, `r` do nothing | | [ ] (skipped: needs a real Claude session waiting on a merge) |
+| 99.9 | Switch EN and JA; narrow the window | The row reads well in both and wraps without hiding the buttons | | [ ] (skipped: needs a real Claude session; no EN/JA switch) |
 
 ## 80. How hard a question asks (three steps)
 
