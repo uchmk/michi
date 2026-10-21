@@ -363,7 +363,13 @@ impl Michi {
             let Some(script) = &self.script else { return };
             match d {
                 Do::State(name) => self.write_state(script.dir.join(format!("{name}.txt")), ""),
-                Do::Quit => self.app.quit = true,
+                Do::Quit => {
+                    self.app.quit = true;
+                    // `<Quit>` finishes the run itself, so `on_exit` finds it over and writes nothing.
+                    if let Some(done) = script.done.clone() {
+                        self.write_state(done, &ito_keyscript::quit_report(script.left()));
+                    }
+                }
                 // michi defines no readings of its own.
                 Do::Read { .. } => {}
                 Do::Done => {

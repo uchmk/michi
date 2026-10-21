@@ -796,10 +796,23 @@ pub(crate) struct Wrap {
 impl Wrap {
     pub(crate) fn new(ui: &Ui, width: f32, wide: bool) -> Wrap {
         let font = FontId::monospace(12.0);
-        let (char_w, wide_w, more_h) = ui.fonts_mut(|f| (f.glyph_width(&font, '0'), f.glyph_width(&font, '日'), f.row_height(&font)));
+        let more_h = ui.fonts_mut(|f| f.row_height(&font));
         // The text's width as `unified_row` and `half_row` lay it out.
         let text_w = if wide { ((width - 1.0) / 2.0).floor() - 4.0 - LN_W - SG_W } else { width - 6.0 - 2.0 * LN_W - SG_W };
-        Wrap { wide, text_w, char_w: char_w.max(1.0), wide_w: wide_w.max(1.0), more_h }
+        // How many of each kind of character one line holds is asked of the
+        // layout itself: a glyph's width does not always add up to what it breaks at.
+        let per = |ch: char| -> f32 {
+            let job = {
+                let mut j = LayoutJob::default();
+                j.append(&ch.to_string().repeat(400), 0.0, TextFormat { font_id: font.clone(), ..Default::default() });
+                j.wrap = TextWrapping { max_width: text_w.max(1.0), max_rows: usize::MAX, break_anywhere: true, overflow_character: None };
+                j
+            };
+            let g = ui.fonts_mut(|f| f.layout_job(job));
+            let n = g.rows.first().map_or(1, |r| r.glyphs.len()).max(1);
+            text_w.max(1.0) / n as f32
+        };
+        Wrap { wide, text_w, char_w: per('0').max(1.0), wide_w: per('日').max(1.0), more_h }
     }
 
     /// How many lines a line's text takes. Narrow characters alone fill a
@@ -807,10 +820,14 @@ impl Wrap {
     /// less than one, so that much is kept off.
     fn lines(&self, (narrow, wide): crate::detail::Cols) -> u32 {
         if wide == 0 {
-            let per = (self.text_w / self.char_w).floor().max(1.0) as u32;
+            let per = (self.text_w / self.char_w).round().max(1.0) as u32;
             return narrow.div_ceil(per);
         }
         let text = narrow as f32 * self.char_w + wide as f32 * self.wide_w;
+        if narrow == 0 {
+            let per = (self.text_w / self.wide_w).round().max(1.0) as u32;
+            return wide.div_ceil(per);
+        }
         (text / (self.text_w - self.wide_w).max(self.wide_w)).ceil() as u32
     }
 

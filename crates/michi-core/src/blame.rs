@@ -121,7 +121,11 @@ pub fn read(dir: &Path, rev: Option<&Oid>, path: &str) -> Result<Blamed, git::Er
         args.push(r);
     }
     args.extend(["--", path]);
-    let text = git::read(dir, &args)?;
+    let text = match git::read(dir, &args) {
+        Ok(t) => t,
+        // A file HEAD has never had (new, not committed): every line is uncommitted.
+        Err(e) => return new_file(dir, rev, path).ok_or(e),
+    };
     let lines = parse_porcelain(&String::from_utf8_lossy(&text));
     let n = format!("-n{HISTORY_ROWS}");
     let mut log = vec!["log", "--follow", "--format=%H%x00%an%x00%at%x00%s", &n];
@@ -129,6 +133,31 @@ pub fn read(dir: &Path, rev: Option<&Oid>, path: &str) -> Result<Blamed, git::Er
     log.extend(["--", path]);
     let history = parse_history(&String::from_utf8_lossy(&git::read(dir, &log)?));
     Ok(Blamed { lines, history })
+}
+
+/// The working-tree file `path` when HEAD has no such path: all its lines are
+/// "not committed yet", and it has no history.
+fn new_file(dir: &Path, rev: Option<&Oid>, path: &str) -> Option<Blamed> {
+    if rev.is_some() || !git::read(dir, &["ls-tree", "HEAD", "--", path]).map_or(true, |o| o.is_empty()) {
+        return None;
+    }
+    let bytes = std::fs::read(dir.join(path)).ok()?;
+    let text = String::from_utf8_lossy(&bytes);
+    let zero = Oid::parse(&"0".repeat(40))?;
+    let lines = text
+        .lines()
+        .map(|l| Line {
+            commit: zero,
+            path: path.to_owned(),
+            author: "Not Committed Yet".to_owned(),
+            when: 0,
+            summary: String::new(),
+            uncommitted: true,
+            boundary: false,
+            text: l.to_owned(),
+        })
+        .collect();
+    Some(Blamed { lines, history: Vec::new() })
 }
 
 #[cfg(test)]
@@ -172,6 +201,29 @@ mod tests {
         let rows = parse_history(&text);
         assert_eq!(rows.len(), 1);
         assert_eq!((rows[0].author.as_str(), rows[0].when, rows[0].subject.as_str()), ("Ann", 100, "fix: a"));
+    }
+
+    #[test]
+    fn a_new_uncommitted_file_is_all_uncommitted_lines() {
+        let t = TempRepo::configured("blame-new");
+        t.write(
+            &t.repo, "a.txt", "a
+",
+        );
+        t.git(&t.repo, &["add", "."]);
+        t.git(&t.repo, &["commit", "-q", "-m", "a"]);
+        t.write(
+            &t.repo,
+            "dirty.txt",
+            "x
+y
+",
+        );
+        let b = read(&t.repo, None, "dirty.txt").unwrap();
+        assert_eq!(b.lines.len(), 2);
+        assert!(b.lines.iter().all(|l| l.uncommitted));
+        assert!(b.history.is_empty());
+        assert!(read(&t.repo, None, "missing.txt").is_err());
     }
 
     #[test]
