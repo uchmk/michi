@@ -464,7 +464,7 @@
 ## 40. What a push sends
 
 - [~] **40.1** On `feat` (not on `origin` yet) press `P`; Esc; `P` again and `y` → A dialog (Esc cancels, Ctrl+Enter or `y` goes on): `Push 3 commit(s) to origin/feat, which is not there yet? It becomes this branch's upstream.` with one row per commit (short hash, subject, newest first); Esc pushes nothing (`git ls-remote origin feat` is empty); `y` pushes and says `Pushed to origin/feat, now its upstream` 〔未訳〕
-- [ ] **40.2** Commit once more on `feat` and press `P` → `Push 1 commit(s) to origin/feat?` with just that commit; make 15 commits and `P`: the newest 12 are listed and a last row reads `… and 3 more` 〔未訳〕
+- [~] **40.2** Commit once more on `feat` and press `P` → `Push 1 commit(s) to origin/feat?` with just that commit; make 15 commits and `P`: the newest 12 are listed and a last row reads `… and 3 more` 〔未訳〕
 - [ ] **40.3** Let `b` push a commit to `origin/feat`, press `f` here, commit and press `F` → A red band (red outline and note): the commits that go, and the note `origin/feat has 1 commits this branch does not. Push over them? …`; `P` instead only says `F pushes over them, asking first`; `y` pushes with the lease and names the backup 〔未訳〕
 - [ ] **40.4** Press `P` on a branch that origin already has, on one only behind, and in a repository with no remote → `origin/feat has it already`, `Nothing to push: origin/feat is n ahead (p pulls)` and `No remote …`; no band in any of them 〔未訳〕
 - [ ] **40.5** With two remotes and no `origin`, press `P`, pick one → The list of remotes first, then the band for the picked remote 〔未訳〕
