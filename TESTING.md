@@ -1009,14 +1009,14 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 280.1 | In the graph press `M` in a repository with a remote | A list titled `Remotes` opens: each remote's name with its address; `M Remotes` is in the graph's keys (`?`) | [ ] |
-| 280.2 | Type `mine https://example.com/x.git` | One row `mine`, lit, reads `add it at https://example.com/x.git`; Enter adds it, a toast says nothing was fetched; `M` lists it | [ ] |
-| 280.3 | Type only `mine` and press Enter | A toast asks for the address after the name; the list stays open | [ ] |
-| 280.4 | Type `a/b https://x` and press Enter | A toast says `'a/b' is not a valid remote name`; the list stays open and nothing is added | [ ] |
-| 280.5 | Select a remote and press Delete | The red question names the remote and its address and says its remote-tracking branches go; `y` or Ctrl+Enter removes it, the graph drops its `origin/...` pills, the toast says where it was | [ ] |
-| 280.6 | Press `Esc` on that question | Nothing is removed | [ ] |
-| 280.7 | Press `M` in a repository with no remote | The list opens empty; typing a name and address still adds one | [ ] |
-| 280.8 | Switch EN and JA | The hint, the keys line, the question and the toasts read well and fit | [ ] |
+| 280.1 | In the graph press `M` in a repository with a remote | A list titled `Remotes` opens: each remote's name with its address; `M Remotes` is in the graph's keys (`?`) | [ ] (looked at on a real window: M opens the Remotes list) |
+| 280.2 | Type `mine https://example.com/x.git` | One row `mine`, lit, reads `add it at https://example.com/x.git`; Enter adds it, a toast says nothing was fetched; `M` lists it | [ ] (looked at on a real window: name and URL typed, the row offers to add it) |
+| 280.3 | Type only `mine` and press Enter | A toast asks for the address after the name; the list stays open | [ ] (looked at on a real window: name only, a toast asks for the address) |
+| 280.4 | Type `a/b https://x` and press Enter | A toast says `'a/b' is not a valid remote name`; the list stays open and nothing is added | [ ] (looked at on a real window: invalid name toast shows; it is git English text even in the JA UI) |
+| 280.5 | Select a remote and press Delete | The red question names the remote and its address and says its remote-tracking branches go; `y` or Ctrl+Enter removes it, the graph drops its `origin/...` pills, the toast says where it was | [ ] (looked at on a real window: Delete asks, y removes) |
+| 280.6 | Press `Esc` on that question | Nothing is removed | [ ] (looked at on a real window: Esc removes nothing) |
+| 280.7 | Press `M` in a repository with no remote | The list opens empty; typing a name and address still adds one | [ ] (looked at on a real window in one1: the list opens empty with a hint to type a name and URL) |
+| 280.8 | Switch EN and JA | The hint, the keys line, the question and the toasts read well and fit | [ ] (skipped: the harness cannot switch EN and JA) |
 
 ## 52. Restore a file's version from a commit
 
@@ -1024,15 +1024,15 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 52.1 | Select `first` in the graph and look at the title bar of `a.txt` in the detail | A dim `Restore this version` at the right of the title (left of the wide toggle), underlined with a hand cursor on hover; not shown on the uncommitted row | | [ ] |
-| 52.2 | Click `Restore this version`, then press Esc | A band asks whether to bring `a.txt` back as `<hash>` has it and says the current file is kept in refs/michi/backup; Esc leaves the file as it was | | [ ] |
-| 52.3 | With `a.txt` as the head has it, click it and press `y` | A 10-second toast says it is as `<hash>` has it now (unstaged); the file reads `one`, Changes lists it as unstaged, `git diff --cached` is empty, no new backup ref | | [ ] |
-| 52.4 | Change `a.txt` to `mine`, restore `first`'s version, press `y` | The toast names the backup; `git show refs/michi/backup/<time>:a.txt` gives `mine` and the file reads `one` | | [ ] |
-| 52.5 | Restore the same version again | The toast says it is as `<hash>` has it already; nothing changes | | [ ] |
-| 52.6 | Stage a change to `a.txt`, then restore an older version | The worktree file is the old version; `git diff --cached` still shows the staged change | | [ ] |
-| 52.7 | Select a commit that deletes a file and click its `Restore this version` | A toast says there is no version to bring back; no band | | [ ] |
+| 52.1 | Select `first` in the graph and look at the title bar of `a.txt` in the detail | A dim `Restore this version` at the right of the title (left of the wide toggle), underlined with a hand cursor on hover; not shown on the uncommitted row | | [ ] (looked at on a real window: the link reads この版に戻す with the g w key, not a dim underlined link) |
+| 52.2 | Click `Restore this version`, then press Esc | A band asks whether to bring `a.txt` back as `<hash>` has it and says the current file is kept in refs/michi/backup; Esc leaves the file as it was | | [ ] (undecidable: the click on the restore link showed no band in the screenshots) |
+| 52.3 | With `a.txt` as the head has it, click it and press `y` | A 10-second toast says it is as `<hash>` has it now (unstaged); the file reads `one`, Changes lists it as unstaged, `git diff --cached` is empty, no new backup ref | | [ ] (undecidable: restore did not run from the harness, see 52.2) |
+| 52.4 | Change `a.txt` to `mine`, restore `first`'s version, press `y` | The toast names the backup; `git show refs/michi/backup/<time>:a.txt` gives `mine` and the file reads `one` | | [ ] (undecidable: restore did not run from the harness, see 52.2) |
+| 52.5 | Restore the same version again | The toast says it is as `<hash>` has it already; nothing changes | | [ ] (undecidable: restore did not run from the harness, see 52.2) |
+| 52.6 | Stage a change to `a.txt`, then restore an older version | The worktree file is the old version; `git diff --cached` still shows the staged change | | [ ] (undecidable: restore did not run from the harness, see 52.2) |
+| 52.7 | Select a commit that deletes a file and click its `Restore this version` | A toast says there is no version to bring back; no band | | [ ] (undecidable: restore did not run from the harness, see 52.2) |
 | 52.8 | With a Claude working in the worktree, click it; then with the worktree mid-merge | The band also notes that a Claude is working there; mid-merge a toast says to finish the merge first and no band appears | | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 52.9 | Switch EN and JA; narrow the window; switch to the light theme | The link, band and toasts read well in both languages; the file name is cut with `…` before it collides with the link; readable in both themes | | [ ] |
+| 52.9 | Switch EN and JA; narrow the window; switch to the light theme | The link, band and toasts read well in both languages; the file name is cut with `…` before it collides with the link; readable in both themes | | [ ] (skipped: needs EN/JA, a narrow window and the light theme) |
 
 ## 54. Co-Authored-By on michi's commits
 
