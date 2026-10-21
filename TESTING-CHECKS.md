@@ -481,12 +481,12 @@
 ## 42. Reflog screen (`L`, #50)
 
 - [~] **42.1** In the graph or the worktree table press `L` → A list opens at the top: HEAD's reflog (`HEAD@{n}`, what happened, the commit's subject) and the backups under `refs/michi/backup/` (tinted), newest first; the window does not freeze on a big repository → | [ ] 〔未訳〕
-- [ ] **42.2** Reset a branch (`git reset --hard HEAD~1`) in a worktree, then press `L` → The reset is the top `HEAD@{0}` row and the commit it dropped is the row under it → | [ ] 〔未訳〕
+- [~] **42.2** Reset a branch (`git reset --hard HEAD~1`) in a worktree, then press `L` → The reset is the top `HEAD@{0}` row and the commit it dropped is the row under it → | [ ] 〔未訳〕
 - [ ] **42.3** Move with `j k`, the arrow keys, PageUp/PageDown, Home/End and the mouse; click a row → The selection follows; a click on the selected row asks as Enter does; a click outside the list closes it → | [ ] 〔未訳〕
 - [~] **42.4** Select a row and press Enter → The band asks to bring the commit back as a new branch and says nothing moves; `y` makes `recovered/<id>` at that commit (`-2` after it if taken), the list closes and a toast names the branch; HEAD and the worktree are untouched → | [ ] 〔未訳〕
 - [ ] **42.5** After a force push or a branch delete (which keep a backup), press `L` → The backup is listed with the reason michi wrote; bringing it back gives a branch at its commit → | [ ] 〔未訳〕
-- [ ] **42.6** Press `R` in a repository with no commits and nothing kept → A toast says the reflog and backups are empty; no list opens → | [ ] 〔未訳〕
-- [ ] **42.7** Switch the language to Japanese and open the list → The title, hints, band and toast are in Japanese → | [ ] 〔未訳〕
+- [~] **42.6** Press `R` in a repository with no commits and nothing kept → A toast says the reflog and backups are empty; no list opens → | [ ] 〔未訳〕
+- [~] **42.7** Switch the language to Japanese and open the list → The title, hints, band and toast are in Japanese → | [ ] 〔未訳〕
 
 ## 43. Reset: soft, mixed or hard (#77)
 
