@@ -168,7 +168,7 @@
 
 ## 12. Watching and unseen commits
 
-- [ ] **12.1** Commit in the worktree on a branch → Within about a second the history is read again without going blank: the new commit shows on its branch with a blue dot before its subject, which is bold; the selection stays on the commit it was on 〔未訳〕
+- [~] **12.1** Commit in the worktree on a branch → Within about a second the history is read again without going blank: the new commit shows on its branch with a blue dot before its subject, which is bold; the selection stays on the commit it was on 〔未訳〕
 - [ ] **12.2** Press `3` → The worktree's `Unseen` column says `● 1 new` (the blue dot); the main worktree says `—` and the others `None`; beside the conflicts box, `Unseen changes (1)` lists the commit: short hash, blue dot, the subject in bold, `<short branch> · <time>` at the right, and the foot `The commits the worktrees have gained since you last looked. Selecting one in the graph marks it seen.` 〔未訳〕
 - [ ] **12.3** Hover the commit in the list, then click it → The line lights and the pointer becomes a hand; the click opens the graph with that commit selected and its dot and bold go; back in `3`, the column says `None` and the box `All seen.` 〔未訳〕
 - [ ] **12.4** Commit twice more; in the graph, move onto one of them with `j` / `k`, and click the other → Each loses its dot once selected; the commit selected when the graph first opens, or that the selection follows when rows come in, does not count as seen 〔未訳〕
