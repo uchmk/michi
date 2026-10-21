@@ -587,7 +587,7 @@
 
 ## 66. Right-click menus for a commit, a branch and a file
 
-- [ ] **66.1** In the graph (`1`) right-click a commit row → The row is selected and a menu lists Branch (b), Tag (T), Merge (m), Cherry-pick (C), Revert (t), Compare (D), Reset (R), each with its key; a right-click on the WIP row opens nothing 〔未訳〕
+- [~] **66.1** In the graph (`1`) right-click a commit row → The row is selected and a menu lists Branch (b), Tag (T), Merge (m), Cherry-pick (C), Revert (t), Compare (D), Reset (R), each with its key; a right-click on the WIP row opens nothing 〔未訳〕
 - [ ] **66.2** Pick Tag from that menu; then Esc, and right-click another row and click outside the menu → The tag palette opens on the clicked commit (not the one selected before); Esc and a click outside close the menu without doing anything 〔未訳〕
 - [ ] **66.3** While a menu is open, type `d` or `j` → Nothing happens to the view (the keys do not reach the window until the menu is closed) 〔未訳〕
 - [ ] **66.4** In the worktree table (`3`) right-click a worktree row → The row is selected and a menu lists Pull request, Open in the terminal / editor / file manager, Branch diff, Rebase onto trunk, Take main, Reorder, Reflog, Remove, with keys; picking Open in the editor opens that row's folder 〔未訳〕
