@@ -647,7 +647,7 @@
 
 ## 78. Sync: fetch, pull and push in one (`S`)
 
-- [ ] **78.1** In the graph view look at the tool band → A `Sync S` button sits after `Push P`, before the line; its icon is a down and an up arrow; hover says `Sync (S)` → | [ ] 〔未訳〕
+- [~] **78.1** In the graph view look at the tool band → A `Sync S` button sits after `Push P`, before the line; its icon is a down and an up arrow; hover says `Sync (S)` → | [ ] (looked at (JA): the Sync S button sits after Push P with a down/up arrow icon, before the divider; hover not drivable) 〔未訳〕
 - [~] **78.2** Behind origin by 2 commits, ahead by none: press `S` → One job named `sync` runs (the title bar shows its progress, Esc stops it); the toast says `Synced with origin/<b>: pulled 2 commits` → | [ ] (skipped: needs a remote set up behind or ahead; not driven here) 〔未訳〕
 - [~] **78.3** Ahead by 1, not behind: press `S` → The commit is pushed at once (no band); the toast says `Synced with origin/<b>: pushed`; `git log origin/<b>` has it → | [ ] (skipped: needs a remote set up behind or ahead; not driven here) 〔未訳〕
 - [~] **78.4** Behind by 1 and ahead by 1 (diverged): press `S` → Nothing is merged or pushed; the toast says `Sync stopped at the pull, nothing was pushed: origin/<b> went its own way (↑1 ↓1) …` → | [ ] (skipped: needs a remote set up behind or ahead; not driven here) 〔未訳〕
@@ -689,10 +689,10 @@
 
 ## 90. Loading skeletons in the graph
 
-- [ ] **90.1** Open a big repository (tens of thousands of commits) in the graph view → Until the first rows come, thin grey bars with a dot (rows of the graph's height) pulse softly in place of an empty screen; no text yet → | [ ] 〔未訳〕
-- [ ] **90.2** Make the read slow (a huge repository or a network drive) and keep looking → After 2 seconds a line `Still reading the history… N s` joins the bars and the seconds count up → | [ ] 〔未訳〕
-- [ ] **90.3** Wait for the first batch → The bars and the text go at once and the real rows take their place, with no flicker → | [ ] 〔未訳〕
-- [ ] **90.4** Open an empty repository (no commit) → No skeleton stays; the screen says `No commits yet.` → | [ ] 〔未訳〕
+- [ ] **90.1** Open a big repository (tens of thousands of commits) in the graph view → Until the first rows come, thin grey bars with a dot (rows of the graph's height) pulse softly in place of an empty screen; no text yet → | [ ] (skipped: needs a huge repo with a slow first read; not timed by the harness) 〔未訳〕
+- [ ] **90.2** Make the read slow (a huge repository or a network drive) and keep looking → After 2 seconds a line `Still reading the history… N s` joins the bars and the seconds count up → | [ ] (skipped: needs a read slower than 2 s; not drivable) 〔未訳〕
+- [ ] **90.3** Wait for the first batch → The bars and the text go at once and the real rows take their place, with no flicker → | [ ] (skipped: flicker is not visible in still frames) 〔未訳〕
+- [~] **90.4** Open an empty repository (no commit) → No skeleton stays; the screen says `No commits yet.` → | [ ] (looked at: an empty repo shows No commits yet with no skeleton) 〔未訳〕
 - [~] **90.5** Switch the theme (dark and light), density (compact, cozy) and EN/JA while the bars show → The bars follow the theme and the row height; the text reads in the chosen language → | [ ] (skipped: theme, density and language switches not drivable here) 〔未訳〕
 - [~] **90.6** Watch the CPU while the bars pulse → The window repaints about 15 times a second only while waiting and stops when the rows come → | [ ] (skipped: needs CPU reading of the pulsing bars) 〔未訳〕
 
@@ -710,23 +710,23 @@
 
 ## 80. How hard a question asks (three steps)
 
-- [ ] **80.1** Press `m` on a branch to merge, or rebase: look at the band → A plain band titled `Are you sure?` in the waiting colour; `y` goes on, Esc stops → | [ ] 〔未訳〕
-- [ ] **80.2** Delete a branch, drop a stash, remove a worktree or run the tidy (Enter on picked rows), and start a reset → The band is titled `This is hard to undo` and drawn in red; `y` (or the digits for a reset) and Esc work as before → | [ ] 〔未訳〕
-- [ ] **80.3** Make the remote go ahead (push from another clone), then press `F` → The band is red, titled `This overwrites the remote`, lists the commits, says what is overwritten and `To go on, type origin/<b> and press Enter.`; there is no Yes button, only No → | [ ] 〔未訳〕
-- [ ] **80.4** In that band press `y`, `n` and a digit → They appear after `>` in the band as typed letters; the band stays and nothing is pushed → | [ ] 〔未訳〕
-- [ ] **80.5** Press Enter with a wrong or half-typed name; then Backspace over it and type the whole `origin/<b>`, Enter → The first Enter only toasts `Type origin/<b> first, then Enter`; the full name pushes (with the lease) → | [ ] 〔未訳〕
-- [ ] **80.6** In the same band press Esc, or click No → The band closes and nothing is pushed → | [ ] 〔未訳〕
-- [ ] **80.7** Switch to JA and repeat 80.2 and 80.3 → Titles, the typing note and the toast read in Japanese → | [ ] 〔未訳〕
+- [ ] **80.1** Press `m` on a branch to merge, or rebase: look at the band → A plain band titled `Are you sure?` in the waiting colour; `y` goes on, Esc stops → | [ ] (skipped: the m confirmation band did not show in the run (frame lag)) 〔未訳〕
+- [ ] **80.2** Delete a branch, drop a stash, remove a worktree or run the tidy (Enter on picked rows), and start a reset → The band is titled `This is hard to undo` and drawn in red; `y` (or the digits for a reset) and Esc work as before → | [ ] (skipped: the band did not show in the run) 〔未訳〕
+- [ ] **80.3** Make the remote go ahead (push from another clone), then press `F` → The band is red, titled `This overwrites the remote`, lists the commits, says what is overwritten and `To go on, type origin/<b> and press Enter.`; there is no Yes button, only No → | [ ] (skipped: needs a remote ahead of the force push; not set up) 〔未訳〕
+- [ ] **80.4** In that band press `y`, `n` and a digit → They appear after `>` in the band as typed letters; the band stays and nothing is pushed → | [ ] (skipped: depends on 80.3) 〔未訳〕
+- [ ] **80.5** Press Enter with a wrong or half-typed name; then Backspace over it and type the whole `origin/<b>`, Enter → The first Enter only toasts `Type origin/<b> first, then Enter`; the full name pushes (with the lease) → | [ ] (skipped: depends on 80.3) 〔未訳〕
+- [ ] **80.6** In the same band press Esc, or click No → The band closes and nothing is pushed → | [ ] (skipped: depends on 80.3) 〔未訳〕
+- [ ] **80.7** Switch to JA and repeat 80.2 and 80.3 → Titles, the typing note and the toast read in Japanese → | [ ] (skipped: depends on 80.3) 〔未訳〕
 
 ## 83. Keys that change meaning with the screen (keybar and `?` always match, #83)
 
-- [ ] **83.1** In `1` the keybar lists `t` as Revert; go to `3` then to `4` (a conflict) → The keybar's `t` reads Open in the terminal in `3`, Theirs in `4`; each does exactly what the keybar says → | [ ] 〔未訳〕
+- [ ] **83.1** In `1` the keybar lists `t` as Revert; go to `3` then to `4` (a conflict) → The keybar's `t` reads Open in the terminal in `3`, Theirs in `4`; each does exactly what the keybar says → | [ ] (skipped: the 4 view needs a conflict; the toast says there is none in the lab) 〔未訳〕
 - [ ] **83.2** In `3` press `?` → Both `3` and `1` list Fetch, Push and `p` Pull (the pull request is `O` in `3`) → | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) 〔未訳〕
-- [ ] **83.3** In `2` press `?` → Everywhere does not list `N` for new work (here `n N` jumps between changes); `N` still opens New work in `1` and `3` → | [ ] 〔未訳〕
-- [ ] **83.4** Press `L` (reflog list), then look at the keybar and press `?` → The keybar shows only `j k` Move, Enter Bring the row back, Esc Back; `?` lists those under "Reflog" and no "Everywhere" keys → | [ ] 〔未訳〕
-- [ ] **83.5** Repeat 83.4 with `c` in `3` (clean-up), `T` in `3` (trial merge) and `r` in `3` (rebase) → Each screen's own keys are in the keybar (Space picks, `a` picks all, `u` clears, `s f d p r`...), and typing `f` or `p` there does nothing to git → | [ ] 〔未訳〕
-- [ ] **83.6** Start something that asks for a yes (`x` on a worktree, `F` force push) → The keybar reads `y` Yes, `n` No, Esc Back; closing the question brings the view's keys back → | [ ] 〔未訳〕
-- [ ] **83.7** Switch EN and JA and repeat 83.4 and 83.6 → The new words read well in both languages and fit the keybar (the rest is cut, not overlapped) → | [ ] 〔未訳〕
+- [ ] **83.3** In `2` press `?` → Everywhere does not list `N` for new work (here `n N` jumps between changes); `N` still opens New work in `1` and `3` → | [ ] (skipped: the help frame lagged and was not read) 〔未訳〕
+- [~] **83.4** Press `L` (reflog list), then look at the keybar and press `?` → The keybar shows only `j k` Move, Enter Bring the row back, Esc Back; `?` lists those under "Reflog" and no "Everywhere" keys → | [ ] (looked at: the keybar in the reflog list shows j k, Enter, g, r, Esc only) 〔未訳〕
+- [ ] **83.5** Repeat 83.4 with `c` in `3` (clean-up), `T` in `3` (trial merge) and `r` in `3` (rebase) → Each screen's own keys are in the keybar (Space picks, `a` picks all, `u` clears, `s f d p r`...), and typing `f` or `p` there does nothing to git → | [ ] (skipped: T keybar looked right (j k, Space, u, Enter, Esc) but c and r screens did not open in the run) 〔未訳〕
+- [ ] **83.6** Start something that asks for a yes (`x` on a worktree, `F` force push) → The keybar reads `y` Yes, `n` No, Esc Back; closing the question brings the view's keys back → | [ ] (skipped: the yes band did not show in the run) 〔未訳〕
+- [ ] **83.7** Switch EN and JA and repeat 83.4 and 83.6 → The new words read well in both languages and fit the keybar (the rest is cut, not overlapped) → | [ ] (skipped: depends on 83.6) 〔未訳〕
 
 ## 84. Author avatars
 
@@ -741,13 +741,13 @@
 
 ## 81. Empty-state guidance (one next step, no tour)
 
-- [ ] **81.1** Open a repository with no commit (`git init` only) in the graph view → Under `No commits yet.` one brighter line reads `Next: press 2 to stage your files and make the first commit.`; pressing `2` opens Changes 〔未訳〕
-- [ ] **81.2** Make the first commit → The line goes at once and the graph shows the commit 〔未訳〕
-- [ ] **81.3** Open a repository with commits and one worktree, go to the worktree view (`3`) → Under the table a line reads `Next: press N to start new work in a worktree of its own.`; `N` opens New work 〔未訳〕
+- [~] **81.1** Open a repository with no commit (`git init` only) in the graph view → Under `No commits yet.` one brighter line reads `Next: press 2 to stage your files and make the first commit.`; pressing `2` opens Changes → [ ] (looked at (JA): under the empty-history text the line says press 2 to stage and make the first commit; 2 opens Changes) 〔未訳〕
+- [ ] **81.2** Make the first commit → The line goes at once and the graph shows the commit → [ ] (skipped: would need a commit in the lab; same path as 81.1 not driven) 〔未訳〕
+- [~] **81.3** Open a repository with commits and one worktree, go to the worktree view (`3`) → Under the table a line reads `Next: press N to start new work in a worktree of its own.`; `N` opens New work → [ ] (looked at (JA): the Next line shows under the table; pressing N not driven) 〔未訳〕
 - [ ] **81.4** Add a second worktree (and run tsumugi) → The line is gone → [ ] (skipped: needs a real Claude or tsumugi session) 〔未訳〕
 - [ ] **81.5** With two or more worktrees and tsumugi not running, look at the worktree view → The line reads `Next: start tsumugi to see the Claude Code running in each worktree.`; start tsumugi and it goes within a few seconds → [ ] (skipped: needs a real Claude or tsumugi session) 〔未訳〕
-- [ ] **81.6** While the history is still being read (a big repository) → No guidance line shows (the skeleton only) 〔未訳〕
-- [ ] **81.7** Switch EN and JA; narrow the window → The line reads well in both and wraps without overlapping the table 〔未訳〕
+- [ ] **81.6** While the history is still being read (a big repository) → No guidance line shows (the skeleton only) → [ ] (skipped: needs a slow history read the harness cannot hold) 〔未訳〕
+- [ ] **81.7** Switch EN and JA; narrow the window → The line reads well in both and wraps without overlapping the table → [ ] (skipped: narrow window not drivable; JA seen in 81.1) 〔未訳〕
 
 ## 70. Auto fetch (every 5 minutes, quiet)
 
