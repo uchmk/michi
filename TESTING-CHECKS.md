@@ -115,9 +115,9 @@
 - [~] **8.2** Look at the file list → Each file with its status letter in colour (A green, M, D red, R), its path cut from the left with `…` when long, `+a −d` and a bar; every file is listed (the detail scrolls); a renamed file says where it came from over its diff (`元: old`) 〔未訳〕
 - [~] **8.3** Click a file row → The detail scrolls to that file's diff 〔未訳〕
 - [~] **8.4** Look at the diff → One column: the `` rows in blue, added rows green and deleted rows red, the changed words marked a shade deeper, the line numbers at the left; only the detail's wheel scrolls it, with no scrollbar 〔未訳〕
-- [ ] **8.5** Press Enter, then Esc → Enter narrows the graph and spreads the diff side by side (old left, new right, the empty side hatched); the title's toggle follows; Esc brings the graph back, and a second Esc clears the filter 〔未訳〕
-- [ ] **8.6** Click a parent link → The graph selects the parent and the detail shows it 〔未訳〕
-- [ ] **8.7** Select a merge into main → `N commits came into main by this merge` with their hashes, subjects and times, and whether they are folded or open in the graph; the note that a merge's diff comes in the next stage; no diff 〔未訳〕
+- [~] **8.5** Press Enter, then Esc → Enter narrows the graph and spreads the diff side by side (old left, new right, the empty side hatched); the title's toggle follows; Esc brings the graph back, and a second Esc clears the filter 〔未訳〕
+- [~] **8.6** Click a parent link → The graph selects the parent and the detail shows it 〔未訳〕
+- [~] **8.7** Select a merge into main → `N commits came into main by this merge` with their hashes, subjects and times, and whether they are folded or open in the graph; the note that a merge's diff comes in the next stage; no diff 〔未訳〕
 - [ ] **8.8** Select a commit with a binary file, and a big one → The binary file says it has no diff to show; a very long diff ends with `… the rest is left out` 〔未訳〕
 - [ ] **8.9** Narrow the window below 900 wide → The side column goes and the detail stacks under the graph, still readable; Enter still spreads the diff 〔未訳〕
 - [~] **8.10** Switch to the light theme → The diff's greens, reds and blues and the hatching stay readable 〔未訳〕
