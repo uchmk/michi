@@ -28,10 +28,24 @@ pub fn tool(wt: &Path) -> Result<Option<String>, git::Error> {
 pub fn open(wt: &Path, path: &str) -> Result<Opened, git::Error> {
     if tool(wt)?.is_some() {
         let out = git::command().arg("-C").arg(wt).args(["mergetool", "--no-prompt", "--", path]).output().map_err(git::started)?;
-        return if out.status.success() { Ok(Opened::Tool) } else { Err(git::refused(&String::from_utf8_lossy(&out.stderr))) };
+        return if out.status.success() { Ok(Opened::Tool) } else { Err(refused(&String::from_utf8_lossy(&out.stderr))) };
     }
     let file = wt.join(path);
     opener().arg(&file).spawn().map(|_| Opened::File).map_err(|e| git::Error::Io(format!("{}: {e}", file.display())))
+}
+
+/// `git mergetool`'s complaint without its warnings (the CRLF notice comes
+/// first, and says nothing of why it failed). A deleted-on-one-side file makes
+/// it ask which side to keep, and no terminal is there to answer.
+fn refused(stderr: &str) -> git::Error {
+    if stderr.contains("Use (m)odified or (d)eleted") {
+        return git::Error::Git("git mergetool asks which side to keep for a deleted file; use o or t instead".to_owned());
+    }
+    let rest: Vec<&str> = stderr.lines().filter(|l| !l.starts_with("warning:")).collect();
+    git::refused(&rest.join(
+        "
+",
+    ))
 }
 
 #[cfg(windows)]
@@ -55,6 +69,25 @@ fn opener() -> Command {
 mod tests {
     use super::*;
     use crate::testrepo::TempRepo;
+
+    #[test]
+    fn mergetool_complaints_skip_warnings() {
+        let w = "warning: LF will be replaced by CRLF
+fatal: no tool
+";
+        assert_eq!(
+            refused(w).to_string(),
+            git::refused(
+                "fatal: no tool
+"
+            )
+            .to_string()
+        );
+        let ask = "warning: x
+Deleted merge conflict for 'f':
+Use (m)odified or (d)eleted file, or (a)bort?";
+        assert!(refused(ask).to_string().contains("which side to keep"));
+    }
 
     #[test]
     fn a_merge_tool_is_run_and_its_result_added() {
