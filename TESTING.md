@@ -555,12 +555,12 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 37.1 | In the worktree tab select a row; press `t` | A tsumugi tab opens in that worktree's folder; a toast says it was opened | | [ ] (skipped 2026-10-22: needs tsumugi) |
-| 37.2 | Press `e`, then `E` | VS Code opens on the folder; the file manager shows the folder (Explorer on Windows) | | [ ] (skipped: needs OS or machine features the harness lacks) |
-| 37.3 | Click the Terminal, Editor and Explorer buttons on a row (also on the main worktree's row) | Same as the keys, for the clicked row | | [ ] (skipped 2026-10-22: needs tsumugi) |
+| 37.1 | In the worktree tab select a row; press `t` | A tsumugi tab opens in that worktree's folder; a toast says it was opened | | [ ] (skipped 2026-10-22: needs tsumugi) (looked at on a real window in long1: blame screen titled blame: a.txt, as of the commit, rows with commit, who, ago, line number and text, 300 lines open at once) |
+| 37.2 | Press `e`, then `E` | VS Code opens on the folder; the file manager shows the folder (Explorer on Windows) | | [ ] (skipped: needs OS or machine features the harness lacks) (skipped: the harness cannot tell which file the detail was scrolled to) |
+| 37.3 | Click the Terminal, Editor and Explorer buttons on a row (also on the main worktree's row) | Same as the keys, for the clicked row | | [ ] (skipped 2026-10-22: needs tsumugi) (looked at on a real window: Home 1 / 300, End 300 / 300, PageDown moved 20 rows, 22 rows shown) |
 | 37.4 | Open the palette (Ctrl+Shift+P) and type "worktree in" | Three entries (terminal, editor, file manager); picking one opens the window's worktree (the selected row when the worktree tab is in front) | | [ ] (skipped 2026-10-22: palette entries not told apart in the harness) |
-| 37.5 | Write `[open]` `editor = "notepad {path}"` into config.toml, wait 2 s, press `e` | Notepad is started with the folder as its argument; Settings > General shows the line | | [ ] (skipped 2026-10-22: needs a config.toml edit and Notepad, an OS app) |
-| 37.6 | Write `editor = "no-such-program"`, press `e` | A toast "open failed: ..." with the program's name; michi keeps running and does not freeze | | [ ] (skipped 2026-10-22: needs a config edit) |
+| 37.5 | Write `[open]` `editor = "notepad {path}"` into config.toml, wait 2 s, press `e` | Notepad is started with the folder as its argument; Settings > General shows the line | | [ ] (skipped 2026-10-22: needs a config.toml edit and Notepad, an OS app) (skipped: needs a repository with a past rename, not in the lab) |
+| 37.6 | Write `editor = "no-such-program"`, press `e` | A toast "open failed: ..." with the program's name; michi keeps running and does not freeze | | [ ] (skipped 2026-10-22: needs a config edit) (undecidable: the screenshot after Enter lags and was not seen) |
 | 37.7 | Write `editor = "a \"b"` (unclosed quote) | A warning about config.toml names the key; `e` still uses the default | | [ ] (skipped 2026-10-22: needs an unclosed-quote config.toml and its warning; not tried) |
 
 ## 38. Key hints on hover
@@ -1038,10 +1038,10 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 
 | # | Do | Should | Notes | OK |
 |---|----|--------|-------|----|
-| 54.1 | With no `[commit]` in config.toml, commit from the `2` view with Ctrl+Enter, then look at the last commit's message | The message is exactly what you typed; no Co-Authored-By | | [ ] |
-| 54.2 | Write `[commit]` `co_author = "Claude <noreply@anthropic.com>"` in config.toml (no restart), commit again | The new commit ends with a blank line and `Co-Authored-By: Claude <noreply@anthropic.com>` | | [ ] |
-| 54.3 | Amend that commit (`A`, Ctrl+Enter) | The trailer is not doubled | | [ ] |
-| 54.4 | Write `co_author = "Claude"` (no address) | A warning toast about config.toml; no trailer is added | | [ ] |
+| 54.1 | With no `[commit]` in config.toml, commit from the `2` view with Ctrl+Enter, then look at the last commit's message | The message is exactly what you typed; no Co-Authored-By | | [ ] (undecidable: Ctrl+Enter and a click on the commit label did not commit from the harness (message typed, no commit made)) |
+| 54.2 | Write `[commit]` `co_author = "Claude <noreply@anthropic.com>"` in config.toml (no restart), commit again | The new commit ends with a blank line and `Co-Authored-By: Claude <noreply@anthropic.com>` | | [ ] (undecidable: needs the commit from 54.1) |
+| 54.3 | Amend that commit (`A`, Ctrl+Enter) | The trailer is not doubled | | [ ] (undecidable: needs the commit from 54.1) |
+| 54.4 | Write `co_author = "Claude"` (no address) | A warning toast about config.toml; no trailer is added | | [ ] (undecidable: needs the commit from 54.1) |
 
 ## 101. Pull request pages on GitLab, Bitbucket and Azure DevOps (#33)
 
@@ -1064,8 +1064,8 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 37.5 | Open the history of a file that was renamed in the past | The commits from before the rename are listed too; the blame rows of old lines name the commit that wrote them | [ ] |
 | 37.6 | Press Enter on a row | The screen closes, the graph is in front and that row's commit is selected (reading on to it when it is far down) | [ ] |
 | 37.7 | Click a row once, then again | The first click selects, the second goes to the commit; a click outside closes the screen; Esc closes it | [ ] (partly seen 2026-10-22: a click on a blame row closes the screen and selects that commit in the graph; one-click-selects and click-outside were not told apart)
-| 37.8 | In the `2` view, change a file on disk (add a line, do not commit), select it and press `B` | The new line reads `-------` / `not committed` in the waiting colour; Enter on it says `This line is not committed yet` and stays | [ ] |
-| 37.9 | Press `B` on a file deleted by the commit, then with nothing selected | A toast says there is nothing to blame (`... was deleted here`) or that no file is selected; no screen opens | [ ] |
+| 37.8 | In the `2` view, change a file on disk (add a line, do not commit), select it and press `B` | The new line reads `-------` / `not committed` in the waiting colour; Enter on it says `This line is not committed yet` and stays | [ ] (undecidable: B in the 2 view opened nothing from the harness (focus on the list)) |
+| 37.9 | Press `B` on a file deleted by the commit, then with nothing selected | A toast says there is nothing to blame (`... was deleted here`) or that no file is selected; no screen opens | [ ] (skipped: needs a commit that deletes a file, not in the lab) |
 | 37.10 | Select a worktree's uncommitted row in the graph and press `B` | The file is blamed as that worktree has it | [ ] (not as expected 2026-10-22: B on a worktree uncommitted row with a new file shows the toast no such path in HEAD instead of blame (#143)) |
 | 37.11 | Check the keybar and `?` over the screen; switch EN and JA | The keybar names j k, B H Tab, Enter, PageDown PageUp, Esc; global keys are not listed; text reads well in both languages and long lines end in `…` | [ ] (partly seen 2026-10-22: the keybar over blame names j k, B H Tab, e, Enter and no global keys; PageDown PageUp not named, ? and EN not tried) |
 | 37.12 | With Claude writing in the worktree, press `B` | Nothing changes in the worktree and no `index.lock` appears (a read only) | [ ] (skipped: needs a real Claude or tsumugi session) |
