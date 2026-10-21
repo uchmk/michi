@@ -1962,6 +1962,8 @@ impl App {
                     self.view = v;
                     self.review_sync();
                 }
+                // The strip advertises `B` ("branch from here"); it wins over blame while HEAD is detached.
+                None if c == 'B' && self.strip_key(c) => {}
                 None if self.view == View::Graph && self.pane_key(c) => {}
                 None if self.view == View::Graph && self.graph_key(c) => {}
                 None if self.body_scroll(&c.to_string()) => {}
