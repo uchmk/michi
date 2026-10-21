@@ -1422,13 +1422,13 @@ michi has no editor of its own; it opens an external one at a line and an extern
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 117.1 | Open the palette (`<C-S-p>`), type "practice", pick "Make a practice repository" | A toast says it is being made, then another gives the folder (`michi-practice-1` in the temp folder); a new tab opens on it, with the window staying responsive meanwhile | [ ] |
-| 117.2 | Look at the graph of the practice tab | About ten commits, a merge, branches `main`, `fix/list`, `feature/greeting`, `topic-a` (checked out), `topic-b`, the tag `v1.0`, and a dashed WIP row on top | [ ] |
-| 117.3 | Merge `topic-b` into `topic-a` (stash or commit the waiting change first if asked) | It stops at a real conflict in `colors.txt`; the conflict screen opens and can be solved and committed | [ ] |
-| 117.4 | Make a second practice repository | It gets its own folder (`michi-practice-2`); the first is untouched | [ ] |
-| 117.5 | Close the tab and delete the folder | Nothing else is affected; michi keeps running; your own git config and repositories are unchanged | [ ] |
-| 117.6 | Commit in the practice repository on a machine with no `user.name` set | The commit works (the name is kept in the repository's own config) | [ ] |
-| 117.7 | Switch EN and JA and open the palette | The command reads well in both | [ ] |
+| 117.1 | Open the palette (`<C-S-p>`), type "practice", pick "Make a practice repository" | A toast says it is being made, then another gives the folder (`michi-practice-1` in the temp folder); a new tab opens on it, with the window staying responsive meanwhile | [ ] (飛ばし: 一時フォルダの練習リポジトリを作る操作はパレットに文字入力が要り、ハーネスに無い) |
+| 117.2 | Look at the graph of the practice tab | About ten commits, a merge, branches `main`, `fix/list`, `feature/greeting`, `topic-a` (checked out), `topic-b`, the tag `v1.0`, and a dashed WIP row on top | [ ] (飛ばし: 一時フォルダの練習リポジトリを作る操作はパレットに文字入力が要り、ハーネスに無い) |
+| 117.3 | Merge `topic-b` into `topic-a` (stash or commit the waiting change first if asked) | It stops at a real conflict in `colors.txt`; the conflict screen opens and can be solved and committed | [ ] (飛ばし: 一時フォルダの練習リポジトリを作る操作はパレットに文字入力が要り、ハーネスに無い) |
+| 117.4 | Make a second practice repository | It gets its own folder (`michi-practice-2`); the first is untouched | [ ] (飛ばし: 一時フォルダの練習リポジトリを作る操作はパレットに文字入力が要り、ハーネスに無い) |
+| 117.5 | Close the tab and delete the folder | Nothing else is affected; michi keeps running; your own git config and repositories are unchanged | [ ] (飛ばし: 一時フォルダの練習リポジトリを作る操作はパレットに文字入力が要り、ハーネスに無い) |
+| 117.6 | Commit in the practice repository on a machine with no `user.name` set | The commit works (the name is kept in the repository's own config) | [ ] (飛ばし: 一時フォルダの練習リポジトリを作る操作はパレットに文字入力が要り、ハーネスに無い) |
+| 117.7 | Switch EN and JA and open the palette | The command reads well in both | [ ] (飛ばし: 一時フォルダの練習リポジトリを作る操作はパレットに文字入力が要り、ハーネスに無い) |
 
 ## 118. Legend of the graph
 
@@ -1470,34 +1470,34 @@ michi has no editor of its own; it opens an external one at a line and an extern
 
 | # | Do | Should | Notes | OK |
 |---|----|--------|-------|----|
-| 110.1 | In a worktree on `main`, stage a file, write a message, press Ctrl+Enter in the `2` view | A band asks before committing, saying the commit is on main itself; Esc leaves everything as it was, `y` commits | | [ ] |
-| 110.2 | Do the same on a feature branch | The commit goes straight, with no band | | [ ] |
-| 110.3 | Write `[commit]` `protect = ["release/*"]` in config.toml (no restart); commit on `release/1.0`, then on `main` | `release/1.0` asks, `main` does not | | [ ] |
-| 110.4 | Write `protect = []` and commit on `main` | No band | | [ ] |
+| 110.1 | In a worktree on `main`, stage a file, write a message, press Ctrl+Enter in the `2` view | A band asks before committing, saying the commit is on main itself; Esc leaves everything as it was, `y` commits | | [ ] (判断不能: cm1 (master) で Ctrl+Enter を押したが、最後の画面でも確認の帯もコミットも写っていない (画面の遅れか入力が届かなかった)) |
+| 110.2 | Do the same on a feature branch | The commit goes straight, with no band | | [ ] (判断不能: cm2 (feat) で Ctrl+Enter を押したが、最後の画面が変わらず直行したか判断できない) |
+| 110.3 | Write `[commit]` `protect = ["release/*"]` in config.toml (no restart); commit on `release/1.0`, then on `main` | `release/1.0` asks, `main` does not | | [ ] (飛ばし: config.toml を書き換えて別ブランチでコミットする連続操作が要る) |
+| 110.4 | Write `protect = []` and commit on `main` | No band | | [ ] (飛ばし: config.toml を書き換えて main でコミットする連続操作が要る) |
 | 110.5 | Commit on `main` while a Claude is writing in the worktree | One band tells both reasons; one `y` covers both | | [ ] (skipped: needs a real Claude or tsumugi session) |
 ## 111. A commit warns of big files and secrets (#111)
 
 | # | Do | Should | Notes | OK |
 |---|----|--------|-------|----|
-| 111.1 | Stage a `.env` (or `server.pem`) on a feature branch and press Ctrl+Enter | A band names the file and says it looks like a secret; Esc, unstage it, and the commit then goes straight | | [ ] |
-| 111.2 | Stage a text file holding `-----BEGIN OPENSSH PRIVATE KEY-----` or an `AKIA...` key id | The band names it with what it looks like (private key, AWS access key id) | | [ ] |
-| 111.3 | Stage a file of 60 MB | The band names it with its size; `y` commits anyway | | [ ] |
-| 111.4 | Stage `.env.example` and a 2 MB file | No band | | [ ] |
-| 111.5 | Write `large_mb = 1` under `[commit]` (no restart) and stage the 2 MB file | The band appears; with `large_mb = 0` it does not | | [ ] |
-| 111.6 | Stage five secret-looking files | The band names three and says "and 2 more"; the text is cut off with an ellipsis if narrow | | [ ] |
-| 111.7 | Stage a few thousand files and watch the `2` view | It stays quick; the check runs off the UI thread | | [ ] |
+| 111.1 | Stage a `.env` (or `server.pem`) on a feature branch and press Ctrl+Enter | A band names the file and says it looks like a secret; Esc, unstage it, and the commit then goes straight | | [ ] (判断不能: cm2 に .env をステージして Ctrl+Enter。帯が写っていない) |
+| 111.2 | Stage a text file holding `-----BEGIN OPENSSH PRIVATE KEY-----` or an `AKIA...` key id | The band names it with what it looks like (private key, AWS access key id) | | [ ] (飛ばし: 秘密や大きいファイルを用意して帯の文言を見る手順が未整備) |
+| 111.3 | Stage a file of 60 MB | The band names it with its size; `y` commits anyway | | [ ] (飛ばし: 秘密や大きいファイルを用意して帯の文言を見る手順が未整備) |
+| 111.4 | Stage `.env.example` and a 2 MB file | No band | | [ ] (飛ばし: 秘密や大きいファイルを用意して帯の文言を見る手順が未整備) |
+| 111.5 | Write `large_mb = 1` under `[commit]` (no restart) and stage the 2 MB file | The band appears; with `large_mb = 0` it does not | | [ ] (飛ばし: 秘密や大きいファイルを用意して帯の文言を見る手順が未整備) |
+| 111.6 | Stage five secret-looking files | The band names three and says "and 2 more"; the text is cut off with an ellipsis if narrow | | [ ] (飛ばし: 秘密や大きいファイルを用意して帯の文言を見る手順が未整備) |
+| 111.7 | Stage a few thousand files and watch the `2` view | It stays quick; the check runs off the UI thread | | [ ] (飛ばし: 数千ファイルの用意と体感の速さが要る) |
 
 ## 106. A plain forecast before the main operations (#106)
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 106.1 | On a worktree with uncommitted files and a followed branch, press `p` | A band asks first and says in plain words how many commits come in and that the uncommitted files are put aside and brought back | [ ] |
-| 106.2 | On a clean, up-to-date branch, press `p` | No band: the pull just runs | [ ] |
-| 106.3 | Where the branch and its remote each have commits, press `p` with uncommitted files | The band says the pull will stop and to merge or rebase instead | [ ] |
-| 106.4 | In the `3` view, press `m` on a worktree | The band says how many commits of the trunk come in and whether it is expected to be clean or to stop on N files | [ ] |
-| 106.5 | In the graph, select a commit and press `m`, then `C` | Both bands carry a forecast line; the cherry-pick one says a copy is added and the original stays | [ ] |
-| 106.6 | Switch branch from the palette with uncommitted files | A band says the files change from A to B and that the uncommitted files are carried over; `y` switches, Esc leaves things as they are | [ ] |
-| 106.7 | Switch with no uncommitted files and no Claude | No band, as before | [ ] |
+| 106.1 | On a worktree with uncommitted files and a followed branch, press `p` | A band asks first and says in plain words how many commits come in and that the uncommitted files are put aside and brought back | [ ] (飛ばし: リモートに差のある用意や帯の確認操作が要る) |
+| 106.2 | On a clean, up-to-date branch, press `p` | No band: the pull just runs | [ ] (飛ばし: リモートに差のある用意や帯の確認操作が要る) |
+| 106.3 | Where the branch and its remote each have commits, press `p` with uncommitted files | The band says the pull will stop and to merge or rebase instead | [ ] (飛ばし: リモートに差のある用意や帯の確認操作が要る) |
+| 106.4 | In the `3` view, press `m` on a worktree | The band says how many commits of the trunk come in and whether it is expected to be clean or to stop on N files | [ ] (飛ばし: リモートに差のある用意や帯の確認操作が要る) |
+| 106.5 | In the graph, select a commit and press `m`, then `C` | Both bands carry a forecast line; the cherry-pick one says a copy is added and the original stays | [ ] (飛ばし: リモートに差のある用意や帯の確認操作が要る) |
+| 106.6 | Switch branch from the palette with uncommitted files | A band says the files change from A to B and that the uncommitted files are carried over; `y` switches, Esc leaves things as they are | [ ] (飛ばし: リモートに差のある用意や帯の確認操作が要る) |
+| 106.7 | Switch with no uncommitted files and no Claude | No band, as before | [ ] (飛ばし: リモートに差のある用意や帯の確認操作が要る) |
 | 106.8 | Do 106.1 to 106.6 in EN and in JA | The sentences read well in both and fit the band without being cut | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) |
 
 ## 107. Where you are now (#107)
@@ -1505,7 +1505,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | # | Do | Expect |
 | --- | --- | --- |
 | 107.1 | Open a repository on a branch | A quiet line under the title bar reads "You are on X." with the uncommitted and remote state, and the key to press next | [ ] (見た: タイトルバーの下に「いまは master にいます。コミットしていない変更はありません。このブランチはまだリモートにありません。P で push できます。」) |
-| 107.2 | Edit a file, then watch the line | It gains "N files have uncommitted changes. Press 2 to commit them." within a couple of seconds | [ ] (飛ばし: 作業中に変更を足して数秒後の画面を撮る手順がハーネスに無い) |
+| 107.2 | Edit a file, then watch the line | It gains "N files have uncommitted changes. Press 2 to commit them." within a couple of seconds | [ ] (飛ばし: 作業中に変更を足して数秒後の画面を撮る手順がハーネスに無い) (見た: 変更ありの画面で「コミットしていない変更が 2 ファイルあります。2 を押すとコミットできます。」の行を確認。編集の数秒後に増える動きは撮れていない) |
 | 107.3 | Commit, then push | The line moves to "not pushed ... Press P", then to "It matches origin/X" | [ ] (飛ばし: コミットと push の連続操作が要る) |
 | 107.4 | Switch branches; start a merge that conflicts | The line follows the branch; during the merge it says so and points to `4` | [ ] (飛ばし: 衝突するマージの用意が要る) |
 | 107.5 | Narrow the window | The line stays on one row and ends with an ellipsis; resting the pointer on it shows the whole sentence | [ ] (skipped: needs a narrower window, which the harness lacks) |
@@ -1516,22 +1516,22 @@ michi has no editor of its own; it opens an external one at a line and an extern
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 113.1 | In a worktree with a staged change, an unstaged change and a new file, press "Save state" in the keybar (or "Calm down" in the palette) | A toast names `michi/backup/<time>` and a `git restore --source=… --worktree -- .` line; the status, the index and HEAD are exactly as before | [ ] |
-| 113.2 | Run the `git restore` line from the toast after editing a file | The file is back as it was when saved | [ ] |
+| 113.1 | In a worktree with a staged change, an unstaged change and a new file, press "Save state" in the keybar (or "Calm down" in the palette) | A toast names `michi/backup/<time>` and a `git restore --source=… --worktree -- .` line; the status, the index and HEAD are exactly as before | [ ] (飛ばし: toast が 3 秒で消えて撮れない) |
+| 113.2 | Run the `git restore` line from the toast after editing a file | The file is back as it was when saved | [ ] (飛ばし: toast が 3 秒で消えて撮れない) |
 | 113.3 | Press it in a clean worktree | A toast says there are no changes and HEAD is kept | [ ] (判断不能: 「状態を保存」を押したが toast が撮れなかった (3 秒で消える)) |
-| 113.4 | Press it in the middle of a merge with a clash | It saves, and the merge is still under way with the same places to solve | [ ] |
+| 113.4 | Press it in the middle of a merge with a clash | It saves, and the merge is still under way with the same places to solve | [ ] (飛ばし: toast が 3 秒で消えて撮れない) |
 | 113.5 | Hover the button; switch EN and JA | The tooltip says nothing is changed; both languages read well and the button fits the keybar at a narrow window | [ ] (飛ばし: hover の tooltip と EN/JA の切り替えがハーネスに無い) |
 
 ## 119. Next thing to do (#119)
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 119.1 | Edit a file | A "Next: commit" button appears in the keybar; pressing it goes to the `2` view | [ ] |
-| 119.2 | Commit it, with an upstream | "Next: push" appears; pressing it pushes | [ ] |
-| 119.3 | Make the upstream have a commit you lack | "Next: pull" appears (before push); pressing it pulls | [ ] |
+| 119.1 | Edit a file | A "Next: commit" button appears in the keybar; pressing it goes to the `2` view | [ ] (見た: 2 ビューのキーバーに「次: コミットする」のボタンを確認。押して 2 へ移る動きは未確認) |
+| 119.2 | Commit it, with an upstream | "Next: push" appears; pressing it pushes | [ ] (飛ばし: push・上流の差・衝突の用意が要る) |
+| 119.3 | Make the upstream have a commit you lack | "Next: pull" appears (before push); pressing it pulls | [ ] (飛ばし: push・上流の差・衝突の用意が要る) |
 | 119.4 | On a new branch with commits and no upstream | "Next: push the branch" appears; the trunk never shows it | [ ] (飛ばし: 新しいブランチとコミットの用意が要る) |
-| 119.5 | Start a merge with a clash, then solve all places | "Next: solve the clashes" opens the `4` view; after solving it reads "Next: finish the merge" | [ ] |
-| 119.6 | Clean and in step | No suggestion button is shown; the palette has no "next step" entry | [ ] |
+| 119.5 | Start a merge with a clash, then solve all places | "Next: solve the clashes" opens the `4` view; after solving it reads "Next: finish the merge" | [ ] (飛ばし: push・上流の差・衝突の用意が要る) |
+| 119.6 | Clean and in step | No suggestion button is shown; the palette has no "next step" entry | [ ] (飛ばし: push・上流の差・衝突の用意が要る) |
 
 ## 262. Beginners' explanations: stage, conflict, worktree (#120, #121, #122)
 
@@ -1553,13 +1553,13 @@ Run each row at 100, 150 and 200 % display scale (Settings > System > Display), 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 89.1 | Start michi at 100, 150 and 200 % scale; look at the title bar, tabs, keybar and the graph | Text and the logo are sharp at every scale; nothing is cut off, blurred or overlapping; the row height and the graph lanes grow with the scale | | [ ] |
-| 89.2 | Move the window between a 100 % monitor and a 150 / 200 % one | The window re-lays out at once without a restart; no blur and no wrong-sized strip | | [ ] |
-| 89.3 | Snap the window to the left, right and a corner (Win+arrows, the snap layouts on the maximise button); maximise and restore | The window fills the snapped area exactly; the title bar buttons stay clickable; no gap at the edges; the size is restored | | [ ] |
-| 89.4 | Switch Windows between dark and light mode while michi runs | The window edge and the title bar keep michi's theme; no white flash or light border in dark mode | | [ ] |
-| 89.5 | Look at the window corners on Windows 11 (maximised and not) | The corners are rounded when not maximised and square when maximised; no dark triangle or stripe at a corner | | [ ] |
+| 89.1 | Start michi at 100, 150 and 200 % scale; look at the title bar, tabs, keybar and the graph | Text and the logo are sharp at every scale; nothing is cut off, blurred or overlapping; the row height and the graph lanes grow with the scale | | [ ] (飛ばし: OS の DPI・スナップ・テーマの切り替えが要る実機の機能) |
+| 89.2 | Move the window between a 100 % monitor and a 150 / 200 % one | The window re-lays out at once without a restart; no blur and no wrong-sized strip | | [ ] (飛ばし: OS の DPI・スナップ・テーマの切り替えが要る実機の機能) |
+| 89.3 | Snap the window to the left, right and a corner (Win+arrows, the snap layouts on the maximise button); maximise and restore | The window fills the snapped area exactly; the title bar buttons stay clickable; no gap at the edges; the size is restored | | [ ] (飛ばし: OS の DPI・スナップ・テーマの切り替えが要る実機の機能) |
+| 89.4 | Switch Windows between dark and light mode while michi runs | The window edge and the title bar keep michi's theme; no white flash or light border in dark mode | | [ ] (飛ばし: OS の DPI・スナップ・テーマの切り替えが要る実機の機能) |
+| 89.5 | Look at the window corners on Windows 11 (maximised and not) | The corners are rounded when not maximised and square when maximised; no dark triangle or stripe at a corner | | [ ] (飛ばし: OS の DPI・スナップ・テーマの切り替えが要る実機の機能) |
 | 89.6 | Drag the window by the title bar and resize from each edge and corner | The resize cursors show on the edges; the frame follows the mouse without a lag or a flicker | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
-| 89.7 | Open the palette, the branch box, a confirm window and a toast at 200 % | They are placed inside the window, sharp, and not larger than the window | | [ ] |
+| 89.7 | Open the palette, the branch box, a confirm window and a toast at 200 % | They are placed inside the window, sharp, and not larger than the window | | [ ] (飛ばし: OS の DPI・スナップ・テーマの切り替えが要る実機の機能) |
 
 ## 265. Undo and Redo of a branch's move (#64)
 
