@@ -1751,6 +1751,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ito-gpu"
+version = "0.99.0"
+source = "git+https://github.com/uchmk/ito?rev=1d6d86d45f269ca450e6ad918f41b9269e68179d#1d6d86d45f269ca450e6ad918f41b9269e68179d"
+dependencies = [
+ "egui-wgpu",
+]
+
+[[package]]
 name = "ito-graph"
 version = "0.99.0"
 source = "git+https://github.com/uchmk/ito?rev=1d6d86d45f269ca450e6ad918f41b9269e68179d#1d6d86d45f269ca450e6ad918f41b9269e68179d"
@@ -2185,7 +2193,7 @@ dependencies = [
 
 [[package]]
 name = "michi"
-version = "0.106.7"
+version = "0.106.8"
 dependencies = [
  "chrono",
  "eframe",
@@ -2196,6 +2204,7 @@ dependencies = [
  "ito-confirm",
  "ito-console",
  "ito-fonts",
+ "ito-gpu",
  "ito-graph",
  "ito-help",
  "ito-i18n",
@@ -2225,7 +2234,7 @@ dependencies = [
 
 [[package]]
 name = "michi-core"
-version = "0.106.7"
+version = "0.106.8"
 dependencies = [
  "chrono",
  "ito-match",

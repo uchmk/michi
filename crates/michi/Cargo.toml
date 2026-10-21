@@ -46,6 +46,8 @@ ito-console = { git = "https://github.com/uchmk/ito", rev = "1d6d86d45f269ca450e
 # `michi mcp` (src/mcp.rs).
 ito-mcp = { git = "https://github.com/uchmk/ito", rev = "1d6d86d45f269ca450e6ad918f41b9269e68179d" }
 ito-ipc = { git = "https://github.com/uchmk/ito", rev = "1d6d86d45f269ca450e6ad918f41b9269e68179d" }
+# Which wgpu backend to draw with: GL first on Windows (an AMD driver thread spins a core under Vulkan and DX12; #140).
+ito-gpu = { git = "https://github.com/uchmk/ito", rev = "1d6d86d45f269ca450e6ad918f41b9269e68179d" }
 # eframe's own defaults, but for `winit/default` (see tsumugi): the Wayland
 # frame is drawn without the title's text, which brings an unmaintained crate.
 eframe = { version = "0.36", default-features = false, features = ["accesskit", "default_fonts", "links", "wayland", "web_screen_reader", "wgpu", "x11"] }

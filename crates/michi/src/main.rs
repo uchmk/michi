@@ -1014,7 +1014,9 @@ fn main() -> eframe::Result {
     let script_is_none = script.is_none();
     let restore = !path_given;
     let viewport = saved.viewport(viewport);
-    let options = eframe::NativeOptions { viewport, ..Default::default() };
+    // GL first on Windows: under Vulkan and DX12 an AMD driver thread spins a core for an idle window (#140).
+    let (wgpu_options, _) = ito_gpu::options(None);
+    let options = eframe::NativeOptions { viewport, wgpu_options, ..Default::default() };
     eframe::run_native(
         "michi",
         options,
