@@ -810,13 +810,13 @@
 
 ## 280. Remotes: list, add, remove (`M`)
 
-- [ ] **280.1** In the graph press `M` in a repository with a remote → A list titled `Remotes` opens: each remote's name with its address; `M Remotes` is in the graph's keys (`?`) 〔未訳〕
-- [ ] **280.2** Type `mine https://example.com/x.git` → One row `mine`, lit, reads `add it at https://example.com/x.git`; Enter adds it, a toast says nothing was fetched; `M` lists it 〔未訳〕
+- [~] **280.1** In the graph press `M` in a repository with a remote → A list titled `Remotes` opens: each remote's name with its address; `M Remotes` is in the graph's keys (`?`) 〔未訳〕
+- [~] **280.2** Type `mine https://example.com/x.git` → One row `mine`, lit, reads `add it at https://example.com/x.git`; Enter adds it, a toast says nothing was fetched; `M` lists it 〔未訳〕
 - [ ] **280.3** Type only `mine` and press Enter → A toast asks for the address after the name; the list stays open 〔未訳〕
-- [ ] **280.4** Type `a/b https://x` and press Enter → A toast says `'a/b' is not a valid remote name`; the list stays open and nothing is added 〔未訳〕
-- [ ] **280.5** Select a remote and press Delete → The red question names the remote and its address and says its remote-tracking branches go; `y` removes it, the graph drops its `origin/...` pills, the toast says where it was 〔未訳〕
-- [ ] **280.6** Press `Esc` on that question → Nothing is removed 〔未訳〕
-- [ ] **280.7** Press `M` in a repository with no remote → The list opens empty; typing a name and address still adds one 〔未訳〕
+- [~] **280.4** Type `a/b https://x` and press Enter → A toast says `'a/b' is not a valid remote name`; the list stays open and nothing is added 〔未訳〕
+- [~] **280.5** Select a remote and press Delete → The red question names the remote and its address and says its remote-tracking branches go; Ctrl+Enter removes it (`y` does nothing), the graph drops its `origin/...` pills, the toast says where it was 〔未訳〕
+- [~] **280.6** Press `Esc` on that question → Nothing is removed 〔未訳〕
+- [~] **280.7** Press `M` in a repository with no remote → The list opens empty; typing a name and address still adds one 〔未訳〕
 - [ ] **280.8** Switch EN and JA → The hint, the keys line, the question and the toasts read well and fit 〔未訳〕
 
 ## 52. Restore a file's version from a commit
