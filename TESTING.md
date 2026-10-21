@@ -628,9 +628,9 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 43.2 | With a staged change, press `g r` on the previous commit, then `1` | The branch moves; the change shows as staged; the toast names the `michi/backup/…` ref of the old tip | | [ ] |
 | 43.3 | Same, with `2` | The branch moves; the change is unstaged but its text is in the file | | [ ] |
 | 43.4 | With an edited tracked file and an untracked file, press `g r` and `3` | The edit is gone, the untracked file stays; the toast names two backup refs (the tip, the changes); `git show <changes>:file` has the edit | | [ ] |
-| 43.5 | Press `R`, then Esc (or `n`, or `y`) | Nothing changes (y does nothing: only 1 2 3 choose) | | [ ] |
-| 43.6 | Press `R` in a worktree in the middle of a merge or rebase; with no commit selected | A toast says to finish it first / to pick a commit; no band | | [ ] |
-| 43.7 | Press `R` where a Claude is working | The band ends with the note that a Claude is working there | | [ ] |
+| 43.5 | Press `g r`, then Esc (or `n`, or `y`) | Nothing changes (y does nothing: only 1 2 3 choose) | | [ ] |
+| 43.6 | Press `g r` in a worktree in the middle of a merge or rebase; with no commit selected | A toast says to finish it first / to pick a commit; no band | | [ ] |
+| 43.7 | Press `g r` where a Claude is working | The band ends with the note that a Claude is working there | | [ ] |
 
 ## 44. Ignoring an untracked file (`i`, #49)
 

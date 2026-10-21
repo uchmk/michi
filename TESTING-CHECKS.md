@@ -474,8 +474,8 @@
 
 - [~] **41.1** In a worktree with an uncommitted edit to a file the upstream also changed (different lines), press `p` → The pull goes through instead of stopping; the toast says the changes were stashed and put back, with the `michi/backup/...` name; the edit is still there; `git stash list` is empty → | [ ] 〔未訳〕
 - [~] **41.2** Same, but the edit touches the same lines the upstream changed → The pull goes through; the toast says the stash clashed in the file; the file has `<<<<<<<` marks and the stash stays in the list and under `michi/backup/` → | [ ] 〔未訳〕
-- [ ] **41.3** Switch a worktree with changes to a branch that would overwrite them (branch picker) → The switch happens, the toast says the changes were stashed and put back (or clashed) → | [ ] 〔未訳〕
-- [ ] **41.4** Pull or switch with no changes, or with changes that do not stand in the way → Behaves as before; no stash, no backup, no extra text in the toast → | [ ] 〔未訳〕
+- [~] **41.3** Switch a worktree with changes to a branch that would overwrite them (branch picker) → The switch happens, the toast says the changes were stashed and put back (or clashed) → | [ ] 〔未訳〕
+- [~] **41.4** Pull or switch with no changes, or with changes that do not stand in the way → Behaves as before; no stash, no backup, no extra text in the toast → | [ ] 〔未訳〕
 - [ ] **41.5** Switch to a branch that does not exist, with changes in the worktree → The error is shown as before and the changes are still in the worktree (nothing left in the stash list) → | [ ] 〔未訳〕
 
 ## 42. Reflog screen (`L`, #50)
@@ -491,12 +491,12 @@
 ## 43. Reset: soft, mixed or hard (#77)
 
 - [~] **43.1** In the graph, select an older commit and press `g r` → A dialog asks how far to reset, tells what each of 1 soft / 2 mixed / 3 hard loses, and has the three buttons and No → | [ ] 〔未訳〕
-- [ ] **43.2** With a staged change, press `g r` on the previous commit, then `1` → The branch moves; the change shows as staged; the toast names the `michi/backup/…` ref of the old tip → | [ ] 〔未訳〕
+- [~] **43.2** With a staged change, press `g r` on the previous commit, then `1` → The branch moves; the change shows as staged; the toast names the `michi/backup/…` ref of the old tip → | [ ] 〔未訳〕
 - [~] **43.3** Same, with `2` → The branch moves; the change is unstaged but its text is in the file → | [ ] 〔未訳〕
 - [~] **43.4** With an edited tracked file and an untracked file, press `g r` and `3` → The edit is gone, the untracked file stays; the toast names two backup refs (the tip, the changes); `git show <changes>:file` has the edit → | [ ] 〔未訳〕
-- [ ] **43.5** Press `R`, then Esc (or `n`, or `y`) → Nothing changes (y does nothing: only 1 2 3 choose) → | [ ] 〔未訳〕
-- [ ] **43.6** Press `R` in a worktree in the middle of a merge or rebase; with no commit selected → A toast says to finish it first / to pick a commit; no band → | [ ] 〔未訳〕
-- [ ] **43.7** Press `R` where a Claude is working → The band ends with the note that a Claude is working there → | [ ] 〔未訳〕
+- [~] **43.5** Press `g r`, then Esc (or `n`, or `y`) → Nothing changes (y does nothing: only 1 2 3 choose) → | [ ] 〔未訳〕
+- [~] **43.6** Press `g r` in a worktree in the middle of a merge or rebase; with no commit selected → A toast says to finish it first / to pick a commit; no band → | [ ] 〔未訳〕
+- [ ] **43.7** Press `g r` where a Claude is working → The band ends with the note that a Claude is working there → | [ ] 〔未訳〕
 
 ## 44. Ignoring an untracked file (`i`, #49)
 
