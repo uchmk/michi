@@ -183,7 +183,7 @@
 ## 13. Branch review
 
 - [~] **13.1** Press `3`, select the worktree and press `d` (or click `Diff d` on it) → The review takes the view: the branch in bold, the switches `Uncommitted u` (lit) and `Since last look s`, `Seen 0 / 5` and `Back Esc`; under them, in red, `Would conflict with main in 1 places (lib.rs)`; the files on the left with a box, the letter (R A M in their colours), the path and `+n −n` (`Binary` for the image); the first file's diff on the right; the key bar lists `j k`, `Space`, `u`, `s`, `Enter`, `PageDown PageUp`, `Esc` 〔未訳〕
-- [ ] **13.2** Press `j` / `k`; click a file's name; click another file's box → The selection and the diff follow the keys and the click; the click on a box ticks that file without moving the selection 〔未訳〕
+- [~] **13.2** Press `j` / `k`; click a file's name; click another file's box → The selection and the diff follow the keys and the click; the click on a box ticks that file without moving the selection 〔未訳〕
 - [ ] **13.3** Press Space on a file, then on a ticked one → The first is ticked, the selection goes on to the next file not ticked and `Seen` counts up; Space on a ticked file takes the tick off 〔未訳〕
 - [ ] **13.4** Press Esc, change and save a ticked file in the worktree, wait a second and press `d` → The other ticks are kept; the changed file is not ticked any more (a tick is for the content it was given to); the file above lists the branch 〔未訳〕
 - [ ] **13.5** Press `u`, then `u` again → The switch goes dark and the file changed only in the worktree leaves the list, `Seen n / m` with it; the second `u` brings it back 〔未訳〕
