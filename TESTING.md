@@ -74,7 +74,7 @@ What text can check (reading the repository, the git version, the command line) 
 | 4.4 | Change the theme, and the size | The whole window follows at once; the logo and the chip stay readable in light and dark |
 | 4.5 | Press Esc, click the settings button, or click a tab | Each leaves the settings; a tab opens its view |
 | 4.6 | Edit common.toml by hand while michi is open | michi follows within a second |
-| 4.7 | In the settings open the Keys page; press `+ Add` on a row, press `Ctrl+Shift+K`, Enter; then `Ctrl+=`, `Ctrl+-`, `Ctrl+0` in the graph; edit keymap.toml (beside common.toml) by hand | The page lists the keys by layer (names in the language chosen); the new key is written to keymap.toml under `prepend_keymap` and a toast says `keymap.toml: 1 changed`; the keys zoom the window and say the size; a hand edit shows in the page within a second; Esc while a key is being pressed ends that, not the settings | [x] |
+| 4.7 | In the settings open the Keys page; press `+ Add` on a row, press `Ctrl+Shift+K`, Enter; then `Ctrl+=`, `Ctrl+-`, `Ctrl+0` in the graph; edit keymap.toml (beside common.toml) by hand | The page lists the keys by layer (names in the language chosen); the new key is written to keymap.toml under `prepend_keymap` and a toast says `keymap.toml: 1 changed`; the keys zoom the window and say the size; a hand edit shows in the page within a second; Esc while a key is being pressed ends that, not the settings | [x] (skipped: keymap hot reload and key capture not drivable here) |
 
 ## 5. git and errors
 
@@ -369,7 +369,7 @@ michi lists with `git for-each-ref --merged` and the upstream's `[gone]`; for ea
 | 20.3 | Run `.\michi --bogus`, then `.\michi C:\no-such-folder`, each followed by `$LASTEXITCODE` (`echo %ERRORLEVEL%` in `cmd`) | `michi: unknown argument` and the usage, then `2`; `michi: not a folder: C:\no-such-folder`, then `2`; no window opens |
 | 20.4 | Run `.\michi C:\dev\some-repo` (a repository), then `.\michi` with no argument in a repository's folder | The window opens on that folder and the prompt comes back as soon as it is up, with michi still open; closing the window later prints nothing in the console |
 | 20.5 | Run `$v = .\michi.exe --version` (the windowed program itself), wait a few seconds, then run `.\michi.exe --version` | `$v` is empty and no `panicked` message appears later (the line has nowhere to go and is let go); the second, with no `$v =`, prints the version in the console (skipped: the debug build is a console program, so `$v` fills; needs the release build) |
-| 20.6 | In a repository's folder run `$v = .\michi` (no argument, its output taken through a pipe); once the prompt is back, run `Get-ChildItem $env:TEMP\michi-com-*`; close michi and run it again | The prompt comes back once the window is up, with michi still open; two files (`.out` and `.err`) while it runs, none after it closes (partly seen: prompt back at once, one `.out` file while running and none after close, no `.err` seen) |
+| 20.6 | In a repository's folder run `$v = .\michi` (no argument, its output taken through a pipe); once the prompt is back, run `Get-ChildItem $env:TEMP\michi-com-*`; close michi and run it again | The prompt comes back once the window is up, with michi still open; two files (`.out` and `.err`) while it runs, none after it closes (partly seen: prompt back at once, one `.out` file while running and none after close, no `.err` seen) (skipped: needs a real PowerShell console and michi.com) |
 | 20.7 | With `michi.com` and `michi.exe` in one folder run `$env:MICHI_KEYS_DONE="$env:TEMP\mk\done.txt"; .\michi C:\dev\some-repo --keys '2<Wait:200><State:two>3<Quit>'` (create `$env:TEMP\mk` first), then read `$env:TEMP\mk	wo.txt` and `done.txt`; then `.\michi --keys j -V` and `.\michi --keys` | The window opens, goes to the `2` view, then to `3`, and closes by itself; `two.txt` starts with `focus: changes` and has `view: 2`; `done.txt` ends with `keys: done` after `quit: yes`; `--keys j -V` prints the version and opens no window; `--keys` alone prints `michi: --keys needs a script` and the usage, then `2` (skipped: `<Quit>` writes no done file (#142); the `two.txt` part and `--keys` alone were seen) |
 
 ## 21. Conflicts
@@ -430,7 +430,7 @@ files under `refs/michi/backup/<time>` first.
 | # | Do | Expect |
 | --- | --- | --- |
 | 23.1 | With the window behind another, let a handed Claude stop; then make a fetch fail (a remote that is not there); open settings, the Notifications page, turn each column on and off, press the test buttons | The system's notification with michi's icon, and a sound if on, come for each event only while the window is not in front; a webhook set on the page gets the event; the test buttons send at once; edits are written to `config.toml`'s `[notify]` and a hand edit is read back | [ ] (skipped: needs OS or machine features the harness lacks) |
-| 23.2 | Press `F12` in any view; read the form that opens; then add `{ on = "<F9>", run = "bugreport" }` to `prepend_keymap` in `keymap.toml` and press `F9` | The browser opens michi's issue form with `version` (`michi 0.41.0 (x86_64)`), `os` and `context` filled (Scale, Config named like `uchmk\michi\config.toml`, the last failure if there was one) and no user name in any of it; a toast says nothing is sent until you submit; `F9` does the same | [ ] |
+| 23.2 | Press `F12` in any view; read the form that opens; then add `{ on = "<F9>", run = "bugreport" }` to `prepend_keymap` in `keymap.toml` and press `F9` | The browser opens michi's issue form with `version` (`michi 0.41.0 (x86_64)`), `os` and `context` filled (Scale, Config named like `uchmk\michi\config.toml`, the last failure if there was one) and no user name in any of it; a toast says nothing is sent until you submit; `F9` does the same | [ ] (skipped: needs editing keymap.toml while open and F9) |
 | 23.3 | Move and resize the window, wait a second, close it, start michi again; maximise, close, start again; start with `--keys` and move the window | The window opens where and as big as it was (on the same screen, maximized if it was, with the size it had before when you restore it); `window.toml` sits in the state folder (row 1.30); a start with `--keys` neither reads nor writes it | [x] (skipped: the harness cannot move the window or restart it with the saved place) |
 
 ## 24. Command palette
@@ -443,7 +443,7 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 25.1 | Write a bad line into keymap.toml (an unknown key name), save it while michi is open; then fix it | A toast names the number of warnings and the first one; it is not said again until the warnings change; fixing the file says nothing | [~] |
+| 25.1 | Write a bad line into keymap.toml (an unknown key name), save it while michi is open; then fix it | A toast names the number of warnings and the first one; it is not said again until the warnings change; fixing the file says nothing | [~] (skipped: needs editing keymap.toml while open) |
 
 ## 26. Dragging the column widths
 
@@ -467,7 +467,7 @@ files under `refs/michi/backup/<time>` first.
 | 28.1 | Press `Ctrl+O` (also: `Ctrl+Shift+P`, type "repo", Enter); Esc; `Ctrl+O` twice | The repositories michi was opened on, newest first, the folder name with its parent beside it and "here" on the one in the window; Esc and the second `Ctrl+O` close it; no other key reaches the views while it is open | | [ ] |
 | 28.2 | Type part of a name, two words, then clear; move with the arrows; press Enter on another repository | The list narrows to the paths holding every word; Enter switches this window: the title, the graph, the worktree table and the Claude column are the other repository's, the old one is no longer read | | [x] |
 | 28.3 | Type `C:\dev\some-repo` (or `~/...`, `./...`), Enter; then a folder that is not a repository | A first row "Open <path>" in the accent colour; a repository opens and joins the list; a folder that is not one leaves the window as it was and says so in a toast | | [x] |
-| 28.4 | `Delete` on a row; close michi and open it again | The row is gone, and stays gone; the repositories opened since are at the top (`recent.txt` in michi's folder) | | [x] |
+| 28.4 | `Delete` on a row; close michi and open it again | The row is gone, and stays gone; the repositories opened since are at the top (`recent.txt` in michi's folder) | | [x] (skipped: needs closing and reopening michi) |
 
 ## 29. 確かめの窓（ito-confirm）
 
@@ -494,8 +494,8 @@ files under `refs/michi/backup/<time>` first.
 | --- | --- | --- |
 | 31.1 | With michi open on a repository with two worktrees, run `claude mcp add michi -- michi.com mcp`, then ask Claude Code "which worktrees are behind main?" | Claude calls `michi_worktrees` and answers with each worktree's branch, ahead / behind and uncommitted files | | [x] (skipped: needs a real Claude or tsumugi session) |
 | 31.2 | Make two worktrees edit the same file, wait for michi's prediction, ask "which worktrees would conflict?" | `michi_conflicts` names the pair and the file | | [x] (skipped: needs a real Claude or tsumugi session) |
-| 31.3 | Close michi and ask again | The tool answers "michi is not running; start michi and ask again" | | [x] |
-| 31.4 | Open two michi windows, close the first, ask again after half a minute | The second window answers | | [x] |
+| 31.3 | Close michi and ask again | The tool answers "michi is not running; start michi and ask again" | | [x] (skipped: needs the external ask tool and closing michi) |
+| 31.4 | Open two michi windows, close the first, ask again after half a minute | The second window answers | | [x] (skipped: needs two windows and the external ask tool) |
 
 ## 32. 変更の画面の diff の選択とコピー（ito-select）
 
@@ -700,7 +700,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 86.3 | Pick Cozy | The same rows grow (about 20% taller); the graph dots and lines stay joined across rows; the scrollbar marks still sit at their rows | | [ ] |
 | 86.4 | Click a row, scroll with the wheel and drag the scrollbar in each density | Clicks land on the row under the pointer; the selected row stays in view (skipped: needs the wheel and a scrollbar drag, which the harness lacks) | | [ ] |
 | 86.5 | Edit `density` in config.toml by hand (also a wrong word) | The rows change within a few seconds without restart; a wrong word gives a toast warning and the standard rows | | [ ] |
-| 86.6 | Switch EN and JA in the settings | The section and its three choices read well in both | | [ ] |
+| 86.6 | Switch EN and JA in the settings | The section and its three choices read well in both | | [ ] (skipped: EN/JA switch not drivable here) |
 
 ## 88. Short animations (fade and slide, can be turned off)
 
@@ -712,7 +712,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 88.4 | Open the settings (`,`), General: look for "Motion" and pick Off | `config.toml` has `[view]` `motion = "off"`; from now on views and windows appear at once, with no fade or slide, and the hover blends are gone (skipped: the config.toml part reads right, but the fade itself cannot be judged from stills) | | [ ] |
 | 88.5 | Pick On again; edit `motion` in config.toml by hand (also a wrong word) | Animations come back within a few seconds without restart; a wrong word gives a toast warning and keeps them on (skipped: the fade itself cannot be judged from stills) | | [ ] |
 | 88.6 | Leave the window idle on a view for a while (Task Manager) | CPU stays near 0: nothing keeps repainting after the animation ends (fails: an idle window keeps one thread at ~100% of a core (#140)) | | [ ] (skipped: needs Task Manager CPU reading, see #140) |
-| 88.7 | Switch EN and JA in the settings | The Motion section and its two choices read well in both | | [ ] |
+| 88.7 | Switch EN and JA in the settings | The Motion section and its two choices read well in both | | [ ] (skipped: EN/JA switch not drivable here) |
 
 ## 94. Review queue of finished Claude work (Review column)
 
@@ -743,11 +743,11 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | --- | --- | --- |
 | 66.1 | In the graph (`1`) right-click a commit row | The row is selected and a menu lists Branch (b), Tag (T), Merge (m), Cherry-pick (C), Revert (t), Compare (D), Reset (R), each with its key; a right-click on the WIP row opens nothing |
 | 66.2 | Pick Tag from that menu; then Esc, and right-click another row and click outside the menu | The tag palette opens on the clicked commit (not the one selected before); Esc and a click outside close the menu without doing anything |
-| 66.3 | While a menu is open, type `d` or `j` | Nothing happens to the view (the keys do not reach the window until the menu is closed) |
+| 66.3 | While a menu is open, type `d` or `j` | Nothing happens to the view (the keys do not reach the window until the menu is closed) (looked: with the row menu open, d changed nothing and the menu stayed) |
 | 66.4 | In the worktree table (`3`) right-click a worktree row | The row is selected and a menu lists Pull request, Open in the terminal / editor / file manager, Branch diff, Rebase onto trunk, Take main, Reorder, Reflog, Remove, with keys; picking Open in the editor opens that row's folder (looked at 2026-10-22: right click on a worktree row selects it and opens the menu (PR, terminal, editor, explorer, diff, rebase, merge, reflog, remove)) |
-| 66.5 | Pick Remove for a worktree row | The same question as pressing `x` asks first; nothing is lost without a yes |
+| 66.5 | Pick Remove for a worktree row | The same question as pressing `x` asks first; nothing is lost without a yes (looked: Remove asks the same question as x (backs up to refs/michi/backup first); Esc dropped it) |
 | 66.6 | In the changes view (`2`) right-click an unstaged file (flat list and tree) | The file is selected and a menu lists Stage (Space), Split, Ignore, Discard, Amend; Stage moves the clicked file, Discard asks first (looked at 2026-10-22: right click on a flat-list unstaged file opens the menu with Space, s, g i, g d, g a; tree list not seen) |
-| 66.7 | Press `?` and open the palette; switch EN and JA and look at the menus | No operation exists only in a menu (each is a key in the help and the palette); the menu words read well in both languages |
+| 66.7 | Press `?` and open the palette; switch EN and JA and look at the menus | No operation exists only in a menu (each is a key in the help and the palette); the menu words read well in both languages (skipped: EN/JA switch not drivable here) |
 
 ## 87. Diff minimap and next / previous change (`n` / `N`, #87)
 
@@ -792,7 +792,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 93.9 | Use a repository without a verify script | The toast says "no check found (skipped)" and the landing goes on |
 | 93.10 | Select the window's own worktree and press `l` | Only `1` to `3` are offered and a note says it cannot be removed from here |
 | 93.11 | Land with a Claude working in the worktree | The band notes a Claude is working there and that its tabs close at the last stage (skipped: needs a real Claude or tsumugi session) |
-| 93.12 | Switch to JA and press `l` | The band, the buttons and every toast read in Japanese; `?` lists `l` among the worktree keys |
+| 93.12 | Switch to JA and press `l` | The band, the buttons and every toast read in Japanese; `?` lists `l` among the worktree keys (skipped: EN/JA switch not drivable here) |
 
 ## 91. A snapshot and diff per Claude turn (`y`)
 
@@ -801,11 +801,11 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 91.1 | Let a Claude in a worktree edit a file and stop to wait (tsumugi shows it `waiting` or `done`) | Within a few seconds `git for-each-ref refs/michi/turn/` lists `refs/michi/turn/<branch>/1`; the index, HEAD and files are untouched; no toast appears | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 91.2 | In the `3` view select that worktree and press `y` | The compare review opens titled `Turn 1 of 1 on <branch>` listing what the Claude changed in that turn | | [ ] (skipped: needs a real Claude turn kept by tsumugi) |
 | 91.3 | Give the Claude a second instruction that changes another file; after it stops press `y` | `Turn 2 of 2`: only the second instruction's change is listed | | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 91.4 | In the turn review press `y`, then `Y` | `y` goes to the older turn and `Y` to the newer one; at the ends a toast says "That is the oldest turn kept" / "That is the newest turn" | | [ ] |
+| 91.4 | In the turn review press `y`, then `Y` | `y` goes to the older turn and `Y` to the newer one; at the ends a toast says "That is the oldest turn kept" / "That is the newest turn" | | [ ] (skipped: needs two kept Claude turns from tsumugi) |
 | 91.5 | Let a Claude stop without changing any file | No new turn ref is made | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 91.6 | Press `y` on a worktree whose Claude never stopped under michi | A toast says no turn is kept yet | | [ ] (skipped: needs a real Claude session) |
 | 91.7 | Restart michi while a Claude is already waiting, then let it work and stop | Only the turn ended after michi looked is kept (the first list is a baseline) | | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 91.8 | Switch to JA; press `?` in the worktree table and in the review | Titles and toasts read in Japanese; `y` and `y Y` are listed | | [ ] |
+| 91.8 | Switch to JA; press `?` in the worktree table and in the review | Titles and toasts read in Japanese; `y` and `y Y` are listed | | [ ] (skipped: EN/JA switch and needs a real Claude turn) |
 
 ## 78. Sync: fetch, pull and push in one (`S`)
 
