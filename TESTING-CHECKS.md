@@ -965,7 +965,7 @@
 ## 232. Bisect (#32)
 
 - [ ] **232.1** Select a commit, press `x`, select an older one, press `g` → A question names the worktree, says commits are checked out and the old position is kept under refs/michi/backup/; `n` or Esc leaves everything → [ ] (一部見た: x で bad の印と toast「… を bad にしました。次は good のコミットに印を付けてください (y)」、上の帯に bisect: bad .., good -。行の文言が古い: 印は x(bad)/y(good)で、g は移動の menu (b が bisect…)) 〔未訳〕
-- [ ] **232.2** Answer `y` → Bisect starts; the strip shows the commit under test and the steps left; a toast names the backup → [ ] (飛ばし: 印の付け方が行の文言と違う (x/y)。確かめの窓と bisect の進行は画面が 1〜2 枚遅れて追えず判断不能) 〔未訳〕
+- [ ] **232.2** Answer `y` → Bisect starts; the strip shows the commit under test and the steps left; a toast names the backup → [ ] [~] harness 0.106.11 (lab bs1, 8 commits, 1100x600): marking a commit bad with x and an older one good with y starts the bisect with no question window in between. The top strip then reads "Bisect: test da8694c step 5, then mark it good, bad or skip. About 1 steps left (2 commits to look at)" and a toast names the backup (michi/backup/20261022-153521). The row's wording is stale (it expects a question answered with y) 〔未訳〕
 - [ ] **232.3** Start with uncommitted tracked changes → Refused with the reason; nothing changed → [ ] (飛ばし: 232.2 の手順が前提) 〔未訳〕
 - [ ] **232.4** Start in the middle of a merge or rebase → Refused with the reason; nothing changed → [ ] (飛ばし: 途中の merge/rebase を作る手順が要る) 〔未訳〕
 - [ ] **232.5** Press `g` / `x` / `u` on each tested commit until the end → Strip updates each step; at the end it names the first bad commit → [ ] (飛ばし: 232.2 の手順が前提) 〔未訳〕
@@ -973,7 +973,7 @@
 - [ ] **232.7** Press `r` → A `git bisect run` line is on the clipboard and works when `<test-command>` is replaced → [ ] (飛ばし: クリップボードの中身をハーネスで読めない) 〔未訳〕
 - [ ] **232.8** Run a bisect with a second worktree present → The other worktrees are untouched → [ ] (飛ばし: 232.2 の手順が前提) 〔未訳〕
 - [ ] **232.9** With a Claude working in the worktree, start → The question also says a Claude is working there → [ ] (skipped: needs a real Claude or tsumugi session) 〔未訳〕
-- [ ] **232.10** Switch EN and JA; check the keybar and `?` → The bisect keys appear; text reads well in both languages → [ ] (skipped: needs a bisect state in the lab and the list scrolled) 〔未訳〕
+- [ ] **232.10** Switch EN and JA; check the keybar and `?` → The bisect keys appear; text reads well in both languages → [ ] [~] harness 0.106.11 (lab bs1, 1100x600): during a bisect the top strip lists Good y, Bad x, Skip u, Copy bisect run r, End bisect X in EN, and good y, bad x, スキップ u, bisect run をコピー r, bisect を終える X in JA; the JA sentence is cut with … at 1100 px. `?` opens in both languages, but its first page (Everywhere, Graph) does not reach the bisect keys, so those are not judged 〔未訳〕
 
 ## 242. Gitflow (`G`)
 
