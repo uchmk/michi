@@ -625,7 +625,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | # | Do | Expect |
 | --- | --- | --- |
 | 43.1 | In the graph, select an older commit and press `g r` | A dialog asks how far to reset and shows a card for each of 1 soft / 2 mixed / 3 hard (what it loses, how to undo); mixed is green and marked Recommended; only No is a button | | [ ] (looked at 2026-10-22: three cards, mixed green and recommended, Esc button only) |
-| 43.1b | With the reset cards showing, look at the key bar at the bottom | It reads `1-9 pick · n No · Tab · Esc`; there is no `y`. Pressing `y` or Ctrl+Enter does nothing: the cards stay and no reset runs | | [ ] |
+| 43.1b | With the reset cards showing, look at the key bar at the bottom | It reads `1-9 pick · n No · Tab · Esc`; there is no `y`. Pressing `y` or Ctrl+Enter does nothing: the cards stay and no reset runs | | [ ] [~] harness 0.106.11 (lab m1, 1100x600, EN): the key bar reads '1-9 Pick · n No · Tab Move · Esc Back · F1 This list'; no y; y leaves the three cards and nothing moves (Tab Move and F1 are extra to the row's text) |
 | 43.2 | With a staged change, press `g r` on the previous commit, then `1` | The branch moves; the change shows as staged; the toast names the `michi/backup/…` ref of the old tip | | [ ] (skipped: moves a lab branch; the reset modes are unit-tested) |
 | 43.3 | Same, with `2` | The branch moves; the change is unstaged but its text is in the file | | [ ] (skipped: moves a lab branch; the reset modes are unit-tested) |
 | 43.4 | With an edited tracked file and an untracked file, press `g r` and `3` | The edit is gone, the untracked file stays; the toast names two backup refs (the tip, the changes); `git show <changes>:file` has the edit | | [ ] (skipped: moves a lab branch; the reset modes are unit-tested) |
@@ -671,7 +671,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 47.2 | Check out a tag (`git checkout v1`) | The strip names the tag; the body below moves down by the strip's height, nothing is cut off | | [ ] (seen: tag checkout shows the detached strip with R and B) |
 | 47.3 | Commit something on the detached HEAD | The strip adds "Commits on no branch yet: 1"; the number follows each new commit | | [ ] (seen: strip adds the count of commits on no branch (1 after one commit)) |
 | 47.4 | Press `R` (or click `Back to …`) with such a commit | The worktree is on the branch again, the toast names the backup (`michi/backup/…`) that keeps the commit, the strip goes | | [ ] (seen: R returns to master) |
-| 47.5 | Press `B`, type a name, press Shift+Enter | The branch is made at HEAD, the worktree is on it, the strip goes; the commit is on the new branch | | [ ] (B ran blame instead of branch-from-here; fixed so B wins while detached) |
+| 47.5 | Press `B`, type a name, press Shift+Enter | The branch is made at HEAD, the worktree is on it, the strip goes; the commit is on the new branch | | [ ] [~] harness 0.106.11 (lab dt1, detached): B, 'fresh', Shift+Enter makes the branch fresh and checks it out (git branch --show-current = fresh, toast 'Made branch fresh; dt1 is on it'). FINDING: the window still shows the 'Not on a branch' strip, the side column lists only main and the graph has no fresh, even 12 s later (not refreshed) |
 | 47.6 | Detach, then delete the branch it came from, then look at the strip | `R` is not offered for a branch that is gone (an earlier existing one, or only `B`) | | [ ] (seen: after the source branch is deleted the strip offers an earlier existing branch (master)) |
 | 47.7 | Start `git rebase -i` and stop it at an edit | The strip says it is a rebase, with no buttons; it goes when the rebase ends | | [ ] (skipped: needs an interactive rebase stopped at edit, not set up) |
 | 47.8 | With a Claude working in the worktree press `R` | A yes is asked first, as for a switch | | [ ] (skipped: needs a real Claude or tsumugi session) |
@@ -1066,7 +1066,7 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 37.7 | Click a row once, then again | The first click selects, the second goes to the commit; a click outside closes the screen; Esc closes it | [ ] (partly seen 2026-10-22: a click on a blame row closes the screen and selects that commit in the graph; one-click-selects and click-outside were not told apart)
 | 37.8 | In the `2` view, change a file on disk (add a line, do not commit), select it and press `B` | The new line reads `-------` / `not committed` in the waiting colour; Enter on it says `This line is not committed yet` and stays | [ ] (undecidable: B in the 2 view opened nothing from the harness (focus on the list)) |
 | 37.9 | Press `B` on a file deleted by the commit, then with nothing selected | A toast says there is nothing to blame (`... was deleted here`) or that no file is selected; no screen opens | [ ] (skipped: needs a commit that deletes a file, not in the lab) |
-| 37.10 | Select a worktree's uncommitted row in the graph and press `B` | The file is blamed as that worktree has it | [ ] (B on a new file of a worktree showed `no such path in HEAD` (#143); fixed in 0.106.7: every line reads as not committed, a unit test covers it; look again with the window) |
+| 37.10 | Select a worktree's uncommitted row in the graph and press `B` | The file is blamed as that worktree has it | [ ] [~] harness 0.106.11 (lab m1): Uncommitted row, Tab Tab, B: 'Blame: dirty.txt · As the working tree has it', the one line reads 'not committed'. With no file selected B toasts 'No file is selected to blame' |
 | 37.11 | Check the keybar and `?` over the screen; switch EN and JA | The keybar names j k, B H Tab, Enter, PageDown PageUp, Esc; global keys are not listed; text reads well in both languages and long lines end in `…` | [ ] (partly seen 2026-10-22: the keybar over blame names j k, B H Tab, e, Enter and no global keys; PageDown PageUp not named, ? and EN not tried) |
 | 37.12 | With Claude writing in the worktree, press `B` | Nothing changes in the worktree and no `index.lock` appears (a read only) | [ ] (skipped: needs a real Claude or tsumugi session) |
 
@@ -1112,7 +1112,7 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 | 255.3 | Answer `y` | The source is clean, the target has the edit and the untracked file, a toast names the backup; refs/michi/backup/ has the changes; the stash list is empty | [ ] (skipped: would move real changes between lab worktrees; the move itself is unit-tested) |
 | 255.4 | Edit the same file differently in both worktrees and move | The move is refused with the reason, and the changes are back in the source as they were | [ ] (skipped: needs a second divergent edit and a move; not driven this run) |
 | 255.5 | Make the target change that file in a commit so the changes clash, move | The target has conflict marks, a toast says where, and the stash stays in the list | [ ] (skipped: needs a commit clash setup; not driven this run) |
-| 255.6 | Press `v` on a worktree with no changes, then in a repository with one worktree | A toast says there is nothing to move / no other worktree; no palette opens | [ ] (見た: worktree が 1 本の 3 で v を押すと toast 「変更を移せるほかの worktree がありません」、palette は開かない (変更の無い worktree は未確認)) |
+| 255.6 | Press `v` on a worktree with no changes, then in a repository with one worktree | A toast says there is nothing to move / no other worktree; no palette opens | [ ] [~] harness 0.106.11 (lab m1): with one worktree v toasts 'There is no other worktree to move changes to'. FINDING: on wt2 (no changes) in a 3-worktree repo v opens the 'Move the uncommitted changes to: pick a worktree' palette, not a toast about nothing to move |
 | 255.7 | Start a merge in either worktree and move | A toast says it is in the middle of a merge; the palette stays | [ ] (skipped: needs a stopped merge in a worktree) |
 | 255.8 | With a Claude working in either worktree, move | The question also says a Claude is working there | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 255.9 | Switch EN and JA; check the keybar and `?` in the `3` view | `v` Move changes appears; text reads well in both languages | [~] (2026-10-22 ran EN/JA with F1 in lab m1: the 3 view's key list shows `v` Move changes / 変更を移す in both languages; the keybar not judged) |
@@ -1434,10 +1434,10 @@ michi has no editor of its own; it opens an external one at a line and an extern
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 118.1 | In the graph (`1`), look at the header | A "Legend" button sits left of "Fold PRs"; it hides on a very narrow window instead of overlapping | [ ] (見た: 凡例ボタンが「PR を畳む」の左にある (狭い窓は未確認)) |
+| 118.1 | In the graph (`1`), look at the header | A "Legend" button sits left of "Fold PRs"; it hides on a very narrow window instead of overlapping | [ ] [~] harness 0.106.11 (lab m1): Legend sits left of Fold PRs at 1100 and at 480 px wide; no overlap in either |
 | 118.2 | Click it | A panel lists lane colours, commit, merge, uncommitted, conflict, faded or dashed ends, branch, worktree, remote, tag, "+ origin", both warning pills and the new-commit dot | [ ] (見た: クリックで凡例の panel が開き、線の色・コミット・マージ・未コミット・衝突・薄れ・ブランチ・worktree・リモート・タグ・+origin・件名の点が並ぶ) |
 | 118.3 | Compare each drawing with the real one in the graph | Each looks the same as in the graph (dot, ring, dashes, pill styles and colours) | [ ] (判断不能: 描き方が本物と同じかは画面の画像だけでは比べきれない) |
-| 118.4 | Press any key, Esc, or click outside | It closes | [ ] (見た: Esc で閉じた (他のキー・外のクリックは未確認)) |
+| 118.4 | Press any key, Esc, or click outside | It closes | [ ] [~] harness 0.106.11 (lab m1): Esc, any key (j) and a click outside each close the panel |
 | 118.5 | Palette: "Show the legend of the graph" | The graph view opens with the legend on top | [ ] (飛ばし: palette への入力がハーネスで届かない) |
 | 118.6 | Switch EN and JA, and the themes | Words read well in both; the drawings stay readable on light and dark themes | [ ] [~] harness EN/JA × light/dark の凡例 (「樹形図の見方」) を撮った: 全部の図と文言が読め、どちらのテーマでも読める。閉じる案内は「Any key or a click closes this」 |
 
@@ -1526,7 +1526,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 119.1 | Edit a file | A "Next: commit" button appears in the keybar; pressing it goes to the `2` view | [ ] (見た: 2 ビューのキーバーに「次: コミットする」のボタンを確認。押して 2 へ移る動きは未確認) |
+| 119.1 | Edit a file | A "Next: commit" button appears in the keybar; pressing it goes to the `2` view | [ ] [~] harness 0.106.11 (lab nx1): a changed file puts 'Next: commit' in the keybar; a click on it opens the 2 view |
 | 119.2 | Commit it, with an upstream | "Next: push" appears; pressing it pushes | [ ] [~] harness 上流のある main で 1 コミット先に進めると「Next: push」が出る。押して push する所は未確認 |
 | 119.3 | Make the upstream have a commit you lack | "Next: pull" appears (before push); pressing it pulls | [ ] [~] harness 上流が先の pl4 で「Next: pull」を押すと pull され、main が origin/main と同じになる (push との順は未確認) |
 | 119.4 | On a new branch with commits and no upstream | "Next: push the branch" appears; the trunk never shows it | [ ] [~] harness 上流の無い新しいブランチ feat (コミットあり) で「Next: push the branch」が出る。trunk では出ない所は未確認 |
