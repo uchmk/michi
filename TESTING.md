@@ -501,7 +501,7 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 32.1 | In the `2` view pick a file; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
+| 32.1 | In the `2` view pick a file; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) | | [~] (`<Drag>` over the added lines in the diff lit the text under it in the selection colour; the copy on release not checked) |
 | 32.2 | Double-click a word, then triple-click a line; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 32.3 | Click a file row, a worktree chip, the amend switch and Commit | Each still does what it did; an empty click in the diff lets the selection go | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
 | 32.4 | Select a diff line and pick another file or switch the worktree | The selection is gone; the commit view's selection is not drawn here | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
@@ -521,7 +521,7 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 34.1 | Press `d` over a worktree; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal); no comment opens | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
+| 34.1 | Press `d` over a worktree; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal); no comment opens | | [~] (`<Drag>` over the diff of wt3 lit the text in the selection colour and no comment opened; the copy on release not checked) |
 | 34.2 | Double-click a word in the diff, triple-click a line, press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 34.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
 | 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] (skipped: needs a mouse drag to select diff text) |
@@ -826,8 +826,8 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 67.1 | In the graph (`1`) press on a commit row, drag it a little and watch | The pointer turns to a grabbing hand and the hash and subject follow it; a click without moving still only selects the row (skipped: needs drag or wheel, which the harness lacks) |
-| 67.2 | Drag that commit over a worktree row in the side column | The worktree's row gets an outline in the run colour while the pointer is on it (skipped: needs drag or wheel, which the harness lacks) |
+| 67.1 | In the graph (`1`) press on a commit row, drag it a little and watch | [ ] (undecidable: `<Drag>` from a commit row to a worktree row ended with no band or menu in the frame, and the grabbing hand and the following label cannot be seen from stills) |
+| 67.2 | Drag that commit over a worktree row in the side column | [ ] (undecidable: the outline shows only while the pointer is held over the row; the harness gives the frame after the drop) |
 | 67.3 | Let go over the worktree row | A small menu at the pointer reads `<hash> onto <branch>` and offers Merge into it and Cherry-pick onto it; nothing has run yet |
 | 67.4 | Pick Merge into it; then do the same and pick Cherry-pick onto it | The same band as `m` and `C` (plan lines, the backup note, the Claude warning) asks first, for that worktree and not for the one the window is on; y runs it |
 | 67.5 | Drag a branch row of the side column onto another worktree's row | The menu offers Merge into it and Rebase it onto the dropped branch; Rebase asks the band of the palette's Ctrl+R for that worktree (skipped: needs drag or wheel, which the harness lacks) |
@@ -912,7 +912,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | --- | --- | --- |
 | 84.1 | In the graph view (a repository with GitHub commits), look at the author column | Each author has a 16 px round avatar before their name: the GitHub picture for an author whose commit e-mail is a `...@users.noreply.github.com` address (it appears a moment after the rows), else a circle with their initials on a steady colour | | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 84.2 | Look at a commit by `github-actions[bot]` or `dependabot[bot]` | The bot shows its GitHub picture and the short `⚙ name` text | | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) |
-| 84.3 | Drag the author column narrower than about 100 px | The avatar goes and the name keeps the whole column; widen it and the avatar comes back | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
+| 84.3 | Drag the author column narrower than about 100 px | The avatar goes and the name keeps the whole column; widen it and the avatar comes back | | [~] (`<Drag>` of the Author header's edge to the right made the column about 85 px: the avatars went and the names kept the column, the Subject got wider; widening it again not tried) |
 | 84.4 | Open Settings, General, and untick `Fetch pictures from GitHub` | Every picture turns into initials at once, `config.toml` gets `[view]` `avatars = false`, and no `curl` process starts when scrolling (check the task manager) | | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 84.5 | Tick it again; or write `avatars = true` in config.toml by hand | Pictures come back without a restart; a non-boolean value shows a warning and counts as on | | [ ] (飛ばし: settings の操作と手編集後の再読込が要る (typing 不可)) |
 | 84.6 | Disconnect the network, restart michi and scroll the graph | The window stays responsive (no stall on the UI thread); initials show and the pictures are not retried in a loop | | [ ] (飛ばし: ネットワーク断が要る) |
