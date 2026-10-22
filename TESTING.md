@@ -510,7 +510,7 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 33.1 | Open a conflict (`4`); drag the mouse over some lines of the ours and theirs columns, and the result | The text under the drag is lit in the selection colour; letting go copies it (paste it in a terminal); line numbers are not picked up | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
+| 33.1 | Open a conflict (`4`); drag the mouse over some lines of the ours and theirs columns, and the result | The text under the drag is lit in the selection colour; letting go copies it (paste it in a terminal); line numbers are not picked up | | [ ] [~] harness 0.106.11 (1400x900, lab cf1 merge): dragging across the base and ours/theirs columns of the conflict lights the text under the drag ("three" in base) and not the line numbers; the clipboard is not readable, so the copy is not judged |
 | 33.2 | Double-click a word, then triple-click a line in a side, in the context lines and in the result; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: undecidable by the harness: it has no double/triple click word and cannot read the clipboard) |
 | 33.3 | In a rebase, drag over the ours / theirs commit lines of the intent | The subject and author are picked up | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 33.4 | Click a place, a side's pick button, `base` and the buttons of the result; click an empty place | Each click still does what it did (select the place, choose a side, show the base); an empty click lets the selection go | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
@@ -1653,7 +1653,7 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 274.1 | Trigger a message (`#` in the graph) and wait | It appears at the top right, not at the centre, and is gone after about 4 seconds without touching anything |
 | 274.2 | In Changes click a file, then Shift+click another on the same side; then Space | Every file between is shaded alike and staged together; a Shift+click on the other side only selects |
 | 274.3 | Click a file, Ctrl+click two others (not neighbours), then Ctrl+click one of them again | The Ctrl+clicked files are shaded; the one clicked twice leaves; Space stages the rest; a plain click or Esc drops the marks |
-| 274.4 | In the graph detail pane drag across a line with full-width (Japanese) text | Whole characters are picked, never half of one (skipped: needs drag or wheel, which the harness lacks) |
+| 274.4 | In the graph detail pane drag across a line with full-width (Japanese) text | Whole characters are picked, never half of one [~] harness 0.106.11 (1100x600, lab jp1): dragging over the Japanese line in the graph detail lights whole characters (日本); the clipboard is not readable |
 
 ## 275. Keys and layout: Alt+Left/Right, O, Ctrl+, , dates, message box
 
