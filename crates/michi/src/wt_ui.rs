@@ -1141,9 +1141,10 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
                 if g.reset {
                     w[i] = Sizes::default().table[i];
                 } else {
-                    // `cols` holds the widths as drawn, which the window may have squeezed.
-                    w[i] = cols[n].1;
-                    ito_layout::columns::resize(&mut w, i, g.delta, COL_MIN, 600.0, ito_layout::columns::Edge::Left);
+                    // `cols` holds the widths as drawn, which the window may have squeezed: the pointer's
+                    // movement is in drawn points, so turn it into the stored width's.
+                    let squeeze = (cols[n].1 / w[i]).clamp(0.6, 1.0);
+                    ito_layout::columns::resize(&mut w, i, g.delta / squeeze, COL_MIN, 600.0, ito_layout::columns::Edge::Left);
                 }
                 app.sizes.table = w;
             }
