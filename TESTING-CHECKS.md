@@ -1320,7 +1320,7 @@
 - [ ] **272.1** In the graph select a commit with a long diff, press Enter, then Down, PageDown, End, Home → The detail scrolls by line, page, to the end and to the top; the graph selection stays; Enter narrows it and the arrows move the graph again 〔未訳〕
 - [ ] **272.2** Select a commit and press `#`, then paste elsewhere; also Ctrl+C with no text picked → The full 40-character hash is pasted; a toast names its first 10 characters 〔未訳〕
 - [ ] **272.3** In the Worktrees view press `E` on a worktree → Explorer opens that worktree's folder, not the user folder (skipped: needs OS or machine features the harness lacks) 〔未訳〕
-- [ ] **272.4** Press F1 in a wide window, then in a narrow one; scroll with the wheel and the arrow keys → Two columns when wide, one when narrow; both scroll when the list is taller than the card (skipped: needs drag or wheel, which the harness lacks) 〔未訳〕
+- [ ] **272.4** Press F1 in a wide window, then in a narrow one; scroll with the wheel and the arrow keys → Two columns when wide, one when narrow; both scroll when the list is taller than the card (seen [~] in the harness, EN: 1400x600 shows Everywhere and Graph side by side and the wheel scrolled both together; 700x600 shows one column and the wheel scrolled it; the arrow keys not driven) 〔未訳〕
 - [ ] **272.5** In the graph, the Changes view and the F1 list press Ctrl+D, Ctrl+U, Alt+J, Alt+K → They move or scroll a page down and up like PageDown / PageUp; the key lists show them 〔未訳〕
 
 ## 273. Keys: gg / G, Alt+digit, toast
