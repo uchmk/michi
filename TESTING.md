@@ -754,7 +754,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | # | Do | Expect |
 | --- | --- | --- |
 | 87.1 | In `2`, select a file with changes far apart (a long file) | A thin strip at the right edge of the diff shows a tick per run of changes (green added, red deleted, amber changed in side by side) and a lit box over the part in sight; the diff text does not run under it (looked: a strip at the right edge shows three yellow ticks (changed runs) for a 300-line file with three edits) |
-| 87.2 | Scroll with the wheel and PageDown | The lit box follows; it fills the strip (or goes) when the whole diff fits (skipped: needs drag or wheel, which the harness lacks) |
+| 87.2 | Scroll with the wheel and PageDown | The lit box follows; it fills the strip (or goes) when the whole diff fits (seen [~] in the harness, 1100x600 EN: after the wheel and PageDown the lit box in the strip at the right edge of the diff sat lower than at the start; the whole-diff-fits case not driven, the box is small and the stills barely show it) |
 | 87.3 | Click a tick, then drag along the strip | The diff scrolls to that part, centred on the point; it stays inside the file at both ends (skipped: needs drag or wheel, which the harness lacks) |
 | 87.4 | With the focus on the files press `n` repeatedly, then `N` | Each `n` brings the next change to just under the top of the diff, the last one stops there (and does not stick on the one before it); `N` goes back the same way (looked: after n presses the diff sits on the last change and stays there; the middle steps were not told apart) |
 | 87.5 | Press `Enter` (side by side) then `n` / `N` | The ticks and the jumps follow the other layout; no change is skipped or repeated |
