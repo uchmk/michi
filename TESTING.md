@@ -805,7 +805,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 91.5 | Let a Claude stop without changing any file | No new turn ref is made | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 91.6 | Press `y` on a worktree whose Claude never stopped under michi | A toast says no turn is kept yet | | [ ] (skipped: needs a real Claude session) |
 | 91.7 | Restart michi while a Claude is already waiting, then let it work and stop | Only the turn ended after michi looked is kept (the first list is a baseline) | | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 91.8 | Switch to JA; press `?` in the worktree table and in the review | Titles and toasts read in Japanese; `y` and `y Y` are listed | | [ ] (partly seen 2026-10-22: JA F1 in the worktree table lists y: ハッシュ・パッチ・メッセージ… and the titles read in Japanese; the review view and a real Claude turn not tried) |
+| 91.8 | Switch to JA; press `?` in the worktree table and in the review | Titles and toasts read in Japanese; `y` and `y Y` are listed | | [~] harness 2026-10-22: JA `?` in the worktree table and in the review lists the branch-wide diff keys (j k, Tab, J K, n, g, Space, u, s, y Y, m, Enter) and the titles read in Japanese; a real Claude turn not tried |
 
 ## 78. Sync: fetch, pull and push in one (`S`)
 
@@ -820,7 +820,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 78.7 | With two remotes and no `origin`: press `S` | The remote chooser opens; choosing one runs the sync to it | | [ ] (skipped: not driven (needs a two-remote lab repo and a chooser click)) |
 | 78.8 | In sync already: press `S` | The toast says `Already in sync with origin/<b>` | | [ ] (undecidable: the toast is gone before the frame (3 s); only the in-sync status line is seen) |
 | 78.9 | Press `S` while a Claude works in the worktree, or in the middle of a merge | The Claude case asks `Sync there anyway?` (y/n); the merge case says sync waits (and the button is greyed) | | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 78.10 | Press `S` in the 2, 3 and 4 views; open `?`; switch EN and JA | `S` works in each; the key list has a `S` line; both languages read well | | [ ] (partly looked at 2026-10-22: `S` ran a sync from the 2 view ("sync · Writing objects 100%") and from the 3 view (the toast "Sync stopped at the pull…"), EN reads well; `S` in the 4 view and `?` (the `<?>` key landed in the graph filter) not seen) |
+| 78.10 | Press `S` in the 2, 3 and 4 views; open `?`; switch EN and JA | `S` works in each; the key list has a `S` line; both languages read well | | [~] harness 2026-10-22: `S` ran a sync from the 2 and 3 views and from the graph (toast "Sync stopped at the pull, nothing was pushed…"); the `?` panel lists `S` in EN and JA; `4` did not open a 4 view in the lab (no such tab), so the 4 view is not seen |
 
 ## 67. Drag and drop onto a worktree
 
@@ -1067,7 +1067,7 @@ Set up: `a.txt` has two versions (commit `first` has `one`, the head has `two`) 
 | 37.8 | In the `2` view, change a file on disk (add a line, do not commit), select it and press `B` | The new line reads `-------` / `not committed` in the waiting colour; Enter on it says `This line is not committed yet` and stays | [ ] (undecidable: B in the 2 view opened nothing from the harness (focus on the list)) |
 | 37.9 | Press `B` on a file deleted by the commit, then with nothing selected | A toast says there is nothing to blame (`... was deleted here`) or that no file is selected; no screen opens | [ ] (skipped: needs a commit that deletes a file, not in the lab) |
 | 37.10 | Select a worktree's uncommitted row in the graph and press `B` | The file is blamed as that worktree has it | [ ] [~] harness 0.106.11 (lab m1): Uncommitted row, Tab Tab, B: 'Blame: dirty.txt · As the working tree has it', the one line reads 'not committed'. With no file selected B toasts 'No file is selected to blame' |
-| 37.11 | Check the keybar and `?` over the screen; switch EN and JA | The keybar names j k, B H Tab, Enter, PageDown PageUp, Esc; global keys are not listed; text reads well in both languages and long lines end in `…` | [ ] (partly seen 2026-10-22: the keybar over blame names j k, B H Tab, e, Enter and no global keys; PageDown PageUp not named, ? and EN not tried) |
+| 37.11 | Check the keybar and `?` over the screen; switch EN and JA | The keybar names j k, B H Tab, Enter, PageDown PageUp, Esc; global keys are not listed; text reads well in both languages and long lines end in `…` | [~] harness 2026-10-22: over blame the keybar names j k, B H Tab, e and no global keys; the EN `?` panel lists j k, B H Tab, e, Enter, PageDown PageUp, Esc; the JA keybar and EN text read well and long lines end in … |
 | 37.12 | With Claude writing in the worktree, press `B` | Nothing changes in the worktree and no `index.lock` appears (a read only) | [ ] (skipped: needs a real Claude or tsumugi session) |
 
 ## 253. Per-worktree author and email (#53)
