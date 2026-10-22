@@ -370,6 +370,15 @@ impl Michi {
                         self.write_state(done, &ito_keyscript::quit_report(script.left()));
                     }
                 }
+                // The names are alphanumerics and `- _ .` only, so they are safe inside TOML quotes. The watcher applies the file.
+                Do::Theme(name) => {
+                    let change = ito_common::CommonChange { table: None, key: "theme", value: format!("\"{name}\"") };
+                    self.app.prefs.common_change(vec![change], "no config folder");
+                }
+                Do::Lang(code) => {
+                    let change = ito_common::CommonChange { table: None, key: "language", value: format!("\"{code}\"") };
+                    self.app.prefs.common_change(vec![change], "no config folder");
+                }
                 // michi defines no readings of its own.
                 Do::Read { .. } => {}
                 Do::Done => {

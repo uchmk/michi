@@ -352,7 +352,7 @@
 
 ## 26. Dragging the column widths
 
-- [ ] **26.1** In the graph view, drag the two lines between the side column, the graph and the detail (a line shows when the pointer is near); double-click a line; with a wide diff drag the line after the graph; close and open michi → The pointer turns to a left-right arrow over a line; the columns follow the pointer and no column goes under its least width; a double click halves that split; the widths come back at the next start; a double click on an edge brings the default width back → [~] (skipped: needs drag or wheel, which the harness lacks) 〔未訳〕
+- [ ] **26.1** In the graph view, drag the two lines between the side column, the graph and the detail (a line shows when the pointer is near); double-click a line; with a wide diff drag the line after the graph; close and open michi → The pointer turns to a left-right arrow over a line; the columns follow the pointer and no column goes under its least width; a double click halves that split; the widths come back at the next start; a double click on an edge brings the default width back → [~] (`<Drag>` on the side/graph and graph/detail lines widened the side column; the pointer shape, the double click and the restart not tried) 〔未訳〕
 - [ ] **26.2** Drag the left edge of Author, Date and Commit in the graph's header → The column gets wider as the edge goes left, narrower to the right (40–300); the rows follow; a double click on an edge brings the default width back → [x] (skipped: needs drag or wheel, which the harness lacks) 〔未訳〕
 - [ ] **26.3** In the worktree table drag the left edge of each header (Claude, from main, uncommitted, unseen, clash, buttons) and the edge between the name and Claude → Each column follows the pointer; the name and Claude share what is left; the widths come back at the next start; a double click on an edge brings the default width back → [~] (skipped: needs drag or wheel, which the harness lacks) 〔未訳〕
 
@@ -377,7 +377,7 @@
 
 ## 30. 文字の選択とコピー（ito-select）
 
-- [ ] **30.1** Select a commit; drag the mouse over some diff lines, the subject and the body → The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) → | [x] (skipped: needs drag or wheel, which the harness lacks) 〔未訳〕
+- [ ] **30.1** Select a commit; drag the mouse over some diff lines, the subject and the body → The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) → | [~] (`<Drag>` over the commit hash lit the text in the selection colour; the copy on release not checked) 〔未訳〕
 - [ ] **30.2** Double-click a word, then triple-click a line; press Ctrl+C after a drag → A word, then the line is picked up and copied; Ctrl+C copies it again → | [x] (skipped: needs drag or wheel, which the harness lacks) 〔未訳〕
 - [ ] **30.3** Put a web address in a commit message; double-click it; Ctrl+click it → The whole address is picked up; Ctrl+click shows the pointing hand and opens it in the browser → | [~] (skipped: needs a double-click and the OS browser, which the harness lacks) 〔未訳〕
 - [ ] **30.4** Click a parent hash, a file row and a merged commit; click an empty place → The click still does what it did (go to the commit, scroll to the file); an empty click lets the selection go → | [x] 〔未訳〕
@@ -533,7 +533,7 @@
 - [~] **47.6** Detach, then delete the branch it came from, then look at the strip → `R` is not offered for a branch that is gone (an earlier existing one, or only `B`) → | [ ] (seen: after the source branch is deleted the strip offers an earlier existing branch (master)) 〔未訳〕
 - [~] **47.7** Start `git rebase -i` and stop it at an edit → The strip says it is a rebase, with no buttons; it goes when the rebase ends → | [ ] (skipped: needs an interactive rebase stopped at edit, not set up) 〔未訳〕
 - [ ] **47.8** With a Claude working in the worktree press `R` → A yes is asked first, as for a switch → | [ ] (skipped: needs a real Claude or tsumugi session) 〔未訳〕
-- [~] **47.9** Open the settings (`,`) or the key list (`?`) while the strip is up; switch EN and JA → The strip stays tidy at a narrow width (the text is cut with an ellipsis, the buttons stay); both languages read well → | [ ] (skipped: narrow window and EN/JA switch not drivable) 〔未訳〕
+- [~] **47.9** Open the settings (`,`) or the key list (`?`) while the strip is up; switch EN and JA → The strip stays tidy at a narrow width (the text is cut with an ellipsis, the buttons stay); both languages read well → | [~] (`<Size:480x600>`: the settings page and the key list read well in JA at 480 wide; the strip itself and EN not seen) 〔未訳〕
 
 ## 74. Commit message help (history and template)
 

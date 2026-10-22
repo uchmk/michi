@@ -2,6 +2,12 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.106.9] - 2026-10-22
+
+### 変更
+
+- ito を v0.100.0 に上げた。キースクリプトの `<Size:幅x高さ>`・`<Theme:名前>`・`<Lang:コード>` を受ける（テーマと言語は common.toml に書く）。TESTING の drag・狭い窓の行を回せるようにした。
+
 ## [0.106.8] - 2026-10-22
 
 ### 修正
