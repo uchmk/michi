@@ -605,7 +605,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 41.1 | In a worktree with an uncommitted edit to a file the upstream also changed (different lines), press `p` | The pull goes through instead of stopping; the toast says the changes were stashed and put back, with the `michi/backup/...` name; the edit is still there; `git stash list` is empty | | [ ] (skipped: needs a diverged upstream plus a dirty edit, not set up) |
 | 41.2 | Same, but the edit touches the same lines the upstream changed | The pull goes through; the toast says the stash clashed in the file; the file has `<<<<<<<` marks and the stash stays in the list and under `michi/backup/` | | [ ] (skipped: same setup as 41.1) |
 | 41.3 | Switch a worktree with changes to a branch that would overwrite them (branch picker) | The switch happens, the toast says the changes were stashed and put back (or clashed) | | [ ] (飛ばし: 変更を上書きするブランチ切替の用意と toast の確認が要る (toast は 3 秒で消える)) |
-| 41.4 | Pull or switch with no changes, or with changes that do not stand in the way | Behaves as before; no stash, no backup, no extra text in the toast | | [ ] (飛ばし: toast に余計な文が無いことは 3 秒で消えて撮れない) |
+| 41.4 | Pull or switch with no changes, or with changes that do not stand in the way | Behaves as before; no stash, no backup, no extra text in the toast | | [ ] [~] harness 変更の無い pl7 で p を押すと toast は「Pulled 1 commits from origin/main」だけで、stash の文も backup も無い (refs/michi は空)。ただし「commits」の単数形が「1 commits」のまま |
 | 41.5 | Switch to a branch that does not exist, with changes in the worktree | The error is shown as before and the changes are still in the worktree (nothing left in the stash list) | | [ ] (skipped: same setup as 41.1) |
 
 ## 42. Reflog screen (`L`, #50)
@@ -1507,7 +1507,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 107.1 | Open a repository on a branch | A quiet line under the title bar reads "You are on X." with the uncommitted and remote state, and the key to press next | [ ] (見た: タイトルバーの下に「いまは master にいます。コミットしていない変更はありません。このブランチはまだリモートにありません。P で push できます。」) |
 | 107.2 | Edit a file, then watch the line | It gains "N files have uncommitted changes. Press 2 to commit them." within a couple of seconds | [ ] (飛ばし: 作業中に変更を足して数秒後の画面を撮る手順がハーネスに無い) (見た: 変更ありの画面で「コミットしていない変更が 2 ファイルあります。2 を押すとコミットできます。」の行を確認。編集の数秒後に増える動きは撮れていない) |
 | 107.3 | Commit, then push | The line moves to "not pushed ... Press P", then to "It matches origin/X" | [ ] (飛ばし: コミットと push の連続操作が要る) |
-| 107.4 | Switch branches; start a merge that conflicts | The line follows the branch; during the merge it says so and points to `4` | [ ] (飛ばし: 衝突するマージの用意が要る) |
+| 107.4 | Switch branches; start a merge that conflicts | The line follows the branch; during the merge it says so and points to `4` | [ ] [~] harness 状態の行がブランチに付いて変わる (main →「You are on main」、feat →「You are on feat」)。マージの衝突中は「You are in the middle of a merge on main. Press 4 …」と 4 を指す |
 | 107.5 | Narrow the window | The line stays on one row and ends with an ellipsis; resting the pointer on it shows the whole sentence | [~] (2026-10-22 ran at 480x600: the line stays on one row and ends with an ellipsis (EN and JA); the hover tooltip with the whole sentence cannot be driven by the harness) |
 | 107.6 | Check a detached HEAD | The strip is shown as before and the line is not doubled up under it | [ ] (飛ばし: detached HEAD の用意が要る) |
 | 107.7 | Open settings; switch EN and JA | The line is hidden in settings; in both languages it reads well and the colours follow the theme | [~] (2026-10-22 ran light theme, lab nw9: EN line reads well under the title bar in the graph; in JA settings the line is hidden; colours follow the light theme; stills only. Seen: a no-remote toast raised at start stayed Japanese after switching to EN) |
@@ -1528,7 +1528,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | --- | --- | --- |
 | 119.1 | Edit a file | A "Next: commit" button appears in the keybar; pressing it goes to the `2` view | [ ] (見た: 2 ビューのキーバーに「次: コミットする」のボタンを確認。押して 2 へ移る動きは未確認) |
 | 119.2 | Commit it, with an upstream | "Next: push" appears; pressing it pushes | [ ] [~] harness 上流のある main で 1 コミット先に進めると「Next: push」が出る。押して push する所は未確認 |
-| 119.3 | Make the upstream have a commit you lack | "Next: pull" appears (before push); pressing it pulls | [ ] [~] harness 上流が 1 コミット先に進むと「Next: pull」が出る。押して pull する所は未確認 (push との順は、先に進んだ側だけの run なので未確認) |
+| 119.3 | Make the upstream have a commit you lack | "Next: pull" appears (before push); pressing it pulls | [ ] [~] harness 上流が先の pl4 で「Next: pull」を押すと pull され、main が origin/main と同じになる (push との順は未確認) |
 | 119.4 | On a new branch with commits and no upstream | "Next: push the branch" appears; the trunk never shows it | [ ] [~] harness 上流の無い新しいブランチ feat (コミットあり) で「Next: push the branch」が出る。trunk では出ない所は未確認 |
 | 119.5 | Start a merge with a clash, then solve all places | "Next: solve the clashes" opens the `4` view; after solving it reads "Next: finish the merge" | [ ] [~] harness 衝突中のマージで「Next: solve the clashes」が出る (cf1)。押して 4 が開く所と、解いた後の「finish the merge」は未確認 |
 | 119.6 | Clean and in step | No suggestion button is shown; the palette has no "next step" entry | [ ] [~] harness きれいで同期済みの pl2a では提案のボタンが出ない。パレットに「次の手」の項目が無い所は未確認 (文字入力が要る) |
