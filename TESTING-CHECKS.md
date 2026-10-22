@@ -754,7 +754,7 @@
 - [ ] **70.1** Open a repository with a remote, leave the window in front for 5+ minutes without pressing `f` → The keybar's `fetch N min` goes back to `fetch now` by itself (a fetch ran), with no toast and no notification, even when nothing moved → | [ ] (skipped: needs OS or machine features the harness lacks) 〔未訳〕
 - [ ] **70.2** Put the window behind another and wait over 5 minutes, then bring it forward → No fetch runs while behind; within a moment of coming forward the fetch runs and the time resets → | [ ] (飛ばし: 5 分以上の待ちと窓の前後入れ替えが要る) 〔未訳〕
 - [ ] **70.3** Write `[net]` `auto_fetch = 1` in config.toml (no restart), stay in front → A fetch runs about every minute; `auto_fetch = 0` stops them → | [ ] (飛ばし: 1 分周期の自動 fetch を見るにはリモートと待ちが要る) 〔未訳〕
-- [ ] **70.4** Write `auto_fetch = "soon"` → A warning toast about config.toml; the 5-minute default stays → | [ ] (判断不能: toast が写らない (前の行と同じ)) 〔未訳〕
+- [ ] **70.4** Write `auto_fetch = "soon"` → A warning toast about config.toml; the 5-minute default stays → | [ ] [~] harness config.toml に [net] auto_fetch = "soon" を書いて開くと、警告の toast「keymap.toml / config.toml: 警告 1 件: config.toml: [net] auto_fetch is not a number of minutes (0 turns it off)」が出る。5 分の既定が残る所は未確認。注: <Lang:en> なのに「警告 1 件」が日本語で出た (見出しが未翻訳の疑い) 〔未訳〕
 - [ ] **70.5** Cut the network (or point `origin` at a bad address) and wait for a fetch → No toast and no system notification; the keybar's right reads `fetch N min · failed` (or `fetch failed`) in the waiting colour; the gaps between tries grow (up to 8 times the interval) → | [ ] (skipped: needs OS or machine features the harness lacks) 〔未訳〕
 - [ ] **70.6** Restore the network and press `f` (or wait) → The failed mark goes as soon as a fetch works → | [ ] (飛ばし: ネットワーク断が要る) 〔未訳〕
 - [ ] **70.7** With the network cut, press `f` yourself → The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` → | [ ] [~] harness 0.106.11 (lab ff1, origin = a missing path): pressing f shows the toast "fetch failed: ... does not appear to be a git repository" and the keybar reads "fetch just now · failed"; the system notification is not judged (OS feature) 〔未訳〕
@@ -1233,10 +1233,10 @@
 
 ## 113. Calm save (#113)
 
-- [ ] **113.1** In a worktree with a staged change, an unstaged change and a new file, press "Save state" in the keybar (or "Calm down" in the palette) → A toast names `michi/backup/<time>` and a `git restore --source=… --worktree -- .` line; the status, the index and HEAD are exactly as before → [ ] (判断不能: 押した直後の撮影で toast が写らず、backup の ref も作られなかった。status と HEAD は変わらず。手で確かめる) 〔未訳〕
-- [ ] **113.2** Run the `git restore` line from the toast after editing a file → The file is back as it was when saved → [ ] (飛ばし: toast が 3 秒で消えて撮れない) 〔未訳〕
+- [ ] **113.1** In a worktree with a staged change, an unstaged change and a new file, press "Save state" in the keybar (or "Calm down" in the palette) → A toast names `michi/backup/<time>` and a `git restore --source=… --worktree -- .` line; the status, the index and HEAD are exactly as before → [ ] [~] harness staged・unstaged・新規ファイルのある pl1a で「Save state」を押す。toast「Kept all of pl1a as michi/backup/<time>; nothing was changed. To get the files back: git restore --source=michi/backup/<time> --worktree -- .」が出る。status と HEAD は押す前と同じ (refs/michi/backup/ができた) 〔未訳〕
+- [ ] **113.2** Run the `git restore` line from the toast after editing a file → The file is back as it was when saved → [ ] [~] harness 113.1 の restore の行を、f に 1 行足した後で手で回すと、f は保存時の中身に戻る (git の autocrlf のため改行だけ CRLF) ・ status は同じ 〔未訳〕
 - [ ] **113.3** Press it in a clean worktree → A toast says there are no changes and HEAD is kept → [ ] [~] harness 変更の無い worktree (pl2a) で押すと toast「pl2a has no changes; its HEAD is kept as michi/backup/<time>」が出る (status 変化なし) 〔未訳〕
-- [ ] **113.4** Press it in the middle of a merge with a clash → It saves, and the merge is still under way with the same places to solve → [ ] (判断不能: 衝突中の画面ではクリックの位置が別の確認 (rerere) に当たった。押し直しが要る) 〔未訳〕
+- [ ] **113.4** Press it in the middle of a merge with a clash → It saves, and the merge is still under way with the same places to solve → [ ] [~] harness 衝突中のマージ (cf1) で押す。toast で保存され、マージは続いたまま (status は UU のまま・未解決の index の段 3 つは同じ) 〔未訳〕
 - [ ] **113.5** Hover the button; switch EN and JA → The tooltip says nothing is changed; both languages read well and the button fits the keybar at a narrow window → [ ] (飛ばし: hover の tooltip と EN/JA の切り替えがハーネスに無い) 〔未訳〕
 
 ## 119. Next thing to do (#119)
