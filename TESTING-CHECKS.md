@@ -674,7 +674,7 @@
 - [ ] **68.1** Open a commit that changes a `.rs` file (detail pane), then the Changes view of a worktree with a `.rs` edit → Keywords, strings, comments, numbers and names are coloured on context, added and deleted lines; the green/red line tint and the marked words (changed words) still show → | [ ] (seen on a.rs in a commit: strings and numbers coloured, changed words marked, green/red tint kept; keywords look plain) 〔未訳〕
 - [ ] **68.2** Look at a `.toml`, `.md`, `.ts`, `.py` and `Dockerfile` change → Each gets colours; a file of an unknown type (`.xyz`) and a binary file stay plain → | [ ] (seen: .toml and Dockerfile get colours (FROM/RUN, strings, numbers); .md, .ts, .py and .xyz were below the fold and not judged) 〔未訳〕
 - [~] **68.3** Switch the theme in settings between a dark and a light one → The colours follow the theme and stay readable on the added and deleted tints → | [ ] (skipped: theme switch not drivable here) 〔未訳〕
-- [~] **68.4** Open the diff side by side and unified (narrow the window) → Both layouts show the same colours; wrapped long lines keep them → | [ ] (skipped: narrow window not drivable here) 〔未訳〕
+- [~] **68.4** Open the diff side by side and unified (narrow the window) → Both layouts show the same colours; wrapped long lines keep them → | [~] (2026-10-22 ran at 480x600 in lab nw9: unified (EN) and side by side (JA) both keep the red/green colours and the wrapped long lines stay coloured; stills only) 〔未訳〕
 - [ ] **68.5** Open a big commit (hundreds of files, a huge generated file) → The window does not stall while it loads; a file of over 6000 diff lines, or a line of over 1500 characters, is left plain → | [ ] (skipped: needs a commit with hundreds of files; not built) 〔未訳〕
 - [ ] **68.6** Select diff text with the mouse and copy it → The copied text is the plain text (no colour effects) → | [ ] (skipped: needs mouse text selection and the clipboard) 〔未訳〕
 
@@ -782,7 +782,7 @@
 - [ ] **31.6** Run `git sparse-checkout disable` while michi is open → The strip goes away on the next refresh (no restart) → | [ ] (飛ばし: michi を開いたまま sparse-checkout を変えられない) 〔未訳〕
 - [ ] **31.7** Run `git sparse-checkout set --no-cone '/*' '!/some-folder'` → The strip says `Sparse checkout (patterns): ...` → | [ ] (飛ばし: michi を開いたまま sparse-checkout を変えられない) 〔未訳〕
 - [ ] **31.8** Sparse checkout on and a detached HEAD together → One strip: the detached HEAD's words first, then the sparse sentence; the `R` / `B` buttons stay → | [ ] (飛ばし: michi を開いたまま sparse-checkout を変えられない) 〔未訳〕
-- [ ] **31.9** Switch EN and JA; narrow the window → The sentence reads well in both and is cut with an ellipsis rather than overflowing → | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
+- [ ] **31.9** Switch EN and JA; narrow the window → The sentence reads well in both and is cut with an ellipsis rather than overflowing → | [~] (2026-10-22 ran at 480x600 EN and JA: the sentence over the views is cut with an ellipsis, not overflowing; the 3 view's sentence not tried. Seen: at this width the top bar's search box covers the minimize/maximize buttons and the bell overlaps maximize) 〔未訳〕
 
 ## 38. Content search in the `/` filter (`s:` pickaxe, `g:` regex)
 
