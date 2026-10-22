@@ -65,6 +65,10 @@ pub fn parse(text: &str) -> Vec<Sub> {
 
 /// The submodules of the worktree at `wt` (the first level), in git's order.
 pub fn list(wt: &Path) -> Result<Vec<Sub>, git::Error> {
+    // `git submodule status` is a shell script on Windows and takes seconds to start; without a `.gitmodules` there is nothing to ask.
+    if !wt.join(".gitmodules").exists() {
+        return Ok(Vec::new());
+    }
     Ok(parse(&git::read_text(wt, &["submodule", "status"])?))
 }
 

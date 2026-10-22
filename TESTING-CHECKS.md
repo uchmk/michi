@@ -763,7 +763,7 @@
 
 ## 71. Git LFS pointers (#30)
 
-- [ ] **71.1** In a repository with LFS files, select a commit that changed one → Above its diff (the three pointer lines) a note: `A Git LFS pointer, not the file: the content is not fetched here (git lfs pull)`; other files have no note → | [ ] [~] harness 0.106.11 (lab lfs1: a committed pointer file, no git-lfs): the selected commit's detail shows the note above the 3 pointer lines. The wording is shorter than the row: "A Git LFS pointer: content not fetched (git lfs pull)"; the Changes-view and review cases are not run 〔未訳〕
+- [ ] **71.1** In a repository with LFS files, select a commit that changed one → Above its diff (the three pointer lines) a note: `A Git LFS pointer: content not fetched (git lfs pull)`; other files have no note → | [ ] [~] harness 0.106.11 (lab lfs1: a committed pointer file, no git-lfs): the selected commit's detail shows the note above the 3 pointer lines. The row now has the real wording (#156); the Changes-view and review cases are not run 〔未訳〕
 - [ ] **71.2** Change an LFS file in a worktree and open it in the Changes view, and in a review → The same note shows above the pointer diff → | [ ] (飛ばし: git-lfs の実物が要る) 〔未訳〕
 - [ ] **71.3** Switch EN and JA → The note reads well in both and fits the width → | [ ] [~] harness 0.106.11 (lab lfs1, 1100x600): EN "A Git LFS pointer: content not fetched (git lfs pull)" and JA "Git LFS のポインタ: 中身は未取得 (git lfs pull)" read well and fit the width 〔未訳〕
 
