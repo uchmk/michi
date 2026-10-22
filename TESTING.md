@@ -855,7 +855,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 92.3 | Only one worktree is ahead of main, or none | No `Land` note shows | | [ ] (skipped: not driven) |
 | 92.4 | Commit in a worktree so the order would change; wait for the table to refresh | The numbers follow the new predictions without a restart | | [ ] (skipped: needs a Claude-driven order change) |
 | 92.5 | Start a merge in one worktree | The notes go away while the merge is under way and come back after | | [ ] (skipped: needs a merge under way in a worktree) |
-| 92.6 | Switch to JA | The notes read `main へ入れる順 1 / 3`, and the yellow one adds `先に入れた分との衝突 N 箇所` | | [ ] (skipped: no EN/JA switch in the harness) |
+| 92.6 | Switch to JA | The notes read `main へ入れる順 1 / 3`, and the yellow one adds `先に入れた分との衝突 N 箇所` | | [ ] [~] harness 0.106.11 (lab m1, <Lang:ja>): wt2 reads 'main へ入れる順 2 / 2' in green; the yellow clash note was not on screen in this lab, so only the first half is seen |
 
 ## 90. Loading skeletons in the graph
 
@@ -865,7 +865,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 90.2 | Make the read slow (a huge repository or a network drive) and keep looking | After 2 seconds a line `Still reading the history… N s` joins the bars and the seconds count up | | [ ] (skipped: needs a read slower than 2 s; not drivable) |
 | 90.3 | Wait for the first batch | The bars and the text go at once and the real rows take their place, with no flicker | | [ ] (skipped: flicker is not visible in still frames) |
 | 90.4 | Open an empty repository (no commit) | No skeleton stays; the screen says `No commits yet.` | | [ ] (looked at: an empty repo shows No commits yet with no skeleton) |
-| 90.5 | Switch the theme (dark and light), density (compact, cozy) and EN/JA while the bars show | The bars follow the theme and the row height; the text reads in the chosen language | | [ ] (skipped: theme, density and language switches not drivable here) |
+| 90.5 | Switch the theme (dark and light), density (compact, cozy) and EN/JA while the bars show | The bars follow the theme and the row height; the text reads in the chosen language | | [ ] [~] harness 0.106.11 (lab m1): the worktree table in JA with the light theme reads well (text and chips follow the theme); the bars, density (compact, cozy) were not shown, so those parts stay open |
 | 90.6 | Watch the CPU while the bars pulse | The window repaints about 15 times a second only while waiting and stops when the rows come | | [ ] (skipped: needs CPU reading of the pulsing bars) |
 
 ## 99. Handing a clash to a Claude and reviewing the result
@@ -904,7 +904,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 83.4 | Press `L` (reflog list), then look at the keybar and press `?` | The keybar shows only `j k` Move, Enter Bring the row back, Esc Back; `?` lists those under "Reflog" and no "Everywhere" keys | | [ ] (looked at: the keybar in the reflog list shows j k, Enter, g, r, Esc only) |
 | 83.5 | Repeat 83.4 with `c` in `3` (clean-up), `T` in `3` (trial merge) and `r` in `3` (rebase) | Each screen's own keys are in the keybar (Space picks, `a` picks all, `u` clears, `s f d p r`...), and typing `f` or `p` there does nothing to git | | [ ] (skipped: T keybar looked right (j k, Space, u, Enter, Esc) but c and r screens did not open in the run) |
 | 83.6 | Start something that asks for a yes (`x` on a worktree, `F` force push) | The keybar reads `y` Yes, `n` No, Esc Back; closing the question brings the view's keys back | | [ ] (skipped: the yes band did not show in the run) |
-| 83.7 | Switch EN and JA and repeat 83.4 and 83.6 | The new words read well in both languages and fit the keybar (the rest is cut, not overlapped) | | [ ] (skipped: depends on 83.6) |
+| 83.7 | Switch EN and JA and repeat 83.4 and 83.6 | The new words read well in both languages and fit the keybar (the rest is cut, not overlapped) | | [ ] [~] harness 0.106.11 (lab m1, EN and JA): the reflog keybar reads 'j k Move · Enter Bring the row as a new branch · g Show the commit in the graph' / 'j k 動かす · Enter その行を新しいブランチとして戻す · g コミットをグラフで見る'; both fit with nothing overlapped (83.4 / 83.6 only the L keybar was repeated) |
 
 ## 84. Author avatars
 
