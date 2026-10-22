@@ -2,6 +2,16 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.106.13] - 2026-10-23
+
+### 修正
+
+- Windows で worktree 表の `u`（submodule の状態）が、submodule の無いリポジトリでも `git submodule status` の起動に数秒かかり、toast がなかなか出なかった。`.gitmodules` が無ければ git を呼ばずに「submodule はありません」と答える（#153）。
+
+### 文書
+
+- TESTING.md の 71.1 の期待する文を、実際の LFS の注記（「A Git LFS pointer: content not fetched (git lfs pull)」）に揃えた（#156）。
+
 ## [0.106.12] - 2026-10-23
 
 ### 修正
