@@ -1227,9 +1227,9 @@
 - [ ] **107.2** Edit a file, then watch the line → It gains "N files have uncommitted changes. Press 2 to commit them." within a couple of seconds → [ ] (飛ばし: 作業中に変更を足して数秒後の画面を撮る手順がハーネスに無い) (見た: 変更ありの画面で「コミットしていない変更が 2 ファイルあります。2 を押すとコミットできます。」の行を確認。編集の数秒後に増える動きは撮れていない) 〔未訳〕
 - [ ] **107.3** Commit, then push → The line moves to "not pushed ... Press P", then to "It matches origin/X" → [ ] (飛ばし: コミットと push の連続操作が要る) 〔未訳〕
 - [ ] **107.4** Switch branches; start a merge that conflicts → The line follows the branch; during the merge it says so and points to `4` → [ ] (飛ばし: 衝突するマージの用意が要る) 〔未訳〕
-- [ ] **107.5** Narrow the window → The line stays on one row and ends with an ellipsis; resting the pointer on it shows the whole sentence → [ ] (skipped: needs a narrower window, which the harness lacks) 〔未訳〕
+- [ ] **107.5** Narrow the window → The line stays on one row and ends with an ellipsis; resting the pointer on it shows the whole sentence → [~] (2026-10-22 ran at 480x600: the line stays on one row and ends with an ellipsis (EN and JA); the hover tooltip with the whole sentence cannot be driven by the harness) 〔未訳〕
 - [ ] **107.6** Check a detached HEAD → The strip is shown as before and the line is not doubled up under it → [ ] (飛ばし: detached HEAD の用意が要る) 〔未訳〕
-- [ ] **107.7** Open settings; switch EN and JA → The line is hidden in settings; in both languages it reads well and the colours follow the theme → [ ] (飛ばし: EN/JA とテーマの切り替えがハーネスに無い) 〔未訳〕
+- [ ] **107.7** Open settings; switch EN and JA → The line is hidden in settings; in both languages it reads well and the colours follow the theme → [~] (2026-10-22 ran light theme, lab nw9: EN line reads well under the title bar in the graph; in JA settings the line is hidden; colours follow the light theme; stills only. Seen: a no-remote toast raised at start stayed Japanese after switching to EN) 〔未訳〕
 
 ## 113. Calm save (#113)
 
