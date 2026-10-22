@@ -537,7 +537,7 @@
 
 ## 74. Commit message help (history and template)
 
-- [~] **74.1** In the `2` view press `c` and look at the empty box → The hint reads "What changed, and why (Alt+Up / Alt+Down: earlier messages)"; EN and JA both read well and are not cut off → | [ ] (looked at 2026-10-22: JA hint reads as expected; EN not seen) 〔未訳〕
+- [~] **74.1** In the `2` view press `c` and look at the empty box → The hint reads "What changed, and why (Alt+Up / Alt+Down: earlier messages)"; EN and JA both read well and are not cut off → | [~] (looked at 2026-10-22 with `<Lang:en>` and `<Lang:ja>`: the hint reads "What changed, and why (Alt+Up / Alt+Down: earlier messages)" in EN and as expected in JA, not cut off) 〔未訳〕
 - [~] **74.2** With the box focused press Alt+Up → The box takes the latest commit's message (all lines); again: the one before; at the oldest nothing happens → | [ ] (looked at 2026-10-22: first Alt+Up fills the latest message; the second step was not told apart) 〔未訳〕
 - [~] **74.3** Type "wip", press Alt+Up twice, then Alt+Down twice → You are back at "wip" (the draft is kept); the same message is never listed twice → | [ ] (seen in hist1: wip then Alt+Up steps to the older messages and Alt+Down comes back to wip) 〔未訳〕
 - [ ] **74.4** Step to an old message, edit a word, press Alt+Up → The edited text is kept as the draft (Alt+Down from the next message comes back to it) → | [ ] (skipped: the frames show the edited word but not the Alt+Down return; frame lag made it undecidable) 〔未訳〕
@@ -554,7 +554,7 @@
 - [~] **86.3** Pick Cozy → The same rows grow (about 20% taller); the graph dots and lines stay joined across rows; the scrollbar marks still sit at their rows → | [ ] (seen in m1: Cozy makes the rows about 20% taller, dots and lines stay joined, config.toml has density = cozy; the scrollbar marks were not compared) 〔未訳〕
 - [ ] **86.4** Click a row, scroll with the wheel and drag the scrollbar in each density → Clicks land on the row under the pointer; the selected row stays in view (skipped: needs the wheel and a scrollbar drag, which the harness lacks) → | [ ] (skipped: needs wheel and scrollbar drag, which the harness lacks) 〔未訳〕
 - [~] **86.5** Edit `density` in config.toml by hand (also a wrong word) → The rows change within a few seconds without restart; a wrong word gives a toast warning and the standard rows → | [ ] (skipped: editing config.toml while the window runs is not in the harness) 〔未訳〕
-- [~] **86.6** Switch EN and JA in the settings → The section and its three choices read well in both → | [ ] (skipped: EN/JA switch not drivable here) 〔未訳〕
+- [~] **86.6** Switch EN and JA in the settings → The section and its three choices read well in both → | [~] (looked at 2026-10-22 with `<Lang:en>`/`<Lang:ja>`: the Row density section and its three choices (Compact / Standard / Cozy, 詰める / 標準 / ゆったり) read well and are not cut off in both) 〔未訳〕
 
 ## 88. Short animations (fade and slide, can be turned off)
 
@@ -564,7 +564,7 @@
 - [ ] **88.4** Open the settings (`,`), General: look for "Motion" and pick Off → `config.toml` has `[view]` `motion = "off"`; from now on views and windows appear at once, with no fade or slide, and the hover blends are gone (skipped: the config.toml part reads right, but the fade itself cannot be judged from stills) → | [ ] 〔未訳〕
 - [ ] **88.5** Pick On again; edit `motion` in config.toml by hand (also a wrong word) → Animations come back within a few seconds without restart; a wrong word gives a toast warning and keeps them on (skipped: the fade itself cannot be judged from stills) → | [ ] (skipped: needs the animation seen live and a hand-edited config over time) 〔未訳〕
 - [~] **88.6** Leave the window idle on a view for a while (Task Manager) → CPU stays near 0: nothing keeps repainting after the animation ends (an idle window kept one thread at ~100% of a core (#140): the thread is the AMD GPU driver's own, in Vulkan and DX12 alike; 0.106.8 draws with GL first on Windows (ito-gpu, as kura does) and measured 16 ms per 5 s; read Task Manager once more) → | [ ] (skipped: needs Task Manager CPU reading, see #140) 〔未訳〕
-- [~] **88.7** Switch EN and JA in the settings → The Motion section and its two choices read well in both → | [ ] (skipped: EN/JA switch not drivable here) 〔未訳〕
+- [~] **88.7** Switch EN and JA in the settings → The Motion section and its two choices read well in both → | [~] (looked at 2026-10-22 with `<Lang:en>`/`<Lang:ja>`: the Motion section and its two choices (On / Off (reduce motion), 入 / 切（動きを減らす）) read well in both; the JA note wraps to two lines) 〔未訳〕
 
 ## 94. Review queue of finished Claude work (Review column)
 
@@ -574,7 +574,7 @@
 - [ ] **94.4** Write a note (`n`) on a line and hand it with `g` → The row reads `Flagged` (yellow) even though all files are checked; the Claude commits again and the row goes back to `In review` or `Approved` by what is checked → [ ] (skipped: needs a real Claude to receive the handed note) 〔未訳〕
 - [ ] **94.5** Commit in an approved worktree a change to a file already checked → The row leaves `Approved` (the changed file lost its check) without opening the review → [ ] (skipped: needs a Claude commit in an approved worktree, not set up) 〔未訳〕
 - [ ] **94.6** Drag the Review column's left edge in the header; restart michi → The width follows the drag and is kept; the other columns still resize → [ ] (skipped: needs drag or wheel, which the harness lacks) 〔未訳〕
-- [ ] **94.7** Switch the language EN and JA, and a theme with a light background → The stage words read `Not looked at` / `In review` / `Flagged` / `Approved` and JA `未確認` / `確認中` / `指摘済み` / `承認`; every colour is readable → [ ] (skipped: needs the EN/JA switch and a light theme, which the harness cannot do) 〔未訳〕
+- [ ] **94.7** Switch the language EN and JA, and a theme with a light background → The stage words read `Not looked at` / `In review` / `Flagged` / `Approved` and JA `未確認` / `確認中` / `指摘済み` / `承認`; every colour is readable → [ ] (partly looked at 2026-10-22 with `<Theme:light>` and `<Lang:en>`/`<Lang:ja>`: `In review` / `確認中` is readable on the light background in the worktree table; `Not looked at`, `Flagged` and `Approved` not shown in the lab, so not seen) 〔未訳〕
 
 ## 95. From a commit to the Claude session of its worktree (#95)
 
@@ -656,7 +656,7 @@
 - [ ] **78.7** With two remotes and no `origin`: press `S` → The remote chooser opens; choosing one runs the sync to it → | [ ] (skipped: not driven (needs a two-remote lab repo and a chooser click)) 〔未訳〕
 - [ ] **78.8** In sync already: press `S` → The toast says `Already in sync with origin/<b>` → | [ ] (undecidable: the toast is gone before the frame (3 s); only the in-sync status line is seen) 〔未訳〕
 - [ ] **78.9** Press `S` while a Claude works in the worktree, or in the middle of a merge → The Claude case asks `Sync there anyway?` (y/n); the merge case says sync waits (and the button is greyed) → | [ ] (skipped: needs a real Claude or tsumugi session) 〔未訳〕
-- [ ] **78.10** Press `S` in the 2, 3 and 4 views; open `?`; switch EN and JA → `S` works in each; the key list has a `S` line; both languages read well → | [ ] (skipped: no EN/JA switch in the harness; S in the 3 and 4 views not driven) 〔未訳〕
+- [ ] **78.10** Press `S` in the 2, 3 and 4 views; open `?`; switch EN and JA → `S` works in each; the key list has a `S` line; both languages read well → | [ ] (partly looked at 2026-10-22: `S` ran a sync from the 2 view ("sync · Writing objects 100%") and from the 3 view (the toast "Sync stopped at the pull…"), EN reads well; `S` in the 4 view and `?` (the `<?>` key landed in the graph filter) not seen) 〔未訳〕
 
 ## 67. Drag and drop onto a worktree
 
@@ -747,7 +747,7 @@
 - [ ] **81.4** Add a second worktree (and run tsumugi) → The line is gone → [ ] (skipped: needs a real Claude or tsumugi session) 〔未訳〕
 - [ ] **81.5** With two or more worktrees and tsumugi not running, look at the worktree view → The line reads `Next: start tsumugi to see the Claude Code running in each worktree.`; start tsumugi and it goes within a few seconds → [ ] (skipped: needs a real Claude or tsumugi session) 〔未訳〕
 - [ ] **81.6** While the history is still being read (a big repository) → No guidance line shows (the skeleton only) → [ ] (skipped: needs a slow history read the harness cannot hold) 〔未訳〕
-- [ ] **81.7** Switch EN and JA; narrow the window → The line reads well in both and wraps without overlapping the table → [ ] (skipped: narrow window not drivable; JA seen in 81.1) 〔未訳〕
+- [ ] **81.7** Switch EN and JA; narrow the window → The line reads well in both and wraps without overlapping the table → [~] (looked at 2026-10-22 with `<Lang:en>`/`<Lang:ja>` and `<Size:480x600>`: the empty-history line reads `Next: press 2 to stage your files and make the first commit.` / `次は 2 を押して、…` in both and stays inside the box without overlapping; the top note is cut with `…` at that width) 〔未訳〕
 
 ## 70. Auto fetch (every 5 minutes, quiet)
 
