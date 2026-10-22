@@ -502,7 +502,7 @@ files under `refs/michi/backup/<time>` first.
 | # | Do | Expect |
 | --- | --- | --- |
 | 32.1 | In the `2` view pick a file; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) | | [~] (`<Drag>` over the added lines in the diff lit the text under it in the selection colour; the copy on release not checked) |
-| 32.2 | Double-click a word, then triple-click a line; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
+| 32.2 | Double-click a word, then triple-click a line; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: undecidable by the harness: it has no double/triple click word and cannot read the clipboard) |
 | 32.3 | Click a file row, a worktree chip, the amend switch and Commit | Each still does what it did; an empty click in the diff lets the selection go | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
 | 32.4 | Select a diff line and pick another file or switch the worktree | The selection is gone; the commit view's selection is not drawn here | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
 
@@ -511,10 +511,10 @@ files under `refs/michi/backup/<time>` first.
 | # | Do | Expect |
 | --- | --- | --- |
 | 33.1 | Open a conflict (`4`); drag the mouse over some lines of the ours and theirs columns, and the result | The text under the drag is lit in the selection colour; letting go copies it (paste it in a terminal); line numbers are not picked up | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
-| 33.2 | Double-click a word, then triple-click a line in a side, in the context lines and in the result; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
+| 33.2 | Double-click a word, then triple-click a line in a side, in the context lines and in the result; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: undecidable by the harness: it has no double/triple click word and cannot read the clipboard) |
 | 33.3 | In a rebase, drag over the ours / theirs commit lines of the intent | The subject and author are picked up | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
 | 33.4 | Click a place, a side's pick button, `base` and the buttons of the result; click an empty place | Each click still does what it did (select the place, choose a side, show the base); an empty click lets the selection go | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
-| 33.5 | Start writing a result by hand; drag and double-click inside the text box | The text box selects its own text as before; nothing outside it is lit | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
+| 33.5 | Start writing a result by hand; drag and double-click inside the text box | The text box selects its own text as before; nothing outside it is lit | | [ ] (skipped: undecidable by the harness: it has no double click word and cannot read the clipboard) |
 | 33.6 | Select some lines, then scroll the places or solve a place | The selection is gone (no wrong text stays lit) | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
 
 ## 34. Selecting text in the review (ito-select)
@@ -522,7 +522,7 @@ files under `refs/michi/backup/<time>` first.
 | # | Do | Expect |
 | --- | --- | --- |
 | 34.1 | Press `d` over a worktree; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal); no comment opens | | [~] (`<Drag>` over the diff of wt3 lit the text in the selection colour and no comment opened; the copy on release not checked) |
-| 34.2 | Double-click a word in the diff, triple-click a line, press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: needs drag or wheel, which the harness lacks) |
+| 34.2 | Double-click a word in the diff, triple-click a line, press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [ ] (skipped: undecidable by the harness: it has no double/triple click word and cannot read the clipboard) |
 | 34.3 | Single-click a diff line | The cursor moves to the line and its note can be written (`n`), as before | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
 | 34.4 | Select a diff line, then pick another file or switch the wide view | The selection is gone | | [ ] (skipped: needs a mouse drag to select diff text) |
 | 34.5 | Select diff text, close the review (Esc), select a commit's detail text | No stale selection shows in either place | | [ ] (skipped: needs a mouse drag to select diff text) |
