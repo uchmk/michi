@@ -1212,14 +1212,14 @@
 
 ## 106. A plain forecast before the main operations (#106)
 
-- [ ] **106.1** On a worktree with uncommitted files and a followed branch, press `p` → A band asks first and says in plain words how many commits come in and that the uncommitted files are put aside and brought back → [ ] (飛ばし: リモートに差のある用意や帯の確認操作が要る) 〔未訳〕
-- [ ] **106.2** On a clean, up-to-date branch, press `p` → No band: the pull just runs → [ ] (飛ばし: リモートに差のある用意や帯の確認操作が要る) 〔未訳〕
-- [ ] **106.3** Where the branch and its remote each have commits, press `p` with uncommitted files → The band says the pull will stop and to merge or rebase instead → [ ] (飛ばし: リモートに差のある用意や帯の確認操作が要る) 〔未訳〕
-- [ ] **106.4** In the `3` view, press `m` on a worktree → The band says how many commits of the trunk come in and whether it is expected to be clean or to stop on N files → [ ] (飛ばし: リモートに差のある用意や帯の確認操作が要る) 〔未訳〕
-- [ ] **106.5** In the graph, select a commit and press `m`, then `C` → Both bands carry a forecast line; the cherry-pick one says a copy is added and the original stays → [ ] (飛ばし: リモートに差のある用意や帯の確認操作が要る) 〔未訳〕
-- [ ] **106.6** Switch branch from the palette with uncommitted files → A band says the files change from A to B and that the uncommitted files are carried over; `y` switches, Esc leaves things as they are → [ ] (飛ばし: リモートに差のある用意や帯の確認操作が要る) 〔未訳〕
-- [ ] **106.7** Switch with no uncommitted files and no Claude → No band, as before → [ ] (飛ばし: リモートに差のある用意や帯の確認操作が要る) 〔未訳〕
-- [ ] **106.8** Do 106.1 to 106.6 in EN and in JA → The sentences read well in both and fit the band without being cut → [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
+- [ ] **106.1** On a worktree with uncommitted files and a followed branch, press `p` → A band asks first and says in plain words how many commits come in and that the uncommitted files are put aside and brought back → [ ] [~] harness 0.106.11 (lab pl1a: behind origin/main by 2, 2 uncommitted files; 1100x600): `p` opens "Are you sure?" — "2 commit(s) from origin/main will be brought into main. Nothing of yours is rewritten. The 2 uncommitted file(s) are put aside and brought back afterwards." JA reads the same. Not run to the end. 〔未訳〕
+- [ ] **106.2** On a clean, up-to-date branch, press `p` → No band: the pull just runs → [ ] [~] harness (lab pl2a: clean, up to date): `p` shows no band; a toast says "Already up to date with origin/main". 〔未訳〕
+- [ ] **106.3** Where the branch and its remote each have commits, press `p` with uncommitted files → The band says the pull will stop and to merge or rebase instead → [ ] [~] harness (lab pl3a: 1 ahead, 2 behind, 1 uncommitted file): the band says "You and origin/main both have commits the other lacks (yours 1, theirs 2), so a pull will stop. Merge or rebase instead." It still offers Go ahead (Ctrl+Enter); the sentence wraps to a 2nd line but is not cut. 〔未訳〕
+- [ ] **106.4** In the `3` view, press `m` on a worktree → The band says how many commits of the trunk come in and whether it is expected to be clean or to stop on N files → [ ] [~] harness (lab m1, `3` then `j` then `m`, wt2 and wt3): the band asks "Merge main into wt2 in m1-wt?" and says "wt2 already has everything in main; nothing will change." Only that case was seen: the "N commits come in, clean or stops on N files" lines need a worktree behind the trunk (not made). 〔未訳〕
+- [ ] **106.5** In the graph, select a commit and press `m`, then `C` → Both bands carry a forecast line; the cherry-pick one says a copy is added and the original stays → [ ] (飛ばし: 106.4 と同じ用意の上に、グラフで m と C を続けて押す確認が要る。未実施) 〔未訳〕
+- [ ] **106.6** Switch branch from the palette with uncommitted files → A band says the files change from A to B and that the uncommitted files are carried over; `y` switches, Esc leaves things as they are → [ ] (飛ばし: パレットに文字を打つ操作がハーネスに無い) 〔未訳〕
+- [ ] **106.7** Switch with no uncommitted files and no Claude → No band, as before → [ ] (飛ばし: パレットに文字を打つ操作がハーネスに無い) 〔未訳〕
+- [ ] **106.8** Do 106.1 to 106.6 in EN and in JA → The sentences read well in both and fit the band without being cut → [ ] [~] harness: EN and JA (`<Lang:ja>`) of the 106.1 and 106.4 bands read well and fit at 1100x600; 106.3 only in EN. 〔未訳〕
 
 ## 107. Where you are now (#107)
 
