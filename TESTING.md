@@ -987,7 +987,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 38.7 | Type `g:(` and press Enter | A toast says the search failed, with the reason; the window stays usable | | [ ]  (undecidable: no toast was caught in the frames for g:() |
 | 38.8 | Press Esc | The filter clears and every row is bright again | | [ ]  (seen: after clearing the filter every row is bright again and the field shows its placeholder) |
 | 38.9 | In a large repository press Enter on a search | The window stays responsive while the search runs; the hits come in when it is done | | [ ]  (skipped: needs a large repository with a slow search; big1 not set up for it) |
-| 38.10 | Switch EN and JA | The hint in the empty field and the `Enter: ...` line read well and fit | | [ ]  (skipped: the harness cannot switch EN and JA) |
+| 38.10 | Switch EN and JA | The hint in the empty field and the `Enter: ...` line read well and fit | | [~] (2026-10-22 ran EN and JA in lab m1: with s:f the field reads `Enter: search the changes` / `Enter: 変更の中身を探す` and fits; the empty-field hint is cut with an ellipsis in EN (`Filter (subject, hash, n…`); JA empty hint not looked at) |
 
 ## 129. Submodules: state and update (#29)
 
