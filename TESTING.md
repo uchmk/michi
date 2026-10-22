@@ -805,7 +805,7 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 91.5 | Let a Claude stop without changing any file | No new turn ref is made | | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 91.6 | Press `y` on a worktree whose Claude never stopped under michi | A toast says no turn is kept yet | | [ ] (skipped: needs a real Claude session) |
 | 91.7 | Restart michi while a Claude is already waiting, then let it work and stop | Only the turn ended after michi looked is kept (the first list is a baseline) | | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 91.8 | Switch to JA; press `?` in the worktree table and in the review | Titles and toasts read in Japanese; `y` and `y Y` are listed | | [ ] (skipped: EN/JA switch and needs a real Claude turn) |
+| 91.8 | Switch to JA; press `?` in the worktree table and in the review | Titles and toasts read in Japanese; `y` and `y Y` are listed | | [ ] (partly seen 2026-10-22: JA F1 in the worktree table lists y: ハッシュ・パッチ・メッセージ… and the titles read in Japanese; the review view and a real Claude turn not tried) |
 
 ## 78. Sync: fetch, pull and push in one (`S`)
 
@@ -1115,7 +1115,7 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 | 255.6 | Press `v` on a worktree with no changes, then in a repository with one worktree | A toast says there is nothing to move / no other worktree; no palette opens | [ ] (見た: worktree が 1 本の 3 で v を押すと toast 「変更を移せるほかの worktree がありません」、palette は開かない (変更の無い worktree は未確認)) |
 | 255.7 | Start a merge in either worktree and move | A toast says it is in the middle of a merge; the palette stays | [ ] (skipped: needs a stopped merge in a worktree) |
 | 255.8 | With a Claude working in either worktree, move | The question also says a Claude is working there | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 255.9 | Switch EN and JA; check the keybar and `?` in the `3` view | `v` Move changes appears; text reads well in both languages | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) |
+| 255.9 | Switch EN and JA; check the keybar and `?` in the `3` view | `v` Move changes appears; text reads well in both languages | [~] (2026-10-22 ran EN/JA with F1 in lab m1: the 3 view's key list shows `v` Move changes / 変更を移す in both languages; the keybar not judged) |
 
 ## 245. Repository tabs (#45)
 
@@ -1205,7 +1205,7 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 | 232.7 | Press `r` | A `git bisect run` line is on the clipboard and works when `<test-command>` is replaced | [ ] (飛ばし: クリップボードの中身をハーネスで読めない) |
 | 232.8 | Run a bisect with a second worktree present | The other worktrees are untouched | [ ] (飛ばし: 232.2 の手順が前提) |
 | 232.9 | With a Claude working in the worktree, start | The question also says a Claude is working there | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 232.10 | Switch EN and JA; check the keybar and `?` | The bisect keys appear; text reads well in both languages | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) |
+| 232.10 | Switch EN and JA; check the keybar and `?` | The bisect keys appear; text reads well in both languages | [ ] (skipped: needs a bisect state in the lab and the list scrolled) |
 
 ## 242. Gitflow (`G`)
 
@@ -1224,7 +1224,7 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 | 242.11 | Finish a release whose tag already exists | A toast says the tag is already there; nothing changed | [ ] (飛ばし: 242.1 が前提) |
 | 242.12 | Stop in the middle of a rebase or merge, then use a row | A toast says it is in the middle of it | [ ] (飛ばし: 242.1 が前提) |
 | 242.13 | Finish while a Claude is working in the worktree | The question ends with a note that a Claude is working there | [ ] (skipped: needs a real Claude or tsumugi session) |
-| 242.14 | Check the keybar and `?` over the graph and the `3` view; switch EN and JA | `G` Gitflow is listed; the palette and toasts read well in both languages | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) |
+| 242.14 | Check the keybar and `?` over the graph and the `3` view; switch EN and JA | `G` Gitflow is listed; the palette and toasts read well in both languages | [ ] (2026-10-22 ran EN/JA F1: Gitflow is listed in the 3 view as `U` (Gitflow), not `G` as the row says; `i` is the Git flow sheet everywhere; row text needs a decision; palette and toasts not tried) |
 
 ## 243. External editor, diff and merge tools (#43)
 
@@ -1293,7 +1293,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 257.6 | Land the branch with `l` (verify runs) or run a failing verify, then press `g` on the same commit | The verify row says passed (OK) or failed with the exit code (!!); a new commit goes back to `no result recorded` (??) | [ ] (飛ばし: 257.1 が前提) |
 | 257.7 | With a GitHub remote and gh signed in, push the branch and press `g` | The GitHub checks row counts passed, failed or pending; with the network off it says it could not be read (??) and the list still opens | [ ] (skipped: needs gh / GitHub / minato, which tests must not touch) |
 | 257.8 | Press any key, then Esc; click outside the list | Other keys do nothing; Esc and an outside click close it | [ ] (飛ばし: 257.1 が前提) |
-| 257.9 | Check the keybar, `?` and the palette in both languages | `g` is listed as `Check before merging` / `マージ前の確認` | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) |
+| 257.9 | Check the keybar, `?` and the palette in both languages | `g` is listed as `Check before merging` / `マージ前の確認` | [ ] (2026-10-22 ran EN/JA F1: Check before merging / マージ前の確認 is listed under `R` in the 3 view; `g` is listed as the first row / 先頭の行へ, so the row's key does not match; palette not tried) |
 
 ## 241. Sign-in help (#41)
 
@@ -1342,7 +1342,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 260.10 | In the `2` view, add a new untracked picture, then delete a tracked one | New: only the after; deleted: only the before | [ ] (飛ばし: 260.1 が前提) |
 | 260.11 | While in the `2` view with a picture shown, overwrite it again on disk | The picture updates without the view flickering back to "Reading the pictures..." | [ ] (飛ばし: 画像を上書きして更新を見る必要がある) |
 | 260.12 | Scroll a commit that changes many pictures | The scroll stays smooth; pictures load as they come into sight, the layout shifts at most a little | [ ] (飛ばし: wheel がハーネスに無い) |
-| 260.13 | Open `?` in the graph and the `2` view; switch EN and JA | `O` is listed with its words in both languages; the line over the pictures reads well in both | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) |
+| 260.13 | Open `?` in the graph and the `2` view; switch EN and JA | `O` is listed with its words in both languages; the line over the pictures reads well in both | [ ] (partly seen 2026-10-22: F1 in the changes and 3 views in EN and JA; `O` is listed as Image diff in the changes list; the graph list and the line over the pictures not looked at) |
 
 ## 261. Settings backup (Advanced page)
 
@@ -1362,7 +1362,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 114.2 | Press `r` in the list, then `r` again | The rows switch to git's own wording (`HEAD@{n}`, `checkout: moving from ...`) and back | [ ] (seen: r switches to HEAD@{n} and reset: moving to ... wording; r back not tried) |
 | 114.3 | Select a row and press `g` | The list closes and the graph shows that commit selected; for a commit not in the graph a toast says so | [ ] (seen: g on c3 (not in the graph) closes the list and toasts that it is not in the history) |
 | 114.4 | Select a row and press Enter | The band asks to bring it back as a new branch (the undo path); nothing moves until `y` | [ ] (飛ばし: バックアップを作る操作 (force push や branch の削除) が先に要る) |
-| 114.5 | Check the keybar and `?` with the list open; switch EN and JA | `g` and `r` are listed; both languages read well | [ ] (partly seen: the keybar lists g and r in Japanese; EN not tried) |
+| 114.5 | Check the keybar and `?` with the list open; switch EN and JA | `g` and `r` are listed; both languages read well | [~] (2026-10-22 ran EN/JA F1 in the changes view: `g` and the g+d, g+a, g+i chords are listed, `[ ]` is Another worktree; JA in the 3 view lists g and g+m, g+l, g+x, g+c; `r` is listed as rebase in the 3 view; both languages read well; list not scrolled) |
 
 ## 108. Git errors as a cause and a next step (#108)
 
