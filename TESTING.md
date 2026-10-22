@@ -1644,7 +1644,7 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 273.3 | In the graph trigger a message (`#`) | The toast sits at the top right (see 274) |
 | 273.4 | Press `U` in the graph and in the Worktrees table; `R` in the table; `x` then `y` in the graph | Gitflow list; the pre-merge check; the bisect marks bad then good |
 | 273.5 | In the graph select a merge commit, press `]`, then `[` | `]` selects the commit the merge brought in, `[` the first parent; on a plain commit `]` says there is no second parent |
-| 273.6 | Select a worktree's uncommitted change and drag over its header in the detail | The text is picked up and copied (skipped: needs drag or wheel, which the harness lacks) |
+| 273.6 | Select a worktree's uncommitted change and drag over its header in the detail | The text is picked up and copied [~] harness 0.106.11 (1100x600, lab m1): after selecting the WIP row, dragging across the detail header "Uncommitted changes on wt3" highlights the text; the clipboard content is not readable by the harness, so the copy is not judged |
 
 ## 274. Toast: top right, gone after a few seconds
 
