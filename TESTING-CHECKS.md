@@ -1144,15 +1144,15 @@
 
 ## 116. First-run guide
 
-- [ ] **116.1** Run michi with an empty home (no `user.name`, no `user.email`; e.g. `GIT_CONFIG_GLOBAL` pointing at an empty file) → A "Getting ready" panel opens at the top naming the missing name and email, with the `git config --global` commands to copy → [ ] (判断不能: GIT_CONFIG_GLOBAL を空のファイルにして開いたが「Getting ready」の panel は写らなかった (環境の渡し方が効いたか未確認)) 〔未訳〕
-- [ ] **116.2** Click a command in the panel → It is copied (a toast says so) and the panel stays → [ ] (飛ばし: 116.1 が前提) 〔未訳〕
-- [ ] **116.3** With the panel open, move around (`j`, `k`, `3`) → Keys still work under the panel; it does not take them → [ ] (飛ばし: 116.1 が前提) 〔未訳〕
-- [ ] **116.4** Press `Esc`, then open the command palette and pick "Getting ready" → Esc closes the panel; the palette entry brings it back → [ ] (飛ばし: 116.1 が前提) 〔未訳〕
-- [ ] **116.5** Click outside the panel → It closes → [ ] (飛ばし: 116.1 が前提) 〔未訳〕
+- [ ] **116.1** Run michi with an empty home (no `user.name`, no `user.email`; e.g. `GIT_CONFIG_GLOBAL` pointing at an empty file) → A "Getting ready" panel opens at the top naming the missing name and email, with the `git config --global` commands to copy → [ ] [~] harness (lab bs1, GIT_CONFIG_GLOBAL=empty file + GIT_CONFIG_NOSYSTEM=1, 1100x600): a "Getting ready" panel opens at the top, names the missing user.name and user.email, and shows `git config --global user.name "Your Name"` / `user.email "you@example.com"` to copy. (Seen only when the repo has no local name/email: lab m1 has them and shows no panel.) 〔未訳〕
+- [ ] **116.2** Click a command in the panel → It is copied (a toast says so) and the panel stays → [ ] (飛ばし: クリップボードに触る) 〔未訳〕
+- [ ] **116.3** With the panel open, move around (`j`, `k`, `3`) → Keys still work under the panel; it does not take them → [ ] [~] harness (lab bs1): with the panel open, `3` switched to the Worktrees tab and the panel stayed; the panel does not take the keys. (`j`/`k` not driven.) 〔未訳〕
+- [ ] **116.4** Press `Esc`, then open the command palette and pick "Getting ready" → Esc closes the panel; the palette entry brings it back → [ ] [~] harness (lab bs1): `Esc` closes the panel. The palette entry that brings it back was not driven (palette typing). 〔未訳〕
+- [ ] **116.5** Click outside the panel → It closes → [ ] [~] harness (lab bs1): a click at the bottom of the window (outside the panel) closed the panel. 〔未訳〕
 - [ ] **116.6** Start michi with git off the PATH → The panel says git is not installed and offers the install command for the OS (winget / brew / apt) and the download page → [ ] (飛ばし: git を PATH から外すと drive.ps1 も動かない) 〔未訳〕
 - [ ] **116.7** Start michi with git 2.38 or newer and a name and email set → No panel opens and the palette has no "Getting ready" entry → [ ] (見た: 名前とメールのある普通の環境では panel は出ない (palette の項目は未確認)) 〔未訳〕
-- [ ] **116.8** Read the panel's last lines → It points to `K` for the sign-in check; `K` still opens the sign-in help → [ ] (飛ばし: パネルが通常の環境では出ない (116.7 参照)) 〔未訳〕
-- [ ] **116.9** Switch EN and JA → The panel reads well in both → [ ] (飛ばし: パネルが出ない上、EN/JA の切り替えがハーネスに無い) 〔未訳〕
+- [ ] **116.8** Read the panel's last lines → It points to `K` for the sign-in check; `K` still opens the sign-in help → [ ] [~] harness (lab bs1): the last lines read "To check the sign-in to the remote (GitHub), press K." then "Esc or a click outside closes this; the command palette brings it back." Pressing `K` was not run (GitHub/network). 〔未訳〕
+- [ ] **116.9** Switch EN and JA → The panel reads well in both → [ ] [~] harness (lab bs1): EN reads well; JA (はじめの準備…) read well in an earlier run. Switching live in the same run is not driven (the run sets the language at start). 〔未訳〕
 
 ## 117. Practice repository
 
