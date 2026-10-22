@@ -941,17 +941,17 @@ Before the push michi reads what the last fetch left (no network) and lists the 
 | 70.4 | Write `auto_fetch = "soon"` | A warning toast about config.toml; the 5-minute default stays | | [ ] (判断不能: toast が写らない (前の行と同じ)) |
 | 70.5 | Cut the network (or point `origin` at a bad address) and wait for a fetch | No toast and no system notification; the keybar's right reads `fetch N min · failed` (or `fetch failed`) in the waiting colour; the gaps between tries grow (up to 8 times the interval) | | [ ] (skipped: needs OS or machine features the harness lacks) |
 | 70.6 | Restore the network and press `f` (or wait) | The failed mark goes as soon as a fetch works | | [ ] (飛ばし: ネットワーク断が要る) |
-| 70.7 | With the network cut, press `f` yourself | The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` | | [ ] (skipped: needs OS or machine features the harness lacks) |
+| 70.7 | With the network cut, press `f` yourself | The usual `fetch failed: ...` toast and notification still come, and the keybar shows `failed` | | [ ] [~] harness 0.106.11 (lab ff1, origin = a missing path): pressing f shows the toast "fetch failed: ... does not appear to be a git repository" and the keybar reads "fetch just now · failed"; the system notification is not judged (OS feature) |
 | 70.8 | Start a pull or push while the timer is due | The timer waits; it never interrupts a job | | [ ] (飛ばし: pull/push 中にタイマーが来る瞬間を作れない) |
-| 70.9 | Switch EN and JA | The keybar's `· failed` / `· 失敗` reads well and fits | | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) |
+| 70.9 | Switch EN and JA | The keybar's `· failed` / `· 失敗` reads well and fits | | [ ] [~] harness 0.106.11 (lab ff1, 1100x600): EN reads `fetch just now · failed`, JA reads `fetch たった今 · 失敗`; both fit the keybar |
 
 ## 71. Git LFS pointers (#30)
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 71.1 | In a repository with LFS files, select a commit that changed one | Above its diff (the three pointer lines) a note: `A Git LFS pointer, not the file: the content is not fetched here (git lfs pull)`; other files have no note | | [ ] (飛ばし: git-lfs の実物が要る) |
+| 71.1 | In a repository with LFS files, select a commit that changed one | Above its diff (the three pointer lines) a note: `A Git LFS pointer, not the file: the content is not fetched here (git lfs pull)`; other files have no note | | [ ] [~] harness 0.106.11 (lab lfs1: a committed pointer file, no git-lfs): the selected commit's detail shows the note above the 3 pointer lines. The wording is shorter than the row: "A Git LFS pointer: content not fetched (git lfs pull)"; the Changes-view and review cases are not run |
 | 71.2 | Change an LFS file in a worktree and open it in the Changes view, and in a review | The same note shows above the pointer diff | | [ ] (飛ばし: git-lfs の実物が要る) |
-| 71.3 | Switch EN and JA | The note reads well in both and fits the width | | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) |
+| 71.3 | Switch EN and JA | The note reads well in both and fits the width | | [ ] [~] harness 0.106.11 (lab lfs1, 1100x600): EN "A Git LFS pointer: content not fetched (git lfs pull)" and JA "Git LFS のポインタ: 中身は未取得 (git lfs pull)" read well and fit the width |
 
 ## 72. Signature mark in the detail (#35; numbered 71 because `## 35.` is taken)
 
