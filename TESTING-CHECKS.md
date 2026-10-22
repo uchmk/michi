@@ -800,14 +800,14 @@
 ## 129. Submodules: state and update (#29)
 
 - [ ] **129.1** In the worktree table of a repository with no submodule press `u` → A toast says the worktree has no submodules → [ ] (判断不能: u の toast が写らなかった) 〔未訳〕
-- [ ] **129.2** In a repository whose submodules are all on the recorded commit press `u` → A toast says all N submodules are on their recorded commits; no question → [ ] (飛ばし: submodule の実物と toast が要る) 〔未訳〕
-- [ ] **129.3** `cd` into a submodule and `git checkout HEAD~1`, then press `u` on its worktree → The band lists the submodule as off its commit and asks about `submodule update --init --recursive`; `n`/Esc leaves it as it is → [ ] (飛ばし: submodule の実物と toast が要る) 〔未訳〕
-- [ ] **129.4** Answer yes to 129.3 → A toast says the submodules were put on their recorded commits; `git submodule status` shows no `+` → [ ] (飛ばし: submodule 付きのクローンと u の確認・EN/JA 切替の用意が要る) 〔未訳〕
-- [ ] **129.5** Clone a repository with submodules without `--recurse-submodules`, press `u`, then yes → The missing (`-`) submodules are listed, then cloned and checked out → [ ] (飛ばし: submodule 付きのクローンと u の確認・EN/JA 切替の用意が要る) 〔未訳〕
-- [ ] **129.6** Leave an uncommitted change in a submodule file the update would overwrite, then `u` and yes → git refuses, michi shows `submodule update failed: ...` and the change is still there → [ ] (飛ばし: submodule 付きのクローンと u の確認・EN/JA 切替の用意が要る) 〔未訳〕
-- [ ] **129.7** Press `u` on a worktree in the middle of a merge, with a stale submodule, then yes → The update is refused with a message naming the merge → [ ] (飛ばし: submodule 付きのクローンと u の確認・EN/JA 切替の用意が要る) 〔未訳〕
-- [ ] **129.8** Open `?` in the worktree table; switch EN and JA → `u` reads "Submodules: state and update" / "submodule の状態と更新"; the question and toasts read well and fit → [ ] (飛ばし: submodule 付きのクローンと u の確認・EN/JA 切替の用意が要る) 〔未訳〕
-- [ ] **129.9** Open the command palette (`Ctrl+Shift+P`) in the worktree table → A "Submodules: state and update" entry with `u` is listed and works → [ ] (飛ばし: submodule 付きのクローンと u の確認・EN/JA 切替の用意が要る) 〔未訳〕
+- [ ] **129.2** In a repository whose submodules are all on the recorded commit press `u` → A toast says all N submodules are on their recorded commits; no question → [ ] (判断不能: 最新のビルドで submodule 付きの 3 つの lab (所定の位置・古い・未取得) の worktree 表で u を押しても、toast も確認の帯も出ない。ハーネスの鍵の問題か u の不具合か切り分けが要る) 〔未訳〕
+- [ ] **129.3** `cd` into a submodule and `git checkout HEAD~1`, then press `u` on its worktree → The band lists the submodule as off its commit and asks about `submodule update --init --recursive`; `n`/Esc leaves it as it is → [ ] (判断不能: 最新のビルドで submodule 付きの 3 つの lab (所定の位置・古い・未取得) の worktree 表で u を押しても、toast も確認の帯も出ない。ハーネスの鍵の問題か u の不具合か切り分けが要る) 〔未訳〕
+- [ ] **129.4** Answer yes to 129.3 → A toast says the submodules were put on their recorded commits; `git submodule status` shows no `+` → [ ] (判断不能: 最新のビルドで submodule 付きの 3 つの lab (所定の位置・古い・未取得) の worktree 表で u を押しても、toast も確認の帯も出ない。ハーネスの鍵の問題か u の不具合か切り分けが要る) 〔未訳〕
+- [ ] **129.5** Clone a repository with submodules without `--recurse-submodules`, press `u`, then yes → The missing (`-`) submodules are listed, then cloned and checked out → [ ] (判断不能: 最新のビルドで submodule 付きの 3 つの lab (所定の位置・古い・未取得) の worktree 表で u を押しても、toast も確認の帯も出ない。ハーネスの鍵の問題か u の不具合か切り分けが要る) 〔未訳〕
+- [ ] **129.6** Leave an uncommitted change in a submodule file the update would overwrite, then `u` and yes → git refuses, michi shows `submodule update failed: ...` and the change is still there → [ ] (判断不能: 最新のビルドで submodule 付きの 3 つの lab (所定の位置・古い・未取得) の worktree 表で u を押しても、toast も確認の帯も出ない。ハーネスの鍵の問題か u の不具合か切り分けが要る) 〔未訳〕
+- [ ] **129.7** Press `u` on a worktree in the middle of a merge, with a stale submodule, then yes → The update is refused with a message naming the merge → [ ] (判断不能: 最新のビルドで submodule 付きの 3 つの lab (所定の位置・古い・未取得) の worktree 表で u を押しても、toast も確認の帯も出ない。ハーネスの鍵の問題か u の不具合か切り分けが要る) 〔未訳〕
+- [ ] **129.8** Open `?` in the worktree table; switch EN and JA → `u` reads "Submodules: state and update" / "submodule の状態と更新"; the question and toasts read well and fit → [ ] (判断不能: 最新のビルドで submodule 付きの 3 つの lab (所定の位置・古い・未取得) の worktree 表で u を押しても、toast も確認の帯も出ない。ハーネスの鍵の問題か u の不具合か切り分けが要る) 〔未訳〕
+- [ ] **129.9** Open the command palette (`Ctrl+Shift+P`) in the worktree table → A "Submodules: state and update" entry with `u` is listed and works → [ ] (判断不能: 最新のビルドで submodule 付きの 3 つの lab (所定の位置・古い・未取得) の worktree 表で u を押しても、toast も確認の帯も出ない。ハーネスの鍵の問題か u の不具合か切り分けが要る) 〔未訳〕
 
 ## 280. Remotes: list, add, remove (`M`)
 
@@ -1242,11 +1242,11 @@
 ## 119. Next thing to do (#119)
 
 - [ ] **119.1** Edit a file → A "Next: commit" button appears in the keybar; pressing it goes to the `2` view → [ ] (見た: 2 ビューのキーバーに「次: コミットする」のボタンを確認。押して 2 へ移る動きは未確認) 〔未訳〕
-- [ ] **119.2** Commit it, with an upstream → "Next: push" appears; pressing it pushes → [ ] (飛ばし: push・上流の差・衝突の用意が要る) 〔未訳〕
-- [ ] **119.3** Make the upstream have a commit you lack → "Next: pull" appears (before push); pressing it pulls → [ ] (飛ばし: push・上流の差・衝突の用意が要る) 〔未訳〕
-- [ ] **119.4** On a new branch with commits and no upstream → "Next: push the branch" appears; the trunk never shows it → [ ] (飛ばし: 新しいブランチとコミットの用意が要る) 〔未訳〕
-- [ ] **119.5** Start a merge with a clash, then solve all places → "Next: solve the clashes" opens the `4` view; after solving it reads "Next: finish the merge" → [ ] (飛ばし: push・上流の差・衝突の用意が要る) 〔未訳〕
-- [ ] **119.6** Clean and in step → No suggestion button is shown; the palette has no "next step" entry → [ ] (飛ばし: push・上流の差・衝突の用意が要る) 〔未訳〕
+- [ ] **119.2** Commit it, with an upstream → "Next: push" appears; pressing it pushes → [ ] [~] harness 上流のある main で 1 コミット先に進めると「Next: push」が出る。押して push する所は未確認 〔未訳〕
+- [ ] **119.3** Make the upstream have a commit you lack → "Next: pull" appears (before push); pressing it pulls → [ ] [~] harness 上流が 1 コミット先に進むと「Next: pull」が出る。押して pull する所は未確認 (push との順は、先に進んだ側だけの run なので未確認) 〔未訳〕
+- [ ] **119.4** On a new branch with commits and no upstream → "Next: push the branch" appears; the trunk never shows it → [ ] [~] harness 上流の無い新しいブランチ feat (コミットあり) で「Next: push the branch」が出る。trunk では出ない所は未確認 〔未訳〕
+- [ ] **119.5** Start a merge with a clash, then solve all places → "Next: solve the clashes" opens the `4` view; after solving it reads "Next: finish the merge" → [ ] [~] harness 衝突中のマージで「Next: solve the clashes」が出る (cf1)。押して 4 が開く所と、解いた後の「finish the merge」は未確認 〔未訳〕
+- [ ] **119.6** Clean and in step → No suggestion button is shown; the palette has no "next step" entry → [ ] [~] harness きれいで同期済みの pl2a では提案のボタンが出ない。パレットに「次の手」の項目が無い所は未確認 (文字入力が要る) 〔未訳〕
 
 ## 262. Beginners' explanations: stage, conflict, worktree (#120, #121, #122)
 
