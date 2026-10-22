@@ -818,7 +818,7 @@
 - [~] **280.5** Select a remote and press Delete → The red question names the remote and its address and says its remote-tracking branches go; `y` or Ctrl+Enter removes it, the graph drops its `origin/...` pills, the toast says where it was → [ ] (looked at on a real window: Delete asks, y removes) 〔未訳〕
 - [~] **280.6** Press `Esc` on that question → Nothing is removed → [ ] (looked at on a real window: Esc removes nothing) 〔未訳〕
 - [~] **280.7** Press `M` in a repository with no remote → The list opens empty; typing a name and address still adds one → [ ] (looked at on a real window in one1: the list opens empty with a hint to type a name and URL) 〔未訳〕
-- [ ] **280.8** Switch EN and JA → The hint, the keys line, the question and the toasts read well and fit → [ ] (skipped: the harness cannot switch EN and JA) 〔未訳〕
+- [ ] **280.8** Switch EN and JA → The hint, the keys line, the question and the toasts read well and fit → [~] (2026-10-22 ran EN and JA in lab m1: the keys line `Enter adds the typed one · Del removes the selected one · Esc closes` / its JA and the row hint `add it at https:` / `名前の後ろに URL を打つ` fit; the JA toast for a name alone fits; the delete question not tried. Seen: an already-raised toast keeps its language after switching to EN) 〔未訳〕
 
 ## 52. Restore a file's version from a commit
 
@@ -867,7 +867,7 @@
 - [ ] **253.1** With every worktree committing as the same `user.name` / `user.email`, look at the worktree table → No "Commits as" line under any name → [ ] (見た: 同じ作者の 3 worktree で「Commits as」の行はどこにも出ない) 〔未訳〕
 - [ ] **253.2** In one worktree run `git config extensions.worktreeConfig true` then `git config --worktree user.name Other` and `user.email other@example.com`; wait for the next reread → Every worktree row gets a `Commits as Name <email>` line (JA `作者: …`) under its folder; the changed one shows `Other <other@example.com>` → [ ] (飛ばし: 作者の違う worktree の設定を作り直す手順で、読み直しの待ちも要る) 〔未訳〕
 - [ ] **253.3** Set the name back in that worktree (`git config --worktree --unset user.name`) so it matches the others again → The lines disappear again without restarting michi → [ ] (飛ばし: 253.2 が前提) 〔未訳〕
-- [ ] **253.4** Switch EN and JA → The line reads well in both; long values do not overflow the card → [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) 〔未訳〕
+- [ ] **253.4** Switch EN and JA → The line reads well in both; long values do not overflow the card → [~] (2026-10-22 ran EN and JA in lab m1 with a worktree-config author in wt3: `Commits as …` / `作者: …` read well, and the long `Other Person <other@example.com>` wraps inside the folder column and does not overflow the card) 〔未訳〕
 
 ## 239. Clone from the repository screen (#39)
 
