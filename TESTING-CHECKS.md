@@ -1171,7 +1171,7 @@
 - [ ] **118.3** Compare each drawing with the real one in the graph → Each looks the same as in the graph (dot, ring, dashes, pill styles and colours) → [ ] (判断不能: 描き方が本物と同じかは画面の画像だけでは比べきれない) 〔未訳〕
 - [ ] **118.4** Press any key, Esc, or click outside → It closes → [ ] (見た: Esc で閉じた (他のキー・外のクリックは未確認)) 〔未訳〕
 - [ ] **118.5** Palette: "Show the legend of the graph" → The graph view opens with the legend on top → [ ] (飛ばし: palette への入力がハーネスで届かない) 〔未訳〕
-- [ ] **118.6** Switch EN and JA, and the themes → Words read well in both; the drawings stay readable on light and dark themes → [ ] (飛ばし: EN/JA とテーマの切り替えがハーネスに無い) 〔未訳〕
+- [ ] **118.6** Switch EN and JA, and the themes → Words read well in both; the drawings stay readable on light and dark themes → [ ] [~] harness EN/JA × light/dark の凡例 (「樹形図の見方」) を撮った: 全部の図と文言が読め、どちらのテーマでも読める。閉じる案内は「Any key or a click closes this」 〔未訳〕
 
 ## 262. Everything by mouse (#123)
 
@@ -1233,10 +1233,10 @@
 
 ## 113. Calm save (#113)
 
-- [ ] **113.1** In a worktree with a staged change, an unstaged change and a new file, press "Save state" in the keybar (or "Calm down" in the palette) → A toast names `michi/backup/<time>` and a `git restore --source=… --worktree -- .` line; the status, the index and HEAD are exactly as before → [ ] (飛ばし: toast が 3 秒で消えて撮れない) 〔未訳〕
+- [ ] **113.1** In a worktree with a staged change, an unstaged change and a new file, press "Save state" in the keybar (or "Calm down" in the palette) → A toast names `michi/backup/<time>` and a `git restore --source=… --worktree -- .` line; the status, the index and HEAD are exactly as before → [ ] (判断不能: 押した直後の撮影で toast が写らず、backup の ref も作られなかった。status と HEAD は変わらず。手で確かめる) 〔未訳〕
 - [ ] **113.2** Run the `git restore` line from the toast after editing a file → The file is back as it was when saved → [ ] (飛ばし: toast が 3 秒で消えて撮れない) 〔未訳〕
-- [ ] **113.3** Press it in a clean worktree → A toast says there are no changes and HEAD is kept → [ ] (判断不能: 「状態を保存」を押したが toast が撮れなかった (3 秒で消える)) 〔未訳〕
-- [ ] **113.4** Press it in the middle of a merge with a clash → It saves, and the merge is still under way with the same places to solve → [ ] (飛ばし: toast が 3 秒で消えて撮れない) 〔未訳〕
+- [ ] **113.3** Press it in a clean worktree → A toast says there are no changes and HEAD is kept → [ ] [~] harness 変更の無い worktree (pl2a) で押すと toast「pl2a has no changes; its HEAD is kept as michi/backup/<time>」が出る (status 変化なし) 〔未訳〕
+- [ ] **113.4** Press it in the middle of a merge with a clash → It saves, and the merge is still under way with the same places to solve → [ ] (判断不能: 衝突中の画面ではクリックの位置が別の確認 (rerere) に当たった。押し直しが要る) 〔未訳〕
 - [ ] **113.5** Hover the button; switch EN and JA → The tooltip says nothing is changed; both languages read well and the button fits the keybar at a narrow window → [ ] (飛ばし: hover の tooltip と EN/JA の切り替えがハーネスに無い) 〔未訳〕
 
 ## 119. Next thing to do (#119)
