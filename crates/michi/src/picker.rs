@@ -378,7 +378,7 @@ impl App {
         if places(&worktrees, &wt).is_empty() {
             return self.say(self.tr("move.alone"));
         }
-        if self.wips.iter().find(|w| same(&w.path, &wt)).is_some_and(|w| w.files.is_empty()) {
+        if !self.wips.is_empty() && !self.wips.iter().any(|w| same(&w.path, &wt) && !w.files.is_empty()) {
             let text = self.tr("act.stash_nothing").replace("{}", &act::name(&wt));
             return self.say(text);
         }

@@ -545,7 +545,10 @@ impl App {
             Ok(Done::Fetched { moved: 0, .. }) => (self.tr("net.fetched_none").to_owned(), 4),
             Ok(Done::Fetched { moved, .. }) => (self.tr("net.fetched").replace("{}", &moved.to_string()), 4),
             Ok(Done::Pulled { upstream, count, stashed }) => {
-                let text = self.tr("net.pulled").replace("{n}", &count.to_string()).replace("{up}", &upstream);
+                let text = self
+                    .tr(if count == 1 { "net.pulled_one" } else { "net.pulled" })
+                    .replace("{n}", &count.to_string())
+                    .replace("{up}", &upstream);
                 match stashed {
                     Some(s) => {
                         let (more, secs) = self.autostash_said(&s);
@@ -803,6 +806,10 @@ mod tests {
         assert_eq!(
             said(&pull, Ok(Done::Pulled { upstream: "origin/main".into(), count: 2, stashed: None })),
             "Pulled 2 commits from origin/main"
+        );
+        assert_eq!(
+            said(&pull, Ok(Done::Pulled { upstream: "origin/main".into(), count: 1, stashed: None })),
+            "Pulled 1 commit from origin/main"
         );
         assert_eq!(said(&pull, Ok(Done::Even { to: "origin/main".into() })), "Already up to date with origin/main");
         assert_eq!(said(&push, Ok(Done::Even { to: "origin/feat".into() })), "origin/feat has it already");

@@ -216,3 +216,16 @@ All wait for the owner; none is started. Related: #64 (Undo), #74, #77, #80-#83.
 ## Owner
 
 - 【人】 After the skeleton: run the rows of TESTING-CHECKS.md on the real machine (window, title bar, icon, fonts).
+
+## TESTING 由来の不具合
+
+- [x] #148 pull の toast の単数形（0.106.12）
+- [x] #150 変更の無い worktree の `v`（0.106.12）
+- [ ] #145 480 px で検索ボックス・ベルが窓のボタンに重なる
+- [ ] #149 47.5 Branch from here のあと窓が更新されない
+- [ ] #151 106.3 diverged の pull の帯が Go ahead を出す
+- [ ] #152 106.4 「N commits come in」の帯が出ない
+- [ ] #153 129.x `u` が worktree 表で効かない（ハーネス）
+- [ ] #154 約 80 px で Review 列が語の途中で折り返す
+- [ ] #155 日本語の bisect の帯が 1100 px で切れる
+- [ ] #156 71.1 LFS の注記と行の文の食い違い
