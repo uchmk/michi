@@ -1154,11 +1154,11 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 258.1 | Add a pre-commit hook that prints five lines and exits 1; stage a file, write a message, commit; in the panel of what git said press `r` | The panel shows `Run again` with an `r` key cap left of `Close`; `r` runs the commit again (the hook runs again, a new panel or toast follows) with the same message and staged files | [ ] (飛ばし: 空白を含むコミットメッセージがハーネスで打てず、hook も用意できない) |
-| 258.2 | Click `Run again` in the same panel | The same as `r` | [ ] (飛ばし: 空白を含むコミットメッセージがハーネスで打てず、hook も用意できない) |
-| 258.3 | Fix the hook so it passes (or remove it), then press `r` over the panel | The commit goes through, the panel closes and the message box is cleared | [ ] (飛ばし: 空白を含むコミットメッセージがハーネスで打てず、hook も用意できない) |
+| 258.1 | Add a pre-commit hook that prints five lines and exits 1; stage a file, write a message, commit; in the panel of what git said press `r` | The panel shows `Run again` with an `r` key cap left of `Close`; `r` runs the commit again (the hook runs again, a new panel or toast follows) with the same message and staged files | [ ] (undecidable: spaces now type, but Ctrl+Enter on main raised no hook panel in the harness (the commit did not reach the hook; a later key landed in the message box), so the panel with Run again could not be shown) |
+| 258.2 | Click `Run again` in the same panel | The same as `r` | [ ] (undecidable: spaces now type, but Ctrl+Enter on main raised no hook panel in the harness (the commit did not reach the hook; a later key landed in the message box), so the panel with Run again could not be shown) |
+| 258.3 | Fix the hook so it passes (or remove it), then press `r` over the panel | The commit goes through, the panel closes and the message box is cleared | [ ] (undecidable: spaces now type, but Ctrl+Enter on main raised no hook panel in the harness (the commit did not reach the hook; a later key landed in the message box), so the panel with Run again could not be shown) |
 | 258.4 | Make a write other than a commit fail with several lines | The panel has `Close` only, no `Run again`; `r` does nothing | [ ] (飛ばし: 空白を含むコミットメッセージがハーネスで打てず、hook も用意できない) |
-| 258.5 | Switch EN and JA | `Run again` and `もう一度回す` | [ ] (飛ばし: EN/JA の切り替えがハーネスに無い) (飛ばし: EN/JA の切り替えがハーネスに無い) |
+| 258.5 | Switch EN and JA | `Run again` and `もう一度回す` | [ ] (undecidable: spaces now type, but Ctrl+Enter on main raised no hook panel in the harness (the commit did not reach the hook; a later key landed in the message box), so the panel with Run again could not be shown) |
 
 ## 248. Diffs ignoring whitespace (`w`)
 
