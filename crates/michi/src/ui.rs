@@ -521,6 +521,7 @@ fn left_slot(ui: &mut Ui, app: &App, r: Rect, picked: &mut Option<View>) -> f32 
     // folder tabs; the one in force opens into the view. Changes counts the
     // files not committed; Conflicts, there only while something clashed,
     // the places still to solve.
+    let limit = ito_titlebar::left_limit(r);
     for v in View::ALL {
         let on = app.is_on(v);
         if v == View::Conflict && !on && app.conflicts.all.is_empty() {
@@ -537,6 +538,10 @@ fn left_slot(ui: &mut Ui, app: &App, r: Rect, picked: &mut Option<View>) -> f32 
             (n > 0).then(|| ui.fonts_mut(|f| f.layout_no_wrap(n.to_string(), FontId::monospace(10.5), c.dim)))
         };
         let w = 12.0 + digit.size().x + 6.0 + text.size().x + count.as_ref().map_or(0.0, |g| 6.0 + g.size().x) + 12.0;
+        // Past the limit the box and the bell would sit over the tab: leave it out (its digit still opens it).
+        if x + w > limit {
+            continue;
+        }
         let tab = Rect::from_min_max(pos2(x, r.bottom() - 30.0), pos2(x + w, r.bottom()));
         let resp = ui.interact(tab, ui.id().with(("tab", v.digit())), Sense::CLICK);
         let round = CornerRadius { nw: 6, ne: 6, sw: 0, se: 0 };
