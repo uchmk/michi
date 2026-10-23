@@ -135,7 +135,7 @@ impl std::error::Error for Error {}
 /// with a failure (it does when no server is running: "no server"). The caller
 /// hides the Claude column. `Err` only for what is worth a line in the log.
 pub fn fetch() -> Result<Option<Vec<Session>>, Error> {
-    fetch_with("tsumugi", TIMEOUT)
+    fetch_with(&crate::handoff::program().to_string_lossy(), TIMEOUT)
 }
 
 /// [`fetch`] with another program and time limit.
