@@ -18,6 +18,8 @@ pub enum Pick {
     Key(char),
     /// Open the worktree's folder in a terminal, an editor or the file manager.
     Open(Tool),
+    /// Open the worktree's folder in kura (#158).
+    OpenKura,
     /// Show the first-run guide again (#116).
     Guide,
     /// Make a practice repository in a temporary folder and open it (#117).
@@ -49,6 +51,7 @@ pub fn entries(app: &App) -> Vec<Entry<Pick>> {
     for (t, key) in [(Tool::Terminal, "t"), (Tool::Editor, "e"), (Tool::Explorer, "E")] {
         out.push(Entry::new(app.tr(crate::act::open_word_cmd(t)), if in_table { key } else { "" }, Pick::Open(t)));
     }
+    out.push(Entry::new(app.tr("key.open_kura"), "", Pick::OpenKura));
     if !app.problems.is_empty() {
         out.push(Entry::new(app.tr("guide.title"), "", Pick::Guide));
     }
@@ -150,6 +153,7 @@ impl App {
         match p {
             Pick::Act(a) => self.run_key(a),
             Pick::Open(t) => self.open_in(t, self.view == crate::app::View::Worktree),
+            Pick::OpenKura => self.open_kura(self.view == crate::app::View::Worktree),
             Pick::Guide => self.guide_open = true,
             Pick::Practice => self.start_practice(),
             Pick::Legend => {

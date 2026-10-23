@@ -2112,6 +2112,14 @@ impl App {
         self.act(crate::act::Task::OpenIn { wt, tool, command });
     }
 
+    /// Opens the folder of the selected worktree (`table`; else the window's
+    /// own) in kura, found through the ito apps registry (#158).
+    pub(crate) fn open_kura(&mut self, table: bool) {
+        let wt = if table { self.wt_selected().map(|t| t.wt.path.clone()) } else { self.repo_top() };
+        let Some(wt) = wt else { return self.say(self.tr("act.no_tree")) };
+        self.act(crate::act::Task::OpenKura { wt });
+    }
+
     /// Opens the file `path` of the worktree `wt` in the editor `[open]`
     /// names, at `line` when it takes one (#43). Off the UI thread.
     pub(crate) fn open_file_at(&mut self, wt: PathBuf, path: String, line: Option<usize>) {

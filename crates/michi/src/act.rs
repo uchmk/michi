@@ -368,6 +368,11 @@ pub enum Task {
         tool: ito_openin::Tool,
         command: String,
     },
+    /// Opens the folder of the worktree at `wt` in kura (found through the ito
+    /// apps registry), #158.
+    OpenKura {
+        wt: PathBuf,
+    },
     /// Opens the file `path` of the worktree at `wt` in the editor, at `line`
     /// when the editor takes one (#43).
     OpenFile {
@@ -571,7 +576,7 @@ impl Task {
             Task::OpenPr { .. } => "remote",
             Task::PrDraft { .. } => "log",
             Task::CreatePr { .. } => "gh pr create",
-            Task::OpenIn { .. } | Task::OpenFile { .. } | Task::OpenDiff { .. } | Task::MergeTool { .. } => "open",
+            Task::OpenIn { .. } | Task::OpenKura { .. } | Task::OpenFile { .. } | Task::OpenDiff { .. } | Task::MergeTool { .. } => "open",
             Task::External { .. } => "mergetool",
             Task::AskRerere { .. } => "config --get",
             Task::Rerere { .. } => "config",
@@ -788,6 +793,7 @@ pub fn run(dir: &Path, task: &Task) -> Result<Acted, git::Error> {
         Task::OpenIn { wt, command, .. } => {
             ito_openin::open(command, &ito_openin::Vars::path(&native(wt)), Some(wt)).map(|()| Acted::Done).map_err(git::Error::Io)
         }
+        Task::OpenKura { wt } => ito_openin::app::open("kura", wt).map(|()| Acted::Done).map_err(git::Error::Io),
         Task::OpenFile { wt, path, line, command, line_args } => {
             ito_openin::open_file(command, &wt.join(path), *line, line_args).map(Acted::Line).map_err(git::Error::Io)
         }
@@ -1043,6 +1049,7 @@ impl App {
             (Task::OpenIn { wt, tool, .. }, Ok(_)) => {
                 (self.tr("act.open_in").replace("{wt}", &self::name(wt)).replace("{tool}", self.tr(open_word(*tool))), 3)
             }
+            (Task::OpenKura { wt }, Ok(_)) => (self.tr("act.open_kura").replace("{wt}", &self::name(wt)), 3),
             (Task::OpenFile { path, line, .. }, Ok(acted)) => {
                 let key = if line.is_some() && acted == Acted::Line(false) { "act.open_file_noline" } else { "act.open_file" };
                 (self.tr(key).replace("{path}", path), 3)

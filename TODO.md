@@ -230,3 +230,4 @@ All wait for the owner; none is started. Related: #64 (Undo), #74, #77, #80-#83.
 - [x] #155 日本語の bisect の帯が 1100 px で切れる
 - [x] #156 71.1 LFS の注記と行の文の食い違い
 - [x] ito 0.103.0: michi registers itself, finds tsumugi through `ito_common::apps`, and shows the OTHER APPS card on External tools (0.107.0; TESTING 243.17-19)（要確認: #157）
+- [x] Palette command to open a worktree folder in kura through `ito_openin::app::open` (0.108.0; TESTING 243.20)（要確認: #158）
