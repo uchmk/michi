@@ -990,6 +990,10 @@ fn main() -> eframe::Result {
             std::process::exit(2);
         }
     };
+    // Tell the other uchmk apps where michi is (best effort, off the UI thread).
+    std::thread::spawn(|| {
+        let _ = ito_common::apps::register("michi", env!("CARGO_PKG_VERSION"));
+    });
     let path_given = path.is_some();
     let dir = match folder(path) {
         Ok(d) => d,

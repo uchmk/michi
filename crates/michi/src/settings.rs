@@ -64,6 +64,7 @@ fn index(w: &'static Words, lang: &str) -> Vec<(usize, &'static str)> {
     ]);
     v.extend(ito_prefs::backup_index(ito_prefs::MoreWords::of(lang)).into_iter().map(|t| (ADVANCED, t)));
     v.extend(open_words(lang).tools.into_iter().map(|t| (EXTERNAL, t)));
+    v.extend([(EXTERNAL, apps_words(lang).head), (EXTERNAL, "[apps]")]);
     v
 }
 
@@ -94,9 +95,31 @@ fn open_words(lang: &str) -> ito_prefs::OpenWords<'static> {
     }
 }
 
+/// The other apps card's words in `lang`.
+fn apps_words(lang: &str) -> ito_prefs::AppsWords<'static> {
+    let t = |k: &'static str| crate::i18n::tr(lang, k);
+    ito_prefs::AppsWords {
+        head: t("apps.head"),
+        looking: t("apps.looking"),
+        none: t("apps.none"),
+        from_setting: t("apps.from_setting"),
+        from_registered: t("apps.from_registered"),
+        from_path: t("apps.from_path"),
+        not_found: t("apps.not_found"),
+        bad_path: t("apps.bad_path"),
+        path_hint: t("apps.path_hint"),
+        clear: t("apps.clear"),
+        add_name: t("apps.add_name"),
+        add_path: t("apps.add_path"),
+        add: t("apps.add"),
+        bad_name: t("apps.bad_name"),
+    }
+}
+
 pub fn show(ui: &mut Ui, app: &mut App) {
     // The installed diff / merge tools are looked for once, on a thread.
     app.prefs.find_tools();
+    app.prefs.scan_apps();
     let w = Words::of(&app.lang);
     let mw = ito_prefs::MoreWords::of(&app.lang);
     // The Keys page takes every key while it is setting one, Esc included.
@@ -131,6 +154,9 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     let (open, open_warn, found, found_known) = (&prefs.open, &prefs.open_warn, &prefs.found[..], prefs.found_known);
     let (open_drafts, open_form) = (&mut prefs.open_drafts, &mut prefs.open_form);
     let open_words = open_words(&lang);
+    let apps_words = apps_words(&lang);
+    let (apps, apps_form) = (prefs.apps.as_deref(), &mut prefs.apps_form);
+    let mut apps_edits: Vec<ito_common::apps::Edit> = Vec::new();
     let mut open_edits: Vec<ito_openin::Edit> = Vec::new();
     let mut backup: Vec<ito_prefs::Backup> = Vec::new();
     let backup_file = ito_common::home_dir().unwrap_or_default().join("michi-settings.toml");
@@ -295,6 +321,7 @@ pub fn show(ui: &mut Ui, app: &mut App) {
             }
             let known = found_known.then_some(found);
             open_edits = ito_prefs::open_card(ui, l, &open_words, open, known, open_drafts, open_form);
+            apps_edits = ito_prefs::apps_card(ui, l, &apps_words, apps, open_drafts, apps_form);
         }
         ADVANCED => backup.extend(ito_prefs::backup_card(ui, l, mw, &backup_file)),
         _ => {}
@@ -334,6 +361,7 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     }
     app.prefs.notify_edit(notify_edits, webhooks, no_folder);
     app.prefs.open_edit(open_edits, no_folder);
+    app.prefs.apps_edit(apps_edits, no_folder);
     for what in backup {
         app.prefs.backup(what, no_folder);
     }

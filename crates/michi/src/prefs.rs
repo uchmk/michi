@@ -71,6 +71,10 @@ pub struct Prefs {
     /// The external tools page's drafts and the form that adds a tool.
     pub open_drafts: ito_prefs::Drafts,
     pub open_form: ito_prefs::OpenForm,
+    /// The other uchmk apps found (`None` until looked for), the answer on its way, and the card's form.
+    pub apps: Option<Vec<ito_common::apps::Row>>,
+    pub apps_rx: Option<Receiver<Vec<ito_common::apps::Row>>>,
+    pub apps_form: ito_prefs::AppsForm,
     /// `[view] density` of config.toml: the height of the graph's and the lists' rows.
     pub density: michi_core::density::Density,
     /// `[view] motion` of config.toml: the short fades and slides (#88).
@@ -134,6 +138,9 @@ impl Prefs {
             found_known: false,
             open_drafts: ito_prefs::Drafts::new(),
             open_form: ito_prefs::OpenForm::default(),
+            apps: None,
+            apps_rx: None,
+            apps_form: ito_prefs::AppsForm::default(),
             density: Default::default(),
             motion: Default::default(),
             dates: Default::default(),
@@ -267,9 +274,31 @@ impl Prefs {
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => (self.found_known, self.found_rx) = (true, None),
             }
         }
+        if let Some(rx) = &self.apps_rx {
+            match rx.try_recv() {
+                Ok(rows) => {
+                    (self.apps, self.apps_rx) = (Some(rows), None);
+                    if let Some(ctx) = &self.wake {
+                        ctx.request_repaint();
+                    }
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    if let Some(ctx) = &self.wake {
+                        ctx.request_repaint_after(Duration::from_millis(100));
+                    }
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => (self.apps, self.apps_rx) = (Some(Vec::new()), None),
+            }
+        }
         while let Ok(r) = self.rx.try_recv() {
             match r {
-                Reload::Common(Ok((c, w))) => (self.common, self.common_warn) = (c, w),
+                Reload::Common(Ok((c, w))) => {
+                    // `[apps]` may have changed: look for the apps again.
+                    if c.apps != self.common.apps {
+                        (self.apps, self.apps_rx) = (None, None);
+                    }
+                    (self.common, self.common_warn) = (c, w);
+                }
                 Reload::Common(Err(e)) => self.common_warn = vec![e],
                 Reload::Themes(t, w) => (self.themes, self.theme_warn) = (t, w),
                 Reload::Keymap(text, said) => {
@@ -395,6 +424,38 @@ impl Prefs {
             // The thread cannot wake the window; the pump polls while it waits.
             ctx.request_repaint_after(Duration::from_millis(100));
         }
+    }
+
+    /// Looks for the other uchmk apps on a thread, once (again after `[apps]`
+    /// changes). The answer is taken in by [`Prefs::pump`].
+    pub fn scan_apps(&mut self) {
+        if self.apps.is_some() || self.apps_rx.is_some() {
+            return;
+        }
+        self.apps_rx = Some(ito_common::apps::scan_in_background(self.common.apps.clone()));
+        if let Some(ctx) = &self.wake {
+            ctx.request_repaint_after(Duration::from_millis(100));
+        }
+    }
+
+    /// Pin or unpin the apps card's `edits` in common.toml's `[apps]` on a
+    /// thread, then read it again.
+    pub fn apps_edit(&self, edits: Vec<ito_common::apps::Edit>, no_folder: &str) {
+        if edits.is_empty() {
+            return;
+        }
+        let (tx, wake) = (self.tx.clone(), self.wake.clone());
+        let Some(base) = self.base.clone() else {
+            Self::send_back(&tx, &wake, Reload::Failed(no_folder.into()));
+            return;
+        };
+        std::thread::spawn(move || {
+            let r = match edit_common(&base, |text| ito_common::apps::write_edits(text, &edits)) {
+                Ok(()) => Reload::Common(Common::read(&base)),
+                Err(e) => Reload::Failed(e),
+            };
+            Self::send_back(&tx, &wake, r);
+        });
     }
 
     /// Make the external tools page's `edits` in config.toml on a thread, then

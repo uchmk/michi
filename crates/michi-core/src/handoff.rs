@@ -156,27 +156,33 @@ pub fn send_back_request(left: usize) -> String {
 
 /// Types `text` into the tsumugi session `id`.
 pub fn send(id: u64, text: &str) -> Result<(), git::Error> {
-    tsumugi(Command::new("tsumugi").args(["send", &id.to_string(), text]))
+    tsumugi(Command::new(program()).args(["send", &id.to_string(), text]))
 }
 
 /// Brings the tsumugi session `id` (its window and tab) to the front.
 pub fn focus(id: u64) -> Result<(), git::Error> {
-    tsumugi(Command::new("tsumugi").args(["focus", &id.to_string()]))
+    tsumugi(Command::new(program()).args(["focus", &id.to_string()]))
 }
 
 /// Starts a Claude in a new worktree made by tsumugi for `plan`.
 pub fn new_work(repo: &Path, plan: &crate::newwork::Plan) -> Result<(), git::Error> {
-    tsumugi(Command::new("tsumugi").args(crate::newwork::args(repo, plan)))
+    tsumugi(Command::new(program()).args(crate::newwork::args(repo, plan)))
 }
 
 /// Closes the tsumugi session `id`.
 pub fn close(id: u64) -> Result<(), git::Error> {
-    tsumugi(Command::new("tsumugi").args(["close", &id.to_string()]))
+    tsumugi(Command::new(program()).args(["close", &id.to_string()]))
 }
 
 /// A new tsumugi tab in `folder` named `name` that starts claude with `text`.
 pub fn start(folder: &Path, name: &str, text: &str) -> Result<(), git::Error> {
-    tsumugi(Command::new("tsumugi").arg("new").arg(folder).args(["--name", name, "--", "claude", text]))
+    tsumugi(Command::new(program()).arg("new").arg(folder).args(["--name", name, "--", "claude", text]))
+}
+
+/// The tsumugi to run: pinned in common.toml's `[apps]`, registered by tsumugi
+/// itself, or on PATH; the bare name when it is nowhere (the run then fails).
+pub fn program() -> std::path::PathBuf {
+    ito_common::apps::find("tsumugi").map_or_else(|| "tsumugi".into(), |f| f.exe)
 }
 
 fn tsumugi(cmd: &mut Command) -> Result<(), git::Error> {
