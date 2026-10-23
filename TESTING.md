@@ -1207,6 +1207,7 @@ The made-up 300,000-commit history is timed by CI (`bench-large`); these rows ar
 | 232.9 | With a Claude working in the worktree, start | The question also says a Claude is working there | [ ] (skipped: needs a real Claude or tsumugi session) |
 | 232.10 | Switch EN and JA; check the keybar and `?` | The bisect keys appear; text reads well in both languages | [ ] [~] harness 0.106.11 (lab bs1, 1100x600): during a bisect the top strip lists Good y, Bad x, Skip u, Copy bisect run r, End bisect X in EN, and good y, bad x, スキップ u, bisect run をコピー r, bisect を終える X in JA; the JA sentence is cut with … at 1100 px. `?` opens in both languages, but its first page (Everywhere, Graph) does not reach the bisect keys, so those are not judged |
 | 232.11 | Narrow the window (about 1100 px, JA) while bisecting, then rest the pointer on the strip text | The strip text ends in `…` and does not run under the buttons; the whole text shows in a tooltip (not when it fits) | [ ] fixed in 0.106.14 (#155); the tooltip cannot be driven by the harness |
+| 232.12 | Make the window as narrow as it goes (720 px) | The search box and the bell stay left of the minimize/maximize buttons; tabs that do not fit are left out | [ ] (0.106.15, #145) |
 
 ## 242. Gitflow (`G`)
 

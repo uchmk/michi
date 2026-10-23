@@ -221,7 +221,7 @@ All wait for the owner; none is started. Related: #64 (Undo), #74, #77, #80-#83.
 
 - [x] #148 pull の toast の単数形（0.106.12）
 - [x] #150 変更の無い worktree の `v`（0.106.12）
-- [ ] #145 480 px で検索ボックス・ベルが窓のボタンに重なる（ito 待ち: uchmk/ito#33）
+- [x] #145 480 px で検索ボックス・ベルが窓のボタンに重なる（ito 待ち: uchmk/ito#33）
 - [x] #149 47.5 Branch from here のあと窓が更新されない（再現せず、閉じた）
 - [x] #151 106.3 diverged の pull の帯が Go ahead を出す（仕様、閉じた）
 - [x] #152 106.4 「N commits come in」の帯が出ない（ラボの不備、閉じた）
