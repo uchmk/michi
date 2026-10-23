@@ -1253,6 +1253,7 @@ michi has no editor of its own; it opens an external one at a line and an extern
 | 243.17 | In Settings > External tools, scroll to OTHER APPS (EN and JA) | The card lists the uchmk apps found (kura, tsumugi, ...), each with how it was found (pinned here / registered by the app / found on PATH) and its version; before the scan ends it says it is looking | [ ] |
 | 243.18 | Pin a path for an app (and an app that has not registered), then unpin it; type a bad name or a path that is not a file | common.toml gets `[apps]` edits (comments kept); the row says `pinned here` and then goes back; a bad name or path shows a message and writes nothing | [ ] |
 | 243.19 | Start michi once, then `ls` the apps folder (`ito_common::apps::dir()`), and press the tsumugi keys (`s`, `f`, `N`) with tsumugi off PATH but registered or pinned | michi is registered there; tsumugi is started from the registered / pinned path | [ ] |
+| 243.20 | With kura installed (or pinned), open the palette (`:`) and pick `Open the folder in kura`, on the Worktree table and on another view | kura opens on the selected worktree's folder (the window's own folder off the table); the toast says `Opened <wt> in kura`; with kura missing the toast names the error and nothing hangs | [ ] |
 
 ## 244. Issue links (`I`, detail links; #44)
 
