@@ -263,7 +263,7 @@ fn strip_bar(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     }
     if let Some(text) = app.strip_text() {
         let left = r.left() + 12.0;
-        let mut job = egui::text::LayoutJob::simple_singleline(text, font, c.wait);
+        let mut job = egui::text::LayoutJob::simple_singleline(text.clone(), font, c.wait);
         job.wrap = egui::text::TextWrapping {
             max_width: (right - left).max(40.0),
             max_rows: 1,
@@ -271,7 +271,12 @@ fn strip_bar(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
             overflow_character: Some('…'),
         };
         let g = ui.fonts_mut(|f| f.layout_job(job));
-        p.galley(pos2(left, mid - g.size().y / 2.0), g, c.wait);
+        let at = pos2(left, mid - g.size().y / 2.0);
+        let (area, elided) = (Rect::from_min_size(at, g.size()), g.elided);
+        p.galley(at, g, c.wait);
+        if elided {
+            ui.interact(area, ui.id().with("strip-text"), Sense::hover()).on_hover_text(text);
+        }
     }
     if let Some(key) = pressed {
         app.strip_key(key);

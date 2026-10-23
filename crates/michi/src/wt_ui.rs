@@ -171,6 +171,16 @@ fn layout(ui: &Ui, text: impl Into<String>, font: FontId, color: Color32, width:
     ui.fonts_mut(|f| f.layout(text.into(), font, color, width.max(10.0)))
 }
 
+/// [`layout`] for a cell too narrow for its words: at most `rows` rows, cut with `…`
+/// rather than wrapped inside a word.
+fn layout_cut(ui: &Ui, text: impl Into<String>, font: FontId, color: Color32, width: f32, rows: usize) -> Arc<Galley> {
+    let mut job = egui::text::LayoutJob::simple(text.into(), font, color, width.max(10.0));
+    job.wrap.max_rows = rows;
+    job.wrap.break_anywhere = false;
+    job.wrap.overflow_character = Some('…');
+    ui.fonts_mut(|f| f.layout_job(job))
+}
+
 fn fmt(font: FontId, color: Color32) -> TextFormat {
     TextFormat { font_id: font, color, ..Default::default() }
 }
@@ -400,9 +410,9 @@ fn review_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
         Stage::Flagged => ("wt.review.flagged", c.wait),
         Stage::Approved => ("wt.review.approved", c.done),
     };
-    let head = layout(ui, app.tr(key), font.clone(), color, w);
+    let head = layout_cut(ui, app.tr(key), font.clone(), color, w, 1);
     let count = app.tr("wt.review.count").replace("{n}", &row.checked.to_string()).replace("{m}", &row.total.to_string());
-    vec![text(head, 0.0), text(layout(ui, count, FontId::proportional(11.5), c.dim, w), 1.0)]
+    vec![text(head, 0.0), text(layout_cut(ui, count, FontId::proportional(11.5), c.dim, w, 2), 1.0)]
 }
 
 /// What the worktree would conflict with: each side, in how many places,
