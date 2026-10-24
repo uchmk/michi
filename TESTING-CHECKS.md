@@ -1403,7 +1403,7 @@
 ## 281. Reaching everything with the mouse alone (#123)
 
 - [ ] **281.1** With the mouse only, click the tabs `1 樹形図`, `2 変更`, `3 worktree` in the title bar → Each tab opens its view → [~] 2026-10-25: real clicks on tabs 2 and 3 switched to the changes and worktree views (screenshots r123t-b/c); tab 1 not re-checked in the same run 〔未訳〕
-- [ ] **281.2** With the mouse only: click a changed file, its stage button, the commit button, type the message, commit → The file is staged and committed with no key pressed except typing the message 〔未訳〕
+- [ ] **281.2** With the mouse only: click a changed file, its stage button, the commit button, type the message, commit → The file is staged and committed with no key pressed except typing the message → [~] 2026-10-25: a double click on the file staged it, a click in the message box let the text in, a click on the "Commit" label made the commit (it reached git log); the staging chip and the Amend / Tree buttons not clicked 〔未訳〕
 - [ ] **281.3** With the mouse only: click fetch / pull / push in the graph's toolbar → Each runs and tells its result → [~] 2026-10-25: a real click on fetch showed the fetch toast; a click on push asked for confirmation and the commit reached the remote (the confirmation was answered with y, not a click); pull not tried 〔未訳〕
 - [ ] **281.4** With the mouse only: click the command palette box in the title bar and pick a row → The palette opens and the row runs → [x] 2026-10-25: a click on the palette box opened the palette and a click on the 「Git フロー早見表」 row ran it (the sheet opened; screenshot r123v-d) 〔未訳〕
 - [ ] **281.5** With the mouse only: right-click a commit and a branch row → A menu lists the actions that have keys 〔未訳〕
