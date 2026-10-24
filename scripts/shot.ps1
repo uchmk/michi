@@ -1,7 +1,7 @@
 # Takes screenshots of a running michi for a session without a screen of its own:
 #   scripts/shot.ps1 -Exe target\debug\michi.exe -Arg C:\path\to\repo -Out $env:TEMP\shot\name -Width 1100 -Keys "@500,167|sleep1;{ENTER}"
 # Groups in -Keys are split by ';' (one picture after each), keys in a group by '|':
-# '@x,y' clicks at a point of the window, 'sleepN' waits N seconds, anything else goes to SendKeys.
+# '@x,y' clicks at a point of the window, '@@x,y' double-clicks, '@x,y>x2,y2' drags, 'sleepN' waits N seconds, anything else goes to SendKeys.
 # It stops when michi has gone or another window is in front, so no key lands elsewhere;
 # what michi wrote to its standard error is in <Out>-stderr.txt.
 param([string]$Exe, [string]$Arg, [string]$Out, [int]$Wait = 8, [string]$Do = "", [int]$After = 3, [string]$Keys = "", [int]$Width = 1400, [switch]$Keep)
@@ -54,7 +54,20 @@ $i = 0
       if ($p.HasExited) { "michi exited ($($p.ExitCode)) before '$k': see $Out-stderr.txt"; break groups }
       if ([W]::GetForegroundWindow() -ne $h) { "another window came in front before '$k': stopped"; break groups }
     }
-    if ($k -match '^@([0-9]+),([0-9]+)$') {
+    if ($k -match '^@@([0-9]+),([0-9]+)$') {
+      [W]::SetCursorPos($r.L + [int]$Matches[1], $r.T + [int]$Matches[2]) | Out-Null
+      Start-Sleep -Milliseconds 150
+      foreach ($n in 1..2) { [W]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 40; [W]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60 }
+      Start-Sleep -Milliseconds 500
+    } elseif ($k -match '^@([0-9]+),([0-9]+)>([0-9]+),([0-9]+)$') {
+      [W]::SetCursorPos($r.L + [int]$Matches[1], $r.T + [int]$Matches[2]) | Out-Null
+      Start-Sleep -Milliseconds 150
+      [W]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 100
+      [W]::SetCursorPos($r.L + [int]$Matches[3], $r.T + [int]$Matches[4]) | Out-Null
+      Start-Sleep -Milliseconds 200
+      [W]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+      Start-Sleep -Milliseconds 500
+    } elseif ($k -match '^@([0-9]+),([0-9]+)$') {
       [W]::SetCursorPos($r.L + [int]$Matches[1], $r.T + [int]$Matches[2]) | Out-Null
       Start-Sleep -Milliseconds 150
       [W]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60; [W]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
