@@ -501,10 +501,10 @@ files under `refs/michi/backup/<time>` first.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| 32.1 | In the `2` view pick a file; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) | | [~] (`<Drag>` over the added lines in the diff lit the text under it in the selection colour; the copy on release not checked on its own) |
+| 32.1 | In the `2` view pick a file; drag the mouse over some diff lines | The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) | | [x] 2026-10-25 (real window): a mouse drag over the added line lit the text in the selection colour and the clipboard (was `SENTINEL`) became exactly `zz hello world`) |
 | 32.2 | Double-click a word, then triple-click a line; press Ctrl+C after a drag | A word, then the line is picked up and copied; Ctrl+C copies it again | | [~] 2026-10-25 (real window, shot.ps1 + Get-Clipboard): in `2` a double-click on "hello" in the added line copied exactly `hello` (clipboard was `SENTINEL` before); triple-click and Ctrl+C after a drag not tried) |
 | 32.3 | Click a file row, a worktree chip, the amend switch and Commit | Each still does what it did; an empty click in the diff lets the selection go | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
-| 32.4 | Select a diff line and pick another file or switch the worktree | The selection is gone; the commit view's selection is not drawn here | | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) |
+| 32.4 | Select a diff line and pick another file or switch the worktree | The selection is gone; the commit view's selection is not drawn here | | [~] 2026-10-25 (real window): after a drag over a diff line, clicking the other file row cleared the lit text and coming back to the first file showed none; switching the worktree not tried) |
 
 ## 33. 衝突の画面の文字の選択とコピー（ito-select、`4`）
 
