@@ -134,7 +134,9 @@ pub fn open_url(url: &str) -> Result<(), git::Error> {
 
 #[cfg(windows)]
 fn opener() -> Command {
-    let mut c = Command::new("explorer");
+    // Not `explorer <url>`: with a `?query` it opens the Documents folder instead of the browser (#131).
+    let mut c = Command::new("rundll32");
+    c.arg("url.dll,FileProtocolHandler");
     git::hide_window(&mut c);
     c
 }

@@ -2,6 +2,12 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.108.3] - 2026-10-24
+
+### 修正
+
+- Windows で `F12`（不具合報告）・`p`（PR の画面）・Ctrl+クリックがブラウザではなく Explorer の「ドキュメント」を開いていたのを直した。URL に `?` が付くと `explorer <url>` はブラウザへ渡さないため、`rundll32 url.dll,FileProtocolHandler <url>` で開く（#131）。
+
 ## [0.108.2] - 2026-10-24
 
 ### 追加
