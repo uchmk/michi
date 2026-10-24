@@ -2,6 +2,12 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.108.2] - 2026-10-24
+
+### 追加
+
+- リリースのワークフロー（`release.yml`）を足した。`v*` のタグで、Windows（x64・ARM64 の zip。`michi.exe` と `michi.com`）と macOS・Linux（`.tar.gz`）を作って GitHub のリリースに付け、SHA-256 の表を載せる。kura と同じ作り。
+
 ## [0.108.1] - 2026-10-24
 
 ### 修正
