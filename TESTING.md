@@ -1727,3 +1727,13 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 279.5 | Press Esc during the clone (then again with another clone, click the keybar status) | The clone stops, the half-made folder is gone, and a toast says so; the window stays on the old repository |
 | 279.6 | Press `F12` (or `p` on a worktree with a pushed branch) | The default browser opens the issue form / PR page with its `?query` intact; no Explorer window opens (#131) | [x] 2026-10-24: ran `rundll32 url.dll,FileProtocolHandler` with a `?template=…&context=a` URL; the browser opened and the Explorer window count stayed 3 |
 | 279.7 | Press `Ctrl+O`, then `Ctrl+O` again while the list is open (also `Ctrl+T`) | The second press closes the repository list; other keys (`j`) still go to its search box (#130) | [x] 2026-10-25: debug build 0.108.4 launched with scripts/shot.ps1; the first Ctrl+O showed the repository list, the second Ctrl+O closed it (screenshots repos-b / repos-c); also unit-tested (`only_the_repos_key_reaches_the_keymap_while_the_list_is_open`) |
+
+## 281. Reaching everything with the mouse alone (#123)
+
+| ID | Steps | Expect | Result |
+|----|-------|--------|--------|
+| 281.1 | With the mouse only, click the tabs `1 樹形図`, `2 変更`, `3 worktree` in the title bar | Each tab opens its view | [~] 2026-10-25: real clicks on tabs 2 and 3 switched to the changes and worktree views (screenshots r123t-b/c); tab 1 not re-checked in the same run |
+| 281.2 | With the mouse only: click a changed file, its stage button, the commit button, type the message, commit | The file is staged and committed with no key pressed except typing the message | [ ] |
+| 281.3 | With the mouse only: click fetch / pull / push in the graph's toolbar | Each runs and tells its result | [ ] |
+| 281.4 | With the mouse only: click the command palette box in the title bar and pick a row | The palette opens and the row runs | [~] 2026-10-25: a click on the palette box opened the palette; picking a row by click not tried |
+| 281.5 | With the mouse only: right-click a commit and a branch row | A menu lists the actions that have keys | [ ] |
