@@ -79,6 +79,9 @@ pub fn parse_log(text: &str) -> Log {
     for line in text.lines() {
         let Some(rest) = line.strip_prefix("# ") else { continue };
         let Some((what, tail)) = rest.split_once(": [") else { continue };
+        // Newer git quotes the term: `# first 'bad' commit: [...]`.
+        let what = what.replace('\'', "");
+        let what = what.as_str();
         let Some(id) = tail.split(']').next().and_then(Oid::parse) else { continue };
         match what {
             "bad" => log.bad = Some(id),
@@ -232,6 +235,22 @@ mod tests {
 
     fn id(c: char) -> String {
         c.to_string().repeat(40)
+    }
+
+    #[test]
+    fn a_log_with_the_terms_quoted_is_read_too() {
+        let f = id('d');
+        let log = parse_log(&format!(
+            "# first 'bad' commit: [{f}] the culprit
+"
+        ));
+        assert_eq!(log.first_bad, Oid::parse(&f));
+        assert!(!log.possible);
+        let log = parse_log(&format!(
+            "# possible first 'bad' commit: [{f}] the culprit
+"
+        ));
+        assert!(log.possible && log.first_bad.is_some());
     }
 
     #[test]

@@ -346,7 +346,8 @@ mod tests {
         t.write(&req.wt, "scripts/verify.sh", "echo checking\necho bad thing >&2\nexit 3\n");
         t.git(&req.wt, &["add", "."]);
         t.git(&req.wt, &["commit", "-q", "-m", "verify"]);
-        if std::process::Command::new("bash").arg("-c").arg("true").status().is_err() {
+        // The WSL stub `bash.exe` on a Windows runner starts and exits 1: not a bash.
+        if !std::process::Command::new("bash").arg("-c").arg("true").status().is_ok_and(|s| s.success()) {
             return;
         }
         let main = rev(&t, &t.repo, "main");
@@ -365,7 +366,8 @@ mod tests {
         t.write(&req.wt, "scripts/verify.sh", "echo ALL OK\n");
         t.git(&req.wt, &["add", "."]);
         t.git(&req.wt, &["commit", "-q", "-m", "verify"]);
-        if std::process::Command::new("bash").arg("-c").arg("true").status().is_err() {
+        // The WSL stub `bash.exe` on a Windows runner starts and exits 1: not a bash.
+        if !std::process::Command::new("bash").arg("-c").arg("true").status().is_ok_and(|s| s.success()) {
             return;
         }
         let out = run(&t.repo, &req, Stage::FastForward, || {});

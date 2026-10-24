@@ -2195,7 +2195,7 @@ dependencies = [
 
 [[package]]
 name = "michi"
-version = "0.108.0"
+version = "0.108.1"
 dependencies = [
  "chrono",
  "eframe",
@@ -2236,7 +2236,7 @@ dependencies = [
 
 [[package]]
 name = "michi-core"
-version = "0.108.0"
+version = "0.108.1"
 dependencies = [
  "chrono",
  "ito-common",
