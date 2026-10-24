@@ -1725,3 +1725,4 @@ Text size and contrast come from ito: the zoom keys (Ctrl+=, Ctrl+-, Ctrl+0) and
 | 279.3 | In the left column, on a branch row press `x`, then `o`, then `X` | `x` hides / shows it, `o` shows only it / all again, `X` clears; on a row with no ref a toast says to pick a branch |
 | 279.4 | Start a clone of a big repository from `<C-o>` | The keybar shows "clone · Receiving objects NN%" with "Esc / click stops" |
 | 279.5 | Press Esc during the clone (then again with another clone, click the keybar status) | The clone stops, the half-made folder is gone, and a toast says so; the window stays on the old repository |
+| 279.6 | Press `F12` (or `p` on a worktree with a pushed branch) | The default browser opens the issue form / PR page with its `?query` intact; no Explorer window opens (#131) | [x] 2026-10-24: ran `rundll32 url.dll,FileProtocolHandler` with a `?template=…&context=a` URL; the browser opened and the Explorer window count stayed 3 |
