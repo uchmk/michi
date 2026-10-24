@@ -392,8 +392,8 @@
 
 ## 32. 変更の画面の diff の選択とコピー（ito-select）
 
-- [ ] **32.1** In the `2` view pick a file; drag the mouse over some diff lines → The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) → | [~] (`<Drag>` over the added lines in the diff lit the text under it in the selection colour; the copy on release not checked) 〔未訳〕
-- [ ] **32.2** Double-click a word, then triple-click a line; press Ctrl+C after a drag → A word, then the line is picked up and copied; Ctrl+C copies it again → | [ ] (skipped: undecidable by the harness: it has no double/triple click word and cannot read the clipboard) 〔未訳〕
+- [ ] **32.1** In the `2` view pick a file; drag the mouse over some diff lines → The text under the drag is lit in the theme's selection colour; letting go copies it (paste it in a terminal) → | [~] (`<Drag>` over the added lines in the diff lit the text under it in the selection colour; the copy on release not checked on its own) 〔未訳〕
+- [ ] **32.2** Double-click a word, then triple-click a line; press Ctrl+C after a drag → A word, then the line is picked up and copied; Ctrl+C copies it again → | [~] 2026-10-25 (real window, shot.ps1 + Get-Clipboard): in `2` a double-click on "hello" in the added line copied exactly `hello` (clipboard was `SENTINEL` before); triple-click and Ctrl+C after a drag not tried) 〔未訳〕
 - [ ] **32.3** Click a file row, a worktree chip, the amend switch and Commit → Each still does what it did; an empty click in the diff lets the selection go → | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) 〔未訳〕
 - [ ] **32.4** Select a diff line and pick another file or switch the worktree → The selection is gone; the commit view's selection is not drawn here → | [ ] (skipped 2026-10-22: needs a tracked file with selectable lines or a conflict; the lab only has a new file whose lines cannot be selected) 〔未訳〕
 
