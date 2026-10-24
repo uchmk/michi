@@ -2,6 +2,13 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.108.1] - 2026-10-24
+
+### 修正
+
+- 新しい git が bisect のログに書く `# first 'bad' commit:` を読めず、最初の悪いコミットが見つからなかったのを直した（CI の bisect のテストが 10-17 から赤かった）。
+- Windows の CI で、WSL の `bash.exe`（ディストリビューション無しで終了コード 1）を bash と取り違えて、land の検証のテスト 2 つが落ちていたのを直した。
+
 ## [0.108.0] - 2026-10-23
 
 ### 追加
