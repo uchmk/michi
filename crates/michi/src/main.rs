@@ -401,14 +401,19 @@ impl Michi {
     /// quit, the scale), taken out of the frame's events before the views
     /// see them. Not while the Keys page is taking keys.
     fn keymap_keys(&mut self, ctx: &egui::Context) {
-        if self.app.prefs.keys_edit.busy() || self.app.cmd.is_some() || self.app.repos.is_some() {
+        if self.app.prefs.keys_edit.busy() || self.app.cmd.is_some() {
             return;
         }
+        // The repository list takes every key but the one that opened it, which closes it (#130).
+        let repos_open = self.app.repos.is_some();
         let events = ctx.input(|i| i.events.clone());
         let mut used = Vec::new();
         for (n, e) in events.iter().enumerate() {
             let egui::Event::Key { key, pressed: true, modifiers, .. } = e else { continue };
             let Some(k) = ito_keys::from_egui(*key, modifiers) else { continue };
+            if repos_open && !closes_repos(self.app.prefs.keymap.act(k)) {
+                continue;
+            }
             // Ctrl+Z in a text field undoes the typing, not a branch (#64).
             if matches!(self.app.prefs.keymap.act(k), Some(crate::keymap::Act::Undo | crate::keymap::Act::Redo))
                 && ctx.egui_wants_keyboard_input()
@@ -1091,9 +1096,22 @@ fn main() -> eframe::Result {
     )
 }
 
+/// While the repository list is open, only the key that toggles it is the keymap's (#130).
+fn closes_repos(act: Option<crate::keymap::Act>) -> bool {
+    act == Some(crate::keymap::Act::Repos)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_repos_key_reaches_the_keymap_while_the_list_is_open() {
+        let (km, _) = crate::keymap::Keymap::load(None);
+        let act = |k: &str| km.act(ito_keys::Key::parse(k).unwrap());
+        assert!(closes_repos(act("<C-o>")) && closes_repos(act("<C-t>")), "the second press closes the list (#130)");
+        assert!(!closes_repos(act("j")) && !closes_repos(None));
+    }
 
     fn parse(args: &[&str]) -> Result<Cli, String> {
         parse_args(args.iter().map(OsString::from))
