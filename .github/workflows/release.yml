@@ -1,0 +1,162 @@
+name: Release
+
+# A build that keeps its name, does not expire, and downloads without an
+# account, as kura's release.yml (an Actions artifact from build.yml is named
+# after a commit, needs a GitHub account and is deleted after 90 days).
+#
+# Six files on two jobs: Windows builds both architectures on the x64 runner,
+# macOS and Linux build where they run. The release is created once, by the
+# Windows job; the others only attach to it.
+
+on:
+  push:
+    tags: ['v*']
+  # Or by hand, to cut one without tagging first.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release, e.g. v0.108.1. It is created if it does not exist.'
+        required: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write
+
+jobs:
+  # The tests on ARM64 as well; nothing is published until they pass.
+  arm64:
+    uses: ./.github/workflows/arm64.yml
+
+  windows:
+    needs: arm64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Work out the tag
+        id: tag
+        shell: bash
+        run: echo "name=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      # The tag and Cargo.toml disagreeing is the one mistake worth failing for.
+      - name: Check the tag matches Cargo.toml
+        shell: bash
+        run: |
+          crate=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          tag="${{ steps.tag.outputs.name }}"
+          if [ "v$crate" != "$tag" ]; then
+            echo "::error::tag $tag does not match Cargo.toml's $crate"
+            exit 1
+          fi
+
+      - name: Add the ARM64 target
+        run: rustup target add aarch64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build x64
+        run: cargo build --release --locked -p michi --target x86_64-pc-windows-msvc
+
+      - name: Build ARM64
+        run: cargo build --release --locked -p michi --target aarch64-pc-windows-msvc
+
+      # The architecture is in the filename: it is the first thing a bug
+      # report needs. michi-com.exe goes in as michi.com (the console front).
+      - name: Package the binaries
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.tag.outputs.name }}"
+          New-Item -ItemType Directory -Force dist | Out-Null
+          foreach ($pair in @(@('x64', 'x86_64-pc-windows-msvc'), @('arm64', 'aarch64-pc-windows-msvc'))) {
+            $arch, $target = $pair
+            $name = "michi-$tag-windows-$arch"
+            $stage = "stage/$name"
+            New-Item -ItemType Directory -Force $stage | Out-Null
+            Copy-Item "target/$target/release/michi.exe" $stage
+            Copy-Item "target/$target/release/michi-com.exe" "$stage/michi.com"
+            Copy-Item LICENSE-MIT, LICENSE-APACHE $stage
+            Compress-Archive -Path $stage -DestinationPath "dist/$name.zip" -Force
+          }
+          Get-ChildItem dist
+
+      - name: Write the notes from the commits
+        shell: bash
+        run: |
+          bash scripts/release-body.sh "${{ steps.tag.outputs.name }}" HEAD > notes.md
+          cat notes.md
+
+      # `target_commitish` pins the tag to the commit built, not to whatever
+      # main is when the release is made.
+      - name: Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ steps.tag.outputs.name }}
+          body_path: notes.md
+          files: dist/*.zip
+          fail_on_unmatched_files: true
+
+  # macOS and Linux, attached to the release the Windows job has made. Ordered
+  # by `needs` so that the release is created exactly once.
+  unix:
+    needs: windows
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos-arm64
+            os: macos-14
+            target: aarch64-apple-darwin
+          - name: macos-x64
+            os: macos-14
+            target: x86_64-apple-darwin
+          - name: linux-x64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - name: linux-arm64
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+    name: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Work out the tag
+        id: tag
+        run: echo "name=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+      - name: Add the target
+        run: rustup target add ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --locked -p michi --target ${{ matrix.target }}
+      # `.tar.gz`: a release asset does not carry the executable bit.
+      - name: Pack
+        run: |
+          tag="${{ steps.tag.outputs.name }}"
+          mkdir -p dist
+          tar -C "target/${{ matrix.target }}/release" \
+              -czf "dist/michi-$tag-${{ matrix.name }}.tar.gz" michi
+          ls -l dist
+      - name: Attach to the release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          files: dist/*.tar.gz
+          fail_on_unmatched_files: true
+
+  # The SHA-256 of every asset, written onto the release page once all are
+  # attached. `always()` so a platform that failed does not keep the others'
+  # hashes off the page.
+  sums:
+    needs: [windows, unix]
+    if: always() && needs.windows.result == 'success'
+    uses: ./.github/workflows/release-sums.yml
+    with:
+      tag: ${{ inputs.tag || github.ref_name }}

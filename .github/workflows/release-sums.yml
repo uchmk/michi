@@ -1,0 +1,77 @@
+name: Release checksums
+
+# The SHA-256 of every asset of a release, and of every file inside each
+# Windows zip, written onto the release page. `release.yml` calls this once all
+# all assets are attached; it can also be started by hand from the Actions tab
+# for a release that is already out -- v0.108.1's own run failed here, and this
+# is how its table was put on afterwards.
+#
+# Re-running replaces the section rather than adding a second one.
+#
+# `rewrite` writes the notes above the table again too, from the commits, with
+# scripts/release-body.sh -- for a page made before release-notes.sh capped the
+# notes and merged repeated versions (v0.79.0's was cut off at 124999
+# characters, with v0.78.29 and v0.78.31 listed more than once). Anything typed
+# into the page by hand is replaced with it.
+#
+# Everything is written under RUNNER_TEMP, never in the checkout: the
+# repository has a folder called `assets`, and `mkdir assets` in the checkout
+# is exactly what failed on v0.108.1.
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The release to write the checksums onto, e.g. v0.108.1.'
+        required: true
+      rewrite:
+        description: 'Also write the notes above the table again from the commits (replaces the page text).'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  sums:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The tags and the history between them, for `rewrite`.
+          fetch-depth: 0
+
+      - name: Write the checksums onto the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          REWRITE: ${{ inputs.rewrite }}
+        run: |
+          work=$(mktemp -d "$RUNNER_TEMP/sums.XXXXXX")
+          mkdir "$work/assets"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir "$work/assets"
+          (cd "$work/assets" && bash "$GITHUB_WORKSPACE/scripts/release-sums.sh") > "$work/sums.md"
+          # Up to the marker, without the blank lines before it, so that a
+          # re-run leaves the page exactly as the first run did.
+          if [ "$REWRITE" = true ]; then
+            body=$(bash scripts/release-body.sh "$TAG")
+          else
+            body=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body \
+                   | sed '/^<!-- checksums -->$/,$d')
+          fi
+          { printf '%s\n\n' "$body"; cat "$work/sums.md"; } > "$work/notes.md"
+          # GitHub refuses a body over 125000 characters. Say so and fail
+          # rather than leave a page without its table (v0.79.0's notes were
+          # 124999 characters and the table never went on).
+          chars=$(python3 -c 'import sys; print(len(open(sys.argv[1], encoding="utf-8").read()))' "$work/notes.md")
+          if [ "$chars" -gt 125000 ]; then
+            echo "::error::the notes with the table come to $chars characters, over GitHub's 125000; shorten the notes above the table (scripts/release-notes.sh caps new ones)"
+            exit 1
+          fi
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$work/notes.md"
+          cat "$work/sums.md"
