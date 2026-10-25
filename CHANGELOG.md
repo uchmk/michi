@@ -2,6 +2,13 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.108.5] - 2026-10-26
+
+### 変更
+
+- ito を v0.107.0 に上げた。差分の色付けは `two-face` / `syntect` の直接の依存をやめ、`ito-syntax` を使う（見た目は同じ）。
+- `scripts/release-check.sh` を追加した。リリースは `release.yml` の成功では終わらず、`bash scripts/release-check.sh vX.Y.Z` が `RELEASE OK` になるまでを完了とする（`docs/handoff.md`）。
+
 ## [0.108.4] - 2026-10-24
 
 ### 修正

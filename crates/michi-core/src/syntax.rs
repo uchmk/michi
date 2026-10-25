@@ -7,40 +7,13 @@
 //! mid-file, so a string or comment opened above it may be coloured wrongly;
 //! that is the price of colouring without reading the whole file.
 
-use std::ops::Range;
-use std::sync::OnceLock;
-
-use syntect::parsing::{ParseState, ScopeStack, SyntaxReference, SyntaxSet};
+use ito_syntax::Stream;
+pub use ito_syntax::{classify, Ink, Tok};
 
 use crate::show::{File, Hunk, Kind};
 
-/// The kind of a token.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Tok {
-    Keyword,
-    Str,
-    Comment,
-    Number,
-    /// `true`, `null`, constants.
-    Const,
-    Type,
-    Func,
-}
-
-/// The colour spans of a line: byte ranges of its text, in order and apart.
-pub type Ink = Vec<(Range<usize>, Tok)>;
-
 /// A file with more diff lines than this is left plain.
 const MAX_LINES: usize = 6000;
-/// A line longer than this (minified code) is left plain and not parsed.
-const MAX_LINE: usize = 1500;
-
-/// bat's collection, loaded once per process: loading it is slow enough to be
-/// felt if every test or every diff did it.
-fn syntaxes() -> &'static SyntaxSet {
-    static SET: OnceLock<SyntaxSet> = OnceLock::new();
-    SET.get_or_init(two_face::syntax::extra_newlines)
-}
 
 /// Fills in the colours of every line of `file` from its path's language.
 /// Does nothing for a language it does not know. Runs on the reading thread.
@@ -51,95 +24,26 @@ pub fn paint(file: &mut File) {
     if file.hunks.iter().map(|h| h.lines.len()).sum::<usize>() > MAX_LINES {
         return;
     }
-    let set = syntaxes();
-    let Some(syntax) = find(set, &file.path) else { return };
+    let Some(mut stream) = Stream::new(&file.path) else { return };
     for h in &mut file.hunks {
-        paint_hunk(set, syntax, h);
+        paint_hunk(&mut stream, h);
     }
 }
 
-fn find<'a>(set: &'a SyntaxSet, path: &str) -> Option<&'a SyntaxReference> {
-    let name = path.rsplit(['/', '\\']).next().unwrap_or(path);
-    // By the whole name first (`Dockerfile`, `Makefile`), then the extension.
-    let found = set.find_syntax_by_extension(name).or_else(|| name.rsplit_once('.').and_then(|(_, e)| set.find_syntax_by_extension(e)));
-    found.filter(|s| s.name != "Plain Text")
-}
-
-fn paint_hunk(set: &SyntaxSet, syntax: &SyntaxReference, h: &mut Hunk) {
+fn paint_hunk(stream: &mut Stream, h: &mut Hunk) {
     // The old side gives the deleted lines their colours; the new side then
     // gives the context and the added ones theirs.
     for side in [Kind::Del, Kind::Add] {
-        let mut state = ParseState::new(syntax);
-        let mut stack = ScopeStack::new();
+        stream.reset();
         for line in &mut h.lines {
             if line.kind != side && line.kind != Kind::Context {
                 continue;
             }
-            let ink = if line.text.len() > MAX_LINE { Vec::new() } else { tokens(set, &mut state, &mut stack, &line.text) };
+            let ink = stream.line(&line.text);
             if line.kind == side || (side == Kind::Add && line.kind == Kind::Context) {
                 line.ink = ink;
             }
         }
-    }
-}
-
-/// The tokens of one line, advancing the parser.
-fn tokens(set: &SyntaxSet, state: &mut ParseState, stack: &mut ScopeStack, text: &str) -> Ink {
-    let mut src = String::with_capacity(text.len() + 1);
-    src.push_str(text);
-    src.push('\n');
-    let Ok(ops) = state.parse_line(&src, set) else { return Vec::new() };
-    let mut out: Ink = Vec::new();
-    let end = text.len();
-    let mut put = |stack: &ScopeStack, from: usize, to: usize| {
-        let (from, to) = (from.min(end), to.min(end));
-        if from >= to {
-            return;
-        }
-        let Some(tok) = stack.as_slice().iter().rev().find_map(|s| classify(&s.build_string())) else { return };
-        match out.last_mut() {
-            Some((r, t)) if r.end == from && *t == tok => r.end = to,
-            _ => out.push((from..to, tok)),
-        }
-    };
-    let mut at = 0;
-    for (pos, op) in ops {
-        put(stack, at, pos);
-        at = pos;
-        // A malformed op only loses the colour.
-        if stack.apply(&op).is_err() {
-            return Vec::new();
-        }
-    }
-    put(stack, at, end);
-    out
-}
-
-/// What a scope (`keyword.control.rust`) is.
-pub fn classify(scope: &str) -> Option<Tok> {
-    let is = |p: &str| scope == p || scope.strip_prefix(p).is_some_and(|r| r.starts_with('.'));
-    if is("comment") {
-        Some(Tok::Comment)
-    } else if is("string") {
-        Some(Tok::Str)
-    } else if is("constant.numeric") {
-        Some(Tok::Number)
-    } else if is("constant.language") || is("constant.character") || is("constant.other") || is("support.constant") {
-        Some(Tok::Const)
-    } else if is("keyword.operator") || is("keyword.other.unit") {
-        None
-    } else if is("keyword") || is("storage") || is("entity.name.tag") {
-        Some(Tok::Keyword)
-    } else if is("entity.name.function") || is("support.function") || is("variable.function") || is("meta.function-call") {
-        Some(Tok::Func)
-    } else if ["entity.name.type", "entity.name.class", "entity.name.struct", "entity.name.enum", "entity.name.trait"]
-        .iter()
-        .chain(&["entity.name.namespace", "entity.other.inherited-class", "support.type", "support.class"])
-        .any(|p| is(p))
-    {
-        Some(Tok::Type)
-    } else {
-        None
     }
 }
 

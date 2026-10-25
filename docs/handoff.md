@@ -107,6 +107,7 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
   - 衝突の試しのリポは #23 のスクリプトで作れる（`r` がマージ中、`w` が cherry-pick 中、`x` がきれいな `feat`）。Bash の道具から回す
     （PowerShell の `bash` は別物で、何もせずに終わった）。
   - 撮ったあと `michi.exe`・`git.exe` が残っていないか見る（閉じる途中の数秒は残って見える。ほかのセッションの git は触らない）。
+- **リリース**: `v*` のタグを push すると `release.yml` が走る。**`release.yml` の成功で終わりにしない。** `bash scripts/release-check.sh vX.Y.Z` が `RELEASE OK`（成果物 6 つ・SHA-256 の表に 6 行・ノート）になるまでが完了。表を見ていないまま「完了」と報告しない。見られなければ「未確認」と理由を書く。
 - 大きな履歴は `scripts/make-history.py` で作り、`MICHI_BENCH_REPO=<そのフォルダ> cargo test --release -p michi big_history -- --ignored --nocapture`。
 - 単体テストは本物のリポジトリに触らない（`michi-core/src/testrepo.rs` の `TempRepo`）。
 - ito の rev は 2c82056fc6da21003b77d27b562eb509d7adf309（ito v0.59.0）。
