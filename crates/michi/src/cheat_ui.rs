@@ -163,14 +163,18 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
     let Some(mut st) = app.cheat.take() else { return };
     let c = ito_theme::colors();
     let screen = ctx.content_rect();
-    let max_h = (screen.height() - 100.0).max(200.0);
+    // Room for the title, two rows of tabs, the flow's title and the key line around the body.
+    let max_h = (screen.height() - 220.0).max(200.0);
     let lang = app.lang.clone();
     let flow: &'static Flow = st.topic().flow();
     let cols = steps_cols(ctx, flow, &lang);
     // Sized for the largest sheet, so switching tabs does not resize the window.
-    let left_w = (3.0 * NODE_W + 2.0 * GAP_X + GUTTER).min(WIDTH * 0.4);
+    let left_want = (3.0 * NODE_W + 2.0 * GAP_X + GUTTER).min(WIDTH * 0.4);
     let right_need = Topic::ALL.iter().map(|t| steps_cols(ctx, t.flow(), &lang).total()).fold(0.0, f32::max);
-    let width = (left_w + right_need + 80.0).clamp(640.0, WIDTH).min(screen.width() - 32.0);
+    let width = (left_want + right_need + 80.0).clamp(640.0, WIDTH).min(screen.width() - 32.0);
+    // The diagram scrolls, the table does not: in a narrow window the diagram gives way, down to a column's width.
+    let fixed = Topic::ALL.iter().map(|t| steps_cols(ctx, t.flow(), &lang)).map(|k| k.total() - k.why).fold(0.0, f32::max);
+    let left_w = left_want.min((width - fixed - 120.0 - 60.0).max(NODE_W + GUTTER));
     let body_h = Topic::ALL
         .iter()
         .map(|t| {
@@ -416,7 +420,10 @@ fn steps(
     let c = ito_theme::colors();
     let small = FontId::proportional(12.0);
     let spacing = ui.spacing().item_spacing.x;
-    let (w_num, w_cmd, w_why, w_screen, w_key) = (cols.num, cols.cmd, cols.why, cols.screen, cols.key);
+    // The text column gives way (and wraps) when the others leave it too little room.
+    let rest = cols.total() - cols.why;
+    let w_why = cols.why.min((ui.available_width() - rest - 16.0).max(120.0));
+    let (w_num, w_cmd, w_screen, w_key) = (cols.num, cols.cmd, cols.screen, cols.key);
     let head = |ui: &mut egui::Ui, w: f32, key: &'static str| {
         cell_of(ui, w, |ui| {
             ui.label(RichText::new(app.tr(key)).font(small.clone()).color(c.dim));
