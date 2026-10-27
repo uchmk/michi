@@ -2,6 +2,11 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.108.9] - 2026-10-27
+
+### 変更
+- クリックで開く通知を ito 0.120.0 の `NotifyCfg::tell_open`・`notify_window`・`take_clicks`（uchmk/ito#47）に置き換えた。michi 自前の `Notifier` と、`system` を空にして `tell` を呼ぶ回避を消した。動きは変わらない。
+
 ## [0.108.8] - 2026-10-27
 
 ### 変更

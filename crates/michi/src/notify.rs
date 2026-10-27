@@ -41,15 +41,13 @@ fn icon(side: u32) -> Vec<u8> {
     crate::icon::pixels(side)
 }
 
-/// The ids of the notices whose system notification was clicked, until the frame takes them.
-static CLICKED: std::sync::Mutex<Vec<u64>> = std::sync::Mutex::new(Vec::new());
-/// The window, to wake and raise when a notification is clicked.
+/// The window, to wake it for a webhook-free background job; set on the first frame.
 static WINDOW: std::sync::OnceLock<eframe::egui::Context> = std::sync::OnceLock::new();
-static NOTIFIER: std::sync::OnceLock<ito_notify::notifier::Notifier> = std::sync::OnceLock::new();
 
 /// Remember the window, so that a click on a notification can reach it.
 pub fn set_window(ctx: &eframe::egui::Context) {
     let _ = WINDOW.set(ctx.clone());
+    ito_prefs::notify_window(ctx);
 }
 
 /// The window, once a frame has been drawn.
@@ -59,48 +57,28 @@ pub fn window() -> Option<eframe::egui::Context> {
 
 /// The notices whose system notification was clicked since the last call.
 pub fn take_clicks() -> Vec<u64> {
-    std::mem::take(&mut *CLICKED.lock().unwrap_or_else(|e| e.into_inner()))
+    #[cfg(test)]
+    let pushed = std::mem::take(&mut *TEST_CLICKS.lock().unwrap_or_else(|e| e.into_inner()));
+    #[cfg(not(test))]
+    let pushed = Vec::new();
+    pushed.into_iter().chain(ito_prefs::take_clicks().iter().filter_map(|t| t.parse::<u64>().ok())).collect()
 }
 
 #[cfg(test)]
+static TEST_CLICKS: std::sync::Mutex<Vec<u64>> = std::sync::Mutex::new(Vec::new());
+
+#[cfg(test)]
 pub fn push_click(id: u64) {
-    CLICKED.lock().unwrap_or_else(|e| e.into_inner()).push(id);
-}
-
-fn logo() -> Option<std::path::PathBuf> {
-    ito_notify::toast::icon_file(APP.id, icon)
-}
-
-fn notifier() -> &'static ito_notify::notifier::Notifier {
-    NOTIFIER.get_or_init(|| {
-        let click: ito_notify::notifier::Click = std::sync::Arc::new(|tag, arg| {
-            if arg != ito_notify::notifier::OPEN {
-                return;
-            }
-            if let Ok(id) = tag.parse::<u64>() {
-                CLICKED.lock().unwrap_or_else(|e| e.into_inner()).push(id);
-                if let Some(ctx) = WINDOW.get() {
-                    ctx.send_viewport_cmd(eframe::egui::ViewportCommand::Focus);
-                    ctx.request_repaint();
-                }
-            }
-        });
-        ito_notify::notifier::Notifier::new(APP, Some(logo), click)
-    })
+    TEST_CLICKS.lock().unwrap_or_else(|e| e.into_inner()).push(id);
 }
 
 /// Tell of `event` (one of [`EVENTS`]) in every way `n` turns on for it.
 /// `notice` is the bell's notice the system's notification opens when clicked.
 pub fn tell(n: &NotifyCfg, event: &str, title: &str, body: &str, notice: Option<u64>) {
-    let mut n = n.clone();
-    if let Some(id) = notice {
-        // The clickable notification is michi's own; ito tells the rest.
-        if n.system.as_ref().is_some_and(|l| l.iter().any(|e| e == event)) {
-            notifier().show(ito_notify::notifier::Toast::open(id, title, body, "Open"));
-            n.system = Some(Vec::new());
-        }
+    match notice {
+        Some(id) => n.tell_open(&EVENTS, APP, icon, event, title, body, &id.to_string(), "Open"),
+        None => n.tell(&EVENTS, APP, icon, event, title, body),
     }
-    n.tell(&EVENTS, APP, icon, event, title, body);
 }
 
 /// "Send a test", as the page sets things now: every way, or only the

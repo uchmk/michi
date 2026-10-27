@@ -8,9 +8,9 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-ito-proc = { git = "https://github.com/uchmk/ito", rev = "ef71a41b69cddf16900ce20a92eb8ef0f80ecf43" }
-ito-common = { git = "https://github.com/uchmk/ito", rev = "ef71a41b69cddf16900ce20a92eb8ef0f80ecf43" }
-ito-match = { git = "https://github.com/uchmk/ito", rev = "ef71a41b69cddf16900ce20a92eb8ef0f80ecf43" }
+ito-proc = { git = "https://github.com/uchmk/ito", rev = "20056d28685bac3f597021d89df695661cdd9f74" }
+ito-common = { git = "https://github.com/uchmk/ito", rev = "20056d28685bac3f597021d89df695661cdd9f74" }
+ito-match = { git = "https://github.com/uchmk/ito", rev = "20056d28685bac3f597021d89df695661cdd9f74" }
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -18,4 +18,4 @@ toml = "1.1"
 similar = { version = "3.2", features = ["unicode"] }
 unicode-width = "0.2"
 # Syntax colours for the diff (bat's grammars, shared with kura).
-ito-syntax = { git = "https://github.com/uchmk/ito", rev = "ef71a41b69cddf16900ce20a92eb8ef0f80ecf43" }
+ito-syntax = { git = "https://github.com/uchmk/ito", rev = "20056d28685bac3f597021d89df695661cdd9f74" }
