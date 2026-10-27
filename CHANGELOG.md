@@ -2,6 +2,11 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.108.8] - 2026-10-27
+
+### 変更
+- `[notify]` の読み書き（`NotifyCfg`・`check`・`page`・`edits`・`webhooks_of`・`tell`・`test`）を、自前の写しから ito の `ito_prefs::NotifyCfg` に置き換えた（ito 0.119.2、uchmk/ito#46）。設定の書き方と動きは変わらない。クリックで開く通知（`Notifier`）は michi に残る。
+
 ## [0.108.7] - 2026-10-26
 
 ### 修正

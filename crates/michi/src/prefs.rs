@@ -129,7 +129,7 @@ impl Prefs {
             keymap_warn: Vec::new(),
             said: None,
             notice: None,
-            notify: NotifyCfg::default(),
+            notify: NotifyCfg::new(&crate::notify::EVENTS),
             notify_warn: Vec::new(),
             open: Default::default(),
             open_warn: Vec::new(),
@@ -177,7 +177,7 @@ impl Prefs {
             let (km, warn) = Keymap::load(read_keymap(b).as_deref());
             (p.keymap, p.keymap_warn) = (km, warn);
             let config = read_config(b);
-            (p.notify, p.notify_warn) = NotifyCfg::read(config.as_deref());
+            (p.notify, p.notify_warn) = crate::notify::read(config.as_deref());
             (p.open, p.open_warn) = ito_openin::Config::read(config.as_deref());
             p.read_view(config.as_deref());
             if let Some(text) = state_text(Some(b), "guides.toml", "guides.txt") {
@@ -308,7 +308,7 @@ impl Prefs {
                     }
                 }
                 Reload::Config(text) => {
-                    (self.notify, self.notify_warn) = NotifyCfg::read(text.as_deref());
+                    (self.notify, self.notify_warn) = crate::notify::read(text.as_deref());
                     (self.open, self.open_warn) = ito_openin::Config::read(text.as_deref());
                     self.read_view(text.as_deref());
                 }

@@ -303,17 +303,17 @@ pub fn show(ui: &mut Ui, app: &mut App) {
             key_edits.extend(ito_prefs::keys_page(ui, l, kw, &table, keys_edit).unwrap_or_default());
         }
         NOTIFY => {
-            let mut n = notify.page();
+            let mut n = notify.page(&crate::notify::EVENTS);
             let ends = [
                 ito_prefs::End { name: tr("notify.done"), color: l.c.done, sound: tr("notify.done_sound") },
                 ito_prefs::End { name: tr("notify.failed"), color: l.c.err, sound: tr("notify.failed_sound") },
             ];
-            let defaults = crate::notify::NotifyCfg::default().page();
+            let defaults = crate::notify::NotifyCfg::new(&crate::notify::EVENTS).page(&crate::notify::EVENTS);
             if let Some(what) = ito_prefs::notify_page(ui, l, w, &ends, &mut n, &defaults, drafts) {
                 test = Some((what, n.clone()));
             }
-            webhooks = notify.webhooks_of(&n);
-            notify_edits = notify.edits(&n);
+            webhooks = notify.webhooks_of(&crate::notify::EVENTS, &n);
+            notify_edits = notify.edits(&crate::notify::EVENTS, &n);
         }
         EXTERNAL => {
             for w in open_warn {
