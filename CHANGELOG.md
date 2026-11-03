@@ -2,6 +2,12 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.108.10] - 2026-11-03
+
+### 変更
+- ito を 0.232.0（rev 10f9abe）に上げた。通知をクリックすると、最小化やトレイに隠れた窓も戻る（uchmk/ito#172）。
+  あわせて ito-prefs の `Out::open_file` が `Option<usize>` になったこと、ito-keyscript の `Do::Failed`（`<Assert:>` などの失敗で報告を書いて終わる）に合わせた。
+
 ## [0.108.9] - 2026-10-27
 
 ### 変更

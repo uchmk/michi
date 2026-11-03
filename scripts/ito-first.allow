@@ -1,1 +1,2 @@
 notify The watcher is event-driven and recursive over every worktree (ReadDirectoryChangesW etc.); ito-common's watch only polls. Asked of ito: uchmk/ito#21.
+ito-statusbar michi's bottom line is part of the confirmed design (docs/design.md, mock); adopting the shared bar changes the screen, so it waits for the owner's say.
