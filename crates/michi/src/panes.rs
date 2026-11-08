@@ -200,6 +200,26 @@ impl App {
         }
     }
 
+    /// Right and left on the side column's row, as in the files' tree: right
+    /// opens a group, or goes into an open one; left closes a group, or goes
+    /// up to the group the row is in. Elsewhere the key does nothing.
+    fn side_fold(&mut self, open: bool) {
+        let rows = rows(self);
+        let Some(row) = rows.get(self.side_cur) else { return };
+        match (&row.kind, open) {
+            (Kind::Group { key, open: false, .. }, true) => _ = self.side_open.insert(key.clone()),
+            (Kind::Group { key, open: true, .. }, false) => _ = self.side_open.remove(key),
+            (Kind::Group { open: true, .. }, true) => self.side_move(1),
+            (_, false) if row.sub => {
+                if let Some(up) = rows[..self.side_cur].iter().rposition(|r| matches!(r.kind, Kind::Group { .. })) {
+                    self.side_cur = up;
+                    self.side_follow = true;
+                }
+            }
+            _ => {}
+        }
+    }
+
     /// Enter on the side column's row: what a click on it does.
     fn side_activate(&mut self) {
         let rows = rows(self);
@@ -298,7 +318,8 @@ impl App {
         match (self.pane, c) {
             (GraphPane::Side, 'j') => self.side_move(1),
             (GraphPane::Side, 'k') => self.side_move(-1),
-            (GraphPane::Side, 'l' | 'h') => {}
+            (GraphPane::Side, 'l') => self.side_fold(true),
+            (GraphPane::Side, 'h') => self.side_fold(false),
             // Hide the branch from the graph, show only it, or all again (#71).
             (GraphPane::Side, 'x' | 'o' | 'X') => self.side_scope_key(c),
             (GraphPane::Files, 'j') => self.files_move(1),
@@ -333,8 +354,9 @@ impl App {
             (GraphPane::Side, "ArrowDown") => self.side_move(1),
             (GraphPane::Side, "ArrowUp") => self.side_move(-1),
             (GraphPane::Side, "Enter") => self.side_activate(),
-            // Sideways does not leave the column (Tab and Esc do).
-            (GraphPane::Side, "ArrowRight" | "ArrowLeft") => {}
+            // Sideways opens and closes; it does not leave the column (Tab and Esc do).
+            (GraphPane::Side, "ArrowRight") => self.side_fold(true),
+            (GraphPane::Side, "ArrowLeft") => self.side_fold(false),
             (GraphPane::Files, "ArrowDown") => self.files_move(1),
             (GraphPane::Files, "ArrowUp") => self.files_move(-1),
             (GraphPane::Files, "ArrowRight") => self.files_fold(true),
@@ -441,10 +463,42 @@ mod tests {
         let at = rows(&a).iter().position(|r| matches!(r.kind, Kind::Group { .. })).unwrap();
         a.side_cur = at;
         a.pane = GraphPane::Side;
-        assert!(a.pane_key('l'), "right is taken and goes nowhere");
-        assert!(a.pane == GraphPane::Side);
         assert!(a.pane_named("Enter"));
         assert!(a.side_open.contains("r:origin"));
+    }
+
+    #[test]
+    fn right_and_left_open_and_close_a_group_in_the_side_column() {
+        let mut a = app();
+        a.pane = GraphPane::Side;
+        let group = rows(&a).iter().position(|r| matches!(r.kind, Kind::Group { .. })).unwrap();
+        a.side_cur = group;
+        assert!(a.named("ArrowRight"));
+        assert!(a.side_open.contains("r:origin"));
+        assert_eq!((a.pane, a.side_cur), (GraphPane::Side, group), "opening stays on the group");
+        // Open already: right goes in, left comes back up and closes nothing.
+        assert!(a.named("ArrowRight"));
+        assert_eq!(a.side_cur, group + 1);
+        assert!(rows(&a)[a.side_cur].sub);
+        assert!(a.named("ArrowLeft"));
+        assert_eq!(a.side_cur, group);
+        assert!(a.side_open.contains("r:origin"));
+        // Left closes, and on a closed group stays put.
+        assert!(a.named("ArrowLeft"));
+        assert!(!a.side_open.contains("r:origin"));
+        assert!(a.named("ArrowLeft"));
+        assert_eq!((a.pane, a.side_cur), (GraphPane::Side, group));
+        // l and h are the same keys.
+        assert!(a.feed('l'));
+        assert!(a.side_open.contains("r:origin"));
+        assert!(a.feed('h'));
+        assert!(!a.side_open.contains("r:origin"));
+        // A row outside a group takes the keys and changes nothing.
+        let plain = rows(&a).iter().position(|r| !r.sub && !matches!(r.kind, Kind::Heading(_) | Kind::Group { .. })).unwrap();
+        a.side_cur = plain;
+        assert!(a.named("ArrowRight") && a.named("ArrowLeft"));
+        assert_eq!((a.pane, a.side_cur), (GraphPane::Side, plain));
+        assert!(!a.side_open.contains("r:origin"));
     }
 
     #[test]
