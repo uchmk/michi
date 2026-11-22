@@ -27,11 +27,19 @@ tsumugi with three made-up Claude sessions on top. The page is built from
 [docs/mock/src](docs/mock/src) with `python build.py`. Development follows
 [docs/dev-prompt.md](docs/dev-prompt.md) in stages.
 
-v0.1.0 is the skeleton: the window with its own title bar (the view tabs, the
-repository chip with the branch and the count of worktrees, the palette
-field), the three views still empty, the keybar with the clock, `?` for the
-keys and the settings shared by every uchmk app. It checks that git is 2.38
-or newer. Nothing in it changes a repository yet.
+michi reads and changes the repository. It has the commit graph, the worktree
+table with Claude's state and the conflict prediction, staging and commits,
+fetch / pull / push, branches, tags and stash, the conflict screen, rebase,
+the review of a branch, and undo through `refs/michi/backup/`. Press `?` for
+the keys. It needs git 2.38 or newer.
+
+## Download
+
+Binaries are on the [GitHub Releases](https://github.com/uchmk/michi/releases)
+page: Windows x64 and ARM64 (a zip with `michi.exe` and `michi.com`), macOS and
+Linux (`.tar.gz`). Each release's notes have a SHA-256 table.
+
+To build from source:
 
 ```sh
 cargo run -p michi -- C:\dev\some-repo   # or no path: the current folder
@@ -43,7 +51,7 @@ cargo run -p michi -- C:\dev\some-repo   # or no path: the current folder
 `$v = & michi --version` would come back empty. `cargo build --release` also
 makes `michi-com.exe`, a small console program, the same as kura's `kura.com`
 and yagura's `yagura.com`: copy it to `michi.com` beside `michi.exe` (the Build
-artifacts hold both under these names). `PATHEXT` lists `.COM` before `.EXE`,
+artifacts and the release zip hold both under these names). `PATHEXT` lists `.COM` before `.EXE`,
 so typing `michi` finds it first. Given an option (`--version`, `--help`) it
 runs `michi.exe` with the same arguments and handles, waits, and passes on the
 exit code; given a folder or nothing it opens the window and returns once it is

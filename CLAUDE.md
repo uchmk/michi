@@ -12,7 +12,7 @@
 - **uchmk のアプリの共通仕様**（common.toml・設定の画面・テーマ・時計、`ito-common`・`ito-theme`・`ito-prefs`）は
   ito の [docs/common-spec.md](https://github.com/uchmk/ito/blob/main/docs/common-spec.md)。これに従う。
 - Cargo の workspace。クレートは `crates/` の下に置く。版はルートの `Cargo.toml` の `[workspace.package]` で 1 つ。
-- **push の前に `scripts/verify.sh` を 1 回回す**（骨組みで作る）。最後の行が `ALL OK: …` なら push してよい
+- **push の前に `scripts/verify.sh` を 1 回回す**。最後の行が `ALL OK: …` なら push してよい
   （fmt の check、test、clippy を Linux・`x86_64-pc-windows-msvc`・`aarch64-apple-darwin` の 3 つで `-D warnings`。
   C を要る依存が無いので、どの機械からでも 3 つとも回る）。
 
@@ -36,7 +36,7 @@
 - `Build`（`.github/workflows/build.yml`、2026-10-16 から。kura・ito・yagura・minato と同じ 6 つのターゲット）は main への push と手動で、
   6 つのターゲットを `--release` でリンクし、Windows x64 で `michi.com` の `--version`・`--help`・知らない引数・無いフォルダと、
   閉じたパイプへの `michi.exe --version` が panic しないことを確かめ、実行ファイル（Windows は `michi.com` も）を成果物に残す。
-  テストは回さない（CI の役目）。リリースがまだ無いので、macOS をリンクするのはここだけ。
+  テストは回さない（CI の役目）。リリースは `v*` のタグで `release.yml` が作る（完了は `scripts/release-check.sh` の `RELEASE OK`。詳しくは docs/handoff.md）。
 - `michi.com`（`crates/michi/src/bin/michi-com.rs`、v0.15.0 から）は Windows のコンソールの前段。中身は ito の `ito_console::front`
   （v0.16.0 から。kura・yagura・tsumugi・minato と共有）で、michi が持つのはどのコマンドラインを文字で答えるか（`answers_in_text`）だけ。
   オプションがあれば `michi.exe` を同じ引数で走らせて待ち、フォルダか何も無ければ窓が上がるまで待って戻る。

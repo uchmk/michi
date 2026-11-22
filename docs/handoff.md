@@ -1,94 +1,39 @@
 # 引き継ぎ
 
 前の会話から次の会話への引き継ぎ。新しいセッションは `C:\dev\michi` で始め、CLAUDE.md・TODO.md・この文書の順に読む。
-設計の正は [design.md](design.md) とモック。大きなファイル（design.md・graph.rs・wt_ui.rs など）は全部読まず、要るところだけ読む。
+設計の正は [design.md](design.md) とモック。大きなファイル（design.md・graph_ui.rs・wt_ui.rs など）は全部読まず、要るところだけ読む。
 
-## いまの版（v0.51.0、2026-10-17）
+## いまの状態（v0.109.0、2026-11-22）
 
-v0.37.0〜v0.44.0 で uchmk 共通の仕様を ito 経由に揃えた（下の「ito に揃えたもの」）。
-段 1「見る」は終わり、段 2「変える」は TODO.md の 2. のうち後回しにしたもの（各 question の issue の「後回し」）だけが残る。
-段 3「衝突」は衝突の画面とマージ中のロックが入った（v0.17.0）。別のセッションが `michi.com`（Windows のコンソールの前段）を
-v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TESTING の行は 21（20 は `michi.com`）。入っているもの:
+- 段はすべて済み。TODO.md の項目は全部 `[x]`。版ごとの中身は CHANGELOG.md と `git log`。
+- 最初のリリースは v0.108.2、最新は v0.108.4。
+- 実機の確認は #137 に集めた（TESTING.md の `[ ]` の行を全部回す。以前の版ごとの needs-pc の issue はこれに替えた）。
+- 持ち主への質問（回答待ち。推奨で進めてよい）: #101 文字の範囲選択でコピー（ito-select）・#103 PR / CI の状態を minato から受ける・
+  #123 マウスだけで全部の操作に届くか・#132 Git flow の画面（`Ctrl+Shift+G`）とキー・#134 G のフォームを PR の更新にも使う。
+  方針の issue: #133（キーの作り直し 段 2）。
 
-- 樹形図（`ito-graph`、main が左端、lane の PR を畳む `z`、`/` の絞り込み、スクロールバーの印）。10 万コミットで最初の画面 0.1 s、
-  畳む 3.5 ms、絞る 1 文字 4〜7 ms。commit-graph が無ければ裏で書く（#2）。
-- 左の列（worktree・ブランチ・リモート・タグ・stash、`↑N` `↓N`）、コミットの詳細と差分、WIP の行とその worktree の Claude（`tsumugi ls --json`）。
-- worktree の表（`3`）と衝突の予測、ファイルの監視と未読の印、worktree の無いブランチと main の衝突の予測。
-- ブランチ全体の差分（`3` の `d`、v0.9.0）。ロジックは `michi-core/src/review.rs`、状態は `michi/src/review.rs`、描画は `review_ui.rs`。
-- ステージとコミット（`2`、v0.10.0）。ロジックは `michi-core/src/stage.rs`、状態とテストは `michi/src/changes.rs`、描画は `changes_ui.rs`。
-  v0.14.0 で hunk の分割（`s`、`Diff::split`）と、2 行以上で断られた書き込みの出力を差分の代わりに出す（`changes.told`、`git::refused_all` が色を落とす）。
-- fetch / pull / push（`f` `p` `P`、v0.11.0）: 進み具合とキーのバーの Esc、`--force-with-lease` の前の帯と退避。`michi-core/src/net.rs`・`michi/src/work.rs`。
-- ブランチ（`b`）・タグ（`T`）・revert（`t`）のパレット（v0.12.0）、stash（`s`）と変更を捨てる（`2` の `d`）（v0.13.0）。
-  消す・捨てる前は `michi-core/src/backup.rs` で `refs/michi/backup/<時刻>` に退避し、トーストに出す。
-- 片付け（`3` の `c`、v0.14.0）: 取り込み済み・リモートで消えたブランチとフォルダの無い worktree を選んでまとめて消す。
-  ロジックは `michi-core/src/tidy.rs`、状態は `michi/src/tidy.rs`、描画は `tidy_ui.rs`。
-- 衝突の画面（`4`、v0.17.0）。読み・解き・中止・コミットは `michi-core/src/conflict.rs`（`read`・`resolve`・`take`・`restart`・`commit`・`abort`・
-  `merge`・`cherry_pick`。`Conflict`・`Block`・`Pick`・`Outcome`、テスト付き）。状態は `michi/src/conflicts.rs`（`update(all, fresh)`・`set_one`。
-  解いた箇所のタグはメモリにだけ持つので、開き直すと「手で直した」）、描画は `conflict_ui.rs`。`repo.rs` が worktree を読み直すたびに
-  `Answer::Conflicts` で読み直す。止まっている操作は `michi-core::branch::Doing`、日本語の文の中の名前は `App::doing_word`（マージ）。
-- マージ中のロック: `picker.rs` の `doing_in` が pull・`C`・`m`・revert・`2` のコミットを止める。`ui.rs` がタブの「● N」と赤い「· マージ中」を出す。
-- cherry-pick（樹形図の `C`、`picker.rs` の `ask_cherry`。マージのコミットは `Band { parents }` で親を聞き、ボタンの言葉は `Band::parent_key`）と
-  main の取り込み（`3` の `m`、`ask_merge`）。`act.rs` の `Task::{Merge, CherryPick, Resolve, Take, Restart, Conclude, Abort}`、
-  衝突したら `show_conflicts` で `4` を開く（revert の衝突も）。`Acted::Solved(Box<Solved>)`。
-- マージ中の樹形図（v0.18.0〜0.18.1、TESTING 21.21〜21.22）: `Wip.theirs`（`MERGE_HEAD`）で最上段にマージの行（`Dot::Conflict`、「⚠ 衝突 残り N」）、
-  `App::merging()` の間は衝突の予測（印・列・組）を隠して注記を出し、道具帯の `Pull`・`Stash` を薄くする。差分が無いマージ中の worktree には行が出ない。
-- rerere（v0.19.0、TESTING 21.23）: `michi-core/src/rerere.rs`（`enabled`・`set`）、`Task::{AskRerere, Rerere}`。`show_conflicts` が 1 セッションに 1 回聞き、
-  `y` で `rerere.enabled=true`（マージ中なら `git rerere` も）、`n` で `false`、Esc は書かない。
-- rerere の当てた形（v0.20.0、TESTING 21.24）: `Conflicts::reused(file)`（まだ衝突のまま・箇所が全部解けている・こちらで選んだ印が無い・確かめていない）で `Tag::Reused` の札「↺ 前に解いた形」、
-  `Enter` で確かめた（`confirmed`、メモリだけ）、`x` で `Task::Forget`（`conflict::forget` = `git rerere forget` + `restart`）。下の帯に確かめていない数。
-  **git の癖**: `core.autocrlf=true`（この PC の全体設定）だと `git rerere forget` が `error: no remembered resolution` で失敗する（終了コードは 0。stderr の `error:` を見て断る）。
-  `false` で記録した解き方なら忘れられる。手でエディタで直したファイルも「前に解いた形」に見える（区別できない）。
-- 外部ツールで開く（v0.25.0、TESTING 21.29）: `michi-core/src/external.rs`（`merge.tool` があれば `git mergetool --no-prompt -- <path>`、なければ OS の opener）、`Task::External`、キー `w`・ファイルごと衝突した所のボタン。
-- Claude に渡す（v0.24.0、TESTING 21.28）: `michi-core/src/handoff.rs`（`brief`・`write`・`request`・`send`・`start`）、`Task::Handoff`（行き先の `session` は `App::conflict_handoff` が `App.claude` から選ぶ: その worktree の agent のうち Running でないもの、なければ最初の agent、いなければ新しいタブ）、キー `g`・帯のボタン。意図は act スレッドで箇所ごとに `conflict::intent` を呼んで集める。Claude が待ちになったら知らせる通知は未実装。
-- 単語の差分（v0.23.0、TESTING 21.27）: `michi-core/src/words.rs` の `marks(基準, 側)` が行ごとのバイト範囲を返し、`conflict_ui::marked` が塗る（基準は base、なければもう一方の側）。
-- `e` で結果を直す（v0.22.0、TESTING 21.26）: `Conflicts.edit`（`Edit`: 書きかけの文字列）、`conflict_edit`/`_apply`/`_cancel`、`Task::ResolveWith` → `conflict::resolve_with`（札 `Tag::Edited`）。欄は `conflict_ui` の `Draw.field` に置き場所を取って `show()` で TextEdit を載せる。欄があるあいだ main.rs の `keys()` は Ctrl+Enter / Esc だけを見る。
-- 意図の行（v0.21.0、TESTING 21.25）: `conflict::intent`（`git log -n1 -L<行>,<行>:<path> <base>..<tip>`）、`Task::Intent`、`Conflicts::{intent,set_intent}`、
-  `App::conflict_want_intent`（選んだ箇所を 1 回だけ頼む）。`Plan.intent` があれば箇所の見出しの下に 2 行ぶん高くなる。
-- 書く処理は `michi/src/act.rs` の `Task`（ワーカーで実行、Claude がいれば `work.rs` の `Band` で聞く）。読むスレッドは `repo.rs`。
+## どこに何があるか
 
-実機の確認は needs-pc の issue（#1, #3〜#9, #11, #13, #14, #17, #19, #21, #23, #24）で PC のセッションに頼んである。#23 が v0.17.0 の 21.1〜21.20。
-推奨で決めたことの `question` は #10（差分のレビュー）・#12（`2`）・#15（fetch / pull / push）・#16（ブランチ・タグ・revert）・
-#18（stash・捨てる）・#20（片付け・分割・hook の出力）・#22（衝突の画面・ロック・cherry-pick・取り込み。作ってからの補足をコメントに書いた）。
-どれもまだ回答は無い。
-
-**実機の確認（#24 に積んだ）**: TESTING 21.21〜21.30（v0.18.0〜v0.26.0: マージ中の樹形図の行・予測を隠す・`Pull`/`Stash` を薄くする・rerere を聞く帯・当てた形の札と忘れる）。
-（#23 は 21.1〜21.20 用。）いまの状態: 作業中の変更は無い。
-差分が無いマージ中の worktree にはマージの行が出ない制限がある。
-
-## ito に揃えたもの（v0.37.0〜v0.44.0、TODO.md の 7）
-
-- `--keys`（v0.37.0、`script.rs`、`ito-keyscript`）・keymap.toml と設定の Keys（v0.38.0、`ito-keymap`・`ito-keys`）・キー一覧（v0.39.0、`ito-help`）・
-  通知と Notifications（v0.40.0、`notify.rs`、`ito-notify`）・F12 の報告（v0.41.0、`bugreport.rs`、`ito-bugreport`）・窓の位置と大きさ（v0.42.0、`ito_common::window`）・
-  コマンドのパレット `Ctrl+Shift+P`（v0.43.0、`cmdpalette.rs`、`ito-palette`。`App.cmd`、選ぶと `run_pick` でキーと同じ）・
-  TESTING-CHECKS.md の生成（v0.44.0、`examples/make-testcheck.rs` は `ito-testcheck` の設定だけ。印は引き継がれる）。
-- 列の幅はつまみで動かせる（v0.46.0、TESTING 26）: 樹形図の 3 列（v0.47.0 から `ito-layout` の仕切り、割合で保存）・樹形図の見出しの列・worktree の表の列（この 2 つは michi の中。ito#7 に共通の部品を頼んだ。出たら置き換える）。`sizes.rs` が `layout.toml`
-  （keymap.toml の隣、`key = 幅`）に書く（ドラッグが終わったときにスレッドで）。実機の確かめは TESTING 25.1・26.1〜26.3 が `[ ]`。Arm64 は別のセッションが確かめる。
-- ブランチ・タグ・stash の `Picker` を `ito-palette` に替える件は ito-7e に頼んである: 選んだ行への別のキー（Shift+Enter・Delete・F2・Ctrl+U・Ctrl+R）が要るので
-  `Answer::Key(key, T)` を ito-palette に足してもらい、rev が出たら 1 度に替える（picker.rs・picker_ui.rs）。`Band` の確認は持ち主の回答が来てから（#26）。
-- `keymap_warn` / `notify_warn` はトーストで見せる（v0.45.0、TESTING 25.1）。残り: 実機で `--keys` を回す（TESTING 20.7 は `[ ]` のまま）。
-- ito を上げるときは**全部のクレートを同じ rev に**（今は 2c82056fc6da21003b77d27b562eb509d7adf309、ito v0.59.0）。
-- 動いている `michi.exe` があると `cargo build`（`verify.sh` の中も）が失敗する。clippy・test は通る。
+- `crates/michi-core`: egui に依らない git のロジック（単体テスト付き）。
+  履歴の読み `history.rs`・`log.rs`、ステージ `stage.rs`、fetch / pull / push `net.rs`、衝突 `conflict.rs`、rebase `rebase.rs`、
+  退避 `backup.rs`、片付け `tidy.rs`、ブランチの差分 `review.rs`、衝突の予測 `predict.rs`、worktree `worktree.rs`、テスト用のリポ `testrepo.rs`。
+- `crates/michi`: 状態と描画。
+  書く処理は `act.rs` の `Task`（ワーカースレッド、Claude がいれば `work.rs` の `Band` で聞く）、読むスレッドは `repo.rs`、
+  描画は `*_ui.rs`（`graph_ui.rs`・`wt_ui.rs`・`changes_ui.rs`・`conflict_ui.rs`・`review_ui.rs` など）、
+  選ぶ窓は `picker.rs`、コマンドのパレットは `cmdpalette.rs`、入口は `main.rs`。
+- `scripts/`: `verify.sh`（push 前）・`shot.ps1`（画面の撮影）・`release-check.sh`・`make-history.py`。
 
 ## 次にやること
 
-1. モックの 2 回目はやらない（持ち主が 2026-10-15 に「実装を進めて」）。決めることは `question` の issue に文字で書き、推奨で進める。
-2. 段 3 の残り: 予測を gix-merge に、は**やらないと決めた**（2026-10-16 に測った）。`gix` 0.89（merge・revision）の `merge_commits` を `predict.rs` に試したところ、
-   michi・ito の履歴で `git merge-tree --write-tree` は 25〜40 ms、gix は 100〜420 ms（4〜15 倍遅い）。しかも hunk の数が git と食い違った
-   （近い 2 か所を git は 1 つの hunk にまとめ、gix は別々に数える。4 の画面は git の実物なので予測の数が合わなくなる）。依存も重い。
-   試しは捨てた（コミットなし）。git のコマンドのままにする。再挑戦するなら gix-merge が hunk を git と同じにまとめ、速くなってから。
-   Claude に渡したあとの通知は v0.26.0 で入った（`App::handed`、TESTING 21.30）。
-3. 段 4: `o`・`x` は v0.30.0（TESTING 10.12・10.13）、`N`（新しい作業。`tsumugi new --worktree`）は v0.31.0（TESTING 10.14）。`p`（PR のページをブラウザで開く。v1-scope どおり michi は PR を作らない）は v0.32.0（TESTING 10.15）で、段 4 は終わり。
-   段 5: `r`（rebase の画面。並べ替え・squash・fixup・題を直す・外す。`michi-core/src/rebase.rs`）は v0.33.0（TESTING 10.16）。途中で止まった状態は衝突の画面（4）が持つ。次は段 6。
-   段 6: ブランチの差分の行のメモ（`J K n g`、`michi-core/src/notes.rs`）は v0.34.0（TESTING 13.13・13.14）。衝突マーカーが消えたかの見張りは v0.35.0（TESTING 21.31）。段 6 は済み。
-4. 段 2 の後回し: （済み）レビューのメモは v0.34.0（TESTING 13.13・13.14）、PR を開くは v0.32.0（#10）。レビューからのマージ（`m`）は v0.29.0（TESTING 13.12）。push 先のリモートを選ぶ窓（#15）は v0.28.0 で入った（TESTING 15.12）。
-   ブランチの名前の変更（`F2`）・upstream（`Ctrl+U`）・rebase（`Ctrl+R`）・樹形図の `m` は v0.27.0 で入った（TESTING 22.1〜22.4）。rebase の途中の帯（continue / skip）は段 5 の衝突の画面で。
-5. 段 4〜6 は TODO.md のとおり。段 4 は tsumugi の `new --worktree` と `focus` が要る（tsumugi の TODO.md に書いてある）。
+1. `question` の issue は回答が来るまで推奨で進める（持ち主のコメント `回答: …` がいつも優先）。
+2. 実機の確認は PC のセッションが #137 で回す。
+3. ito に頼んだもの（`crate-request`、TODO.md の記述を参照）が ito に出たら、rev を上げて置き換える。
 
-## 進め方（持ち主の希望）
+## 進め方
 
+- 実装は dev-orchestra の流れ（Sonnet の subagent が実装、`audit`・`verify`、コミットと push は main のセッションだけ）。
 - 速さを優先する。2〜3 の機能を 1 つの版にまとめる。作業中は `cargo test -p michi -p michi-core` で、`scripts/verify.sh` は push の前に 1 回。
 - 確かめ終えたものは聞かずにコミットして main に push してよい。短い日本語の途中経過をこまめに書く。
-- サブエージェントは持ち主が頼んだときだけ（使うなら Sonnet、worktree で）。
 - 会話が長くなって要約が増えたら、ここを書き直して新しいセッションに移る。
 
 ## 道具のメモ
@@ -110,10 +55,11 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
 - **リリース**: `v*` のタグを push すると `release.yml` が走る。**`release.yml` の成功で終わりにしない。** `bash scripts/release-check.sh vX.Y.Z` が `RELEASE OK`（成果物 6 つ・SHA-256 の表に 6 行・ノート）になるまでが完了。表を見ていないまま「完了」と報告しない。見られなければ「未確認」と理由を書く。
 - 大きな履歴は `scripts/make-history.py` で作り、`MICHI_BENCH_REPO=<そのフォルダ> cargo test --release -p michi big_history -- --ignored --nocapture`。
 - 単体テストは本物のリポジトリに触らない（`michi-core/src/testrepo.rs` の `TempRepo`）。
-- ito の rev は 2c82056fc6da21003b77d27b562eb509d7adf309（ito v0.59.0）。
+- ito は全部のクレートを同じ rev にそろえる。rev は `Cargo.toml` を見る。
 - egui 0.36 の `TextEdit` は、`.frame()` を自分で付けると `margin` が効かない。余白は Frame の `inner_margin` に書く。
 - `scripts/verify.sh` は手元の clippy に加えて、もう一方の CI のターゲット（Windows では Linux）の clippy も回す（acd02a9 から）。
 - tsumugi・yagura・kura・lane の worktree のファイルは直さない。tsumugi で michi を開いて試さない（git の掃除が走って重くなった）。
+- 動いている `michi.exe` があると `cargo build`（`verify.sh` の中も）が失敗する。clippy・test は通る。
 
 ## 決まっていること（会話でだけ決めたもの）
 
@@ -121,3 +67,4 @@ v0.15.0・v0.16.0 で出したので、衝突の作業は v0.17.0 になり、TE
 - lane の PR（`test/win-*` など）は畳む。
 - stash の行のクリックは stash の段まで何もしない（stash のコミットは樹形図に無い）。
 - U+FFFD は今の字体に無く □ で出る。注記と差分で同じなので、そのままにした。
+- 予測を gix-merge にするのはやらない（2026-10-16 に測った。`git merge-tree` より 4〜15 倍遅く、hunk の数も git と食い違う）。git のコマンドのままにする。

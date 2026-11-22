@@ -2,6 +2,8 @@
 
 `【人】` is the owner's work; `（要確認: #N）` waits for an answer (go on with the recommendation).
 
+Status (2026-11-22, v0.109.0): every item below is done. Open: owner questions #101, #103, #123, #132, #134; real-machine checks in #137.
+
 ## Stages (docs/dev-prompt.md)
 
 - [x] 0. Skeleton (v0.1.0): workspace with `crates/michi` and `crates/michi-core`, ito crates on the rev tsumugi uses, window with the
@@ -98,8 +100,6 @@
 
 ## Gaps against other Git clients (2026-10-17)
 
-All wait for the owner; none is started.
-
 - [x] submodule: status and update (not entering): `u` on the worktree table, TESTING 129（要確認: #29）
 - [x] Git LFS: "not fetched" marker（要確認: #30）
 - [x] sparse checkout: notice only（要確認: #31）: a strip says it is on and how many files are left out (TESTING 31.5–31.9)
@@ -135,8 +135,6 @@ All wait for the owner; none is started.
 - [x] Real-machine checks off Windows（要確認: #62） — macos and linux lanes, TESTING.md 267
 
 ## Gaps against other Git clients, round 2: features, operability, looks (2026-10-17)
-
-All wait for the owner; none is started.
 
 - [x] Undo / Redo on one key（要確認: #64） — michi-core undo.rs (reset, delete, rename), Ctrl+Z / Ctrl+Shift+Z, TESTING.md 265
 - [x] Compare any two commits or branches（要確認: #65）
@@ -183,7 +181,7 @@ Worktrees and parallel Claude work are the base; no other client has them.
 
 ## Easy for beginners (2026-10-17)
 
-All wait for the owner; none is started. Related: #64 (Undo), #74, #77, #80-#83.
+Related: #64 (Undo), #74, #77, #80-#83.
 
 - [x] Plain-language display for Git terms（要確認: #104）
 - [x] Hover glossary for terms on screen（要確認: #105）
