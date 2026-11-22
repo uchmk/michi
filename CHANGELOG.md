@@ -2,6 +2,11 @@
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に従う。日付は JST。
 
+## [0.110.1] - 2026-11-22
+
+### セキュリティ
+- 依存の url を 2.5.9 に上げた（RUSTSEC-2026-0592。入れ子の `blob:` の URL で `Url::origin()` がスタックを使い切る）。form_urlencoded も 1.2.3 に。
+
 ## [0.110.0] - 2026-11-22
 
 ### 追加
