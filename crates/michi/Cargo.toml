@@ -29,6 +29,7 @@ ito-select = { git = "https://github.com/uchmk/ito", rev = "10f9abe00f16f35de0ec
 ito-confirm = { git = "https://github.com/uchmk/ito", rev = "10f9abe00f16f35de0ec328f0a87211e5e0075e0" }
 ito-theme = { git = "https://github.com/uchmk/ito", rev = "10f9abe00f16f35de0ec328f0a87211e5e0075e0" }
 ito-prefs = { git = "https://github.com/uchmk/ito", rev = "10f9abe00f16f35de0ec328f0a87211e5e0075e0" }
+ito-dialog = { git = "https://github.com/uchmk/ito", rev = "10f9abe00f16f35de0ec328f0a87211e5e0075e0" }
 ito-openin = { git = "https://github.com/uchmk/ito", rev = "10f9abe00f16f35de0ec328f0a87211e5e0075e0" }
 ito-graph = { git = "https://github.com/uchmk/ito", rev = "10f9abe00f16f35de0ec328f0a87211e5e0075e0", features = ["egui"] }
 ito-match = { git = "https://github.com/uchmk/ito", rev = "10f9abe00f16f35de0ec328f0a87211e5e0075e0" }

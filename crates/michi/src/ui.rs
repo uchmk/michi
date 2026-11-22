@@ -9,13 +9,13 @@ use egui::{pos2, vec2, Align2, Color32, CornerRadius, CursorIcon, FontId, Pos2, 
 use ito_common::Clock;
 use ito_layout::ui::Moved;
 use ito_layout::{Dir, Node};
+use ito_prefs::Mark;
 use michi_core::branch::Doing;
 use michi_core::git;
 use michi_core::strength::Strength;
 use michi_core::summary::Head;
 
 use crate::app::{failed_word, App, Mode, Repo, View};
-use crate::graph_ui::{paint_icon, Icon};
 use crate::sizes::Sizes;
 use crate::work::{self, Kind};
 
@@ -68,6 +68,8 @@ pub fn bar_key(keys: &str) -> Option<BarKey> {
 pub struct Out {
     pub view: Option<View>,
     pub settings: bool,
+    /// The repository chip was clicked: the repository screen opens or closes.
+    pub repos: bool,
     pub palette: bool,
     /// The bell was clicked.
     pub bell: bool,
@@ -107,6 +109,7 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     let mut out = Out {
         view: None,
         settings: false,
+        repos: false,
         palette: false,
         bell: false,
         bell_rect: None,
@@ -163,19 +166,21 @@ pub fn frame(ui: &mut Ui, app: &mut App) -> Out {
     out
 }
 
-/// A small clickable button in the keybar ending at `right`; where it begins
+/// A small clickable button in the keybar ending at `at` (its right edge and its middle); where it begins
 /// and whether it was clicked. Its tooltip says what it does.
-fn pill(ui: &mut Ui, id: &str, text: &str, tip: &str, right: f32, mid: f32, color: Color32) -> (f32, bool) {
+fn pill(ui: &mut Ui, id: &str, mark: Mark, text: &str, tip: &str, at: Pos2, color: Color32) -> (f32, bool) {
+    let (right, mid) = (at.x, at.y);
     let c = ito_theme::colors();
     let g = ui.fonts_mut(|f| f.layout_no_wrap(text.to_owned(), FontId::proportional(12.0), color));
-    let rect = Rect::from_min_max(pos2(right - g.size().x - 16.0, mid - 10.0), pos2(right, mid + 10.0));
+    let rect = Rect::from_min_max(pos2(right - g.size().x - 16.0 - MARK_BOX - MARK_GAP, mid - 10.0), pos2(right, mid + 10.0));
     let resp = ui.interact(rect, egui::Id::new(("michi-pill", id)), egui::Sense::click()).on_hover_text(tip);
     let p = ui.painter();
     if resp.hovered() {
         p.rect_filled(rect, CornerRadius::same(10), c.border);
     }
     p.rect_stroke(rect, CornerRadius::same(10), Stroke::new(1.0, c.border_strong()), StrokeKind::Inside);
-    p.galley(pos2(rect.left() + 8.0, mid - g.size().y / 2.0), g, color);
+    ito_prefs::mark(p, Rect::from_center_size(pos2(rect.left() + 8.0 + MARK_BOX / 2.0, mid), vec2(MARK_BOX, MARK_BOX)), mark, color);
+    p.galley(pos2(rect.left() + 8.0 + MARK_BOX + MARK_GAP, mid - g.size().y / 2.0), g, color);
     (rect.left() - 10.0, resp.clicked())
 }
 
@@ -249,13 +254,26 @@ fn strip_bar(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     let mut right = r.right() - 12.0 - EDGE;
     let mut pressed = None;
     for (key, word) in app.strip_actions().into_iter().rev() {
-        let cap = kbd(ui, &p, pos2(right, mid), &key.to_string());
-        let text = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, word, font.clone(), c.fg);
-        let hit = text.union(cap).expand(4.0);
+        let label = ui.fonts_mut(|f| f.layout_no_wrap(word, font.clone(), c.fg));
+        let cap = ui.fonts_mut(|f| f.layout_no_wrap(key.to_string(), FontId::monospace(10.5), c.dim));
+        let mark = match key {
+            'R' => Mark::Reply,
+            'B' => Mark::Branch,
+            'y' => Mark::Check,
+            'x' => Mark::Close,
+            'u' => Mark::Skip,
+            'r' => Mark::Play,
+            _ => Mark::Stop,
+        };
+        let face = Face { mark, label: &label, key: Some(&cap), pad: 8.0, key_gap: 8.0 };
+        let hit = Rect::from_min_max(pos2(right - face.width(), mid - 12.0), pos2(right, mid + 12.0));
         let resp = ui.interact(hit, ui.id().with(("strip", key)), Sense::click());
         if resp.hovered() {
             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+            p.rect_filled(hit, CornerRadius::same(5), c.side);
         }
+        p.rect_stroke(hit, CornerRadius::same(5), Stroke::new(1.0, c.border), StrokeKind::Inside);
+        face.paint(&p, hit, c.fg, c.dim, false);
         if live && resp.clicked() {
             pressed = Some(key);
         }
@@ -484,19 +502,21 @@ fn title_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
     };
     let mut view = None;
     let mut settings = false;
+    let mut repos = false;
     // ito-titlebar takes the bar to be its ui's whole rect, so it gets a ui of just the bar.
     let mut bar_ui = ui.new_child(egui::UiBuilder::new().max_rect(r));
     let bar = ito_titlebar::show(
         &mut bar_ui,
         &spec,
         |ui, rect| left_slot(ui, app, rect, &mut view),
-        |ui, free| settings = right_slot(ui, app, free),
+        |ui, free| (settings, repos) = right_slot(ui, app, free),
     );
     if let Some(op) = bar.window {
         ito_titlebar::apply(&ctx, op, maximized);
     }
     out.view = view;
     out.settings = settings;
+    out.repos = repos;
     out.palette = bar.search;
     out.bell = bar.bell;
     out.bell_rect = bar.bell_rect;
@@ -582,28 +602,30 @@ fn left_slot(ui: &mut Ui, app: &App, r: Rect, picked: &mut Option<View>) -> f32 
 
 /// The settings, as a word, and the repository chip at the far right of
 /// `free`. True when the word was clicked.
-fn right_slot(ui: &mut Ui, app: &App, free: Rect) -> bool {
+fn right_slot(ui: &mut Ui, app: &App, free: Rect) -> (bool, bool) {
     let c = ito_theme::colors();
     let p = ui.painter().clone();
     let mid = free.center().y;
     let right = free.right();
     let word = ui.fonts_mut(|f| f.layout_no_wrap(app.tr("view.settings").to_owned(), FontId::proportional(12.5), c.fg));
     // No room for the word beside the bell: leave it out rather than draw it over the tabs (the palette and the key still open it).
-    if free.width() < word.size().x + 16.0 {
-        return false;
+    if free.width() < word.size().x + 16.0 + MARK_BOX + MARK_GAP {
+        return (false, false);
     }
-    let chip_w = chip(ui, app, &p, free.left() + word.size().x + 24.0, right, mid);
+    let (chip_w, chip_clicked) = chip(ui, app, &p, free.left() + word.size().x + 24.0 + MARK_BOX + MARK_GAP, right, mid);
     let chip_x = if chip_w > 0.0 { right - chip_w - 8.0 } else { right };
-    let gear = Rect::from_min_max(pos2(chip_x - word.size().x - 16.0, mid - 12.0), pos2(chip_x, mid + 12.0));
+    let face = Face { mark: Mark::Settings, label: &word, key: None, pad: 8.0, key_gap: 0.0 };
+    let gear = Rect::from_min_max(pos2(chip_x - face.width(), mid - 12.0), pos2(chip_x, mid + 12.0));
     let resp = ui.interact(gear, ui.id().with("gear"), Sense::CLICK);
     let on = app.mode == Mode::Settings;
     if resp.hovered() || on {
         p.rect_filled(gear, CornerRadius::same(5), c.panel);
     }
-    p.galley(gear.center() - word.size() / 2.0, word, if on { accent() } else { c.fg });
+    let ink = if on { accent() } else { c.fg };
+    face.paint(&p, gear, ink, ink, false);
     let clicked = resp.clicked();
     resp.on_hover_text(crate::keymap::tip(app.tr("view.settings"), app.prefs.keymap.hint(crate::keymap::Act::Settings).as_deref()));
-    clicked
+    (clicked, chip_clicked)
 }
 
 /// The list the bell opens, under it (see `ito_notices::show`).
@@ -624,7 +646,7 @@ pub fn bell_list(ctx: &egui::Context, app: &App, bell: Option<Rect>) -> Option<i
 /// The repository chip, right-aligned to `right`: the name, then the branch
 /// and the count of worktrees, and what the worktree is in the middle of in
 /// red. What does not fit before `left` goes, the branch first.
-fn chip(ui: &Ui, app: &App, p: &egui::Painter, left: f32, right: f32, mid: f32) -> f32 {
+fn chip(ui: &Ui, app: &App, p: &egui::Painter, left: f32, right: f32, mid: f32) -> (f32, bool) {
     let c = ito_theme::colors();
     let font = FontId::proportional(12.0);
     let doing = match &app.repo {
@@ -662,7 +684,7 @@ fn chip(ui: &Ui, app: &App, p: &egui::Painter, left: f32, right: f32, mid: f32) 
     } else if !name.is_empty() && right - 18.0 - name_g.size().x >= left {
         (name_g.size().x, false)
     } else {
-        return 0.0;
+        return (0.0, false);
     };
     let rect = Rect::from_min_max(pos2(right - inner - 18.0, mid - 11.0), pos2(right, mid + 11.0));
     p.rect_stroke(rect, CornerRadius::same(11), Stroke::new(1.0, c.border), StrokeKind::Inside);
@@ -682,14 +704,22 @@ fn chip(ui: &Ui, app: &App, p: &egui::Painter, left: f32, right: f32, mid: f32) 
             p.galley(pos2(x + w, mid - g.size().y / 2.0), g, c.err);
         }
     }
-    // The folder it is on, for a closer look.
-    let resp = ui.interact(rect, ui.id().with("chip"), Sense::hover());
+    // A click opens the repository screen; the tip says so, and where this one is.
+    let resp = ui.interact(rect, ui.id().with("chip"), Sense::CLICK);
     let top = match &app.repo {
         Repo::Ready(s) => s.top.display().to_string(),
         _ => app.dir.display().to_string(),
     };
-    resp.on_hover_text(top);
-    rect.width()
+    let clicked = resp.clicked();
+    if resp.hovered() {
+        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+    }
+    resp.on_hover_text(format!(
+        "{}
+{top}",
+        crate::keymap::tip(app.tr("repos.tip"), app.prefs.keymap.hint(crate::keymap::Act::Repos).as_deref())
+    ));
+    (rect.width(), clicked)
 }
 
 /// The branch mark's width.
@@ -867,6 +897,11 @@ fn card(app: &App, b: &crate::work::Band, n: u32) -> ito_confirm::Card {
     }
 }
 
+/// A mark just left of the status text that starts at `text_left`.
+fn status_mark(p: &egui::Painter, text_left: f32, mid: f32, m: Mark, ink: Color32) {
+    ito_prefs::mark(p, Rect::from_center_size(pos2(text_left - 9.0, mid), vec2(MARK_BOX, MARK_BOX)), m, ink);
+}
+
 /// What the keybar says of the network at its right: the job that runs and
 /// how far it has got, else how long ago the repository fetched.
 fn net_status(ui: &Ui, app: &App, p: &egui::Painter, right: f32, mid: f32) -> f32 {
@@ -887,12 +922,12 @@ fn net_status(ui: &Ui, app: &App, p: &egui::Painter, right: f32, mid: f32) -> f3
         }
         let t = p.text(pos2(hint.left() - 10.0, mid), Align2::RIGHT_CENTER, s, font, c.wait);
         let icon = match n.kind {
-            Kind::Fetch => Icon::Fetch,
-            Kind::Pull => Icon::Pull,
-            Kind::Push => Icon::Push,
-            Kind::Sync => Icon::Sync,
+            Kind::Fetch => Mark::ArrowDown,
+            Kind::Pull => Mark::Download,
+            Kind::Push => Mark::Upload,
+            Kind::Sync => Mark::Refresh,
         };
-        paint_icon(p, pos2(t.left() - 9.0, mid), icon, c.wait);
+        status_mark(p, t.left(), mid, icon, c.wait);
         return t.left() - 18.0 - 14.0;
     }
     if let Some(cl) = &app.cloning {
@@ -909,7 +944,7 @@ fn net_status(ui: &Ui, app: &App, p: &egui::Painter, right: f32, mid: f32) -> f3
             s.push_str(" …");
         }
         let t = p.text(pos2(hint.left() - 10.0, mid), Align2::RIGHT_CENTER, s, font, c.wait);
-        paint_icon(p, pos2(t.left() - 9.0, mid), Icon::Fetch, c.wait);
+        status_mark(p, t.left(), mid, Mark::ArrowDown, c.wait);
         return t.left() - 18.0 - 14.0;
     }
     let s = match (app.last_fetch, app.fetch_failed) {
@@ -922,7 +957,7 @@ fn net_status(ui: &Ui, app: &App, p: &egui::Painter, right: f32, mid: f32) -> f3
     };
     let colour = if app.fetch_failed { c.wait } else { c.dim };
     let t = p.text(pos2(right, mid), Align2::RIGHT_CENTER, s, font, colour);
-    paint_icon(p, pos2(t.left() - 9.0, mid), Icon::Fetch, colour);
+    status_mark(p, t.left(), mid, Mark::ArrowDown, colour);
     ui.ctx().request_repaint_after(Duration::from_secs(30));
     t.left() - 18.0 - 14.0
 }
@@ -965,11 +1000,11 @@ fn key_bar(ui: &mut Ui, app: &App, r: Rect, out: &mut Out) {
         out.stop_net = resp.clicked();
     }
     if app.mode == Mode::Main && matches!(app.repo, Repo::Ready(_)) {
-        let (left, clicked) = pill(ui, "calm", app.tr("calm.button"), app.tr("calm.tip"), right, mid, c.dim);
+        let (left, clicked) = pill(ui, "calm", Mark::Save, app.tr("calm.button"), app.tr("calm.tip"), pos2(right, mid), c.dim);
         out.calm = clicked;
         right = left;
         if let Some(s) = app.suggestion() {
-            let (left, clicked) = pill(ui, "next", app.tr(s.key()), app.tr("suggest.tip"), right, mid, accent());
+            let (left, clicked) = pill(ui, "next", Mark::ArrowRight, app.tr(s.key()), app.tr("suggest.tip"), pos2(right, mid), accent());
             out.next = clicked;
             right = left;
         }
@@ -1066,6 +1101,88 @@ pub fn toast(ui: &mut Ui, app: &App, r: Rect) {
     p.rect_filled(box_, CornerRadius::same(8), c.raised());
     p.rect_stroke(box_, CornerRadius::same(8), Stroke::new(1.0, c.border_strong()), StrokeKind::Inside);
     p.galley(box_.min + vec2(14.0, 7.0), galley, c.fg);
+}
+
+/// The box a button's mark is drawn in, and the gap after it.
+pub const MARK_BOX: f32 = 14.0;
+pub const MARK_GAP: f32 = 5.0;
+
+/// What a button shows: a mark, its label, and its key after it. The same
+/// value measures the button ([`Face::width`]) and paints it ([`Face::paint`]),
+/// so a band that lays buttons out before drawing them and one that draws as
+/// it goes agree on the size. The frame (fill, edge, hover) is the caller's.
+pub struct Face<'a> {
+    pub mark: Mark,
+    pub label: &'a std::sync::Arc<egui::Galley>,
+    pub key: Option<&'a std::sync::Arc<egui::Galley>>,
+    /// The space inside the frame, at each side.
+    pub pad: f32,
+    /// The space between the label and the key.
+    pub key_gap: f32,
+}
+
+impl Face<'_> {
+    pub fn width(&self) -> f32 {
+        face_width(self.pad, self.label.size().x, self.key.map(|k| (self.key_gap, k.size().x)))
+    }
+
+    /// Paint it in `b`, the mark at the left, the whole centred up and down.
+    /// `bold` draws the label twice, a hair apart.
+    pub fn paint(&self, p: &egui::Painter, b: Rect, ink: Color32, key_ink: Color32, bold: bool) {
+        let mid = b.center().y;
+        let at = pos2(b.left() + self.pad, mid - MARK_BOX / 2.0);
+        ito_prefs::mark(p, Rect::from_min_size(at, vec2(MARK_BOX, MARK_BOX)), self.mark, ink);
+        let tx = b.left() + self.pad + MARK_BOX + MARK_GAP;
+        let top = pos2(tx, mid - self.label.size().y / 2.0);
+        p.galley(top, self.label.clone(), ink);
+        if bold {
+            p.galley(top + vec2(0.45, 0.0), self.label.clone(), ink);
+        }
+        if let Some(k) = self.key {
+            p.galley(pos2(tx + self.label.size().x + self.key_gap, mid - k.size().y / 2.0), k.clone(), key_ink);
+        }
+    }
+}
+
+/// A button for an egui layout (a form): frame, mark, label and, when given,
+/// a key. Measured and painted with [`Face`], so it looks like the bands'.
+/// An empty label gives a button of the mark alone.
+pub fn face_button(ui: &mut Ui, mark: Mark, label: &str, key: Option<&str>) -> egui::Response {
+    let c = ito_theme::colors();
+    let enabled = ui.is_enabled();
+    let ink = if enabled { c.fg } else { c.dim };
+    let lg = ui.fonts_mut(|f| f.layout_no_wrap(label.to_owned(), FontId::proportional(13.0), ink));
+    let kg = key.map(|k| ui.fonts_mut(|f| f.layout_no_wrap(ito_keys::human_text(k).into_owned(), FontId::monospace(10.5), c.dim)));
+    let face = Face { mark, label: &lg, key: kg.as_ref(), pad: 9.0, key_gap: 8.0 };
+    let alone = label.is_empty();
+    let width = if alone { 2.0 * face.pad + MARK_BOX } else { face.width() };
+    let (rect, resp) = ui.allocate_exact_size(vec2(width, 26.0), Sense::click());
+    let p = ui.painter();
+    if enabled && resp.hovered() {
+        p.rect_filled(rect, CornerRadius::same(5), c.panel);
+        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+    }
+    p.rect_stroke(rect, CornerRadius::same(5), Stroke::new(1.0, c.border), StrokeKind::Inside);
+    if alone {
+        ito_prefs::mark(p, Rect::from_center_size(rect.center(), vec2(MARK_BOX, MARK_BOX)), mark, ink);
+    } else {
+        face.paint(p, rect, ink, c.dim, false);
+    }
+    resp
+}
+
+/// A mark in front of a text that starts at `left` (a link-like button: its
+/// word and key drawn by the caller); returns the left edge of the mark.
+pub fn mark_left(p: &egui::Painter, left: f32, mid: f32, mark: Mark, ink: Color32) -> f32 {
+    let r = Rect::from_center_size(pos2(left - MARK_GAP - MARK_BOX / 2.0, mid), vec2(MARK_BOX, MARK_BOX));
+    ito_prefs::mark(p, r, mark, ink);
+    r.left()
+}
+
+/// The width of a button of a mark, a label of `label` points and a key of
+/// `(gap, width)`, with `pad` inside each side.
+pub fn face_width(pad: f32, label: f32, key: Option<(f32, f32)>) -> f32 {
+    pad + MARK_BOX + MARK_GAP + label + key.map_or(0.0, |(g, w)| g + w) + pad
 }
 
 #[cfg(test)]

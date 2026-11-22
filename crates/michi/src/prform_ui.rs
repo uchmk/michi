@@ -3,6 +3,8 @@
 use eframe::egui::{self, pos2, Id, RichText, Stroke};
 
 use crate::app::App;
+use crate::ui::face_button;
+use ito_prefs::Mark;
 
 const WIDTH: f32 = 620.0;
 
@@ -31,9 +33,9 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                     ui.label(RichText::new(&url).monospace());
                     ui.add_space(6.0);
                     ui.horizontal(|ui| {
-                        open = ui.button(app.tr("pr.open")).clicked();
-                        copy = ui.button(app.tr("pr.copy")).clicked();
-                        close = ui.button(app.tr("pr.close")).clicked();
+                        open = face_button(ui, Mark::Globe, app.tr("pr.open"), None).clicked();
+                        copy = face_button(ui, Mark::Copy, app.tr("pr.copy"), None).clicked();
+                        close = face_button(ui, Mark::Close, app.tr("pr.close"), None).clicked();
                     });
                     return;
                 }
@@ -70,9 +72,9 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                         (false, true) => "pr.push_create",
                         (false, false) => "pr.create",
                     };
-                    go = ui.button(app.tr(word)).clicked();
+                    go = face_button(ui, Mark::Check, app.tr(word), None).clicked();
                     if f.confirm {
-                        cancel = ui.button(app.tr("pr.cancel")).clicked();
+                        cancel = face_button(ui, Mark::Close, app.tr("pr.cancel"), None).clicked();
                     }
                 });
             });

@@ -89,7 +89,7 @@ mod work;
 mod wt_ui;
 
 use std::ffi::OsString;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use app::{App, Mode, Repo, View};
 use ito_keyscript::{Do, Runner, Step};
@@ -150,6 +150,9 @@ struct Michi {
     parked: Vec<Option<App>>,
     /// The tabs as last kept in tabs.txt; none to keep under `--keys`.
     tabs_kept: Option<String>,
+    /// The folder dialog while it is open (one at a time). It lives here, not in `app`,
+    /// because a tab switch parks the whole `App`.
+    browsing: Option<std::sync::mpsc::Receiver<Option<PathBuf>>>,
 }
 
 impl Michi {
@@ -211,6 +214,34 @@ impl Michi {
                 }
                 Err(std::sync::mpsc::TryRecvError::Empty) => ctx.request_repaint_after(std::time::Duration::from_millis(100)),
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => self.app.practicing = None,
+            }
+        }
+        if std::mem::take(&mut self.app.browse_req) && self.browsing.is_none() {
+            let start = match &self.app.repo {
+                Repo::Ready(s) => s.top.parent().map(Path::to_path_buf),
+                _ => None,
+            }
+            .or_else(ito_common::home_dir);
+            let title = self.app.tr("repos.browse_title").to_owned();
+            self.browsing = Some(ito_dialog::spawn(move || {
+                let mut d = ito_dialog::Dialog::new().title(&title);
+                if let Some(s) = start {
+                    d = d.directory(s);
+                }
+                d.open_folder()
+            }));
+        }
+        if let Some(rx) = &self.browsing {
+            match rx.try_recv() {
+                Ok(picked) => {
+                    self.browsing = None;
+                    // Cancel (`None`) does nothing; a folder is read like any other pick.
+                    if let Some(dir) = picked {
+                        self.app.open_req = Some(dir);
+                    }
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => ctx.request_repaint_after(std::time::Duration::from_millis(200)),
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => self.browsing = None,
             }
         }
         if let Some(dir) = self.app.open_req.take() {
@@ -340,6 +371,7 @@ impl Michi {
             }
         }
         self.app.tab_labels = self.tabs.labels();
+        self.app.tab_paths = self.tabs.paths().to_vec();
         self.app.tab_active = at;
         let Some(kept) = &mut self.tabs_kept else { return };
         let text = session::Session::of(&self.tabs, self.app.view).text();
@@ -850,6 +882,9 @@ impl eframe::App for Michi {
         if out.settings {
             self.app.mode = if self.app.mode == Mode::Settings { Mode::Main } else { Mode::Settings };
         }
+        if out.repos {
+            self.app.toggle_repos();
+        }
         if out.stop_net {
             self.app.net_stop();
         }
@@ -1097,6 +1132,7 @@ fn main() -> eframe::Result {
                 tabs,
                 parked,
                 tabs_kept: kept.map(|_| String::new()),
+                browsing: None,
             }))
         }),
     )

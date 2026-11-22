@@ -23,6 +23,7 @@ use crate::conflicts::{places, Place, Tag};
 use crate::detail_ui::left_cut;
 use crate::intro_ui;
 use crate::ui::kbd;
+use ito_prefs::Mark as Glyph;
 use michi_core::guide::{Topic, CONFLICT_CARDS};
 
 /// How far a row of scrolling by key goes.
@@ -565,7 +566,7 @@ impl Draw<'_> {
         let w = button_w(ui, label_off, "", Look::Danger);
         let b = Rect::from_min_max(pos2(r.right() - PAD_X - w, mid - BTN_H / 2.0), pos2(r.right() - PAD_X, mid + BTN_H / 2.0));
         let mut out = None;
-        if button(ui, &p, b, label_off, "", Look::Danger, "cf-abort", self.live, self.pointer) {
+        if button(ui, &p, b, Glyph::Stop, label_off, "", Look::Danger, "cf-abort", self.live, self.pointer) {
             out = Some(Act::AskAbort);
         }
         let (left, total) = (cf.left(), cf.total());
@@ -574,7 +575,7 @@ impl Draw<'_> {
             let (hand, hint) = (self.tr("cf.handoff"), "g");
             let hw = button_w(ui, hand, hint, Look::Plain);
             let hb = Rect::from_min_max(pos2(b.left() - 8.0 - hw, mid - BTN_H / 2.0), pos2(b.left() - 8.0, mid + BTN_H / 2.0));
-            if button(ui, &p, hb, hand, hint, Look::Plain, "cf-handoff", self.live, self.pointer) {
+            if button(ui, &p, hb, Glyph::Send, hand, hint, Look::Plain, "cf-handoff", self.live, self.pointer) {
                 out = Some(Act::Handoff);
             }
             edge = hb.left();
@@ -679,13 +680,13 @@ impl Draw<'_> {
             .offers()
             .into_iter()
             .map(|o| match o {
-                Offer::Review => (self.tr("cf.strip_review"), "d", Look::Plain),
-                Offer::Adopt => (self.tr("cf.strip_adopt"), "a", Look::Prime),
-                Offer::SendBack => (self.tr("cf.strip_back"), "r", Look::Danger),
+                Offer::Review => (self.tr("cf.strip_review"), "d", Look::Plain, Glyph::Compare),
+                Offer::Adopt => (self.tr("cf.strip_adopt"), "a", Look::Prime, Glyph::Check),
+                Offer::SendBack => (self.tr("cf.strip_back"), "r", Look::Danger, Glyph::Reply),
             })
             .zip(stage.offers())
             .collect();
-        let buttons_w: f32 = offers.iter().map(|((l, k, look), _)| button_w(ui, l, k, *look) + 8.0).sum();
+        let buttons_w: f32 = offers.iter().map(|((l, k, look, _), _)| button_w(ui, l, k, *look) + 8.0).sum();
         let g = wrapped(ui, text, font.clone(), c.fg, (width - 2.0 * PAD_X - 18.0 - buttons_w).max(40.0));
         let r = Rect::from_min_size(top, vec2(width, (g.size().y + 16.0).max(ABORT_H)));
         let p = ui.painter_at(r);
@@ -699,10 +700,10 @@ impl Draw<'_> {
         p.galley(at, g, c.fg);
         let mut right = r.right() - PAD_X;
         let mut out = None;
-        for ((label, key, look), offer) in offers.into_iter().rev() {
+        for ((label, key, look, mark), offer) in offers.into_iter().rev() {
             let w = button_w(ui, label, key, look);
             let b = Rect::from_min_max(pos2(right - w, mid - BTN_H / 2.0), pos2(right, mid + BTN_H / 2.0));
-            if button(ui, &p, b, label, key, look, ("cf-hand", key), self.live, self.pointer) {
+            if button(ui, &p, b, mark, label, key, look, ("cf-hand", key), self.live, self.pointer) {
                 out = Some(Act::Offer(offer));
             }
             right = b.left() - 8.0;
@@ -929,14 +930,14 @@ impl Draw<'_> {
         let w = button_w(ui, label, "", Look::Tool);
         let b = Rect::from_min_max(pos2(r.right() - w, mid - 12.0), pos2(r.right(), mid + 12.0));
         let mut out = None;
-        if button(ui, p, b, label, "", Look::Tool, ("cf-restart", i), self.live, pointer) {
+        if button(ui, p, b, Glyph::Undo, label, "", Look::Tool, ("cf-restart", i), self.live, pointer) {
             out = Some(Act::Restart(i));
         }
         // The diff / merge tool for the whole file (the same as `w`), left of the restart button.
         let tool = self.tr("cf.open_external");
         let tw = button_w(ui, tool, "", Look::Tool);
         let tb = Rect::from_min_max(pos2(b.left() - 8.0 - tw, mid - 12.0), pos2(b.left() - 8.0, mid + 12.0));
-        if button(ui, p, tb, tool, "", Look::Tool, ("cf-tool", i), self.live, pointer) {
+        if button(ui, p, tb, Glyph::Compare, tool, "", Look::Tool, ("cf-tool", i), self.live, pointer) {
             out = Some(Act::External(i));
         }
         let n = galley(ui, self.tr("cf.places").replace("{}", &f.total().to_string()), FontId::proportional(12.0), c.dim);
@@ -1030,7 +1031,7 @@ impl Draw<'_> {
         let tool = self.tr(if plan.base { "cf.base_hide" } else { "cf.base_show" });
         let (head, tool_r) = self.place_head(p, k, r, &what, self.state(b.is_open(), plan.waits, plan.tag), Some(tool));
         if let Some(t) = tool_r {
-            if button(ui, p, t, tool, "", Look::Tool, ("cf-base", k), self.live, pointer) {
+            if button(ui, p, t, Glyph::Info, tool, "", Look::Tool, ("cf-base", k), self.live, pointer) {
                 out = Some(Act::Base(place));
             }
         }
@@ -1198,7 +1199,7 @@ impl Draw<'_> {
             let top = rb.bottom() + 8.0 + HINT_H + 8.0;
             let rects = flow(ui, &plan.buttons, r.left() + 10.0, top, r.right() - 10.0);
             for (q, ((label, key, pick), br)) in plan.buttons.iter().zip(rects).enumerate() {
-                if button(ui, p, br, label, key, Look::Plain, ("cf-pick", k, q), self.live, pointer) {
+                if button(ui, p, br, pick_mark(key), label, key, Look::Plain, ("cf-pick", k, q), self.live, pointer) {
                     out = Some(Act::Pick(k, *pick));
                 }
             }
@@ -1251,7 +1252,7 @@ impl Draw<'_> {
             let buttons = self.whole_buttons(w);
             let rects = flow(ui, &buttons, r.left() + 10.0, head.bottom() + WHY_H, r.right() - 10.0);
             for (q, ((label, key, pick), br)) in buttons.iter().zip(rects).enumerate() {
-                if button(ui, p, br, label, key, Look::Plain, ("cf-take", k, q), self.live, pointer) {
+                if button(ui, p, br, pick_mark(key), label, key, Look::Plain, ("cf-take", k, q), self.live, pointer) {
                     out = Some(pick.map_or(Act::External(i), |pick| Act::Pick(k, pick)));
                 }
             }
@@ -1282,7 +1283,7 @@ impl Draw<'_> {
         let w = button_w(ui, label, key, Look::Prime);
         let b = Rect::from_min_size(pos2(inner.right() - w, inner.top()), vec2(w, BTN_H));
         let mut out = None;
-        if button(ui, p, b, label, key, Look::Prime, "cf-commit", self.live, pointer) {
+        if button(ui, p, b, if rebase { Glyph::Play } else { Glyph::Check }, label, key, Look::Prime, "cf-commit", self.live, pointer) {
             out = Some(Act::Commit);
         }
         let reused = self.app.conflicts.reused_left();
@@ -1450,8 +1451,19 @@ fn pad(look: Look) -> f32 {
 
 fn button_w(ui: &Ui, label: &str, key: &str, look: Look) -> f32 {
     let g = galley(ui, label.to_owned(), FontId::proportional(12.0), Color32::WHITE).size().x;
-    let k = if key.is_empty() { 0.0 } else { 4.0 + galley(ui, key.to_owned(), FontId::monospace(10.5), Color32::WHITE).size().x };
-    pad(look) + g + k + pad(look)
+    let k = (!key.is_empty()).then(|| (4.0, galley(ui, key.to_owned(), FontId::monospace(10.5), Color32::WHITE).size().x));
+    crate::ui::face_width(pad(look), g, k)
+}
+
+/// The mark of a pick button, by its key.
+fn pick_mark(key: &str) -> Glyph {
+    match key {
+        "o" => Glyph::Check,
+        "t" => Glyph::Download,
+        "b" | "B" => Glyph::Merge,
+        "w" => Glyph::Compare,
+        _ => Glyph::Undo,
+    }
 }
 
 /// A button in `b`: its label, its key after it; whether it was clicked.
@@ -1460,6 +1472,7 @@ fn button(
     ui: &Ui,
     p: &Painter,
     b: Rect,
+    mark: Glyph,
     label: &str,
     key: &str,
     look: Look,
@@ -1483,18 +1496,10 @@ fn button(
     if edge != none {
         p.rect_stroke(b, radius, Stroke::new(1.0, edge), StrokeKind::Inside);
     }
-    let mid = b.center().y;
     let g = galley(ui, label.to_owned(), FontId::proportional(12.0), ink);
-    let at = pos2(b.left() + pad(look), mid - g.size().y / 2.0);
-    let w = g.size().x;
-    p.galley(at, g.clone(), ink);
-    if look == Look::Prime {
-        p.galley(at + vec2(0.45, 0.0), g, ink);
-    }
-    if !key.is_empty() {
-        let ink = if look == Look::Prime { ink.gamma_multiply(0.7) } else { c.dim };
-        p.text(pos2(at.x + w + 4.0, mid), Align2::LEFT_CENTER, key, FontId::monospace(10.5), ink);
-    }
+    let k = (!key.is_empty()).then(|| galley(ui, key.to_owned(), FontId::monospace(10.5), ink));
+    let key_ink = if look == Look::Prime { ink.gamma_multiply(0.7) } else { c.dim };
+    crate::ui::Face { mark, label: &g, key: k.as_ref(), pad: pad(look), key_gap: 4.0 }.paint(p, b, ink, key_ink, look == Look::Prime);
     clicked(ui, p, b, id, live, pointer)
 }
 

@@ -22,12 +22,15 @@ pub const CONFLICT_FILE: &str = "colors.txt";
 /// 2026-01-05 09:00 UTC, the first commit; each is a few hours after the one before.
 const START: i64 = 1_767_603_600;
 
+/// The folder name's start: `michi-practice-N`.
+pub const FOLDER_PREFIX: &str = "michi-practice-";
+
 /// Makes `michi-practice-N` under `parent` (the first N free) holding the
 /// repository, and returns its folder. Nothing outside it is touched; on a
 /// failure the half-made folder is taken away.
 pub fn create(parent: &Path) -> Result<PathBuf, git::Error> {
     let dir = (1..1000)
-        .map(|n| parent.join(format!("michi-practice-{n}")))
+        .map(|n| parent.join(format!("{FOLDER_PREFIX}{n}")))
         .find(|d| std::fs::create_dir(d).is_ok())
         .ok_or_else(|| git::Error::Io(format!("no free michi-practice-N folder in {}", parent.display())))?;
     match build(&dir) {

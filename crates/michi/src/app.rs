@@ -514,6 +514,12 @@ pub struct App {
     /// The names of the window's tabs and which is in front, set by the window each frame (#45).
     pub tab_labels: Vec<String>,
     pub tab_active: usize,
+    /// The folders of the window's tabs, in the tabs' order (for the repository screen's `tab` label).
+    pub tab_paths: Vec<PathBuf>,
+    /// Which listed folders are gone, read on a thread by the repository screen.
+    pub repos_seen: crate::repos::Seen,
+    /// The repository screen's browse row (or a button) asked for the folder dialog, for the window to open.
+    pub browse_req: bool,
     /// What a key or a click asked of the tabs, for the window to do.
     pub tab_req: Option<michi_core::tabs::Op>,
     /// The key list's first line, and how much of it the last frame showed.
@@ -601,6 +607,9 @@ impl App {
             picker: None,
             tab_labels: Vec::new(),
             tab_active: 0,
+            tab_paths: Vec::new(),
+            repos_seen: Default::default(),
+            browse_req: false,
             tab_req: None,
             new_work: None,
             pr_form: None,
@@ -1826,6 +1835,7 @@ impl App {
             Act::Palette => self.toggle_palette(),
             Act::Cheat => self.toggle_cheat(),
             Act::Repos => self.toggle_repos(),
+            Act::ReposBrowse => self.browse_req = true,
             Act::BugReport => self.bug_report(),
             Act::NextTab => self.tab_req = Some(michi_core::tabs::Op::Next),
             Act::PrevTab => self.tab_req = Some(michi_core::tabs::Op::Prev),

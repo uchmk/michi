@@ -20,6 +20,8 @@ pub enum Pick {
     Open(Tool),
     /// Open the worktree's folder in kura (#158).
     OpenKura,
+    /// Choose a folder in the native dialog and open it.
+    Browse,
     /// Show the first-run guide again (#116).
     Guide,
     /// Make a practice repository in a temporary folder and open it (#117).
@@ -55,6 +57,7 @@ pub fn entries(app: &App) -> Vec<Entry<Pick>> {
     if !app.problems.is_empty() {
         out.push(Entry::new(app.tr("guide.title"), "", Pick::Guide));
     }
+    out.push(Entry::new(app.tr("repos.browse"), "", Pick::Browse));
     out.push(Entry::new(app.tr("practice.cmd"), "", Pick::Practice));
     out.push(Entry::new(app.tr("legend.cmd"), "", Pick::Legend));
     out.push(Entry::new(app.tr("calm.cmd"), "", Pick::Calm));
@@ -155,6 +158,7 @@ impl App {
             Pick::Open(t) => self.open_in(t, self.view == crate::app::View::Worktree),
             Pick::OpenKura => self.open_kura(self.view == crate::app::View::Worktree),
             Pick::Guide => self.guide_open = true,
+            Pick::Browse => self.browse_req = true,
             Pick::Practice => self.start_practice(),
             Pick::Legend => {
                 self.mode = crate::app::Mode::Main;

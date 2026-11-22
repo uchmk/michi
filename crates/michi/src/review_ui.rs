@@ -14,7 +14,8 @@ use crate::detail::{At, Paired, Unified};
 use crate::detail_ui::{diff, left_cut, status_ink, Marks, Wrap, DIFF_H, FILE_H, NOTE_H, TITLE_H, X};
 use crate::graph_ui::{clash_line, clipped};
 use crate::review::Review;
-use crate::ui::kbd;
+use crate::ui::{kbd, Face};
+use ito_prefs::Mark;
 
 const PAD_X: f32 = 18.0;
 const PAD_TOP: f32 = 14.0;
@@ -202,7 +203,8 @@ fn switch(ui: &Ui, p: &Painter, right: f32, mid: f32, label: &str, key: char, on
     let ink = if on { c.run } else { c.dim };
     let g = ui.fonts_mut(|f| f.layout_no_wrap(label.to_owned(), FontId::proportional(12.5), ink));
     let k = ui.fonts_mut(|f| f.layout_no_wrap(key.to_string(), FontId::monospace(10.5), c.dim));
-    let w = 9.0 + g.size().x + 6.0 + k.size().x + 9.0;
+    let face = Face { mark: if key == 's' { Mark::Clock } else { Mark::Pencil }, label: &g, key: Some(&k), pad: 9.0, key_gap: 6.0 };
+    let w = face.width();
     let b = Rect::from_min_max(pos2(right - w, mid - 12.0), pos2(right, mid + 12.0));
     let resp = ui.interact(b.intersect(p.clip_rect()), Id::new(("review-switch", key)), Sense::CLICK);
     if on {
@@ -215,8 +217,7 @@ fn switch(ui: &Ui, p: &Painter, right: f32, mid: f32, label: &str, key: char, on
     }
     let edge = if on { c.run.gamma_multiply(0.45) } else { c.border };
     p.rect_stroke(b, CornerRadius::same(5), Stroke::new(1.0, edge), StrokeKind::Inside);
-    p.galley(pos2(b.left() + 9.0, mid - g.size().y / 2.0), g.clone(), ink);
-    p.galley(pos2(b.right() - 9.0 - k.size().x, mid - k.size().y / 2.0), k, c.dim);
+    face.paint(p, b, ink, c.dim, false);
     (b.left(), live && resp.clicked())
 }
 

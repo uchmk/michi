@@ -27,6 +27,8 @@ pub enum Act {
     Cheat,
     /// Open the repository screen, or close it.
     Repos,
+    /// Open the folder dialog to choose a repository to open (no default key).
+    ReposBrowse,
     /// Open the bug report form in the browser.
     BugReport,
     /// The tab to the right, or to the left.
@@ -54,6 +56,7 @@ pub fn parse(s: &str) -> Result<Act, String> {
         (Some("palette"), None) => Act::Palette,
         (Some("cheat"), None) => Act::Cheat,
         (Some("repos"), None) => Act::Repos,
+        (Some("repos_browse"), None) => Act::ReposBrowse,
         (Some("bugreport"), None) => Act::BugReport,
         (Some("nexttab"), None) => Act::NextTab,
         (Some("prevtab"), None) => Act::PrevTab,

@@ -21,9 +21,11 @@ use michi_core::queue::Stage;
 use michi_core::track::Tree;
 
 use crate::app::{failed_word, App, Repo};
-use crate::graph_ui::{claude_look, paint_icon, Icon};
+use crate::graph_ui::claude_look;
 use crate::intro_ui;
 use crate::sizes::Sizes;
+use crate::ui::Face;
+use ito_prefs::Mark as Glyph;
 use michi_core::guide::Topic;
 
 const PAD_X: f32 = 18.0;
@@ -85,6 +87,7 @@ enum Act {
 }
 
 struct Button {
+    mark: Glyph,
     label: Arc<Galley>,
     key: Option<Arc<Galley>>,
     act: Act,
@@ -92,8 +95,31 @@ struct Button {
 }
 
 impl Button {
+    fn face(&self) -> Face<'_> {
+        Face { mark: self.mark, label: &self.label, key: self.key.as_ref(), pad: 7.0, key_gap: 4.0 }
+    }
+
     fn width(&self) -> f32 {
-        7.0 + self.label.size().x + self.key.as_ref().map_or(0.0, |k| 4.0 + k.size().x) + 7.0
+        self.face().width()
+    }
+}
+
+/// The mark of a row button, by what it does.
+fn act_mark(act: Act) -> Glyph {
+    match act {
+        Act::Enter => Glyph::Flow,
+        Act::Pr => Glyph::Globe,
+        Act::Go(_) => Glyph::Trash,
+        Act::Key(k) => match k {
+            'p' => Glyph::Download,
+            't' | 'o' => Glyph::Terminal,
+            'e' => Glyph::Code,
+            'E' => Glyph::Folder,
+            'd' => Glyph::Compare,
+            'm' => Glyph::Merge,
+            'I' => Glyph::Flag,
+            _ => Glyph::ArrowRight,
+        },
     }
 }
 
@@ -294,6 +320,7 @@ fn claude_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
     let go = app.tr("wt.go").replace("{tab}", &s.id.to_string()).replace("{title}", title);
     let go = cut_end(ui, &go, FontId::proportional(11.5), w - 30.0);
     let button = Button {
+        mark: act_mark(Act::Key('o')),
         label: layout(ui, go, FontId::proportional(11.5), c.fg, f32::INFINITY),
         key: Some(layout(ui, "o", FontId::monospace(10.5), c.dim, f32::INFINITY)),
         act: Act::Key('o'),
@@ -460,6 +487,7 @@ fn clash_cell(ui: &Ui, app: &App, t: &Tree, w: f32) -> Vec<Piece> {
 fn buttons(ui: &Ui, app: &App, t: &Tree, k: usize, trunk: &str) -> Vec<Button> {
     let c = ito_theme::colors();
     let b = |label: String, key: Option<&str>, act, danger| Button {
+        mark: act_mark(act),
         label: layout(ui, label, FontId::proportional(11.5), c.fg, f32::INFINITY),
         key: key.map(|k| layout(ui, k, FontId::monospace(10.5), c.dim, f32::INFINITY)),
         act,
@@ -643,11 +671,7 @@ fn draw_col(ui: &Ui, p: &Painter, col: &Col, at: Pos2, id: Id, live: bool, act: 
                         _ => c.border,
                     };
                     p.rect_stroke(r, CornerRadius::same(4), Stroke::new(1.0, edge), StrokeKind::Inside);
-                    let mid = r.center().y;
-                    p.galley(pos2(r.left() + 7.0, mid - b.label.size().y / 2.0), b.label.clone(), ink);
-                    if let Some(k) = &b.key {
-                        p.galley(pos2(r.left() + 7.0 + b.label.size().x + 4.0, mid - k.size().y / 2.0), k.clone(), c.dim);
-                    }
+                    b.face().paint(p, r, ink, c.dim, false);
                     if hot {
                         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                     }
@@ -949,19 +973,30 @@ fn draw_news(ui: &Ui, p: &Painter, b: &News, at: Pos2, live: bool) -> Option<Oid
 /// A button of the top bar, its right edge at `right`; its left edge, and
 /// whether it was clicked.
 #[expect(clippy::too_many_arguments, reason = "the painter, the place and the look are the frame's")]
-fn top_button(ui: &Ui, p: &Painter, right: f32, mid: f32, icon: Icon, label: &str, key: Option<&str>, live: bool) -> (f32, bool) {
+fn top_button(ui: &Ui, p: &Painter, right: f32, mid: f32, icon: Glyph, label: &str, key: Option<&str>, live: bool) -> (f32, bool) {
     top_toggle(ui, p, right, mid, icon, label, key, live, false)
 }
 
 /// A top button that stays lit while `on`.
 #[expect(clippy::too_many_arguments, reason = "the painter, the place, the label, the key and the two states of one button")]
-fn top_toggle(ui: &Ui, p: &Painter, right: f32, mid: f32, icon: Icon, label: &str, key: Option<&str>, live: bool, on: bool) -> (f32, bool) {
+fn top_toggle(
+    ui: &Ui,
+    p: &Painter,
+    right: f32,
+    mid: f32,
+    icon: Glyph,
+    label: &str,
+    key: Option<&str>,
+    live: bool,
+    on: bool,
+) -> (f32, bool) {
     let c = ito_theme::colors();
     let prime = key.is_some_and(|k| k == "N");
     let ink = if prime { c.run } else { c.fg };
     let g = layout(ui, label, FontId::proportional(12.5), ink, f32::INFINITY);
     let k = key.map(|k| layout(ui, k, FontId::monospace(10.5), c.dim, f32::INFINITY));
-    let w = 8.0 + 15.0 + g.size().x + k.as_ref().map_or(0.0, |k| 5.0 + k.size().x) + 8.0;
+    let face = Face { mark: icon, label: &g, key: k.as_ref(), pad: 8.0, key_gap: 5.0 };
+    let w = face.width();
     let b = Rect::from_min_max(pos2(right - w, mid - 13.0), pos2(right, mid + 13.0));
     let resp = ui.interact(b.intersect(p.clip_rect()), Id::new(("wt-top", label)), Sense::CLICK);
     let hot = live && resp.hovered();
@@ -973,13 +1008,7 @@ fn top_toggle(ui: &Ui, p: &Painter, right: f32, mid: f32, icon: Icon, label: &st
     }
     let edge = if prime || on { c.run.gamma_multiply(0.45) } else { c.border };
     p.rect_stroke(b, CornerRadius::same(5), Stroke::new(1.0, edge), StrokeKind::Inside);
-    paint_icon(p, pos2(b.left() + 13.0, mid), icon, ink);
-    let mut x = b.left() + 23.0;
-    p.galley(pos2(x, mid - g.size().y / 2.0), g.clone(), ink);
-    x += g.size().x + 5.0;
-    if let Some(k) = k {
-        p.galley(pos2(x, mid - k.size().y / 2.0), k, c.dim);
-    }
+    face.paint(p, b, ink, c.dim, false);
     (b.left(), live && resp.clicked())
 }
 
@@ -1079,9 +1108,9 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         let n: usize = app.trees.trees.iter().map(|t| app.claude_in(&t.wt.path).len()).sum();
         count.push_str(&app.tr("wt.claudes").replace("{}", &n.to_string()));
     }
-    let (new_left, new) = top_button(ui, &p, left + width, mid, Icon::Plus, app.tr("tool.new_work"), Some("N"), live);
-    let (again_left, again) = top_button(ui, &p, new_left - 6.0, mid, Icon::Fetch, app.tr("wt.reread"), None, live);
-    let (sort_left, sort) = top_toggle(ui, &p, again_left - 6.0, mid, Icon::Sort, app.tr("wt.sort"), Some("s"), live, app.wt_by_land);
+    let (new_left, new) = top_button(ui, &p, left + width, mid, Glyph::Plus, app.tr("tool.new_work"), Some("N"), live);
+    let (again_left, again) = top_button(ui, &p, new_left - 6.0, mid, Glyph::Refresh, app.tr("wt.reread"), None, live);
+    let (sort_left, sort) = top_toggle(ui, &p, again_left - 6.0, mid, Glyph::Sort, app.tr("wt.sort"), Some("s"), live, app.wt_by_land);
     let pointer_at = if live { ui.input(|i| i.pointer.hover_pos()).filter(|q| r.contains(*q)) } else { None };
     let mut room_right = sort_left - 10.0;
     let mut guide_act = None;
@@ -1283,6 +1312,7 @@ mod tests {
         let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
             let c = ito_theme::colors();
             let b = |w: &str| Button {
+                mark: Glyph::Globe,
                 label: layout(ui, w, FontId::proportional(11.5), c.fg, f32::INFINITY),
                 key: None,
                 act: Act::Pr,

@@ -11,7 +11,8 @@ use egui::{pos2, vec2, Align2, CornerRadius, CursorIcon, FontId, Galley, Id, Pai
 use michi_core::guide::{Stage, CONFLICT_CARDS};
 
 use crate::app::App;
-use crate::ui::accent;
+use crate::ui::{accent, mark_left};
+use ito_prefs::Mark;
 
 const PAD: f32 = 14.0;
 const PILL_H: f32 = 24.0;
@@ -68,16 +69,18 @@ fn cross(ui: &Ui, p: &Painter, at: Pos2, id: &str, live: bool, pointer: Option<P
 #[expect(clippy::too_many_arguments, reason = "the painter, the place and the look are the frame's")]
 pub fn link(ui: &Ui, p: &Painter, right: f32, mid: f32, label: &str, id: &str, live: bool, pointer: Option<Pos2>) -> (f32, bool) {
     let c = ito_theme::colors();
-    let g = ui.fonts_mut(|f| f.layout_no_wrap(format!("? {label}"), FontId::proportional(12.0), c.dim));
+    let g = ui.fonts_mut(|f| f.layout_no_wrap(label.to_owned(), FontId::proportional(12.0), c.dim));
     let r = Rect::from_min_size(pos2(right - g.size().x, mid - g.size().y / 2.0), g.size());
-    let hit = r.expand2(vec2(4.0, 4.0));
+    let hot_zone = Rect::from_min_max(pos2(r.left() - 19.0, r.top()), r.right_bottom());
+    let hit = hot_zone.expand2(vec2(4.0, 4.0));
     let hot = pointer.is_some_and(|m| hit.contains(m));
     let ink = if hot { accent() } else { c.dim };
+    let left = mark_left(p, r.left(), mid, Mark::Info, ink);
     p.galley(r.min, g, ink);
     if hot {
         p.line_segment([r.left_bottom(), r.right_bottom()], Stroke::new(1.0, ink));
     }
-    (r.left(), clicked(ui, p, hit, ("guide-link", id), live, pointer))
+    (left, clicked(ui, p, hit, ("guide-link", id), live, pointer))
 }
 
 /// The diagram of the Changes view (#120): changed → put in the next commit

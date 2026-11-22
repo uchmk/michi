@@ -20,6 +20,7 @@ use crate::detail::{Paired, Unified};
 use crate::detail_ui::{diff, left_cut, status_ink, Wrap, DIFF_H, FILE_H, NOTE_H, TITLE_H, X};
 use crate::intro_ui;
 use crate::ui::{accent, kbd};
+use ito_prefs::Mark as Glyph;
 use michi_core::guide::Topic;
 
 const PAD_X: f32 = 18.0;
@@ -128,11 +129,11 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
 
     // The top bar: the worktrees, the amend switch.
     let mid = r.top() + PAD_TOP + TOP_H / 2.0;
-    let (l, hit) = switch(ui, &p, r.right() - PAD_X, mid, app.tr("changes.amend"), 'A', app.changes.amend, live);
+    let (l, hit) = switch(ui, &p, r.right() - PAD_X, mid, Glyph::Pencil, app.tr("changes.amend"), 'A', app.changes.amend, live);
     if hit {
         act = Some(Act::Key('A'));
     }
-    let (l, hit) = switch(ui, &p, l - 8.0, mid, app.tr("changes.tree"), 't', app.changes.tree, live);
+    let (l, hit) = switch(ui, &p, l - 8.0, mid, Glyph::Bullets, app.tr("changes.tree"), 't', app.changes.tree, live);
     if hit {
         act = Some(Act::Key('t'));
     }
@@ -253,16 +254,18 @@ fn told_of(ui: &Ui, app: &App, told: &Told, dr: Rect, live: bool, pointer: Optio
     let mid = rr.center().y;
     let cap = kbd(ui, &p, pos2(rr.right() - X, mid), "Esc");
     let w = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, app.tr("changes.told_close"), FontId::proportional(12.0), c.dim);
-    let closed = clicked(ui, &p, w.union(cap).expand(3.0), "changes-untell", live, pointer);
+    let ml = crate::ui::mark_left(&p, w.left(), mid, Glyph::Close, c.dim);
+    let closed = clicked(ui, &p, with_x(w.union(cap), ml).expand(3.0), "changes-untell", live, pointer);
     // A refused commit can be run again (the hooks run again too).
     let mut again = false;
-    let mut left = w.left().min(cap.left());
+    let mut left = ml.min(cap.left());
     if told.commit {
         let cap2 = kbd(ui, &p, pos2(left - 14.0 - 6.0, mid), "r");
         let w2 =
             p.text(pos2(cap2.left() - 6.0, mid), Align2::RIGHT_CENTER, app.tr("changes.told_again"), FontId::proportional(12.0), c.dim);
-        again = clicked(ui, &p, w2.union(cap2).expand(3.0), "changes-again", live, pointer);
-        left = w2.left();
+        let ml2 = crate::ui::mark_left(&p, w2.left(), mid, Glyph::Rerun, c.dim);
+        again = clicked(ui, &p, with_x(w2.union(cap2), ml2).expand(3.0), "changes-again", live, pointer);
+        left = ml2;
     }
     let title = app.tr(if told.commit { "changes.told_commit" } else { "changes.told" });
     let g = ui.fonts_mut(|f| {
@@ -293,6 +296,12 @@ fn told_of(ui: &Ui, app: &App, told: &Told, dr: Rect, live: bool, pointer: Optio
     }
 }
 
+/// `r` reaching to `x` as well.
+fn with_x(mut r: Rect, x: f32) -> Rect {
+    r.extend_with_x(x);
+    r
+}
+
 /// Whether `hit` was clicked; a hand over it.
 fn clicked(ui: &Ui, p: &Painter, hit: Rect, id: impl std::hash::Hash + std::fmt::Debug, live: bool, pointer: Option<Pos2>) -> bool {
     let resp = ui.interact(hit.intersect(p.clip_rect()), Id::new(id), Sense::CLICK);
@@ -305,12 +314,13 @@ fn clicked(ui: &Ui, p: &Painter, hit: Rect, id: impl std::hash::Hash + std::fmt:
 /// A switch of the top bar, its right edge at `right`, lit while `on`; its
 /// left edge, and whether it was clicked.
 #[expect(clippy::too_many_arguments, reason = "the painter, the place and the look are the frame's")]
-fn switch(ui: &Ui, p: &Painter, right: f32, mid: f32, label: &str, key: char, on: bool, live: bool) -> (f32, bool) {
+fn switch(ui: &Ui, p: &Painter, right: f32, mid: f32, mark: Glyph, label: &str, key: char, on: bool, live: bool) -> (f32, bool) {
     let c = ito_theme::colors();
     let ink = if on { c.wait } else { c.dim };
     let g = ui.fonts_mut(|f| f.layout_no_wrap(label.to_owned(), FontId::proportional(12.5), ink));
     let k = ui.fonts_mut(|f| f.layout_no_wrap(key.to_string(), FontId::monospace(10.5), c.dim));
-    let w = 9.0 + g.size().x + 6.0 + k.size().x + 9.0;
+    let face = crate::ui::Face { mark, label: &g, key: Some(&k), pad: 9.0, key_gap: 6.0 };
+    let w = face.width();
     let b = Rect::from_min_max(pos2(right - w, mid - 12.0), pos2(right, mid + 12.0));
     let resp = ui.interact(b.intersect(p.clip_rect()), Id::new(("changes-switch", key)), Sense::CLICK);
     if on {
@@ -323,8 +333,7 @@ fn switch(ui: &Ui, p: &Painter, right: f32, mid: f32, label: &str, key: char, on
     }
     let edge = if on { c.wait.gamma_multiply(0.45) } else { c.border };
     p.rect_stroke(b, CornerRadius::same(5), Stroke::new(1.0, edge), StrokeKind::Inside);
-    p.galley(pos2(b.left() + 9.0, mid - g.size().y / 2.0), g.clone(), ink);
-    p.galley(pos2(b.right() - 9.0 - k.size().x, mid - k.size().y / 2.0), k, c.dim);
+    face.paint(p, b, ink, c.dim, false);
     (b.left(), live && resp.clicked())
 }
 
@@ -382,10 +391,11 @@ fn confirm(ui: &Ui, app: &App, p: &Painter, band: Rect, live: bool, pointer: Opt
     let mid = band.center().y;
     let mut right = band.right() - PAD_X;
     let mut out = None;
-    for (key, word, a) in [("Esc", "changes.no", Act::No), ("y", "changes.yes", Act::Key('y'))] {
+    for (key, word, a, mark) in [("Esc", "changes.no", Act::No, Glyph::Close), ("y", "changes.yes", Act::Key('y'), Glyph::Check)] {
         let cap = kbd(ui, p, pos2(right, mid), key);
         let w = p.text(pos2(cap.left() - 6.0, mid), Align2::RIGHT_CENTER, app.tr(word), FontId::proportional(12.5), c.fg);
-        let hit = w.union(cap).expand(3.0);
+        let ml = crate::ui::mark_left(p, w.left(), mid, mark, c.fg);
+        let hit = with_x(w.union(cap), ml).expand(3.0);
         if clicked(ui, p, hit, ("changes-confirm", key), live, pointer) {
             out = Some(a);
         }
@@ -715,6 +725,7 @@ fn message(ui: &mut Ui, app: &mut App, br: Rect, live: bool, pointer: Option<Pos
     let head = br.top() + 16.0;
     let cap = kbd(ui, &p, pos2(br.right() - X, head), "c");
     let w = p.text(pos2(cap.left() - 6.0, head), Align2::RIGHT_CENTER, app.tr("changes.write"), FontId::proportional(11.5), c.dim);
+    let w = Rect::from_min_max(pos2(crate::ui::mark_left(&p, w.left(), head, Glyph::Pencil, c.dim), w.top()), w.max);
     let word = if app.changes.amend { "changes.amend_message" } else { "changes.message" };
     let mut job = LayoutJob::simple_singleline(app.tr(word).to_owned(), FontId::proportional(11.5), c.dim);
     job.wrap = TextWrapping::truncate_at_width((w.left() - 8.0 - br.left() - X).max(0.0));
@@ -778,7 +789,8 @@ fn message(ui: &mut Ui, app: &mut App, br: Rect, live: bool, pointer: Option<Pos
     let ready = (staged > 0 || app.changes.amend) && !app.changes.message.trim().is_empty();
     let ink = if ready { accent() } else { c.dim };
     let w = p.text(pos2(cap.left() - 6.0, foot), Align2::RIGHT_CENTER, app.tr(word), FontId::proportional(12.5), ink);
-    let hit = w.union(cap).expand(3.0);
+    let ml = crate::ui::mark_left(&p, w.left(), foot, if app.changes.amend { Glyph::Pencil } else { Glyph::Check }, ink);
+    let hit = with_x(w.union(cap), ml).expand(3.0);
     let out = clicked(ui, &p, hit, "changes-commit", live, pointer).then_some(Act::Commit);
     let text = app.tr(if app.prefs.easy { "changes.staged_n_easy" } else { "changes.staged_n" }).replace("{}", &staged.to_string());
     let mut job = LayoutJob::single_section(text, TextFormat { font_id: FontId::proportional(11.5), color: c.dim, ..Default::default() });

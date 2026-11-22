@@ -6,6 +6,8 @@ use eframe::egui::{self, pos2, Id, RichText, Stroke};
 use michi_core::newwork;
 
 use crate::app::App;
+use crate::ui::face_button;
+use ito_prefs::Mark;
 
 const WIDTH: f32 = 620.0;
 
@@ -54,11 +56,11 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 ui.add_space(4.0);
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(app.tr("new.count")).color(c.dim));
-                    if ui.button("−").clicked() {
+                    if face_button(ui, Mark::ChevronDown, "", None).clicked() {
                         n.count = n.count.saturating_sub(1).max(1);
                     }
                     ui.label(n.count.to_string());
-                    if ui.button("+").clicked() {
+                    if face_button(ui, Mark::ChevronUp, "", None).clicked() {
                         n.count = (n.count + 1).min(newwork::MAX);
                     }
                 });
@@ -73,7 +75,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 ui.add_space(6.0);
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(app.tr("new.keys")).size(12.0).color(c.dim));
-                    if ui.button(app.tr("new.start")).clicked() {
+                    if face_button(ui, Mark::Plus, app.tr("new.start"), None).clicked() {
                         start = true;
                     }
                 });

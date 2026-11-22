@@ -11,6 +11,7 @@ use egui::{
 };
 use ito_graph::ui::Look;
 use ito_graph::Metrics;
+use ito_prefs::Mark as ToolMark;
 
 use crate::app::{failed_word, App, Repo};
 use crate::graph::{bot, when, Mark, PillKind};
@@ -56,6 +57,36 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         let p = ui.painter();
         p.text(r.center() - vec2(0.0, 10.0), Align2::CENTER_CENTER, app.tr(failed_word(e)), FontId::proportional(16.0), c.err);
         p.text(r.center() + vec2(0.0, 14.0), Align2::CENTER_CENTER, app.dir.display().to_string(), FontId::proportional(12.0), c.dim);
+        // The way out: choose another folder, or the list of the repositories met before.
+        let (mut browse, mut recent) = (false, false);
+        for (n, (mark, word, id)) in
+            [(ToolMark::Folder, "repos.pick_btn", "failed-browse"), (ToolMark::Search, "repos.recent_btn", "failed-recent")]
+                .into_iter()
+                .enumerate()
+        {
+            let label = ui.fonts_mut(|f| f.layout_no_wrap(app.tr(word).to_owned(), FontId::proportional(12.5), c.fg));
+            let face = crate::ui::Face { mark, label: &label, key: None, pad: 12.0, key_gap: 0.0 };
+            let at = r.center() + vec2(0.0, 56.0 + 34.0 * n as f32);
+            let rect = Rect::from_center_size(at, vec2(face.width().max(190.0), 26.0));
+            let resp = ui.interact(rect, Id::new(id), Sense::CLICK);
+            let hot = live && resp.hovered();
+            let p = ui.painter();
+            p.rect_stroke(rect, CornerRadius::same(6), Stroke::new(1.0, if hot { c.run } else { c.border }), StrokeKind::Inside);
+            let ink = if hot { c.run } else { c.fg };
+            face.paint(p, Rect::from_center_size(at, vec2(face.width(), 26.0)), ink, ink, false);
+            if hot {
+                ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+            }
+            if live && resp.clicked() {
+                (browse, recent) = (browse || n == 0, recent || n == 1);
+            }
+        }
+        if browse {
+            app.browse_req = true;
+        }
+        if recent && app.repos.is_none() {
+            app.toggle_repos();
+        }
         return;
     }
     let tool = Rect::from_min_size(r.min, vec2(r.width(), TOOL_H));
@@ -67,31 +98,21 @@ pub fn show(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
 
 // ── the tool band ─────────────────────────────────────────────
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Icon {
-    Fetch,
-    Pull,
-    Push,
-    Sync,
-    Plus,
-    Sort,
-}
-
 struct Tool {
-    icon: Option<Icon>,
+    mark: ToolMark,
     word: &'static str,
     key: char,
     prime: bool,
 }
 
 const TOOLS: [Tool; 7] = [
-    Tool { icon: Some(Icon::Fetch), word: "key.fetch", key: 'f', prime: false },
-    Tool { icon: Some(Icon::Pull), word: "key.pull", key: 'p', prime: false },
-    Tool { icon: Some(Icon::Push), word: "key.push", key: 'P', prime: false },
-    Tool { icon: Some(Icon::Sync), word: "key.sync", key: 'S', prime: false },
-    Tool { icon: None, word: "tool.branch", key: 'b', prime: false },
-    Tool { icon: None, word: "key.stash", key: 's', prime: false },
-    Tool { icon: Some(Icon::Plus), word: "tool.new_work", key: 'N', prime: true },
+    Tool { mark: ToolMark::ArrowDown, word: "key.fetch", key: 'f', prime: false },
+    Tool { mark: ToolMark::Download, word: "key.pull", key: 'p', prime: false },
+    Tool { mark: ToolMark::Upload, word: "key.push", key: 'P', prime: false },
+    Tool { mark: ToolMark::Refresh, word: "key.sync", key: 'S', prime: false },
+    Tool { mark: ToolMark::Branch, word: "tool.branch", key: 'b', prime: false },
+    Tool { mark: ToolMark::Archive, word: "key.stash", key: 's', prime: false },
+    Tool { mark: ToolMark::Plus, word: "tool.new_work", key: 'N', prime: true },
 ];
 
 /// The buttons from the left (a line between the remote's and the rest),
@@ -129,8 +150,8 @@ fn tool_band(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         }
         let label = ui.fonts_mut(|f| f.layout_no_wrap(app.tr(t.word).to_owned(), FontId::proportional(12.5), c.fg));
         let key = ui.fonts_mut(|f| f.layout_no_wrap(t.key.to_string(), FontId::monospace(10.5), c.dim));
-        let icon_w = if t.icon.is_some() { 10.0 + 5.0 } else { 0.0 };
-        let w = 8.0 + icon_w + label.size().x + 5.0 + key.size().x + 8.0;
+        let face = crate::ui::Face { mark: t.mark, label: &label, key: Some(&key), pad: 8.0, key_gap: 5.0 };
+        let w = face.width();
         if x + w > right {
             break;
         }
@@ -159,14 +180,7 @@ fn tool_band(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
         } else if hot {
             p.rect_stroke(b, CornerRadius::same(5), Stroke::new(1.0, c.border), StrokeKind::Inside);
         }
-        let mut tx = b.left() + 8.0;
-        if let Some(icon) = t.icon {
-            paint_icon(&p, pos2(tx + 5.0, mid), icon, ink);
-            tx += icon_w;
-        }
-        p.galley(pos2(tx, mid - label.size().y / 2.0), label.clone(), ink);
-        tx += label.size().x + 5.0;
-        p.galley(pos2(tx, mid - key.size().y / 2.0), key, c.dim);
+        face.paint(&p, b, ink, c.dim, false);
         if hot {
             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
         }
@@ -177,55 +191,6 @@ fn tool_band(ui: &mut Ui, app: &mut App, r: Rect, live: bool) {
     }
     if let Some(k) = fed {
         app.feed(k);
-    }
-}
-
-/// A tool's icon, about 10 points across, centred on `at`.
-pub(crate) fn paint_icon(p: &egui::Painter, at: Pos2, icon: Icon, ink: Color32) {
-    let s = Stroke::new(1.3, ink);
-    match icon {
-        Icon::Fetch => {
-            // Most of a circle, an arrowhead at its open end.
-            let (r, from, to) = (4.5_f32, -0.35_f32, 4.6_f32);
-            let points: Vec<Pos2> = (0..=20)
-                .map(|k| {
-                    let a = from + (to - from) * k as f32 / 20.0;
-                    at + vec2(r * a.cos(), r * a.sin())
-                })
-                .collect();
-            let tip = at + vec2(r * from.cos(), r * from.sin());
-            p.add(Shape::line(points, s));
-            p.line_segment([tip, tip + vec2(-0.5, -3.0)], s);
-            p.line_segment([tip, tip + vec2(-3.0, 0.5)], s);
-        }
-        Icon::Pull | Icon::Push => {
-            let dir = if icon == Icon::Pull { 1.0 } else { -1.0 };
-            let tip = at + vec2(0.0, 5.0 * dir);
-            p.line_segment([at - vec2(0.0, 5.0 * dir), tip], s);
-            p.line_segment([tip, tip + vec2(-3.5, -3.5 * dir)], s);
-            p.line_segment([tip, tip + vec2(3.5, -3.5 * dir)], s);
-        }
-        Icon::Sync => {
-            // Two arrows side by side: down (in) and up (out).
-            for (dx, dir) in [(-3.0_f32, 1.0_f32), (3.0, -1.0)] {
-                let x = at + vec2(dx, 0.0);
-                let tip = x + vec2(0.0, 5.0 * dir);
-                p.line_segment([x - vec2(0.0, 5.0 * dir), tip], s);
-                p.line_segment([tip, tip + vec2(-2.5, -2.5 * dir)], s);
-                p.line_segment([tip, tip + vec2(2.5, -2.5 * dir)], s);
-            }
-        }
-        Icon::Sort => {
-            // Three bars, the longest first: a table by an order.
-            for (k, half) in [4.5_f32, 3.0, 1.5].into_iter().enumerate() {
-                let y = at.y - 4.0 + 4.0 * k as f32;
-                p.line_segment([pos2(at.x - 4.5, y), pos2(at.x - 4.5 + 2.0 * half, y)], s);
-            }
-        }
-        Icon::Plus => {
-            p.line_segment([at - vec2(4.5, 0.0), at + vec2(4.5, 0.0)], s);
-            p.line_segment([at - vec2(0.0, 4.5), at + vec2(0.0, 4.5)], s);
-        }
     }
 }
 
@@ -735,7 +700,8 @@ pub fn reveal(scroll: f32, view: f32, row: f32, k: u32) -> f32 {
 fn legend_button(ui: &mut Ui, app: &App, right_center: Pos2, left: f32, live: bool) -> Option<Response> {
     let c = ito_theme::colors();
     let label = ui.fonts_mut(|f| f.layout_no_wrap(app.tr("legend.button").to_owned(), FontId::proportional(11.0), c.dim));
-    let w = 7.0 + label.size().x + 7.0;
+    let face = crate::ui::Face { mark: ToolMark::Info, label: &label, key: None, pad: 7.0, key_gap: 0.0 };
+    let w = face.width();
     let r = Rect::from_min_max(pos2(right_center.x - w, right_center.y - 9.0), pos2(right_center.x, right_center.y + 9.0));
     if r.left() < left {
         return None;
@@ -744,7 +710,8 @@ fn legend_button(ui: &mut Ui, app: &App, right_center: Pos2, left: f32, live: bo
     let hot = live && resp.hovered();
     let p = ui.painter();
     p.rect_stroke(r, CornerRadius::same(9), Stroke::new(1.0, if hot { c.run } else { c.border }), StrokeKind::Inside);
-    p.galley(pos2(r.left() + 7.0, right_center.y - label.size().y / 2.0), label, if hot { c.run } else { c.dim });
+    let ink = if hot { c.run } else { c.dim };
+    face.paint(p, r, ink, ink, false);
     if hot {
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
     }
@@ -758,7 +725,8 @@ fn fold_toggle(ui: &mut Ui, app: &App, right_center: Pos2, left: f32, live: bool
     let on = app.graph.fold_on();
     let label = ui.fonts_mut(|f| f.layout_no_wrap(app.tr("fold.label").to_owned(), FontId::proportional(11.0), c.dim));
     let key = ui.fonts_mut(|f| f.layout_no_wrap("z".to_owned(), FontId::monospace(10.0), c.dim));
-    let w = 7.0 + label.size().x + 4.0 + key.size().x + 7.0;
+    let face = crate::ui::Face { mark: ToolMark::Merge, label: &label, key: Some(&key), pad: 7.0, key_gap: 4.0 };
+    let w = face.width();
     let r = Rect::from_min_max(pos2(right_center.x - w, right_center.y - 9.0), pos2(right_center.x, right_center.y + 9.0));
     if r.left() < left {
         return None;
@@ -771,8 +739,7 @@ fn fold_toggle(ui: &mut Ui, app: &App, right_center: Pos2, left: f32, live: bool
         p.rect_filled(r, CornerRadius::same(9), c.run.gamma_multiply(0.12));
     }
     p.rect_stroke(r, CornerRadius::same(9), Stroke::new(1.0, if hot { c.run } else { border }), StrokeKind::Inside);
-    p.galley(pos2(r.left() + 7.0, right_center.y - label.size().y / 2.0), label.clone(), ink);
-    p.galley(pos2(r.left() + 7.0 + label.size().x + 4.0, right_center.y - key.size().y / 2.0), key, ink.gamma_multiply(0.8));
+    face.paint(p, r, ink, ink.gamma_multiply(0.8), false);
     if hot {
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
     }

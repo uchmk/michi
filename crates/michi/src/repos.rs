@@ -1,7 +1,9 @@
-//! The repository screen (`<C-o>`): the repositories michi was opened on,
-//! newest first, to switch to without leaving the window, drawn by
+//! The repository screen (`<C-o>`, or a click on the title bar's repository
+//! name): the repositories michi was opened on, the pinned ones first and the
+//! rest newest first, to switch to without leaving the window, drawn by
 //! `ito-palette`. What is typed narrows the list; a typed path (a drive, a
-//! slash, `~` or `.` first) adds a row that opens it. The list is kept in
+//! slash, `~` or `.` first) adds a row that opens it; the first row chooses a
+//! folder in the native dialog. A row says whether it is here, in a tab or gone. The list is kept in
 //! `recent.toml` in michi's state folder. A folder is read on a thread first and
 //! only a repository replaces the one in the window.
 
@@ -21,6 +23,8 @@ use crate::app::App;
 /// What a row of the screen stands for.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Row {
+    /// Choose a folder in the native dialog.
+    Browse,
     /// A repository of the list.
     Recent(PathBuf),
     /// The path that was typed.
@@ -59,6 +63,40 @@ pub fn clone_row(query: &str, parent: &Path) -> Option<Row> {
     let req = clone::parse(query)?;
     let dest = clone::target(&req, parent, home().as_deref())?;
     Some(Row::Clone(req.url, dest))
+}
+
+/// Which listed folders are gone. Looking is disk work, so it is done on a
+/// thread when the screen opens and after the list changes, never per frame.
+#[derive(Default)]
+pub struct Seen {
+    pub missing: Vec<PathBuf>,
+    /// The list changed (or the screen just opened): look again.
+    pub stale: bool,
+    asked: Option<Receiver<Vec<PathBuf>>>,
+}
+
+impl Seen {
+    pub fn is_missing(&self, p: &Path) -> bool {
+        self.missing.iter().any(|m| michi_core::paths::same_path(m, p))
+    }
+
+    /// Start looking at `paths` when the list is stale; take the answer when it is in.
+    fn poll(&mut self, ctx: &egui::Context, paths: Vec<PathBuf>) {
+        if std::mem::take(&mut self.stale) {
+            let (tx, rx) = mpsc::channel();
+            let ctx = ctx.clone();
+            std::thread::spawn(move || {
+                let gone = paths.into_iter().filter(|p| !p.is_dir()).collect();
+                let _ = tx.send(gone);
+                ctx.request_repaint();
+            });
+            self.asked = Some(rx);
+        }
+        if let Some(gone) = self.asked.as_ref().and_then(|rx| rx.try_recv().ok()) {
+            self.missing = gone;
+            self.asked = None;
+        }
+    }
 }
 
 /// A folder being read before the window switches to it.
@@ -101,7 +139,8 @@ pub fn rows(recent: &Recent, query: &str) -> Vec<Row> {
 fn view() -> View {
     let mut v = View::new();
     v.filter = false;
-    v.keys = vec![(Modifiers::NONE, Key::Delete)];
+    // Del forgets the row; Ctrl+D (Cmd+D) pins it, or lets its pin go.
+    v.keys = vec![(Modifiers::NONE, Key::Delete), (Modifiers::COMMAND, Key::D)];
     v
 }
 
@@ -132,13 +171,29 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
         _ => None,
     };
     let beside = here.as_deref().and_then(Path::parent).map(Path::to_path_buf).or_else(home).unwrap_or_default();
+    app.repos_seen.poll(ctx, app.recent.paths());
     let mut found = rows(&app.recent, &v.query);
-    if let Some(row) = clone_row(&v.query, &beside) {
+    let clone = clone_row(&v.query, &beside);
+    // The folder dialog is the way in for anyone who has no path or address at hand.
+    // First while nothing is typed; after the matches once a name is typed, so Enter still opens the match.
+    if clone.is_none() && !recent::looks_like_path(&v.query) {
+        if v.query.trim().is_empty() {
+            found.insert(0, Row::Browse);
+        } else {
+            found.push(Row::Browse);
+        }
+    }
+    if let Some(row) = clone {
         found.insert(0, row);
     }
     let entries: Vec<Entry<Row>> = found
         .into_iter()
         .map(|row| match &row {
+            Row::Browse => {
+                let mut e = Entry::new(app.tr("repos.browse"), "", row.clone());
+                e.tone = Tone::Accent;
+                e
+            }
             Row::Typed(p) => {
                 let mut e = Entry::new(app.tr("repos.open").replace("{}", &p.display().to_string()), "", row.clone());
                 e.tone = Tone::Accent;
@@ -151,8 +206,14 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
                 e
             }
             Row::Recent(p) => {
-                let is_here = here.as_deref().is_some_and(|h| michi_core::paths::same_path(h, p));
-                let mut e = Entry::new(leaf(p), if is_here { app.tr("repos.here") } else { "" }, row.clone());
+                let label = state_label(
+                    here.as_deref().is_some_and(|h| michi_core::paths::same_path(h, p)),
+                    app.tab_paths.iter().any(|t| michi_core::paths::same_path(t, p)),
+                    app.repos_seen.is_missing(p),
+                );
+                let word = label.map_or("", |l| app.tr(l));
+                let name = if app.recent.is_pinned(p) { format!("\u{2605} {}", leaf(p)) } else { leaf(p) };
+                let mut e = Entry::new(name, word, row.clone());
                 e.detail = parent(p);
                 e
             }
@@ -162,14 +223,39 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
         Words { hint: app.tr("repos.hint"), none: app.tr("repos.none"), header: app.tr("repos.title"), footer: app.tr("repos.keys") };
     match ito_palette::show(ctx, &mut v, &entries, &style, &words) {
         None => app.repos = Some(v),
+        Some(Answer::Pick(Row::Browse)) => app.browse_req = true,
+        Some(Answer::Pick(Row::Recent(p))) if app.repos_seen.is_missing(&p) => {
+            // The screen stays: Del is what the toast offers.
+            let text = app.tr("repos.missing_pick").to_owned();
+            app.say(text);
+            app.repos = Some(v);
+        }
         Some(Answer::Pick(Row::Recent(p) | Row::Typed(p))) => app.open_repo(p),
         Some(Answer::Pick(Row::Clone(url, dest))) => app.start_clone(ctx, url, dest),
-        Some(Answer::Key(_, _, Row::Recent(p))) => {
-            app.forget_repo(&p);
+        Some(Answer::Key(m, k, Row::Recent(p))) => {
+            if k == Key::Delete && !m.command {
+                app.forget_repo(&p);
+            } else {
+                app.toggle_pin_repo(&p);
+            }
             app.repos = Some(v);
         }
         Some(Answer::Key(..)) => app.repos = Some(v),
         Some(Answer::Close) => {}
+    }
+}
+
+/// The word (a language key) on the right of a listed folder row: it is the
+/// repository of the window, it is open in another tab, or it is gone.
+pub fn state_label(here: bool, in_tab: bool, missing: bool) -> Option<&'static str> {
+    if here {
+        Some("repos.here")
+    } else if in_tab {
+        Some("repos.tab")
+    } else if missing {
+        Some("repos.missing")
+    } else {
+        None
     }
 }
 
@@ -193,6 +279,7 @@ impl App {
             || self.conflicts.edit.is_some();
         if !busy {
             self.repos = Some(view());
+            self.repos_seen.stale = true;
         }
     }
 
@@ -230,12 +317,30 @@ impl App {
 
     pub fn forget_repo(&mut self, dir: &Path) {
         if self.recent.forget(dir) {
+            self.repos_seen.stale = true;
             self.save_recent();
         }
     }
 
+    /// The pin goes on `dir`, or comes off it.
+    pub fn toggle_pin_repo(&mut self, dir: &Path) {
+        self.recent.toggle_pin(dir);
+        self.save_recent();
+    }
+
     /// `top` put in front of the list, and the list kept.
+    /// Not a throwaway one: nothing in the temporary folder, no practice repository.
     pub fn remember_repo(&mut self, top: &Path) {
+        // The temporary folder is resolved once per run, not on every open.
+        static TEMP: std::sync::OnceLock<(PathBuf, PathBuf)> = std::sync::OnceLock::new();
+        let (temp, real) = TEMP.get_or_init(|| {
+            let temp = std::env::temp_dir();
+            let real = std::fs::canonicalize(&temp).unwrap_or_else(|_| temp.clone());
+            (temp, real)
+        });
+        if !recent::worth_remembering(top, &[temp, real]) {
+            return;
+        }
         let before = self.recent.text();
         self.recent.push(top);
         // The same list is not written again.
@@ -317,5 +422,33 @@ mod tests {
         assert!(a.recent.paths().is_empty());
         a.open_repo(PathBuf::from("/y"));
         assert_eq!(a.open_req, Some(PathBuf::from("/y")));
+    }
+
+    #[test]
+    fn a_row_says_here_then_tab_then_missing() {
+        assert_eq!(state_label(true, true, true), Some("repos.here"));
+        assert_eq!(state_label(false, true, true), Some("repos.tab"));
+        assert_eq!(state_label(false, false, true), Some("repos.missing"));
+        assert_eq!(state_label(false, false, false), None);
+    }
+
+    #[test]
+    fn seen_knows_a_gone_folder_by_its_path() {
+        let seen = Seen { missing: vec![PathBuf::from("/gone/x")], ..Default::default() };
+        assert!(seen.is_missing(Path::new("/gone/x/")));
+        assert!(!seen.is_missing(Path::new("/here")));
+    }
+
+    #[test]
+    fn throwaway_folders_are_not_remembered_and_pins_toggle() {
+        let mut a = App::new(crate::prefs::Prefs::empty(), std::env::temp_dir());
+        a.remember_repo(&std::env::temp_dir().join("m63"));
+        a.remember_repo(Path::new("/home/u/michi-practice-2"));
+        assert!(a.recent.paths().is_empty());
+        a.remember_repo(Path::new("/dev/a"));
+        a.toggle_pin_repo(Path::new("/dev/a"));
+        assert!(a.recent.is_pinned(Path::new("/dev/a")));
+        a.toggle_pin_repo(Path::new("/dev/a"));
+        assert!(!a.recent.is_pinned(Path::new("/dev/a")));
     }
 }
